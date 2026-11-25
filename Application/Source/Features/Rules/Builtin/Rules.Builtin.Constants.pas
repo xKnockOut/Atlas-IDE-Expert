@@ -1,0 +1,1707 @@
+﻿unit Rules.Builtin.Constants;
+
+// Regeln für Konstanten (#909, Gruppe Compiler vorab):
+//   constant-expression-error  Fehler in einem konstanten Ausdruck (#992):
+//                              Division durch null mit bekannten Operanden
+//                              (E2098), Überlauf über den Bereich von Int64
+//                              und UInt64 hinaus (E2099), Untergrenze über
+//                              der Obergrenze eines Bereichs (array[5..1],
+//                              E2011), Konstante außerhalb eines ganzzahligen
+//                              Typs fester Größe bzw. eines Teilbereichstyps
+//                              (E1012; nur Werte, die als gleich breite Zahl
+//                              mit anderem Vorzeichen passen, wie $FFFFFFFF
+//                              für Integer, als Warnung W1012), Hex-, Binär-
+//                              oder Oktalliterale über 64 Bit (E2102, an Int64
+//                              zugewiesen zusätzlich W1012). Dazu (#1372):
+//                              konstanter Index außerhalb eines statischen
+//                              Arrays der Datei und case-Marke außerhalb des
+//                              Typs des case-Ausdrucks (E1012), Überlauf über
+//                              High(Int64) mit lauter Operanden mit Vorzeichen
+//                              (E2099), Menge über mehr als 256 Werte (E2028)
+//                              und Zahlen statt Sichtbarkeiten in {$RTTI}
+//                              (E2572). Zahlen in asm-Blöcken prüft
+//                              asm-invalid (dcc meldet dort E2113, #1375).
+//   default-parameter-invalid  Unzulässiger Standardwert eines Parameters
+//                              (#993): mehrere Namen mit einem Standardwert
+//                              (A, B: Integer = 0, E2237), Parameter ohne
+//                              Standardwert nach einem mit (E2238), var- und
+//                              out-Parameter mit Standardwert (E2239), Records
+//                              und statische Arrays mit Standardwert (E2268).
+//                              Große Mengen mit Standardwert nimmt dcc an
+//                              (E2146 kommt nicht), sie bleiben still.
+//                              Korrekturen: Parameter einzeln deklarieren;
+//                              Parameter mit Standardwert ans Ende verschieben,
+//                              auch im zugehörigen Kopf derselben Datei
+//                              (Deklaration bzw. Implementierung).
+//   typed-constant-modified    Typisierte Konstante verändert (#1014):
+//                              Zuweisung (W1017, auch an Element oder Feld)
+//                              und Übergabe als var- oder out-Argument samt
+//                              Inc, Dec, Include, Exclude … (W1016); steht
+//                              vor der Deklaration in derselben Datei {$J-},
+//                              ist es ein Fehler (E2064 bzw. E2197), mit
+//                              {$J+} schweigt die Regel wie dcc; {$J±}
+//                              aus einer mit {$I} eingebundenen Datei zählt
+//                              mit (#1328), eine unlesbare macht den Stand
+//                              unbekannt. Dazu 0
+//                              als Wert einer Zeigerkonstante (W1013).
+//                              Korrekturen: globale Konstante in eine
+//                              Variable mit Initialwert umwandeln; nil
+//                              statt 0.
+//
+// Ausgewertet wird mit Semantics.ConstantValues (Literale, Konstanten auch aus
+// anderen Units, SizeOf/High/Low von Typen fester Größe). Konstanten aus einem
+// {$IF}-Zweig, den die Stelle nicht sicher mit übersetzt, gelten als unbekannt.
+
+interface
+
+uses
+  System.SysUtils,
+  Rules.Contract,
+  Rules.Registry;
+
+const
+  cConstantExpressionErrorRuleId = 'constant-expression-error';
+  cDefaultParameterInvalidRuleId = 'default-parameter-invalid';
+
+type
+  TConstantExpressionErrorRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Ist das Zahl-Token ATokenText ein Hex-, Binär- oder Oktalliteral, das nicht in 64 Bit passt
+    /// (wie E2102)? Dezimalzahlen macht Delphi zu Gleitkommazahlen, sie zählen nicht.</summary>
+    class function TooLargeLiteral(const ATokenText: string): Boolean; static;
+    /// <summary>Ist AValue außerhalb des ganzzahligen Typs fester Größe ATypeName ein Fehler (wie E1012)? Nur
+    /// Werte, die in einen gleich breiten Typ mit anderem Vorzeichen passen ($FFFFFFFF für Integer, -1 für
+    /// Cardinal), sind eine Warnung (wie W1012). False auch für Werte im Bereich und für andere Typen.</summary>
+    class function OutsideIsError(AValue: Int64; const ATypeName: string): Boolean; static;
+    /// <summary>Fehlerhafte Sichtbarkeitsmenge in einer {$RTTI}-Direktive (Text samt Klammern) wie
+    /// "METHODS([1])"; '' ohne. Gemeldet werden nur Zahlen, Strings und Zeichen als Element (wie E2572).</summary>
+    class function InvalidRttiVisibility(const ADirective: string): string; static;
+  end;
+
+  TDefaultParameterInvalidRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+procedure RegisterConstantRules(const ARegistry: TRuleRegistry);
+
+implementation
+
+uses
+  System.StrUtils,
+  System.Generics.Collections,
+  Atlas.Common.Pascal.TokenCursor,
+  Rules.Derived,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Pascal.RoutineSignatures,
+  Atlas.Common.Documents.FileEncoding,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Semantics.OrdinalConstants,
+  Atlas.Common.Semantics.ConstantValues,
+  Rules.TypedScope,
+  Rules.Builtin.Constants.Types,
+  Rules.Builtin.Constants.TypedConstants,
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Common.Findings.Contract;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TConstantsText = (Title, MoreThan, DivZeroOperand, DivZero, Overflow, LowAboveHigh, OutOfRangeE, OutOfRangeW,
+    Truncated64, IndexOut, SetTooLarge, IntTooLarge, RttiSet, DefaultTitle, MoveDefaults, NoDefaultType,
+    SingleDecl, DeclareSingle, VarDefault, NeedsDefault);
+
+const
+  cTexts: array[TConstantsText] of TAtlasText = (
+    (De: 'Fehler in einem konstanten Ausdruck'; En: 'Error in a constant expression'),
+    (De: 'mehr als 4294967296'; En: 'more than 4294967296'),
+    (De: 'Division durch null in einem konstanten Ausdruck (%s = 0, wie E2098).';
+     En: 'Division by zero in a constant expression (%s = 0, like E2098).'),
+    (De: 'Division durch null in einem konstanten Ausdruck (wie E2098).';
+     En: 'Division by zero in a constant expression (like E2098).'),
+    (De: 'Überlauf in einem konstanten Ausdruck: Das Ergebnis passt in keinen Ganzzahltyp (wie E2099).';
+     En: 'Overflow in a constant expression: the result fits into no integer type (like E2099).'),
+    (De: 'Die Untergrenze %d liegt über der Obergrenze %d (wie E2011).';
+     En: 'The lower bound %d is above the upper bound %d (like E2011).'),
+    (De: '%d liegt außerhalb des Bereichs von %s (%d..%d, wie E1012).';
+     En: '%d is out of the range of %s (%d..%d, like E1012).'),
+    (De: '%d liegt außerhalb des Bereichs von %s (%d..%d, wie W1012).';
+     En: '%d is out of the range of %s (%d..%d, like W1012).'),
+    (De: '%s passt auf 64 Bit gekürzt nicht in %s (wie W1012).';
+     En: '%s truncated to 64 bits does not fit into %s (like W1012).'),
+    (De: 'Index %d liegt außerhalb der Grenzen von %s (%d..%d, wie E1012).';
+     En: 'Index %d is out of the bounds of %s (%d..%d, like E1012).'),
+    (De: '%s hat %s Werte; eine Menge darf höchstens 256 Elemente haben (wie E2028).';
+     En: '%s has %s values; a set may have at most 256 elements (like E2028).'),
+    (De: 'Ganzzahlkonstante zu groß: %s passt nicht in 64 Bit (wie E2102).';
+     En: 'Integer constant too large: %s does not fit into 64 bits (like E2102).'),
+    (De: '%s in {$RTTI} ist keine Menge aus vcPrivate, vcProtected, vcPublic und vcPublished (wie E2572).';
+     En: '%s in {$RTTI} is not a set of vcPrivate, vcProtected, vcPublic and vcPublished (like E2572).'),
+    (De: 'Unzulässiger Standardwert eines Parameters'; En: 'Invalid default value of a parameter'),
+    (De: 'Parameter mit Standardwert ans Ende verschieben'; En: 'Move parameters with default value to the end'),
+    (De: 'Parameter vom Typ %s können keinen Standardwert haben (wie E2268).';
+     En: 'Parameters of type %s cannot have a default value (like E2268).'),
+    (De: '%s: Standardwerte gibt es nur für einzeln deklarierte Parameter (wie E2237).';
+     En: '%s: default values exist only for individually declared parameters (like E2237).'),
+    (De: 'Parameter einzeln deklarieren'; En: 'Declare parameters individually'),
+    (De: '%s ist ein %s-Parameter und kann keinen Standardwert haben (wie E2239).';
+     En: '%s is a %s parameter and cannot have a default value (like E2239).'),
+    (De: '%s braucht einen Standardwert, weil ein vorheriger Parameter einen hat (wie E2238).';
+     En: '%s needs a default value because a previous parameter has one (like E2238).'));
+
+{$SCOPEDENUMS OFF}
+
+{ TConstantExpressionErrorRule }
+
+function TConstantExpressionErrorRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(cConstantExpressionErrorRuleId, TRuleSeverity.Error,
+    cTexts[TConstantsText.Title].Text);
+end;
+
+class function TConstantExpressionErrorRule.TooLargeLiteral(const ATokenText: string): Boolean;
+var
+  mText: string;
+  mBits, mIndex, mDigit: Integer;
+begin
+  Result := False;
+  mText := StringReplace(ATokenText, '_', '', [rfReplaceAll]);
+  if Length(mText) < 2 then
+  begin
+    Exit;
+  end;
+  case mText[1] of
+    '$':
+      mBits := 4;
+    '%':
+      mBits := 1;
+    '&':
+      mBits := 3;
+  else
+    Exit;
+  end;
+  // Führende Nullen zählen nicht; danach bestimmt die erste Ziffer, wie viele Bits sie belegt.
+  for mIndex := 2 to Length(mText) do
+  begin
+    if mText[mIndex] = '0' then
+    begin
+      Continue;
+    end;
+    case mText[mIndex] of
+      '0'..'9':
+        mDigit := Ord(mText[mIndex]) - Ord('0');
+      'a'..'f':
+        mDigit := Ord(mText[mIndex]) - Ord('a') + 10;
+      'A'..'F':
+        mDigit := Ord(mText[mIndex]) - Ord('A') + 10;
+    else
+      Exit;
+    end;
+    // Bits der ersten Ziffer plus volle Bits aller weiteren.
+    mBits := mBits * (Length(mText) - mIndex);
+    while mDigit > 0 do
+    begin
+      Inc(mBits);
+      mDigit := mDigit shr 1;
+    end;
+    Exit(mBits > 64);
+  end;
+end;
+
+class function TConstantExpressionErrorRule.OutsideIsError(AValue: Int64; const ATypeName: string): Boolean;
+var
+  mKind: TIntegerKind;
+  mLow, mHigh: Int64;
+begin
+  Result := False;
+  mKind := IntegerKindOf(ATypeName);
+  if (mKind.Bits = 0) or not IntegerRange(ATypeName, mLow, mHigh) or ((AValue >= mLow) and (AValue <= mHigh)) then
+  begin
+    Exit;
+  end;
+  if mKind.Bits >= 64 then
+  begin
+    Exit(True);
+  end;
+  // Passt der Wert in den gleich breiten Typ mit anderem Vorzeichen, legt dcc die Bits nur anders aus und warnt
+  // (W1012); sonst ist es ein Fehler (E1012, #1372).
+  if mKind.Signed then
+  begin
+    Result := (AValue < mLow) or (AValue > (Int64(1) shl mKind.Bits) - 1);
+  end
+  else
+  begin
+    Result := (AValue > mHigh) or (AValue < -(Int64(1) shl (mKind.Bits - 1)));
+  end;
+end;
+
+/// <summary>Position des ersten Zeichens ab AStart, das kein Leerraum ist.</summary>
+function SkipBlanks(const AText: string; AStart: Integer): Integer;
+begin
+  Result := AStart;
+  while (Result <= Length(AText)) and CharInSet(AText[Result], [' ', #9, #10, #13]) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Ist AContent eine Menge mit einer Zahl, einem String oder einem Zeichen als Element? Nur solche sind
+/// sicher keine Sichtbarkeiten; Namen können Konstanten vom Typ TVisibilityClass sein.</summary>
+function HasLiteralElement(const AContent: string): Boolean;
+var
+  mElement: string;
+begin
+  Result := False;
+  if (Length(AContent) < 2) or (AContent[1] <> '[') or (AContent[Length(AContent)] <> ']') then
+  begin
+    Exit;
+  end;
+  for mElement in Copy(AContent, 2, Length(AContent) - 2).Split(TArray<string>.Create(',', '..')) do
+  begin
+    if (Trim(mElement) <> '') and CharInSet(Trim(mElement)[1], ['0'..'9', '$', '%', '#', '''', '-', '+']) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+class function TConstantExpressionErrorRule.InvalidRttiVisibility(const ADirective: string): string;
+var
+  mUpper, mKey: string;
+  mStart, mOpen, mClose: Integer;
+begin
+  Result := '';
+  mUpper := UpperCase(ADirective);
+  for mKey in TArray<string>.Create('METHODS', 'FIELDS', 'PROPERTIES') do
+  begin
+    mStart := Pos(mKey, mUpper);
+    if mStart = 0 then
+    begin
+      Continue;
+    end;
+    mOpen := SkipBlanks(mUpper, mStart + Length(mKey));
+    if (mOpen > Length(mUpper)) or (mUpper[mOpen] <> '(') then
+    begin
+      Continue;
+    end;
+    mClose := MatchingParen(ADirective, mOpen);
+    if (mClose > 0) and
+      HasLiteralElement(Trim(Copy(ADirective, mOpen + 1, mClose - mOpen - 1))) then
+    begin
+      Exit(Copy(ADirective, mStart, mClose - mStart + 1));
+    end;
+  end;
+end;
+
+/// <summary>Liegen die unteren 64 Bit des Hex- oder Binärliterals ATokenText über High(Int64)? Ein zu großes
+/// Literal kürzt dcc auf 64 Bit; an Int64 zugewiesen warnt es dann zusätzlich (W1012, #1372).</summary>
+function LowBitsAboveInt64(const ATokenText: string): Boolean;
+var
+  mText: string;
+begin
+  Result := False;
+  mText := StringReplace(ATokenText, '_', '', [rfReplaceAll]);
+  if Length(mText) < 2 then
+  begin
+    Exit;
+  end;
+  if mText[1] = '$' then
+  begin
+    mText := Copy(mText, 2, MaxInt);
+    if Length(mText) < 16 then
+    begin
+      Exit;
+    end;
+    Result := CharInSet(mText[Length(mText) - 15], ['8'..'9', 'A'..'F', 'a'..'f']);
+  end
+  else if mText[1] = '%' then
+  begin
+    mText := Copy(mText, 2, MaxInt);
+    Result := (Length(mText) >= 64) and (mText[Length(mText) - 63] = '1');
+  end;
+end;
+
+/// <summary>Zahl der Werte eines eingebauten ganzzahligen Typs mit mehr als 256 Werten (Word, Integer …) als
+/// Text; '' für andere.</summary>
+function WideOrdinalValues(const ATypeName: string): string;
+begin
+  case IndexText(ATypeName, ['Word', 'UInt16', 'SmallInt', 'Int16', 'Integer', 'Int32', 'FixedInt', 'LongInt',
+    'Cardinal', 'UInt32', 'FixedUInt', 'LongWord', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt']) of
+    0..3:
+      Result := '65536';
+    4..11:
+      Result := '4294967296';
+    12..15:
+      Result := cTexts[TConstantsText.MoreThan].Text;
+  else
+    Result := '';
+  end;
+end;
+
+/// <summary>Kann dieser Knoten einen Überlauf auslösen? Multiplikation, große Zahlen und High/Low.</summary>
+function OverflowCandidate(ANode: TSyntaxNode): Boolean;
+begin
+  case ANode.Kind of
+    TSyntaxKind.BinaryExpr:
+      Result := ANode.Name = '*';
+    TSyntaxKind.Literal:
+      Result := Length(ANode.Name) >= 10;
+    TSyntaxKind.Identifier:
+      Result := MatchText(ANode.Name, ['High', 'Low']);
+  else
+    Result := False;
+  end;
+end;
+
+/// <summary>Enthält die Namensliste ANames (A,B) den Namen AName?</summary>
+function NamesContain(const ANames, AName: string): Boolean;
+var
+  mName: string;
+begin
+  Result := False;
+  for mName in ANames.Split([',']) do
+  begin
+    if SameText(Trim(mName), AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Zahl der Werte des Bereichs ALow..AHigh als Text, wenn es mehr als 256 sind; sonst ''.</summary>
+function RangeValues(ALow, AHigh: Int64): string;
+begin
+  Result := '';
+  if ALow > AHigh then
+  begin
+    Exit;
+  end;
+  // AHigh - ALow kann bei Low(Int64)..High(Int64) überlaufen; deshalb mit der Untergrenze vergleichen.
+  if (ALow < 0) and (AHigh > High(Int64) + ALow) then
+  begin
+    Result := cTexts[TConstantsText.MoreThan].Text;
+  end
+  else if AHigh - ALow >= 256 then
+  begin
+    Result := IntToStr(AHigh - ALow + 1);
+  end;
+end;
+
+type
+  TKinds = set of TSyntaxKind;
+
+type
+  /// <summary>Ein Lauf von TConstantExpressionErrorRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TConstantExpressionErrorScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FScope: TTypedScope;
+    FFileName: string;
+    FResolver: TNameResolver;
+    FValues: TConstantValues;
+    function NodeRange(ANode: TSyntaxNode): TTextRange;
+    function ValueOf(ANode: TSyntaxNode; out AValue: Int64): Boolean;
+    function IsExpressionRoot(ANode: TSyntaxNode): Boolean;
+    procedure CheckDivision(ANode: TSyntaxNode);
+    function MayOverflow(ANode: TSyntaxNode): Boolean;
+    procedure CheckOverflow(ANode: TSyntaxNode);
+    procedure CheckSubrange(ANode: TSyntaxNode);
+    function TargetRange(ATypeNode: TSyntaxNode; const ATypeName: string; out ALow, AHigh: Int64;
+      out ASubrange: Boolean): Boolean;
+    procedure ReportRange(AValueNode: TSyntaxNode; AValue, ALow, AHigh: Int64; const ATypeName: string;
+      ASubrange: Boolean);
+    procedure CheckTruncatedLiteral(AValueNode: TSyntaxNode; const ATypeName: string);
+    procedure CheckInitializer(ADecl: TSyntaxNode);
+    function TruncatedAssignment(ATarget, ASource: TSyntaxNode): Boolean;
+    function AssignedRange(ATarget: TSyntaxNode; out ATypeName: string; out ALow, AHigh: Int64;
+      out ASubrange: Boolean): Boolean;
+    procedure CheckAssignment(AStatement: TSyntaxNode);
+    function NodeText(ANode: TSyntaxNode): string;
+    function HasConditional(ANode: TSyntaxNode): Boolean;
+    function DeclarationOf(const ASymbol: TResolvedSymbol; AKinds: TKinds): TSyntaxNode;
+    function NamedTypeBody(ATypeNode: TSyntaxNode): TSyntaxNode;
+    function StaticArrayOf(ATypeNode: TSyntaxNode): TSyntaxNode;
+    function InWith(ANode: TSyntaxNode): Boolean;
+    function AnyConstantIndex(AAccess: TSyntaxNode): Boolean;
+    function IndexedArray(ABase: TSyntaxNode): TSyntaxNode;
+    function BoundsOf(ABound: TSyntaxNode; out ALow, AHigh: Int64): Boolean;
+    procedure ReportIndexes(AAccess, AArray: TSyntaxNode);
+    procedure CheckIndex(AAccess: TSyntaxNode);
+    function CaseLabels(ACase: TSyntaxNode): TArray<TSyntaxNode>;
+    function AnyWideLabel(const ALabels: TArray<TSyntaxNode>): Boolean;
+    procedure CheckCaseLabels(ACase: TSyntaxNode);
+    function NamedSetValues(ABase: TSyntaxNode): string;
+    procedure CheckSetSize(ASet: TSyntaxNode);
+    procedure Visit(ARoot: TSyntaxNode);
+    function InAsm(AOffset: Integer): Boolean;
+    procedure CheckTokens;
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TConstantExpressionErrorScan }
+
+constructor TConstantExpressionErrorScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TConstantExpressionErrorScan.NodeRange(ANode: TSyntaxNode): TTextRange;
+begin
+  Result := TTextRange.Create(ANode.StartPos, ANode.EndPos);
+end;
+
+/// <summary>Wert des Knotens; False, wenn nicht sicher bekannt.</summary>
+function TConstantExpressionErrorScan.ValueOf(ANode: TSyntaxNode; out AValue: Int64): Boolean;
+begin
+  Result := FValues.Check(ANode, AValue) = TOrdinalStatus.Value;
+end;
+
+/// <summary>Wurzel eines Ausdrucks: kein Operand eines umgebenden Operators oder einer Klammer.</summary>
+function TConstantExpressionErrorScan.IsExpressionRoot(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Parent = nil) or not (ANode.Parent.Kind in [TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr,
+    TSyntaxKind.ParenExpr]);
+end;
+
+procedure TConstantExpressionErrorScan.CheckDivision(ANode: TSyntaxNode);
+var
+  mLeft, mRight: Int64;
+  mMessage: string;
+begin
+  // Erst der Teiler: meist ist er keine Null, dann bleibt die linke Seite unausgewertet.
+  if (ANode.ChildCount <> 2) or not MatchText(ANode.Name, ['div', 'mod']) or
+    not ValueOf(ANode[1], mRight) or (mRight <> 0) or not ValueOf(ANode[0], mLeft) then
+  begin
+    Exit;
+  end;
+  if ANode[1].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess] then
+  begin
+    mMessage := cTexts[TConstantsText.DivZeroOperand].Fmt(
+      [Copy(FContext.Text, ANode[1].StartOffset + 1, ANode[1].EndOffset - ANode[1].StartOffset)]);
+  end
+  else
+  begin
+    mMessage := cTexts[TConstantsText.DivZero].Text;
+  end;
+  FReport.Add(NodeRange(ANode), mMessage, TRuleConfidence.High);
+end;
+
+/// <summary>Kann der Ausdruck überhaupt überlaufen? Nur mit Multiplikation, großen Zahlen oder High/Low; so
+/// bleiben die meisten Ausdrücke ohne Namensauflösung.</summary>
+function TConstantExpressionErrorScan.MayOverflow(ANode: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  Result := False;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if OverflowCandidate(mNode) then
+      begin
+        Exit(True);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TConstantExpressionErrorScan.CheckOverflow(ANode: TSyntaxNode);
+var
+  mValue: Int64;
+begin
+  if IsExpressionRoot(ANode) and MayOverflow(ANode) and
+    (FValues.Check(ANode, mValue) = TOrdinalStatus.Overflow) then
+  begin
+    FReport.Add(NodeRange(ANode),
+      cTexts[TConstantsText.Overflow].Text,
+      TRuleConfidence.High);
+  end;
+end;
+
+procedure TConstantExpressionErrorScan.CheckSubrange(ANode: TSyntaxNode);
+var
+  mLowest, mHighest: Int64;
+begin
+  if (ANode.ChildCount = 2) and ValueOf(ANode[0], mLowest) and ValueOf(ANode[1], mHighest) and
+    (mLowest > mHighest) then
+  begin
+    FReport.Add(NodeRange(ANode), cTexts[TConstantsText.LowAboveHigh].Fmt([mLowest, mHighest]), TRuleConfidence.High);
+  end;
+end;
+
+/// <summary>Bereich des Typs ATypeName (Typ fester Größe oder Teilbereichstyp, aufgelöst an ANode); ASubrange
+/// sagt, ob es ein Teilbereichstyp ist.</summary>
+function TConstantExpressionErrorScan.TargetRange(ATypeNode: TSyntaxNode; const ATypeName: string; out ALow,
+  AHigh: Int64;
+  out ASubrange: Boolean): Boolean;
+var
+  mTypeSymbol: TResolvedSymbol;
+begin
+  ASubrange := False;
+  if IntegerRange(ATypeName, ALow, AHigh) then
+  begin
+    Exit(True);
+  end;
+  Result := False;
+  if (ATypeNode = nil) or (ATypeName = '') or (Pos('<', ATypeName) > 0) then
+  begin
+    Exit;
+  end;
+  mTypeSymbol := FResolver.ResolveType(FContext.Tree, FFileName, ATypeNode.StartPos);
+  Result := mTypeSymbol.Found and SubrangeOf(mTypeSymbol.Signature, ALow, AHigh);
+  ASubrange := Result;
+end;
+
+/// <summary>Wert außerhalb des Zieltyps: ein Fehler wie E1012 (Delphi 13 bei Teilbereichstypen und bei Werten,
+/// die auch als Zahl mit anderem Vorzeichen nicht passen, #1372), sonst eine Warnung wie W1012.</summary>
+procedure TConstantExpressionErrorScan.ReportRange(AValueNode: TSyntaxNode; AValue, ALow, AHigh: Int64;
+  const ATypeName: string;
+  ASubrange: Boolean);
+begin
+  if ASubrange or TConstantExpressionErrorRule.OutsideIsError(AValue, ATypeName) then
+  begin
+    FReport.Add(NodeRange(AValueNode), cTexts[TConstantsText.OutOfRangeE].Fmt(
+      [AValue, ATypeName, ALow, AHigh]), TRuleConfidence.High);
+  end
+  else
+  begin
+    FReport.AddWithSeverity(NodeRange(AValueNode), cTexts[TConstantsText.OutOfRangeW].Fmt([AValue, ATypeName, ALow,
+      AHigh]),
+      TRuleSeverity.Warning, nil);
+  end;
+end;
+
+/// <summary>Zu großes Literal an Int64: dcc kürzt es auf 64 Bit und warnt zusätzlich zu E2102 (W1012).</summary>
+procedure TConstantExpressionErrorScan.CheckTruncatedLiteral(AValueNode: TSyntaxNode; const ATypeName: string);
+var
+  mKind: TIntegerKind;
+begin
+  if (AValueNode.Kind <> TSyntaxKind.Literal) or not TConstantExpressionErrorRule.TooLargeLiteral(AValueNode.Name) or
+    not LowBitsAboveInt64(AValueNode.Name) then
+  begin
+    Exit;
+  end;
+  mKind := IntegerKindOf(ATypeName);
+  if (mKind.Bits = 64) and mKind.Signed then
+  begin
+    FReport.AddWithSeverity(NodeRange(AValueNode), cTexts[TConstantsText.Truncated64].Fmt([AValueNode.Name,
+      ATypeName]),
+      TRuleSeverity.Warning, nil);
+  end;
+end;
+
+/// <summary>Typisierte Konstante bzw. initialisierte Variable: Typ und Wert sind Kinder der Deklaration.</summary>
+procedure TConstantExpressionErrorScan.CheckInitializer(ADecl: TSyntaxNode);
+var
+  mTypeNode, mValueNode: TSyntaxNode;
+  mValue, mLowest, mHighest: Int64;
+  mSubrange: Boolean;
+begin
+  if (ADecl.ChildCount < 2) or (ADecl[0].Kind <> TSyntaxKind.TypeReference) or (ADecl[0].ChildCount > 0) then
+  begin
+    Exit;
+  end;
+  mTypeNode := ADecl[0];
+  mValueNode := ADecl[ADecl.ChildCount - 1];
+  if mValueNode.Kind = TSyntaxKind.TypeReference then
+  begin
+    Exit;
+  end;
+  CheckTruncatedLiteral(mValueNode, mTypeNode.Name);
+  if not ValueOf(mValueNode, mValue) or not TargetRange(mTypeNode, mTypeNode.Name, mLowest, mHighest, mSubrange) then
+  begin
+    Exit;
+  end;
+  if (mValue < mLowest) or (mValue > mHighest) then
+  begin
+    ReportRange(mValueNode, mValue, mLowest, mHighest, mTypeNode.Name, mSubrange);
+  end;
+end;
+
+/// <summary>Zu großes Literal an eine Variable oder ein Feld: dcc kürzt es auf 64 Bit (W1012). True, wenn die
+/// Zuweisung so eine ist.</summary>
+function TConstantExpressionErrorScan.TruncatedAssignment(ATarget, ASource: TSyntaxNode): Boolean;
+var
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
+begin
+  Result := (ASource.Kind = TSyntaxKind.Literal) and TConstantExpressionErrorRule.TooLargeLiteral(ASource.Name) and
+    LowBitsAboveInt64(ASource.Name) and
+    FResolver.NodeType(FContext.Tree, FFileName, ATarget, mSymbol, mTypeInfo, mTypeFound) and
+    (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]);
+  if Result then
+  begin
+    CheckTruncatedLiteral(ASource, mSymbol.TypeName);
+  end;
+end;
+
+/// <summary>Bereich der Variablen oder des Felds ATarget: ganzzahliger Typ fester Größe oder Teilbereichstyp;
+/// ASubrange sagt, ob es ein Teilbereichstyp ist.</summary>
+function TConstantExpressionErrorScan.AssignedRange(ATarget: TSyntaxNode; out ATypeName: string; out ALow, AHigh: Int64;
+  out ASubrange: Boolean): Boolean;
+var
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
+begin
+  ATypeName := '';
+  ALow := 0;
+  AHigh := 0;
+  ASubrange := False;
+  Result := FResolver.NodeType(FContext.Tree, FFileName, ATarget, mSymbol, mTypeInfo, mTypeFound) and
+    (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]);
+  if not Result then
+  begin
+    Exit;
+  end;
+  ATypeName := mSymbol.TypeName;
+  if IntegerRange(ATypeName, ALow, AHigh) then
+  begin
+    Exit;
+  end;
+  ASubrange := mTypeFound and SubrangeOf(mTypeInfo.Signature, ALow, AHigh);
+  Result := ASubrange;
+  if ASubrange then
+  begin
+    ATypeName := mTypeInfo.Name;
+  end;
+end;
+
+procedure TConstantExpressionErrorScan.CheckAssignment(AStatement: TSyntaxNode);
+var
+  mValue, mLow, mHigh: Int64;
+  mTypeName: string;
+  mSubrange: Boolean;
+begin
+  if (AStatement.ChildCount <> 2) or
+    not (AStatement[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
+    TruncatedAssignment(AStatement[0], AStatement[1]) then
+  begin
+    Exit;
+  end;
+  if not (AStatement[1].Kind in [TSyntaxKind.Literal, TSyntaxKind.UnaryExpr, TSyntaxKind.BinaryExpr,
+    TSyntaxKind.ParenExpr, TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call]) or
+    not ValueOf(AStatement[1], mValue) then
+  begin
+    Exit;
+  end;
+  // 0..127 passt in jeden ganzzahligen Typ; Teilbereichstypen prüft die Regel nur ab hier, damit nicht jede
+  // Zuweisung einer kleinen Zahl die Namensauflösung braucht.
+  if ((mValue < 0) or (mValue > 127)) and AssignedRange(AStatement[0], mTypeName, mLow, mHigh, mSubrange) and
+    ((mValue < mLow) or (mValue > mHigh)) then
+  begin
+    ReportRange(AStatement[1], mValue, mLow, mHigh, mTypeName, mSubrange);
+  end;
+end;
+
+/// <summary>Text des Knotens wie im Quelltext.</summary>
+function TConstantExpressionErrorScan.NodeText(ANode: TSyntaxNode): string;
+begin
+  Result := Copy(FContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+end;
+
+/// <summary>Steht in ANode eine bedingte Direktive ({$IFDEF}, {$ELSE} …)? Dann ist der Inhalt unsicher.</summary>
+function TConstantExpressionErrorScan.HasConditional(ANode: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+  mName: string;
+  mTokens: TArray<TPascalToken>;
+begin
+  Result := False;
+  mTokens := FContext.Tree.Tokens;
+  mIndex := TokenFrom(mTokens, ANode.StartOffset);
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ANode.EndOffset) do
+  begin
+    if mTokens[mIndex].Kind = TPascalTokenKind.Directive then
+    begin
+      mName := TPascalLexer.DirectiveName(mTokens[mIndex].Text);
+      if StartsText('IF', mName) or StartsText('ELSE', mName) or SameText(mName, 'ENDIF') then
+      begin
+        Exit(True);
+      end;
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Knoten der Art AKinds in diesem Baum, der die Zeile von ASymbol umfasst und dessen Namensliste
+/// (A,B) ASymbol.Name enthält; nil für Deklarationen anderer Dateien, ohne Treffer und mit bedingten
+/// Direktiven.</summary>
+function TConstantExpressionErrorScan.DeclarationOf(const ASymbol: TResolvedSymbol; AKinds: TKinds): TSyntaxNode;
+var
+  mIndex, mLine: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  Result := nil;
+  if (ASymbol.Kind <> TResolvedKind.Local) and (ASymbol.FileName <> '') and not SameText(ASymbol.FileName,
+    FFileName) then
+  begin
+    Exit;
+  end;
+  mLine := ASymbol.SelectionRange.StartPos.Line;
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(FContext.Tree.Root);
+    while (mPending.Count > 0) and (Result = nil) do
+    begin
+      mNode := mPending.Pop;
+      if (mNode.StartPos.Line > mLine) or (mNode.EndPos.Line < mLine) then
+      begin
+        Continue;
+      end;
+      if (mNode.Kind in AKinds) and NamesContain(mNode.Name, ASymbol.Name) then
+      begin
+        Result := mNode;
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+  if (Result <> nil) and HasConditional(Result) then
+  begin
+    Result := nil;
+  end;
+end;
+
+/// <summary>Typ hinter dem benannten Typ ATypeNode, wenn er in dieser Datei sicher deklariert ist; sonst
+/// nil.</summary>
+function TConstantExpressionErrorScan.NamedTypeBody(ATypeNode: TSyntaxNode): TSyntaxNode;
+var
+  mTypeSymbol: TResolvedSymbol;
+  mDecl: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if (ATypeNode.ChildCount > 0) or (Pos('.', ATypeNode.Name) > 0) then
+  begin
+    Exit;
+  end;
+  mTypeSymbol := FResolver.ResolveType(FContext.Tree, FFileName, ATypeNode.StartPos);
+  if not mTypeSymbol.Found or not FScope.DeclarationSure(mTypeSymbol, ATypeNode) then
+  begin
+    Exit;
+  end;
+  mDecl := DeclarationOf(mTypeSymbol, [TSyntaxKind.TypeDecl]);
+  if mDecl = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mDecl.ChildCount - 1 do
+  begin
+    if not (mDecl[mIndex].Kind in [TSyntaxKind.GenericParams, TSyntaxKind.Attribute]) then
+    begin
+      Exit(mDecl[mIndex]);
+    end;
+  end;
+end;
+
+/// <summary>Statisches Array hinter dem Typknoten ATypeNode, auch über einen benannten Typ dieser Datei; nil bei
+/// dynamischen Arrays und anderen Typen.</summary>
+function TConstantExpressionErrorScan.StaticArrayOf(ATypeNode: TSyntaxNode): TSyntaxNode;
+var
+  mType: TSyntaxNode;
+begin
+  Result := nil;
+  mType := ATypeNode;
+  if mType.Kind = TSyntaxKind.TypeReference then
+  begin
+    mType := NamedTypeBody(mType);
+  end;
+  // Ein Kind mehr als die Indextypen: der Elementtyp. Ohne Indextyp ist das Array dynamisch.
+  if (mType <> nil) and (mType.Kind = TSyntaxKind.ArrayType) and (mType.ChildCount >= 2) then
+  begin
+    Result := mType;
+  end;
+end;
+
+function TConstantExpressionErrorScan.InWith(ANode: TSyntaxNode): Boolean;
+var
+  mNode: TSyntaxNode;
+begin
+  // Ein with-Objekt kann den Namen verdecken.
+  mNode := ANode.Parent;
+  while (mNode <> nil) and (mNode.Kind <> TSyntaxKind.WithStatement) do
+  begin
+    mNode := mNode.Parent;
+  end;
+  Result := mNode <> nil;
+end;
+
+/// <summary>Ist einer der Indizes von AAccess eine bekannte Konstante?</summary>
+function TConstantExpressionErrorScan.AnyConstantIndex(AAccess: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+  mValue: Int64;
+begin
+  Result := False;
+  for mIndex := 1 to AAccess.ChildCount - 1 do
+  begin
+    if ValueOf(AAccess[mIndex], mValue) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Statisches Array, als das ABase in dieser Datei sicher deklariert ist; sonst nil.</summary>
+function TConstantExpressionErrorScan.IndexedArray(ABase: TSyntaxNode): TSyntaxNode;
+var
+  mSymbol: TResolvedSymbol;
+  mDecl: TSyntaxNode;
+begin
+  Result := nil;
+  mSymbol := FResolver.Resolve(FContext.Tree, FFileName, ABase.StartPos);
+  // Der Baum enthält beide Zweige von {$IFDEF} … {$ELSE}: Die Deklaration muss immer mit der Stelle gelten.
+  if not mSymbol.Found or not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
+    TIndexSymbolKind.Constant]) or not FScope.DeclarationSure(mSymbol, ABase) then
+  begin
+    Exit;
+  end;
+  mDecl := DeclarationOf(mSymbol, [TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.ConstDecl]);
+  if (mDecl <> nil) and (mDecl.ChildCount > 0) then
+  begin
+    Result := StaticArrayOf(mDecl[0]);
+  end;
+end;
+
+/// <summary>Bekannte Grenzen des Indextyps ABound (Teilbereich).</summary>
+function TConstantExpressionErrorScan.BoundsOf(ABound: TSyntaxNode; out ALow, AHigh: Int64): Boolean;
+begin
+  ALow := 0;
+  AHigh := 0;
+  Result := (ABound.Kind = TSyntaxKind.SubrangeType) and (ABound.ChildCount = 2) and ValueOf(ABound[0], ALow) and
+    ValueOf(ABound[1], AHigh);
+end;
+
+/// <summary>Meldet die Indizes von AAccess außerhalb der Grenzen von AArray.</summary>
+procedure TConstantExpressionErrorScan.ReportIndexes(AAccess, AArray: TSyntaxNode);
+var
+  mIndex: Integer;
+  mValue, mLow, mHigh: Int64;
+begin
+  for mIndex := 1 to AAccess.ChildCount - 1 do
+  begin
+    if mIndex > AArray.ChildCount - 1 then
+    begin
+      Break;
+    end;
+    if BoundsOf(AArray[mIndex - 1], mLow, mHigh) and ValueOf(AAccess[mIndex], mValue) and
+      ((mValue < mLow) or (mValue > mHigh)) then
+    begin
+      FReport.Add(NodeRange(AAccess[mIndex]), cTexts[TConstantsText.IndexOut].Fmt([mValue, AAccess[0].Name, mLow,
+        mHigh]),
+        TRuleConfidence.High);
+    end;
+  end;
+end;
+
+/// <summary>Konstanter Index außerhalb eines statischen Arrays dieser Datei (wie E1012, #1372).</summary>
+procedure TConstantExpressionErrorScan.CheckIndex(AAccess: TSyntaxNode);
+var
+  mArray: TSyntaxNode;
+begin
+  // Erst die Indizes: Meist ist keiner konstant, dann bleibt die Namensauflösung aus.
+  if (AAccess.ChildCount < 2) or (AAccess[0].Kind <> TSyntaxKind.Identifier) or not AnyConstantIndex(AAccess) or
+    InWith(AAccess) then
+  begin
+    Exit;
+  end;
+  mArray := IndexedArray(AAccess[0]);
+  if mArray <> nil then
+  begin
+    ReportIndexes(AAccess, mArray);
+  end;
+end;
+
+/// <summary>Marken der case-Anweisung ACase ohne Bereiche.</summary>
+function TConstantExpressionErrorScan.CaseLabels(ACase: TSyntaxNode): TArray<TSyntaxNode>;
+var
+  mItem: TSyntaxNode;
+  mItemIndex, mLabelIndex, mCount: Integer;
+begin
+  mCount := 0;
+  for mItemIndex := 1 to ACase.ChildCount - 1 do
+  begin
+    mCount := mCount + ACase[mItemIndex].ChildCount;
+  end;
+  SetLength(Result, mCount);
+  mCount := 0;
+  for mItemIndex := 1 to ACase.ChildCount - 1 do
+  begin
+    mItem := ACase[mItemIndex];
+    // Das letzte Kind ist die Anweisung, davor stehen die Marken.
+    for mLabelIndex := 0 to mItem.ChildCount - 2 do
+    begin
+      if (mItem.Kind = TSyntaxKind.CaseItem) and (mItem[mLabelIndex].Kind <> TSyntaxKind.RangeExpr) then
+      begin
+        Result[mCount] := mItem[mLabelIndex];
+        Inc(mCount);
+      end;
+    end;
+  end;
+  SetLength(Result, mCount);
+end;
+
+/// <summary>Liegt eine der Marken außerhalb von 0..127? Nur dann lohnt die Namensauflösung.</summary>
+function TConstantExpressionErrorScan.AnyWideLabel(const ALabels: TArray<TSyntaxNode>): Boolean;
+var
+  mLabel: TSyntaxNode;
+  mValue: Int64;
+begin
+  Result := False;
+  for mLabel in ALabels do
+  begin
+    if ValueOf(mLabel, mValue) and ((mValue < 0) or (mValue > 127)) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>case-Marke außerhalb des ganzzahligen Typs fester Größe des case-Ausdrucks (wie E1012, #1372).
+/// Marken, die als Zahl mit anderem Vorzeichen passen, und Bereiche meldet comparison-always-constant.</summary>
+procedure TConstantExpressionErrorScan.CheckCaseLabels(ACase: TSyntaxNode);
+var
+  mLabels: TArray<TSyntaxNode>;
+  mLabel: TSyntaxNode;
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mValue, mLow, mHigh: Int64;
+begin
+  mLabels := CaseLabels(ACase);
+  // Erst die Marken: 0..127 passt in jeden Typ, dann bleibt die Namensauflösung aus. Typ wie in
+  // comparison-always-constant: sicher bekannt und eingebaut.
+  if not AnyWideLabel(mLabels) or not FScope.SureType(TSyntaxNodes.Unparen(ACase[0]), mSymbol, mTypeInfo) or
+    not (mTypeInfo.Builtin or SameText(mTypeInfo.UnitName, 'System')) or
+    not IntegerRange(mTypeInfo.Name, mLow, mHigh) then
+  begin
+    Exit;
+  end;
+  for mLabel in mLabels do
+  begin
+    if ValueOf(mLabel, mValue) and TConstantExpressionErrorRule.OutsideIsError(mValue, mTypeInfo.Name) then
+    begin
+      FReport.Add(NodeRange(mLabel), cTexts[TConstantsText.OutOfRangeE].Fmt(
+        [mValue, mTypeInfo.Name, mLow, mHigh]), TRuleConfidence.High);
+    end;
+  end;
+end;
+
+/// <summary>Zahl der Werte des benannten Basistyps ABase als Text, wenn es mehr als 256 sind; sonst ''.</summary>
+function TConstantExpressionErrorScan.NamedSetValues(ABase: TSyntaxNode): string;
+var
+  mSymbol, mTypeSymbol: TResolvedSymbol;
+  mLow, mHigh: Int64;
+begin
+  Result := '';
+  mSymbol := FResolver.Resolve(FContext.Tree, FFileName, ABase.StartPos);
+  if not mSymbol.Found or SameText(mSymbol.UnitName, 'System') then
+  begin
+    // Eingebaute Typen haben keine Deklaration im Quelltext.
+    Exit(WideOrdinalValues(ABase.Name));
+  end;
+  mTypeSymbol := FResolver.ResolveType(FContext.Tree, FFileName, ABase.StartPos);
+  if mTypeSymbol.Found and SubrangeOf(mTypeSymbol.Signature, mLow, mHigh) then
+  begin
+    Result := RangeValues(mLow, mHigh);
+  end;
+end;
+
+/// <summary>Menge über einen Basistyp mit mehr als 256 Werten (wie E2028, #1372).</summary>
+procedure TConstantExpressionErrorScan.CheckSetSize(ASet: TSyntaxNode);
+var
+  mBase: TSyntaxNode;
+  mLow, mHigh: Int64;
+  mValues: string;
+begin
+  if ASet.ChildCount <> 1 then
+  begin
+    Exit;
+  end;
+  mBase := ASet[0];
+  mValues := '';
+  if (mBase.Kind = TSyntaxKind.SubrangeType) and (mBase.ChildCount = 2) and ValueOf(mBase[0], mLow) and
+    ValueOf(mBase[1], mHigh) then
+  begin
+    mValues := RangeValues(mLow, mHigh);
+  end
+  else if (mBase.Kind = TSyntaxKind.TypeReference) and (mBase.ChildCount = 0) and (Pos('.', mBase.Name) = 0) then
+  begin
+    mValues := NamedSetValues(mBase);
+  end;
+  if mValues <> '' then
+  begin
+    FReport.Add(NodeRange(ASet), cTexts[TConstantsText.SetTooLarge].Fmt(
+      [NodeText(ASet), mValues]), TRuleConfidence.High);
+  end;
+end;
+
+procedure TConstantExpressionErrorScan.Visit(ARoot: TSyntaxNode);
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      case mNode.Kind of
+        TSyntaxKind.BinaryExpr:
+          begin
+            CheckDivision(mNode);
+            CheckOverflow(mNode);
+          end;
+        TSyntaxKind.UnaryExpr:
+          CheckOverflow(mNode);
+        TSyntaxKind.SubrangeType:
+          CheckSubrange(mNode);
+        TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl:
+          CheckInitializer(mNode);
+        TSyntaxKind.AssignStatement:
+          CheckAssignment(mNode);
+        TSyntaxKind.IndexAccess:
+          CheckIndex(mNode);
+        TSyntaxKind.CaseStatement:
+          CheckCaseLabels(mNode);
+        TSyntaxKind.SetType:
+          CheckSetSize(mNode);
+      else
+        // Übrige Werte bewusst ohne Wirkung.
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+/// <summary>Liegt AOffset in einem asm-Block? Zahlen dort prüft asm-invalid (dcc meldet E2113, #1375).</summary>
+function TConstantExpressionErrorScan.InAsm(AOffset: Integer): Boolean;
+var
+  mFound: TSyntaxNode;
+begin
+  mFound := FContext.Tree.Root.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if (AOffset < ANode.StartOffset) or (AOffset >= ANode.EndOffset) then
+      begin
+        Result := TSyntaxSearchStep.Skip;
+      end
+      else if ANode.Kind = TSyntaxKind.AsmBlock then
+      begin
+        Result := TSyntaxSearchStep.Found;
+      end
+      else
+      begin
+        Result := TSyntaxSearchStep.Descend;
+      end;
+    end);
+  Result := mFound <> nil;
+end;
+
+/// <summary>Zahlen über 64 Bit (E2102) und Zahlen statt Sichtbarkeiten in {$RTTI} (E2572).</summary>
+procedure TConstantExpressionErrorScan.CheckTokens;
+var
+  mToken: TPascalToken;
+  mTokens: TArray<TPascalToken>;
+  mPaths: TArray<string>;
+  mIndex: Integer;
+  mPathsKnown: Boolean;
+  mVisibility: string;
+begin
+  mTokens := FContext.Tree.Tokens;
+  mPathsKnown := False;
+  for mIndex := 0 to High(mTokens) do
+  begin
+    mToken := mTokens[mIndex];
+    mVisibility := '';
+    if (mToken.Kind = TPascalTokenKind.Number) and TConstantExpressionErrorRule.TooLargeLiteral(mToken.Text) and
+      not InAsm(mToken.Offset) then
+    begin
+      FReport.Add(TTextRange.Create(mToken.StartPos, mToken.EndPos),
+        cTexts[TConstantsText.IntTooLarge].Fmt([mToken.Text]),
+        TRuleConfidence.High);
+    end
+    else if (mToken.Kind = TPascalTokenKind.Directive) and (TPascalLexer.DirectiveName(mToken.Text) = 'RTTI') then
+    begin
+      mVisibility := TConstantExpressionErrorRule.InvalidRttiVisibility(mToken.Text);
+    end;
+    // Nur außerhalb bedingter Zweige: Einen Zweig, den dcc nicht übersetzt, prüft es auch nicht.
+    if (mVisibility <> '') and not mPathsKnown then
+    begin
+      mPaths := TConditionalBranches.Paths(mTokens);
+      mPathsKnown := True;
+    end;
+    if (mVisibility <> '') and (TConditionalBranches.PathAt(mPaths, mIndex) = '') then
+    begin
+      FReport.Add(TTextRange.Create(mToken.StartPos, mToken.EndPos), cTexts[TConstantsText.RttiSet].Fmt(
+        [mVisibility]), TRuleConfidence.High);
+    end;
+  end;
+end;
+
+procedure TConstantExpressionErrorScan.Run;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  CheckTokens;
+  FScope := TTypedScope.Create(FContext);
+  try
+    FFileName := FScope.FileName;
+    FResolver := FScope.Resolver;
+    FValues := FScope.Values;
+    Visit(FContext.Tree.Root);
+  finally
+    FScope.Free;
+  end;
+end;
+
+procedure TConstantExpressionErrorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TConstantExpressionErrorScan;
+begin
+  mScan := TConstantExpressionErrorScan.Create(AContext, AReport);
+  mScan.Run;
+end;
+
+{ TDefaultParameterInvalidRule }
+
+function TDefaultParameterInvalidRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(cDefaultParameterInvalidRuleId, TRuleSeverity.Error,
+    cTexts[TConstantsText.DefaultTitle].Text);
+end;
+
+/// <summary>Hat der Parameter einen Standardwert? Kinder sind Typ und Wert; ohne Typ gibt es keinen Wert.</summary>
+function HasDefault(AParameter: TSyntaxNode): Boolean;
+begin
+  // Nicht über die Zahl der Kinder: Attribute wie in "const [ref] A: TPunkt" sind auch Kinder des Parameters.
+  Result := TRoutineSignatures.ParameterDefault(AParameter) <> nil;
+end;
+
+type
+  /// <summary>Ein Lauf von TDefaultParameterInvalidRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TDefaultParameterInvalidScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FFileName: string;
+    FResolver: TNameResolver;
+    FCache: IRuleDerivedCache;
+    function NodeText(ANode: TSyntaxNode): string;
+    function NodeRange(ANode: TSyntaxNode): TTextRange;
+    function TypeAndDefault(AParameter: TSyntaxNode): string;
+    function ModifierText(AParameter: TSyntaxNode): string;
+    function QualifiedRoutine(AParameters: TSyntaxNode): string;
+    function NamesKey(AParameters: TSyntaxNode): string;
+    function FindPaired(ANode, AParameters: TSyntaxNode; const AName, AKey: string): TSyntaxNode;
+    function PairedParameters(AParameters: TSyntaxNode): TSyntaxNode;
+    function Reordered(AParameters: TSyntaxNode; const ADefaults: string): string;
+    function ListRange(AParameters: TSyntaxNode; out ARange: TTextRange): Boolean;
+    function MoveFix(AParameters: TSyntaxNode; out AFix: TRuleFix): Boolean;
+    procedure EnsureResolver;
+    function ParameterType(ATypeNode: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
+    function NoDefaultType(const AType: TResolvedSymbol): Boolean;
+    function AttributePrefix(AParameter: TSyntaxNode): string;
+    function SeparateDeclarations(AParameter: TSyntaxNode; const ANames: TArray<string>): string;
+    procedure CheckDefaultType(AParameter: TSyntaxNode);
+    procedure CheckDefaultParameter(AParameter: TSyntaxNode);
+    procedure ReportMissingDefault(AParameters, AParameter: TSyntaxNode; AWithFix: Boolean);
+    procedure CheckParameters(AParameters: TSyntaxNode);
+    procedure Visit(ARoot: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TDefaultParameterInvalidScan }
+
+constructor TDefaultParameterInvalidScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TDefaultParameterInvalidScan.NodeText(ANode: TSyntaxNode): string;
+begin
+  Result := Copy(FContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+end;
+
+function TDefaultParameterInvalidScan.NodeRange(ANode: TSyntaxNode): TTextRange;
+begin
+  Result := TTextRange.Create(ANode.StartPos, ANode.EndPos);
+end;
+
+/// <summary>Text des Parameters ab dem Typ ("Integer = 0") und der Modifizierer davor.</summary>
+function TDefaultParameterInvalidScan.TypeAndDefault(AParameter: TSyntaxNode): string;
+var
+  mType: TSyntaxNode;
+begin
+  mType := TRoutineSignatures.ParameterType(AParameter);
+  Result := Copy(FContext.Text, mType.StartOffset + 1, AParameter.EndOffset - mType.StartOffset);
+end;
+
+function TDefaultParameterInvalidScan.ModifierText(AParameter: TSyntaxNode): string;
+begin
+  case AParameter.Modifier of
+    TParameterModifier.ConstParam:
+      Result := 'const ';
+    TParameterModifier.VarParam:
+      Result := 'var ';
+    TParameterModifier.OutParam:
+      Result := 'out ';
+    TParameterModifier.ConstRefParam:
+      Result := 'constref ';
+  else
+    Result := '';
+  end;
+end;
+
+/// <summary>Name der Routine mit Klasse (TKunde.Senden); '' bei Prozedurtypen.</summary>
+function TDefaultParameterInvalidScan.QualifiedRoutine(AParameters: TSyntaxNode): string;
+var
+  mHeader, mNode: TSyntaxNode;
+begin
+  Result := '';
+  mHeader := AParameters.Parent;
+  if (mHeader = nil) or (mHeader.Kind <> TSyntaxKind.RoutineHeader) then
+  begin
+    Exit;
+  end;
+  Result := mHeader.Name;
+  mNode := mHeader.Parent;
+  while (mNode <> nil) and not (mNode.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl,
+    TSyntaxKind.ImplementationSection]) do
+  begin
+    mNode := mNode.Parent;
+  end;
+  if (mNode <> nil) and (mNode.Kind = TSyntaxKind.TypeDecl) then
+  begin
+    Result := mNode.Name + '.' + Result;
+  end;
+end;
+
+function TDefaultParameterInvalidScan.NamesKey(AParameters: TSyntaxNode): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := 0 to AParameters.ChildCount - 1 do
+  begin
+    if AParameters[mIndex].Kind = TSyntaxKind.Parameter then
+    begin
+      Result := Result + LowerCase(AParameters[mIndex].Name) + ';';
+    end;
+  end;
+end;
+
+function TDefaultParameterInvalidScan.FindPaired(ANode, AParameters: TSyntaxNode; const AName,
+  AKey: string): TSyntaxNode;
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  Result := nil;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.Parameters) and (mNode <> AParameters) and
+        SameText(QualifiedRoutine(mNode), AName) and (NamesKey(mNode) = AKey) then
+      begin
+        Exit(mNode);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+/// <summary>Der zugehörige Kopf in derselben Datei: Deklaration zur Implementierung und umgekehrt.</summary>
+function TDefaultParameterInvalidScan.PairedParameters(AParameters: TSyntaxNode): TSyntaxNode;
+var
+  mName: string;
+begin
+  Result := nil;
+  mName := QualifiedRoutine(AParameters);
+  if mName <> '' then
+  begin
+    Result := FindPaired(FContext.Tree.Root, AParameters, mName, NamesKey(AParameters));
+  end;
+end;
+
+/// <summary>Parameterliste mit den Parametern ohne Standardwert zuerst; die Standardwerte stehen nur in
+/// ADefaults (Parameter mit Wert in der Liste, die sie trägt), damit der zugehörige Kopf mitzieht.</summary>
+function TDefaultParameterInvalidScan.Reordered(AParameters: TSyntaxNode; const ADefaults: string): string;
+var
+  mIndex: Integer;
+  mParameter: TSyntaxNode;
+  mFront, mBack: TArray<string>;
+begin
+  mFront := nil;
+  mBack := nil;
+  for mIndex := 0 to AParameters.ChildCount - 1 do
+  begin
+    mParameter := AParameters[mIndex];
+    if mParameter.Kind <> TSyntaxKind.Parameter then
+    begin
+      Continue;
+    end;
+    if Pos(';' + LowerCase(mParameter.Name) + ';', ADefaults) > 0 then
+    begin
+      mBack := mBack + [NodeText(mParameter)];
+    end
+    else
+    begin
+      mFront := mFront + [NodeText(mParameter)];
+    end;
+  end;
+  Result := string.Join('; ', mFront + mBack);
+end;
+
+function TDefaultParameterInvalidScan.ListRange(AParameters: TSyntaxNode; out ARange: TTextRange): Boolean;
+var
+  mIndex: Integer;
+  mFirst, mLast: TSyntaxNode;
+begin
+  mFirst := nil;
+  mLast := nil;
+  for mIndex := 0 to AParameters.ChildCount - 1 do
+  begin
+    if AParameters[mIndex].Kind = TSyntaxKind.Parameter then
+    begin
+      if mFirst = nil then
+      begin
+        mFirst := AParameters[mIndex];
+      end;
+      mLast := AParameters[mIndex];
+    end;
+  end;
+  Result := mFirst <> nil;
+  if Result then
+  begin
+    ARange := TTextRange.Create(mFirst.StartPos, mLast.EndPos);
+  end;
+end;
+
+function TDefaultParameterInvalidScan.MoveFix(AParameters: TSyntaxNode; out AFix: TRuleFix): Boolean;
+var
+  mDefaults: string;
+  mIndex: Integer;
+  mRange: TTextRange;
+  mPaired: TSyntaxNode;
+  mEdits: TArray<TTextEdit>;
+begin
+  // Parameter einzeln und ohne Kommentare dazwischen, sonst lieber keine Korrektur.
+  Result := False;
+  mDefaults := ';';
+  for mIndex := 0 to AParameters.ChildCount - 1 do
+  begin
+    if AParameters[mIndex].Kind = TSyntaxKind.Parameter then
+    begin
+      if Pos(',', AParameters[mIndex].Name) > 0 then
+      begin
+        Exit;
+      end;
+      if HasDefault(AParameters[mIndex]) then
+      begin
+        mDefaults := mDefaults + LowerCase(AParameters[mIndex].Name) + ';';
+      end;
+    end
+    else
+    begin
+      Exit;
+    end;
+  end;
+  if not ListRange(AParameters, mRange) then
+  begin
+    Exit;
+  end;
+  mEdits := [TTextEdit.Create(mRange, Reordered(AParameters, mDefaults))];
+  mPaired := PairedParameters(AParameters);
+  if (mPaired <> nil) and ListRange(mPaired, mRange) then
+  begin
+    mEdits := mEdits + [TTextEdit.Create(mRange, Reordered(mPaired, mDefaults))];
+  end;
+  AFix := TRuleFix.Create(cTexts[TConstantsText.MoveDefaults].Text, mEdits);
+  Result := True;
+end;
+
+procedure TDefaultParameterInvalidScan.EnsureResolver;
+begin
+  // Erst hier die Namensauflösung: Die meisten Dateien haben keinen Standardwert mit eigenem Typ.
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  TRuleDerived.EnsurePinnedResolver(FCache, FResolver, FContext, FFileName);
+end;
+
+/// <summary>Typ eines Parameters mit Standardwert; eingebaute einfache Typen (string, Integer …) brauchen
+/// keine Auflösung.</summary>
+function TDefaultParameterInvalidScan.ParameterType(ATypeNode: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
+var
+  mName: string;
+  mChain: TResolvedSymbol;
+begin
+  Result := False;
+  mName := LowerCase(ATypeNode.Name);
+  if (ATypeNode.Kind <> TSyntaxKind.TypeReference) or (ATypeNode.ChildCount > 0) or (Pos('<', mName) > 0) or
+    (IndexText(mName, ['string', 'unicodestring', 'ansistring', 'widestring', 'shortstring', 'integer',
+    'cardinal', 'int64', 'uint64', 'nativeint', 'nativeuint', 'byte', 'word', 'smallint', 'shortint',
+    'longint', 'longword', 'boolean', 'char', 'ansichar', 'widechar', 'double', 'single', 'extended',
+    'currency', 'real', 'pointer', 'pchar', 'tobject', 'tclass', 'variant', 'tdatetime']) >= 0) then
+  begin
+    Exit;
+  end;
+  EnsureResolver;
+  // THash.TVersion: der ganze Name, nicht nur sein erster Teil (der umschließende Record, Alcinoe.Cipher).
+  if Pos('.', mName) > 0 then
+  begin
+    mChain := FResolver.ResolveChain(FContext.Tree, FFileName, ATypeNode.Name.Split(['.']), ATypeNode.StartOffset);
+    Result := mChain.Found and FResolver.TypeOf(mChain, AType) and AType.Found;
+    Exit;
+  end;
+  AType := FResolver.ResolveType(FContext.Tree, FFileName, ATypeNode.StartPos);
+  Result := AType.Found;
+end;
+
+/// <summary>Records und statische Arrays haben keine Standardwerte (E2268).</summary>
+function TDefaultParameterInvalidScan.NoDefaultType(const AType: TResolvedSymbol): Boolean;
+begin
+  Result := (AType.SymbolKind = TIndexSymbolKind.RecordType) or
+    ((AType.SymbolKind = TIndexSymbolKind.TypeAlias) and
+    (Pos('array[', LowerCase(StringReplace(AType.Signature, ' ', '', [rfReplaceAll]))) > 0));
+end;
+
+/// <summary>Attribute des Parameters mit Leerzeichen dahinter ("[ref] "); '' ohne.</summary>
+function TDefaultParameterInvalidScan.AttributePrefix(AParameter: TSyntaxNode): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := 0 to AParameter.ChildCount - 1 do
+  begin
+    if AParameter[mIndex].Kind = TSyntaxKind.Attribute then
+    begin
+      Result := Result + NodeText(AParameter[mIndex]) + ' ';
+    end;
+  end;
+end;
+
+/// <summary>A, B: Integer = 0 wird A: Integer = 0; B: Integer = 0.</summary>
+function TDefaultParameterInvalidScan.SeparateDeclarations(AParameter: TSyntaxNode;
+  const ANames: TArray<string>): string;
+var
+  mName: string;
+begin
+  Result := '';
+  for mName in ANames do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + '; ';
+    end;
+    Result := Result + ModifierText(AParameter) + AttributePrefix(AParameter) + Trim(mName) + ': ' +
+      TypeAndDefault(AParameter);
+  end;
+end;
+
+/// <summary>Typ ohne Standardwerte: Record oder statisches Array (E2268). Mengen jeder Größe nimmt dcc als
+/// Standardwert an (E2146 kommt mit Delphi 13 nicht).</summary>
+procedure TDefaultParameterInvalidScan.CheckDefaultType(AParameter: TSyntaxNode);
+var
+  mType: TResolvedSymbol;
+  mTypeNode: TSyntaxNode;
+begin
+  mTypeNode := TRoutineSignatures.ParameterType(AParameter);
+  if (mTypeNode = nil) or not ParameterType(mTypeNode, mType) then
+  begin
+    Exit;
+  end;
+  if NoDefaultType(mType) then
+  begin
+    FReport.Add(NodeRange(AParameter), cTexts[TConstantsText.NoDefaultType].Fmt([mTypeNode.Name]),
+      TRuleConfidence.High);
+  end;
+end;
+
+/// <summary>Parameter mit Standardwert: mehrere Namen (E2237), var/out (E2239) und unzulässiger Typ.</summary>
+procedure TDefaultParameterInvalidScan.CheckDefaultParameter(AParameter: TSyntaxNode);
+var
+  mNames: TArray<string>;
+begin
+  mNames := AParameter.Name.Split([',']);
+  if Length(mNames) > 1 then
+  begin
+    FReport.Add(NodeRange(AParameter), cTexts[TConstantsText.SingleDecl].Fmt([StringReplace(AParameter.Name, ',',
+      ', ', [rfReplaceAll])]),
+      TRuleConfidence.High, [TRuleFix.Create(cTexts[TConstantsText.DeclareSingle].Text,
+      [TTextEdit.Create(NodeRange(AParameter), SeparateDeclarations(AParameter, mNames))])]);
+  end;
+  if AParameter.Modifier in [TParameterModifier.VarParam, TParameterModifier.OutParam] then
+  begin
+    FReport.Add(NodeRange(AParameter), cTexts[TConstantsText.VarDefault].Fmt([AParameter.Name,
+      Trim(ModifierText(AParameter))]), TRuleConfidence.High);
+  end
+  else
+  begin
+    CheckDefaultType(AParameter);
+  end;
+end;
+
+/// <summary>Parameter ohne Standardwert nach einem mit (E2238); AWithFix hängt die Korrektur an.</summary>
+procedure TDefaultParameterInvalidScan.ReportMissingDefault(AParameters, AParameter: TSyntaxNode; AWithFix: Boolean);
+var
+  mFix: TRuleFix;
+  mFixes: TArray<TRuleFix>;
+begin
+  mFixes := nil;
+  if AWithFix and MoveFix(AParameters, mFix) then
+  begin
+    mFixes := [mFix];
+  end;
+  FReport.Add(NodeRange(AParameter), cTexts[TConstantsText.NeedsDefault].Fmt([StringReplace(AParameter.Name, ',',
+    ', ', [rfReplaceAll])]),
+    TRuleConfidence.High, mFixes);
+end;
+
+procedure TDefaultParameterInvalidScan.CheckParameters(AParameters: TSyntaxNode);
+var
+  mIndex: Integer;
+  mParameter: TSyntaxNode;
+  mSeenDefault, mMoved: Boolean;
+begin
+  mSeenDefault := False;
+  mMoved := False;
+  for mIndex := 0 to AParameters.ChildCount - 1 do
+  begin
+    mParameter := AParameters[mIndex];
+    if mParameter.Kind <> TSyntaxKind.Parameter then
+    begin
+      Continue;
+    end;
+    if HasDefault(mParameter) then
+    begin
+      mSeenDefault := True;
+      CheckDefaultParameter(mParameter);
+    end
+    else if mSeenDefault then
+    begin
+      // Die Korrektur nur am ersten betroffenen Parameter; sie ordnet die ganze Liste.
+      ReportMissingDefault(AParameters, mParameter, not mMoved);
+      mMoved := True;
+    end;
+  end;
+end;
+
+procedure TDefaultParameterInvalidScan.Visit(ARoot: TSyntaxNode);
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.Parameters then
+      begin
+        CheckParameters(mNode);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TDefaultParameterInvalidScan.Run;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  FFileName := FContext.ResolverFileName;
+  FResolver := nil;
+  try
+    Visit(FContext.Tree.Root);
+  finally
+    if FResolver <> nil then
+    begin
+      FResolver.UnpinTree;
+    end;
+  end;
+end;
+
+procedure TDefaultParameterInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TDefaultParameterInvalidScan;
+begin
+  mScan := TDefaultParameterInvalidScan.Create(AContext, AReport);
+  mScan.Run;
+end;
+
+procedure RegisterConstantRules(const ARegistry: TRuleRegistry);
+begin
+  ARegistry.Register(TConstantExpressionErrorRule.Create);
+  ARegistry.Register(TDefaultParameterInvalidRule.Create);
+  ARegistry.Register(TTypedConstantModifiedRule.Create);
+end;
+
+initialization
+  TAtlasTextTables.Add('Rules.Builtin.Constants', cTexts);
+
+end.

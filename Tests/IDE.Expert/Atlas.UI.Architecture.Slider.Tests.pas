@@ -45,7 +45,6 @@ uses
   System.Classes,
   Winapi.Windows,
   Vcl.Controls,
-  Atlas.Core.Architecture.Model,
   Atlas.Core.Architecture.Resolution;
 
 type

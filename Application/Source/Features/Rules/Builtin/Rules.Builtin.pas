@@ -1,0 +1,43 @@
+﻿unit Rules.Builtin;
+
+// Alle eingebauten Prüfregeln an einer Stelle, für Editor und Linter. Die Anmeldung steht nach Themen in
+// Rules.Builtin.Registration.Declarations, .Statements, .Types, .Compiler, .Frameworks und .Ownership.
+
+interface
+
+uses
+  Rules.Contract;
+
+/// <summary>Neue Instanzen aller eingebauten Regeln.</summary>
+function BuiltinRules: TArray<IRule>;
+
+implementation
+
+uses
+  Rules.Registry,
+  Rules.Builtin.Registration.Declarations,
+  Rules.Builtin.Registration.Statements,
+  Rules.Builtin.Registration.Types,
+  Rules.Builtin.Registration.Compiler,
+  Rules.Builtin.Registration.Frameworks,
+  Rules.Builtin.Registration.Ownership;
+
+function BuiltinRules: TArray<IRule>;
+var
+  mRegistry: TRuleRegistry;
+begin
+  mRegistry := TRuleRegistry.Create;
+  try
+    RegisterBuiltinDeclarationRules(mRegistry);
+    RegisterBuiltinStatementRules(mRegistry);
+    RegisterBuiltinTypeRules(mRegistry);
+    RegisterBuiltinCompilerRules(mRegistry);
+    RegisterBuiltinFrameworkRules(mRegistry);
+    RegisterBuiltinOwnershipRules(mRegistry);
+    Result := mRegistry.Rules;
+  finally
+    mRegistry.Free;
+  end;
+end;
+
+end.

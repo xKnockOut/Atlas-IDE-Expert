@@ -43,7 +43,6 @@ uses
   Atlas.Common.Projects.Contract.UnitLookup,
   Atlas.Common.Projects.UnitLookup,
   Atlas.Common.Projects.UnitResolver,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex;
 
@@ -62,7 +61,7 @@ begin
 end;
 
 /// <summary>Unit-Suche über die Dateien AFiles im Bibliothekspfad C:\BDS\lib.</summary>
-function Lookup(const AProject: TProjectInfo; const AFiles: TArray<string>): IRuleUnitLookup;
+function Lookup(const AProject: TProjectInfo; const AFiles: TArray<string>): IUnitLookup;
 var
   mSetup: TUnitLookupSetup;
 begin
@@ -93,9 +92,9 @@ begin
 end;
 
 // Ohne const: Aufrufer übergeben Lookup(...) direkt; so zählt Delphi die Referenz und gibt das Objekt frei.
-function Answer(ALookup: IRuleUnitLookup; const AName: string): TRuleUnitAnswer;
+function Answer(ALookup: IUnitLookup; const AName: string): TUnitAnswer;
 begin
-  Result := ALookup.Find(AName, '', 'C:\P\Main.pas', [TRuleUnitSource.Project]);
+  Result := ALookup.Find(AName, '', 'C:\P\Main.pas', [TUnitSource.Project]);
 end;
 
 { TUnitAliasesTests }
@@ -145,23 +144,23 @@ end;
 
 procedure TUnitAliasesTests.LookupFindsAliasedUnits;
 var
-  mLookup: IRuleUnitLookup;
+  mLookup: IUnitLookup;
 begin
   mLookup := Lookup(Project(''), TArray<string>.Create('C:\BDS\lib\System.dcu', 'C:\BDS\lib\Winapi.Windows.dcu'));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(mLookup, 'WinTypes')));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(mLookup, 'WinProcs')));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(mLookup, 'Windows')), 'Namespace Winapi');
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(mLookup, 'WinTypen')));
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(Answer(mLookup, 'WinTypes')));
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(Answer(mLookup, 'WinProcs')));
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(Answer(mLookup, 'Windows')), 'Namespace Winapi');
+  Assert.AreEqual(Ord(TUnitAnswer.Missing), Ord(Answer(mLookup, 'WinTypen')));
   mLookup := Lookup(Project('Alt=Neu'), TArray<string>.Create('C:\BDS\lib\Neu.dcu'));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(mLookup, 'Alt')), 'Alias der .dproj');
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(Answer(mLookup, 'Alt')), 'Alias der .dproj');
 end;
 
 procedure TUnitAliasesTests.LookupStillMissesAliasWithoutTarget;
 begin
   // Fehlt die Ziel-Unit, meldet auch dcc F2613.
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing),
+  Assert.AreEqual(Ord(TUnitAnswer.Missing),
     Ord(Answer(Lookup(Project(''), TArray<string>.Create('C:\BDS\lib\System.dcu')), 'WinTypes')));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing),
+  Assert.AreEqual(Ord(TUnitAnswer.Missing),
     Ord(Answer(Lookup(Project(''), TArray<string>.Create('C:\BDS\lib\System.dcu')), 'DbiTypes')), 'BDE fehlt');
 end;
 

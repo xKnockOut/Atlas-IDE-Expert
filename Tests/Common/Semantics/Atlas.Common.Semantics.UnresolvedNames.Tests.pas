@@ -113,10 +113,11 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.UnresolvedNames,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Registry,
-  Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Builtin.Unresolved;
+  Rules.Contract,
+  Rules.Registry,
+  Rules.Engine,
+  Rules.Builtin.Unresolved,
+  Atlas.Common.Findings.Contract;
 
 const
   cUnitSystem =

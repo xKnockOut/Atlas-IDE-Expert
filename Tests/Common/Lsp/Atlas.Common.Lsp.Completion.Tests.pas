@@ -96,7 +96,6 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Lsp.Completion.Lists,
@@ -113,7 +112,7 @@ begin
   Result.FilterText := 'We';
   Result.InsertText := 'Wert()';
   Result.Snippet := True;
-  Result.AdditionalEdits := [TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(2, 0),
+  Result.AdditionalEdits := [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(2, 0),
     TTextPosition.Create(2, 1)), 'uses X;')];
   Result.SourceFile := 'C:\P\U.pas';
   Result.SourcePosition := TTextPosition.Create(3, 4);
@@ -494,7 +493,7 @@ begin
   mItems.Items[0].Kind := 15;
   mItems.Items[0].InsertText := 'nie';
   mItems.Items[0].HasTextEdit := True;
-  mItems.Items[0].TextEdit := TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(1, 2),
+  mItems.Items[0].TextEdit := TTextEdit.Create(TTextRange.Create(TTextPosition.Create(1, 2),
     TTextPosition.Create(1, 6)), 'for X');
   mJson := TLspCompletion.ToJson(mItems);
   try

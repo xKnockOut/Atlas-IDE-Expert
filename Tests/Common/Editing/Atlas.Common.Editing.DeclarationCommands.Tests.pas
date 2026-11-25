@@ -54,7 +54,6 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
@@ -86,7 +85,7 @@ const
     'end.';
 
 /// <summary>Text mit dem Befehl in Zeile 16 bzw. AText mit eigener Befehlszeile.</summary>
-function Run(const AText: string; ALine: Integer; out AEdits: TArray<TRuleEdit>): Boolean;
+function Run(const AText: string; ALine: Integer; out AEdits: TArray<TTextEdit>): Boolean;
 begin
   Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, AEdits);
 end;
@@ -100,7 +99,7 @@ end;
 
 procedure TDeclarationCommandsTests.VarCreatesSectionBeforeBegin;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   Assert.IsTrue(Run(WithCommand('/var Liste: TStringList'), 16, mEdits));
@@ -113,7 +112,7 @@ const
   cText = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'var'#10'  A: Integer;'#10'begin'#10 +
     '  /var B: string'#10'end;'#10'end.';
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(Run(cText, 7, mEdits));
   Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'var'#10'  A: Integer;'#10 +
@@ -122,7 +121,7 @@ end;
 
 procedure TDeclarationCommandsTests.InlineVarReplacesLine;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(Run(WithCommand('/var I := 0'), 16, mEdits));
   Assert.IsTrue(Pos(#10'  var I := 0;'#10, TTestEdits.Apply(WithCommand('/var I := 0'), mEdits)) > 0);
@@ -132,7 +131,7 @@ procedure TDeclarationCommandsTests.VarOutsideRoutineFails;
 const
   cText = 'unit U;'#10'interface'#10'/var X: Integer'#10#10'implementation'#10'end.';
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mProblems: TArray<TSlashProblem>;
 begin
   Assert.IsFalse(Run(cText, 2, mEdits));
@@ -143,7 +142,7 @@ end;
 
 procedure TDeclarationCommandsTests.InlineVarNeedsDelphi103;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mProblems: TArray<TSlashProblem>;
 begin
   // Delphi 10.2 (BDS 19.0): kein Inline-var; 10.3 (20.0) und unbekannt: erlaubt.
@@ -164,7 +163,7 @@ const
   cOutside = 'unit U;'#10'interface'#10'%s'#10#10'implementation'#10'end.';
 var
   mOk: Boolean;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mProblems: TArray<TSlashProblem>;
 begin
   Assert.IsFalse(Run(Format(cOutside, ['/const Max = 10']), 2, mEdits));
@@ -189,7 +188,7 @@ end;
 
 procedure TDeclarationCommandsTests.ConstLocalAndImplementation;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   Assert.IsTrue(Run(WithCommand('/const Max = 10'), 16, mEdits));
@@ -202,7 +201,7 @@ end;
 
 procedure TDeclarationCommandsTests.FieldGoesToPrivate;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   // Ohne private-Abschnitt wird er vor "end" angelegt; Name bekommt das F.
@@ -221,7 +220,7 @@ const
   cText = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  /field X: Integer'#10 +
     'end;'#10'end.';
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsFalse(Run(cText, 5, mEdits));
   Assert.AreEqual('/field gilt nur in einer Klasse oder einer ihrer Methoden',
@@ -230,7 +229,7 @@ end;
 
 procedure TDeclarationCommandsTests.PropCreatesPrivateAndSetter;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   Assert.IsTrue(Run(WithCommand('/prop Name: string'), 16, mEdits));
@@ -247,7 +246,7 @@ end;
 
 procedure TDeclarationCommandsTests.ReadOnlyPropHasNoSetter;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   Assert.IsTrue(Run(WithCommand('/prop Anzahl: Integer ro'), 16, mEdits));
@@ -261,7 +260,7 @@ const
   cText = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10 +
     '  Writeln(''Fehler beim Laden'');'#10'  /resstr'#10'end;'#10'end.';
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mOutput: string;
 begin
   Assert.IsTrue(Run(cText, 6, mEdits));
@@ -273,7 +272,7 @@ end;
 
 procedure TDeclarationCommandsTests.ResStrWithoutLiteralFails;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsFalse(Run(WithCommand('  /resstr'), 16, mEdits));
 end;
@@ -283,7 +282,7 @@ const
   cText = 'unit U;'#10'interface'#10'type'#10'  IBar = interface'#10'    /guid'#10'    procedure Go;'#10'  end;'#10 +
     'implementation'#10'end.';
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mLine: string;
 begin
   Assert.IsTrue(Run(cText, 4, mEdits));
@@ -296,7 +295,7 @@ end;
 
 procedure TDeclarationCommandsTests.GuidOutsideInterfaceFails;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsFalse(Run(WithCommand('/guid'), 16, mEdits));
 end;
@@ -307,7 +306,7 @@ const
     '/const! Max = 10', '/field Name: string');
 var
   mCommand: string;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   for mCommand in cCommands do
   begin

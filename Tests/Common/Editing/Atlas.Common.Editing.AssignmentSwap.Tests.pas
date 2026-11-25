@@ -34,17 +34,16 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.AssignmentSwap;
 
 /// <summary>Wendet die Edits zeilenweise an (eine Edit je ganze Zeile).</summary>
-function Apply(const AText: string; const AEdits: TArray<TRuleEdit>): string;
+function Apply(const AText: string; const AEdits: TArray<TTextEdit>): string;
 var
   mLines: TArray<string>;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
   mIndex: Integer;
 begin
   mLines := AText.Split([#10]);
@@ -65,7 +64,7 @@ end;
 
 function SwapAll(const AText: string; const AReadOnly: TReadOnlyCheck): string; overload;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(TAssignmentSwap.Swap(AText, TTextRange.Create(0, 0, 99, 0), AReadOnly, mEdits), AText);
   Result := Apply(AText, mEdits);
@@ -132,7 +131,7 @@ end;
 
 procedure TAssignmentSwapTests.NothingToSwap;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsFalse(TAssignmentSwap.Swap('  Label1.Caption := IntToStr(N);'#10'  Save;',
     TTextRange.Create(0, 0, 1, 0), nil, mEdits));

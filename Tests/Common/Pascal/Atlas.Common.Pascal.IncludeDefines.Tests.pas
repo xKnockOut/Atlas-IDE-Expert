@@ -59,10 +59,11 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Checker,
+  Rules.Checker,
   Atlas.Common.Pascal.InactiveRegions,
-  Atlas.Common.Lsp.InlayHints;
+  Atlas.Common.Lsp.InlayHints,
+  Atlas.Common.Findings.Contract,
+  Atlas.Common.Pascal.Contract;
 
 const
   cMainFile = 'C:\P\U.pas';
@@ -222,7 +223,7 @@ const
     'unit Ziel;'#10'interface'#10'implementation'#10'procedure X;'#10'begin'#10 +
     '{$IFDEF WIN64}'#10'  X;'#10'{$ELSE}'#10'  if then'#10'{$ENDIF}'#10'end;'#10'end.';
 
-  function SyntaxFindings(const AText: string; const ASource: TCheckSource): Integer;
+  function SyntaxFindings(const AText: string; const ASource: TPascalSource): Integer;
   var
     mFinding: TRuleFinding;
   begin
@@ -239,11 +240,11 @@ const
 begin
   // Vorgabe Win32: der {$ELSE}-Zweig ist aktiv und kaputt.
   Assert.IsTrue(Length(TFileChecker.CheckText(nil, TServerSettings.Default, 'Ziel.pas', cWin64Unit)) > 0, 'Win32');
-  Assert.AreEqual(0, SyntaxFindings(cWin64Unit, TCheckSource.Create(cMainFile,
+  Assert.AreEqual(0, SyntaxFindings(cWin64Unit, TPascalSource.Create(cMainFile,
     TPascalPreprocessor.PredefinedSymbols('Win64', 37), nil)), 'Win64');
   DefsText := '{$DEFINE FOO}';
-  Assert.IsTrue(SyntaxFindings(cAccepted, TCheckSource.Default) > 0, 'ohne Include-Dateien');
-  Assert.AreEqual(0, SyntaxFindings(cAccepted, TCheckSource.Create(cMainFile, nil, Resolver())), 'mit defs.inc');
+  Assert.IsTrue(SyntaxFindings(cAccepted, TPascalSource.Default) > 0, 'ohne Include-Dateien');
+  Assert.AreEqual(0, SyntaxFindings(cAccepted, TPascalSource.Create(cMainFile, nil, Resolver())), 'mit defs.inc');
 end;
 
 procedure TIncludeDefinesTests.InlayHintNamesUsedIncludeSymbols;

@@ -29,9 +29,6 @@ uses
   System.SysUtils,
   Atlas.IDE.Base.Foundation.Modules,
   Atlas.IDE.Base.Core.Modules.Registry,
-  Atlas.Core.Build.Events,
-  Atlas.Core.Build.Messages,
-  Atlas.Core.Build.Verdict,
   Atlas.IDE.Base.Core.BuildPipeline,
   Atlas.Plugin.Build.Contract,
   Atlas.Plugin.Registration.Contract;

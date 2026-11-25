@@ -108,7 +108,7 @@ uses
   Atlas.Common.Index.Processes,
   Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Query.Language,
-  Atlas.Common.Rules.Builtin.DfmProperties,
+  Rules.Builtin.DfmProperties,
   Platform.Server,
   Core.Bootstrap,
   Core.Workspace.Setup,

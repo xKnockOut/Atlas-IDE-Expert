@@ -24,8 +24,8 @@ implementation
 uses
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Rules.Contract.Api,
-  Atlas.Common.Rules.Providers.InheritanceDepths,
+  Rules.Contract.Api,
+  Rules.Providers.InheritanceDepths,
   Adapters.Lsp.InheritanceDepths;
 
 const

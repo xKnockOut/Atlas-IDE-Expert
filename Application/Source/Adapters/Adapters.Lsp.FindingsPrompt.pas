@@ -8,7 +8,7 @@ interface
 uses
   Atlas.Common.Findings.Contract,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Rules.Contract.Api;
+  Rules.Contract.Api;
 
 type
   /// <summary>ILspFindingsPrompt über die API der Prüfregeln.</summary>

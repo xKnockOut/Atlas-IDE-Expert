@@ -9,11 +9,12 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Common.Logging.Contract,
-  Atlas.Common.Rules.Contract,
+  Rules.Contract,
   Atlas.Common.Lsp.Commands,
   Shell.Composition.Workspaces,
   Shell.Composition.RuleContext,
-  Atlas.Common.Semantics.References;
+  Atlas.Common.Semantics.References,
+  Atlas.Common.Findings.Contract;
 
 type
   /// <summary>Was der Befehl von der Komposition braucht.</summary>
@@ -50,7 +51,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Rules.CheckContext,
+  Rules.CheckContext,
   Atlas.Common.Lsp.DfmPropertyRules,
   Core.Workspace,
   Atlas.Common.Localization.RequestTexts;

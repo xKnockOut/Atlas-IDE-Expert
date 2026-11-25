@@ -71,7 +71,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Rules.CheckContext,
+  Rules.CheckContext,
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Preprocessor,

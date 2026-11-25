@@ -87,12 +87,13 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Engine,
+  Rules.Contract,
+  Rules.Engine,
   Atlas.Common.Findings.Scopes,
   Atlas.Common.Findings.Baseline,
   Atlas.Tests.RuleAssert,
-  Atlas.Common.Findings.Suppressions;
+  Atlas.Common.Findings.Suppressions,
+  Atlas.Common.Findings.Contract;
 
 const
   cOriginal = 'unit U;' + #10 + 'begin' + #10 + '  X := 1;' + #10 + 'end.';

@@ -1,0 +1,466 @@
+﻿unit Rules.Builtin.Properties.Tests;
+
+// Tests der Regel property-accessor-invalid (#1001): fehlende und falsche
+// Getter, Setter und Felder hinter read/write, Klassen-Properties,
+// Feldselektoren, Vorfahren aus dem Index, Korrektur und Einstellungen.
+// write-only-property (#978): Beispiel, Korrektur read FName, Properties ohne
+// Typ, allowAttributes samt Parserprüfung, Abschalten.
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TPropertyRulesTests = class
+  public
+    [Test]
+    procedure AccessorIssueExample;
+    /// <summary>Geschachtelter Record geht vor einer gleichnamigen Klasse der Unit.</summary>
+    [Test]
+    procedure AccessorPrefersNestedType;
+    [Test]
+    procedure AccessorInGenericTypeBesideNonGeneric;
+    [Test]
+    procedure AccessorValidFormsAreSilent;
+    [Test]
+    procedure AccessorMissingFixes;
+    [Test]
+    procedure AccessorWrongKinds;
+    [Test]
+    procedure AccessorSignatures;
+    [Test]
+    procedure AccessorClassAndInstance;
+    [Test]
+    procedure AccessorFieldSelectors;
+    [Test]
+    procedure AccessorAncestorsFromIndex;
+    [Test]
+    procedure AccessorFormsDccAccepts;
+    [Test]
+    procedure AccessorOptions;
+    /// <summary>read {$IFDEF BCB}GetObj{$ELSE}GetObject{$ENDIF} (JsonDataObjects): Der inaktive Zweig zählt nicht;
+    /// ist er aktiv (MSWINDOWS unter Win32), meldet die Regel GetObj.</summary>
+    [Test]
+    procedure AccessorInInactiveBranch;
+    [Test]
+    procedure WriteOnlyReported;
+    [Test]
+    procedure WriteOnlyFix;
+    [Test]
+    procedure WriteOnlySilentCases;
+    [Test]
+    procedure WriteOnlyOptions;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
+  Rules.Contract,
+  Rules.Builtin.Properties,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Configuration.Parser,
+  Atlas.Tests.RuleAssert,
+  Rules.Profiles,
+  Rules.Checker,
+  Atlas.Tests.TextEdits,
+  Atlas.Common.Findings.Contract;
+
+/// <summary>Unit mit einer Klasse TKunde aus AMembers; ABodies im implementation-Teil.</summary>
+function Kunden(const AMembers, ABodies: string): string;
+begin
+  Result := 'unit Kunden;'#10'interface'#10'type'#10'  TKunde = class'#10 + AMembers + '  end;'#10 +
+    'implementation'#10 + ABodies + 'end.';
+end;
+
+function Findings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TPropertyAccessorInvalidRule.Create, ASource);
+end;
+
+function Findings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TPropertyAccessorInvalidRule.Create, ASource, AConfig, APath);
+end;
+
+function OnlyMessage(const ASource: string): string;
+begin
+  Result := TRuleAssert.OnlyMessage(Findings(ASource), ASource);
+end;
+
+procedure Silent(const ASource: string);
+begin
+  TRuleAssert.Silent(TPropertyAccessorInvalidRule.Create, ASource);
+end;
+
+{ TPropertyRulesTests }
+
+procedure TPropertyRulesTests.AccessorIssueExample;
+var
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  mSource := Kunden('  private'#10'    FName: string;'#10'  public'#10 +
+    '    property Name: string read FName write SetName;'#10, '');
+  mFound := Findings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('SetName ist in TKunde nicht deklariert (wie E2168).', mFound[0].Message);
+  Assert.AreEqual(7, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(43, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(50, mFound[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('SetName anlegen', mFound[0].Fixes[0].Title);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('procedure SetName(const Value: string);', mFixed) > 0, mFixed);
+  Assert.IsTrue(Pos('procedure TKunde.SetName(const Value: string);', mFixed) > 0, mFixed);
+  Silent(mFixed);
+end;
+
+procedure TPropertyRulesTests.AccessorInGenericTypeBesideNonGeneric;
+begin
+  // TListe und TListe<T> in einer Unit: Die Property gehört zu TListe<T>, die Zugriffsmethoden stehen in deren
+  // Vorfahr (PascalCoin, AbstractMem: TAbstractMemTList<T>).
+  Silent('unit Listen;'#10'interface'#10'type'#10'  TListe = class'#10'  public'#10'    procedure Sperren;'#10 +
+    '  end;'#10'  TBasis<T> = class'#10'  protected'#10'    function GetItem(AIndex: Integer): T; virtual;'#10 +
+    '    procedure SetItem(AIndex: Integer; const AItem: T); virtual;'#10'  end;'#10 +
+    '  TListe<T> = class(TBasis<T>)'#10'  public'#10 +
+    '    property Item[AIndex: Integer]: T read GetItem write SetItem;'#10'  end;'#10'implementation'#10 +
+    'procedure TListe.Sperren;'#10'begin'#10'end;'#10'function TBasis<T>.GetItem(AIndex: Integer): T;'#10 +
+    'begin'#10'  Result := Default(T);'#10'end;'#10'procedure TBasis<T>.SetItem(AIndex: Integer; const AItem: T);'#10 +
+    'begin'#10'end;'#10'end.');
+end;
+
+procedure TPropertyRulesTests.AccessorPrefersNestedType;
+begin
+  Silent('unit Kunden;'#10'interface'#10'type'#10'  TParts = class'#10'  end;'#10'  TKunde = class'#10 +
+    '  private type'#10'    TParts = record'#10'      Name: string;'#10'    end;'#10'  private'#10 +
+    '    FParts: TParts;'#10'  public'#10'    property Name: string read FParts.Name;'#10'  end;'#10 +
+    'implementation'#10'end.');
+end;
+
+procedure TPropertyRulesTests.AccessorValidFormsAreSilent;
+begin
+  Silent(Kunden('  private'#10'    FName: string;'#10'    FPunkt: TPunkt;'#10'    FListe: TArray<string>;'#10 +
+    '    class var FAnzahl: Integer;'#10'    function GetItem(Index: Integer): string;'#10 +
+    '    procedure SetItem(Index: Integer; const Value: string);'#10'    function GetFarbe(AIndex: Integer): Integer;'#10 +
+    '    procedure SetFarbe(AIndex: Integer; Value: Integer);'#10'    class function GetZahl: Integer; static;'#10 +
+    '    procedure SetName(const Value: string);'#10'    function GetZelle(X, Y: Integer): Double;'#10 +
+    '  public'#10'    property Name: string read FName write SetName;'#10 +
+    '    property Items[Index: Integer]: string read GetItem write SetItem; default;'#10 +
+    '    property Zelle[X, Y: Integer]: Double read GetZelle;'#10 +
+    '    property Rot: Integer index 1 read GetFarbe write SetFarbe;'#10 +
+    '    class property Anzahl: Integer read FAnzahl write FAnzahl;'#10 +
+    '    class property Zahl: Integer read GetZahl;'#10'    property X: Integer read FPunkt.X write FPunkt.X;'#10 +
+    '    property Liste: TArray<string> read FListe;'#10'    property Langer: Longint read FAnzahlLokal;'#10,
+    '').Replace('  TKunde = class', '  TPunkt = record'#10'    X, Y: Integer;'#10'  end;'#10'  TKunde = class')
+    .Replace('    class var FAnzahl', '    FAnzahlLokal: Integer;'#10'    class var FAnzahl'));
+  // Geerbte Mitglieder, Properties ohne Typ und eine Kette, die nicht bis TObject reicht.
+  Silent('unit Kunden;'#10'interface'#10'type'#10'  TBasis = class'#10'  protected'#10'    FWert: Integer;'#10 +
+    '    function GetWert: Integer; virtual;'#10'    property Wert: Integer read GetWert;'#10'  end;'#10 +
+    '  TKunde = class(TBasis)'#10'  published'#10'    property Wert;'#10'    property Roh: Integer read FWert;'#10 +
+    '    property Anders: Integer read GetWert;'#10'  end;'#10'  TFremd = class(TUnbekannt)'#10 +
+    '    property Name: string read FName write SetName;'#10'  end;'#10'implementation'#10'end.');
+  // Generische Klassen: Typparameter passen zu allem.
+  Silent('unit Kunden;'#10'interface'#10'type'#10'  TBox<T> = class'#10'  private'#10'    FWert: T;'#10 +
+    '    function GetWert: T;'#10'    procedure SetWert(const Value: T);'#10'  public'#10 +
+    '    property Wert: T read GetWert write SetWert;'#10'  end;'#10'implementation'#10'end.');
+  // Bedingte Mitglieder und Include-Dateien: keine Aussage.
+  Silent(Kunden('  private'#10'    {$IFDEF DEBUG}'#10'    FSpur: string;'#10'    {$ENDIF}'#10 +
+    '  public'#10'    property Spur: string read FSpur;'#10, ''));
+  Silent(Kunden('  private'#10'    {$I KundeFelder.inc}'#10'  public'#10'    property Spur: string read FSpur;'#10, ''));
+end;
+
+procedure TPropertyRulesTests.AccessorMissingFixes;
+var
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  // Fehlender Getter und fehlendes Feld: Korrektur nach der Konvention.
+  mSource := Kunden('  public'#10'    property Name: string read GetName;'#10, '');
+  mFound := Findings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('GetName ist in TKunde nicht deklariert (wie E2168).', mFound[0].Message);
+  Assert.AreEqual('GetName anlegen', mFound[0].Fixes[0].Title);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('function GetName: string;', mFixed) > 0, mFixed);
+  Silent(mFixed);
+  mSource := Kunden('  public'#10'    property Wert: Integer read FWert;'#10, '');
+  mFound := Findings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('FWert anlegen', mFound[0].Fixes[0].Title);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('FWert: Integer;', mFixed) > 0, mFixed);
+  Silent(mFixed);
+  // Indexparameter und index-Angabe wandern in den Getter.
+  mSource := Kunden('  public'#10'    property Items[I: Integer]: string read GetItems;'#10, '');
+  mFound := Findings(mSource);
+  Assert.AreEqual('GetItems anlegen', mFound[0].Fixes[0].Title);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('function GetItems(I: Integer): string;', mFixed) > 0, mFixed);
+  Silent(mFixed);
+  // Andere Namen und Klassen-Properties: Meldung ohne Korrektur.
+  mFound := Findings(Kunden('  public'#10'    property Name: string read LiesName;'#10, ''));
+  Assert.AreEqual('LiesName ist in TKunde nicht deklariert (wie E2168).', mFound[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
+  mFound := Findings(Kunden('  public'#10'    class property Anzahl: Integer read FAnzahl;'#10, ''));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
+end;
+
+procedure TPropertyRulesTests.AccessorWrongKinds;
+begin
+  Assert.AreEqual('Basis ist eine Property; hinter read gehört ein Feld oder eine Methode (wie E2168).',
+    OnlyMessage(Kunden('  private'#10'    FBasis: Integer;'#10'  public'#10 +
+    '    property Basis: Integer read FBasis;'#10'    property Kopie: Integer read Basis;'#10, '')));
+  Assert.AreEqual('Die Array-Property Items braucht hinter read eine Methode; FItems ist ein Feld (wie E2008).',
+    OnlyMessage(Kunden('  private'#10'    FItems: string;'#10'  public'#10 +
+    '    property Items[Index: Integer]: string read FItems;'#10, '')));
+  // Gegentest PG3 aus Tests/DccFaelle (#1328): keine Überladung passt.
+  Assert.AreEqual('GetName ist überladen, und keine Überladung passt als Getter von Name (wie E2250).',
+    OnlyMessage(Kunden('  private'#10'    function GetName(A: Integer): string; overload;'#10 +
+    '    function GetName(A, B: Integer): string; overload;'#10'  public'#10'    property Name: string read GetName;'#10,
+    '')));
+  Assert.AreEqual('Der Setter SetName nimmt den Wert als var-Parameter; ein Setter braucht einen Wert- oder ' +
+    'const-Parameter (wie E2282).', OnlyMessage(Kunden('  private'#10'    FName: string;'#10 +
+    '    procedure SetName(var Value: string);'#10'  public'#10'    property Name: string read FName write SetName;'#10,
+    '')));
+end;
+
+procedure TPropertyRulesTests.AccessorSignatures;
+begin
+  Assert.AreEqual('GetName passt nicht als Getter von Name; erwartet wird function GetName: string (wie E2008).',
+    OnlyMessage(Kunden('  private'#10'    procedure GetName;'#10'  public'#10'    property Name: string read GetName;'#10,
+    '')));
+  Assert.AreEqual('GetName passt nicht als Getter von Name; erwartet wird function GetName: string (wie E2008).',
+    OnlyMessage(Kunden('  private'#10'    function GetName: Integer;'#10'  public'#10 +
+    '    property Name: string read GetName;'#10, '')));
+  // Indexparameter fehlt.
+  Assert.AreEqual('GetItem passt nicht als Getter von Items; erwartet wird function GetItem(Index: Integer): string ' +
+    '(wie E2008).', OnlyMessage(Kunden('  private'#10'    function GetItem: string;'#10'  public'#10 +
+    '    property Items[Index: Integer]: string read GetItem;'#10, '')));
+  Assert.AreEqual('GetRot passt nicht als Getter von Rot; erwartet wird function GetRot(AIndex: Integer): Integer ' +
+    '(wie E2008).', OnlyMessage(Kunden('  private'#10'    function GetRot: Integer;'#10'  public'#10 +
+    '    property Rot: Integer index 1 read GetRot;'#10, '')));
+  Assert.AreEqual('SetName passt nicht als Setter von Name; erwartet wird procedure SetName(const Value: string) ' +
+    '(wie E2008).', OnlyMessage(Kunden('  private'#10'    FName: string;'#10 +
+    '    procedure SetName(const Value: Integer);'#10'  public'#10 +
+    '    property Name: string read FName write SetName;'#10, '')));
+  Assert.AreEqual('SetName passt nicht als Setter von Name; erwartet wird procedure SetName(const Value: string) ' +
+    '(wie E2008).', OnlyMessage(Kunden('  private'#10'    FName: string;'#10'    function SetName: string;'#10 +
+    '  public'#10'    property Name: string read FName write SetName;'#10, '')));
+  // Unbekannte Typen (Alias aus einer anderen Unit): keine Aussage.
+  Silent(Kunden('  private'#10'    function GetBetrag: TBetrag;'#10'  public'#10 +
+    '    property Betrag: Currency read GetBetrag;'#10, ''));
+end;
+
+procedure TPropertyRulesTests.AccessorClassAndInstance;
+begin
+  Assert.AreEqual('Die Klassen-Property Anzahl braucht hinter read eine class var oder eine class-Methode mit ' +
+    'static; FAnzahl ist ein Instanzfeld (wie E2355).', OnlyMessage(Kunden('  private'#10'    FAnzahl: Integer;'#10 +
+    '  public'#10'    class property Anzahl: Integer read FAnzahl;'#10, '')));
+  Assert.AreEqual('Die Klassen-Property Anzahl braucht hinter read eine class var oder eine class-Methode mit ' +
+    'static; GetAnzahl ist eine Instanzmethode (wie E2355).', OnlyMessage(Kunden('  private'#10 +
+    '    function GetAnzahl: Integer;'#10'  public'#10'    class property Anzahl: Integer read GetAnzahl;'#10, '')));
+  Assert.AreEqual('Die Klassen-Property Anzahl braucht eine class-Methode mit static; GetAnzahl ist nicht static ' +
+    '(wie E2355).', OnlyMessage(Kunden('  private'#10'    class function GetAnzahl: Integer;'#10'  public'#10 +
+    '    class property Anzahl: Integer read GetAnzahl;'#10, '')));
+  Assert.AreEqual('FAnzahl ist eine class var; die Property Anzahl braucht ein Instanzfeld oder eine Instanzmethode ' +
+    '(wie E2356).', OnlyMessage(Kunden('  private'#10'    class var FAnzahl: Integer;'#10'  public'#10 +
+    '    property Anzahl: Integer read FAnzahl;'#10, '')));
+  Assert.AreEqual('GetAnzahl ist eine statische Klassenmethode; die Property Anzahl braucht ein Instanzfeld oder ' +
+    'eine Instanzmethode (wie E2356).', OnlyMessage(Kunden('  private'#10'    class function GetAnzahl: Integer; static;'#10 +
+    '  public'#10'    property Anzahl: Integer read GetAnzahl;'#10, '')));
+end;
+
+procedure TPropertyRulesTests.AccessorFieldSelectors;
+var
+  mTypes: string;
+begin
+  mTypes := 'unit Kunden;'#10'interface'#10'type'#10'  TPunkt = record'#10'    X, Y: Integer;'#10 +
+    '    function Laenge: Double;'#10'  end;'#10'  TAdresse = class'#10'    Ort: string;'#10'  end;'#10 +
+    '  TKunde = class'#10'  private'#10'    FPunkt: TPunkt;'#10'    FAdresse: TAdresse;'#10'  public'#10;
+  Assert.AreEqual('FAdresse ist vom Typ TAdresse, keinem Record; ein Feldselektor wie FAdresse.Ort geht nur über ' +
+    'ein Record-Feld (wie E2459).', OnlyMessage(mTypes + '    property Ort: string read FAdresse.Ort;'#10'  end;'#10 +
+    'implementation'#10'end.'));
+  Assert.AreEqual('TPunkt hat kein Feld Z (wie E2562).', OnlyMessage(mTypes +
+    '    property Z: Integer read FPunkt.Z;'#10'  end;'#10'implementation'#10'end.'));
+  Assert.AreEqual('TPunkt.Laenge ist kein Instanzfeld; hinter dem Punkt muss ein Feld des Records stehen ' +
+    '(wie E2461).', OnlyMessage(mTypes + '    property Laenge: Double read FPunkt.Laenge;'#10'  end;'#10 +
+    'implementation'#10'end.'));
+  Silent(mTypes + '    property Y: Integer read FPunkt.Y write FPunkt.Y;'#10'  end;'#10'implementation'#10'end.');
+  // Old-style object ist wie ein Record (FP mORMot SynSM: property cx read VObject.fcx mit TSMObject = object).
+  Silent('unit Kunden;'#10'interface'#10'type'#10'  TZaehler = object'#10'    Wert: Integer;'#10'  end;'#10 +
+    '  TKunde = class'#10'  private'#10'    FZaehler: TZaehler;'#10'  public'#10 +
+    '    property Wert: Integer read FZaehler.Wert;'#10'  end;'#10'implementation'#10'end.');
+  // Klassen-Properties: kein Feldselektor, auch über einen Record (Cm.E2459, #1380).
+  Assert.AreEqual('Die Klassen-Property X darf hinter read keinen Feldselektor haben; FMitte.X geht nur an ' +
+    'Instanz-Properties (wie E2459).', OnlyMessage(mTypes + '    class var FMitte: TPunkt;'#10 +
+    '    class property X: Integer read FMitte.X;'#10'  end;'#10'implementation'#10'end.'));
+  Silent(mTypes + '    class var FMitte: TPunkt;'#10'    class property Mitte: TPunkt read FMitte;'#10'  end;'#10 +
+    'implementation'#10'end.');
+end;
+
+procedure TPropertyRulesTests.AccessorAncestorsFromIndex;
+var
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
+  mSource: string;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit System;'#10'interface'#10'type'#10'  TObject = class'#10 +
+    '  end;'#10'implementation'#10'end.', 'C:\BDS\source\System.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Basis;'#10'interface'#10'type'#10'  TBasis = class'#10 +
+    '  private'#10'    FGeheim: Integer;'#10'  protected'#10'    FWert: Integer;'#10'  end;'#10 +
+    'implementation'#10'end.', 'C:\Projekt\Basis.pas', nil));
+  mSource := 'unit Kunden;'#10'interface'#10'uses'#10'  Basis;'#10'type'#10'  TKunde = class(TBasis)'#10 +
+    '  public'#10'    property Wert: Integer read FWert;'#10'    property Geheim: Integer read FGeheim;'#10 +
+    '    property Fehlt: Integer read FFehlt;'#10'  end;'#10'implementation'#10'end.';
+  mFound := TRuleAssert.IndexFindings(TPropertyAccessorInvalidRule.Create, mSource, mIndex, '', '');
+  // FWert ist geerbt, FGeheim privat in einer anderen Unit (keine Aussage), FFehlt fehlt in der ganzen Kette.
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('FFehlt ist in TKunde nicht deklariert (wie E2168).', mFound[0].Message);
+end;
+
+procedure TPropertyRulesTests.AccessorFormsDccAccepts;
+begin
+  // Minimalfälle PA1–PA6 aus Tests/DccFaelle (#1328): Das übersetzt Delphi (mORMot2, SynEdit, HtmlViewer,
+  // Graphics32).
+  Silent(Kunden('  private'#10'    FX, FName: string;'#10'    FWerte: array[TArt] of Integer;'#10 +
+    '    procedure SetX(AIndex: Integer; const AWert: string);'#10'    procedure SetWert(AIndex, AWert: Integer);'#10 +
+    '    function GetFlag(AArt: TArt): Boolean;'#10'    procedure SetFlag(AArt: TArt; const AWert: Boolean);'#10 +
+    '    function GetText: string; overload;'#10'    function GetText(AArt: TArt): string; overload;'#10 +
+    '  public'#10'    class function GetVersion: string; virtual;'#10 +
+    '    property X: string index 0 read FX write SetX;'#10 +
+    '    property Eins: Integer index Ord(aEins) read FWerte[aEins] write SetWert;'#10 +
+    '    property Name: string index 50 read FName write FName;'#10 +
+    '    property Flag: Boolean index aZwei read GetFlag write SetFlag;'#10 +
+    '    property Version: string read GetVersion;'#10'    property Text: string read GetText;'#10, '')
+    .Replace('  TKunde = class', '  TArt = (aEins, aZwei);'#10'  TKunde = class'));
+end;
+
+procedure TPropertyRulesTests.AccessorOptions;
+var
+  mSource: string;
+begin
+  mSource := Kunden('  public'#10'    property Name: string read GetName;'#10, '');
+  Assert.AreEqual(1, Integer(Length(Findings(mSource, '', 'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"property-accessor-invalid": "off"}}',
+    'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"group:compiler": "off"}}', 'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource,
+    '{"rules": {"property-accessor-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunden.pas'))));
+  Assert.AreEqual(1, Integer(Length(Findings(mSource,
+    '{"rules": {"property-accessor-invalid": {"exclude": ["Alt/*.pas"]}}}', 'Source/Kunden.pas'))));
+end;
+
+function WriteOnly(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TWriteOnlyPropertyRule.Create, ASource);
+end;
+
+function WriteOnly(const ASource, AConfig: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TWriteOnlyPropertyRule.Create, ASource, AConfig);
+end;
+
+procedure TPropertyRulesTests.WriteOnlyReported;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  Assert.IsFalse(TRuleProfiles.IsExperimental((TWriteOnlyPropertyRule.Create as IRule).Descriptor.Id), 'Standard an');
+  mFound := WriteOnly(Kunden('  private'#10'    procedure SetPasswort(const Value: string);'#10'  public'#10 +
+    '    property Passwort: string write SetPasswort;'#10, ''));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Property Passwort hat kein read.', mFound[0].Message);
+  Assert.AreEqual(7, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(13, mFound[0].Range.StartPos.Character);
+  // Ohne passendes Feld keine Korrektur.
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
+  // Auch Array-Properties, Interfaces und Klassen-Properties.
+  Assert.AreEqual(3, Integer(Length(WriteOnly('unit U;'#10'interface'#10'type'#10'  IKunde = interface'#10 +
+    '    procedure SetName(const Value: string);'#10'    property Name: string write SetName;'#10'  end;'#10 +
+    '  TListe = class'#10'    property Werte[I: Integer]: string write SetWert;'#10 +
+    '    class property Zaehler: Integer write FZaehler;'#10'  end;'#10'implementation'#10'end.'))));
+end;
+
+procedure TPropertyRulesTests.WriteOnlyFix;
+var
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  mSource := Kunden('  private'#10'    FPasswort: string;'#10'    procedure SetPasswort(const Value: string);'#10 +
+    '  public'#10'    property Passwort: string write SetPasswort;'#10, '');
+  mFound := WriteOnly(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('read FPasswort ergänzen', mFound[0].Fixes[0].Title);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
+  Assert.AreEqual(StringReplace(mSource, 'string write', 'string read FPasswort write', []), mFixed);
+  TRuleAssert.Silent(TWriteOnlyPropertyRule.Create, mFixed);
+  // Feld mit anderem Typ: keine Korrektur.
+  mSource := StringReplace(mSource, 'FPasswort: string;', 'FPasswort: TBytes;', []);
+  Assert.AreEqual(0, Integer(Length(WriteOnly(mSource)[0].Fixes)));
+end;
+
+procedure TPropertyRulesTests.WriteOnlySilentCases;
+begin
+  // read vorhanden, neu veröffentlichte Property ohne Typ, Property ohne read und write.
+  TRuleAssert.Silent(TWriteOnlyPropertyRule.Create, Kunden('  public'#10 +
+    '    property Name: string read FName write FName;'#10'    property Caption write SetCaption;'#10 +
+    '    property Tag;'#10'    property Lesen: Integer read FLesen;'#10, ''));
+end;
+
+procedure TPropertyRulesTests.WriteOnlyOptions;
+var
+  mSource: string;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSource := Kunden('  public'#10'    [Geheim]'#10'    property Passwort: string write SetPasswort;'#10 +
+    '    [Schluessel(1), GeheimAttribute]'#10'    property Pin: string write SetPin;'#10, '');
+  Assert.AreEqual(2, Integer(Length(WriteOnly(mSource))));
+  Assert.AreEqual(0, Integer(Length(WriteOnly(mSource,
+    '{"rules": {"write-only-property": {"allowAttributes": ["GeheimAttribute"]}}}'))));
+  Assert.AreEqual(1, Integer(Length(WriteOnly(mSource,
+    '{"rules": {"write-only-property": {"allowAttributes": ["Schluessel"]}}}'))));
+  Assert.AreEqual(0, Integer(Length(WriteOnly(mSource, '{"rules": {"write-only-property": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TWriteOnlyPropertyRule.Create, mSource,
+    '{"rules": {"write-only-property": {"exclude": ["Alt/**"]}}}', 'Alt/Kunden.pas'))));
+  TConfigurationParser.Parse('{"rules": {"write-only-property": {"allowAttributes": "Geheim"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('"allowAttributes" muss eine Liste von Texten sein', mIssues[0].Message);
+end;
+
+
+procedure TPropertyRulesTests.AccessorInInactiveBranch;
+
+  function Count(const ACondition: string): Integer;
+  var
+    mFinding: TRuleFinding;
+  begin
+    Result := 0;
+    for mFinding in TFileChecker.CheckText([TPropertyAccessorInvalidRule.Create as IRule], TServerSettings.Default,
+      'Kunden.pas', Kunden('  private'#10'    function GetObject(I: Integer): TObject;'#10'  public'#10 +
+      '    property O[I: Integer]: TObject read {$IFDEF ' + ACondition + '}GetObj{$ELSE}GetObject{$ENDIF};'#10,
+      'function TKunde.GetObject(I: Integer): TObject;'#10'begin'#10'  Result := nil;'#10'end;'#10)) do
+    begin
+      if mFinding.RuleId = cPropertyAccessorInvalidRuleId then
+      begin
+        Inc(Result);
+      end;
+    end;
+  end;
+
+begin
+  Assert.AreEqual(0, Count('BCB'), 'inaktiver Zweig');
+  Assert.AreEqual(1, Count('MSWINDOWS'), 'aktiver Zweig');
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TPropertyRulesTests);
+
+end.

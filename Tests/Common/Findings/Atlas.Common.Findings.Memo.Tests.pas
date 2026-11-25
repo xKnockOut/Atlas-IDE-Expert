@@ -66,13 +66,13 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Builtin,
+  Rules.Builtin,
   Atlas.Common.Lsp.SyntaxDiagnostics,
-  Atlas.Common.Rules.CheckContext,
+  Rules.CheckContext,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Tests.LspRules,
-  Atlas.Common.Findings.Memo;
+  Atlas.Common.Findings.Memo,
+  Atlas.Common.Findings.Contract;
 
 const
   cLB = #13#10;

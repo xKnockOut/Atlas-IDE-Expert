@@ -66,7 +66,7 @@ implementation
 uses
   System.IOUtils,
   Shell.Composition.Mcp,
-  Atlas.Common.Rules.Checker,
+  Rules.Checker,
   Atlas.Common.Mcp.Contract.DeadCode,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Processes,

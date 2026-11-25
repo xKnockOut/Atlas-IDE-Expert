@@ -59,10 +59,10 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.Formatter,
-  Atlas.Common.Editing.EditorConfig;
+  Atlas.Common.Editing.EditorConfig,
+  Atlas.Common.Documents.Contract;
 
 { TFormatterTests }
 
@@ -141,7 +141,7 @@ end;
 
 procedure TFormatterTests.FormatsOnlyRange;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   mText := 'begin'#10'  A:=1;'#10'  B:=2;'#10'end.';

@@ -10,7 +10,10 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Rules.Contract;
+  Rules.Contract,
+  Atlas.Common.Projects.Contract.Group,
+  Atlas.Common.Projects.Contract.UnitLookup,
+  Atlas.Common.Findings.Contract;
 
 type
   // ARule ohne const: Tests übergeben TXyzRule.Create direkt. Bei const zählt
@@ -29,7 +32,7 @@ type
     class function PlatformFindings(ARule: IRule; const ASource, APlatform: string): TArray<TRuleFinding>; static;
     /// <summary>Treffer von ARule auf ASource in einem Projekt der Anwendungsart AApplication (#926).</summary>
     class function ApplicationFindings(ARule: IRule; const ASource: string;
-      AApplication: TRuleApplicationKind): TArray<TRuleFinding>; static;
+      AApplication: TApplicationKind): TArray<TRuleFinding>; static;
     /// <summary>Treffer von ARule auf ASource als Unit des Packages AProjectName (#943) mit Einstellungen aus
     /// AConfigJson ('' = Vorgaben) unter ARelativePath.</summary>
     class function PackageFindings(ARule: IRule; const ASource, AProjectName, AConfigJson,
@@ -47,7 +50,7 @@ type
       const AConfigJson, ARelativePath: string): TArray<TRuleFinding>; static;
     /// <summary>Treffer von ARule auf ASource als Datei AFileName (absolut) mit der Unit-Suche AUnits (#1016),
     /// Einstellungen aus AConfigJson ('' = Vorgaben) unter ARelativePath.</summary>
-    class function UnitFindings(ARule: IRule; const ASource, AFileName: string; const AUnits: IRuleUnitLookup;
+    class function UnitFindings(ARule: IRule; const ASource, AFileName: string; const AUnits: IUnitLookup;
       const AConfigJson, ARelativePath: string): TArray<TRuleFinding>; static;
     /// <summary>Treffer von ARule auf ASource mit dem Symbolindex AIndex (#1019), Einstellungen aus AConfigJson
     /// ('' = Vorgaben) unter ARelativePath.</summary>
@@ -123,8 +126,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Builtin,
+  Rules.Engine,
+  Rules.Builtin,
   Atlas.Common.Pascal.Contract,
   Shell.Composition.CheckRefactorings;
 
@@ -201,7 +204,7 @@ begin
 end;
 
 class function TRuleAssert.ApplicationFindings(ARule: IRule; const ASource: string;
-  AApplication: TRuleApplicationKind): TArray<TRuleFinding>;
+  AApplication: TApplicationKind): TArray<TRuleFinding>;
 var
   mContext: TRuleContext;
   mTree: TSyntaxTree;
@@ -240,7 +243,7 @@ begin
     mContext.RelativePath := ARelativePath;
     mContext.Text := ASource;
     mContext.Tree := mTree;
-    mContext.Application := TRuleApplicationKind.Package;
+    mContext.Application := TApplicationKind.Package;
     mContext.ProjectName := AProjectName;
     Result := TRuleEngine.Run([ARule], mSettings, mContext);
   finally
@@ -312,7 +315,7 @@ begin
 end;
 
 class function TRuleAssert.UnitFindings(ARule: IRule; const ASource, AFileName: string;
-  const AUnits: IRuleUnitLookup; const AConfigJson, ARelativePath: string): TArray<TRuleFinding>;
+  const AUnits: IUnitLookup; const AConfigJson, ARelativePath: string): TArray<TRuleFinding>;
 var
   mSettings: TServerSettings;
   mIssues: TArray<TConfigurationIssue>;
@@ -450,7 +453,7 @@ function FindingKey(const AFinding: TRuleFinding): string;
 
 var
   mFix: TRuleFix;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   Result := AFinding.RuleId + '@' + RangeText(AFinding.Range) + ' ' + AFinding.Message;
   for mFix in AFinding.Fixes do

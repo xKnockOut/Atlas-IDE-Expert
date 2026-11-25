@@ -99,9 +99,9 @@ type
 implementation
 
 uses
-  Atlas.Common.Rules.Catalog,
+  Rules.Catalog,
   Atlas.Common.Findings.Baseline,
-  Atlas.Common.Rules.Checker,
+  Rules.Checker,
   Atlas.Common.Pascal.InactiveRegions,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.TreeCache,
@@ -111,16 +111,17 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Builtin,
-  Atlas.Common.Rules.Builtin.DeadCode,
+  Rules.Contract,
+  Rules.Builtin,
+  Rules.Builtin.DeadCode,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics,
-  Atlas.Common.Rules.CheckContext,
+  Rules.CheckContext,
   Atlas.Tests.LspRules,
-  Atlas.Common.Lsp.DiagnosticItems;
+  Atlas.Common.Lsp.DiagnosticItems,
+  Atlas.Common.Findings.Contract;
 
 function CompilerMessage(ALine, AColumn: Integer; ASeverity: TCompilerSeverity): TCompilerMessage;
 begin

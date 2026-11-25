@@ -10,7 +10,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Findings.Contract,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Rules.Contract.Api;
+  Rules.Contract.Api;
 
 type
   /// <summary>ILspRuleDiagnostics über die API der Prüfregeln.</summary>

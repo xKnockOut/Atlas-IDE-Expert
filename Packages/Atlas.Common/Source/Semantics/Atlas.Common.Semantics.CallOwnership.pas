@@ -6,7 +6,7 @@
 // Atlas.Common.Pascal.ParamOwnership). Reicht die Routine das Objekt nur weiter,
 // folgt die Abfrage den Weitergaben bis zur Tiefe cMaxDepth; ein Kreis zählt als
 // geliehen. Gemeinsam für die Leckregel local-object-not-freed und die Marke „Wer
-// gibt das frei?“ (Atlas.Common.Rules.Ownership).
+// gibt das frei?“ (Rules.Ownership).
 //
 // Vorsichtig, weil „geliehen“ eine Leckmeldung auslösen kann: Unknown bei
 // virtuellen Methoden (ein Nachfahr kann anders handeln), bei Überladungen mit

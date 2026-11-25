@@ -38,7 +38,7 @@
     pwsh Tools/Check-GermanText.ps1 -SelfTest
 
 .EXAMPLE
-    pwsh Tools/Check-GermanText.ps1 -List Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Engine.pas
+    pwsh Tools/Check-GermanText.ps1 -List Application/Source/Features/Rules/Rules.Engine.pas
 #>
 [CmdletBinding()]
 param(

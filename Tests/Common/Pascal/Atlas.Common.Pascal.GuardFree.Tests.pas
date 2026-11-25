@@ -29,9 +29,9 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.GuardFree;
+  Atlas.Common.Pascal.GuardFree,
+  Atlas.Common.Documents.Contract;
 
 /// <summary>Routine mit AVar im var-Abschnitt; AStatement steht in Zeile 4, ARest danach.</summary>
 function Source(const AVar, AStatement, ARest: string): string;
@@ -120,7 +120,7 @@ procedure TGuardFreeTests.WrapsNewLineOrRestOfRoutine;
 var
   mText: string;
   mOffer: TGuardOffer;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   mText := Source('List: TStringList;', 'List := TStringList.Create;', '  List.Add(''a'');'#13#10#13#10 +
     '  Show(List.Text);'#13#10);
@@ -160,7 +160,7 @@ procedure TGuardFreeTests.AddsMissingSemicolonAfterEnter;
 var
   mText: string;
   mOffer: TGuardOffer;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   // Übernahme mit Enter am Zeilenende, dann Enter: Zeile 5 ist leer (eingerückt), das ";" fehlt.
   mText := Source('List: TStringList;', 'List := TStringList.Create', '  '#13#10);

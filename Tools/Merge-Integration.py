@@ -64,7 +64,7 @@ ABGELEITET = [
     ('Packages/Atlas.Common/Source/Mcp/Atlas.Common.Mcp.DocsIndexData.pas', 'config'),
     ('docs/Regeln.md', 'rules'),
     ('docs/en/Rules.md', 'rules'),
-    ('Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data*.pas', 'rules'),
+    ('Application/Source/Features/Rules/Rules.Catalog.Data*.pas', 'rules'),
     ('atlas-duplicates.json', 'duplicates'),
     ('Tools/TestWarmUps.baseline.json', 'warmups'),
 ]
@@ -335,7 +335,7 @@ def selbsttest():
         print('Sortieren der Unit-Zuordnung: falsche Reihenfolge')
         fehler += 1
     for pfad, soll in [('docs/Einstellungen.md', 'config'),
-                       ('Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data.De.Architecture.pas', 'rules'),
+                       ('Application/Source/Features/Rules/Rules.Catalog.Data.De.Architecture.pas', 'rules'),
                        ('atlas-duplicates.json', 'duplicates'),
                        ('README.md', None)]:
         if werkzeug_fuer(pfad) != soll:

@@ -77,7 +77,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Findings.Contract;
 
 const
   cFormText =

@@ -10,7 +10,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver.Symbols,
-  Atlas.Common.Semantics.NameResolver.Place;
+  Atlas.Common.Semantics.NameResolver.Place,
+  Atlas.Common.Projects.Contract.UnitLookup;
 
 type
   TResolverUnits = class

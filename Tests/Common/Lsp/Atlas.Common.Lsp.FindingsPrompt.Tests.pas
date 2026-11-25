@@ -37,11 +37,11 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Baseline,
   Atlas.Common.Lsp.FindingsPrompt,
-  Atlas.Tests.LspRules;
+  Atlas.Tests.LspRules,
+  Atlas.Common.Findings.Contract;
 
 const
   cUnit = 'unit U;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10'end;'#13#10'end.';

@@ -85,8 +85,8 @@ uses
   System.SysUtils,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Pascal.LanguageFeatures,
-  Atlas.Common.Rules.Contract.Api,
-  Atlas.Common.Rules.Providers.CatalogInfo,
+  Rules.Contract.Api,
+  Rules.Providers.CatalogInfo,
   Adapters.Lsp.RuleCatalog;
 
 { TShellCompletion }

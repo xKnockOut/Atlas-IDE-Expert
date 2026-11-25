@@ -17,7 +17,6 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Editor.EditSurface,
   Atlas.Plugin.Editor.Contract;
 
 type

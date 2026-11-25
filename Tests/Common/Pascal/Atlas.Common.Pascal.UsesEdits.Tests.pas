@@ -73,7 +73,6 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.UsesGroups,
   Atlas.Common.Pascal.UsesEdits;
@@ -92,7 +91,7 @@ const
     'end;'#10 +
     'end.';
 
-function Apply(const AText: string; const AEdit: TRuleEdit): string;
+function Apply(const AText: string; const AEdit: TTextEdit): string;
 var
   mLines: TArray<string>;
   mLine: string;
@@ -114,7 +113,7 @@ end;
 
 procedure TUsesClauseTests.AppendsToSingleLineUses;
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   Assert.IsTrue(TPascalUsesEdits.AddUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'interface'),
     'Vcl.Forms', #10, mEdit));
@@ -123,7 +122,7 @@ end;
 
 procedure TUsesClauseTests.AppendsToMultiLineUsesOnOwnLine;
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   Assert.IsTrue(TPascalUsesEdits.AddUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'begin'), 'Vcl.Forms',
     #10, mEdit));
@@ -133,7 +132,7 @@ end;
 
 procedure TUsesClauseTests.ChoosesImplementationSectionByOffset;
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   Assert.IsTrue(TPascalUsesEdits.AddUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'Rechne'), 'X', #10, mEdit));
   Assert.AreEqual(6, mEdit.Range.StartPos.Line);
@@ -145,7 +144,7 @@ procedure TUsesClauseTests.CreatesUsesWhenMissing;
 const
   cText = 'unit A;'#10'interface'#10'implementation'#10'end.';
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   Assert.IsTrue(TPascalUsesEdits.AddUnit(TPascalLexer.Tokenize(cText), OffsetOf(cText, 'end.'), 'B', #10, mEdit));
   Assert.AreEqual('unit A;'#10'interface'#10'implementation'#10#10'uses'#10'  B;'#10'end.', Apply(cText, mEdit));
@@ -155,7 +154,7 @@ procedure TUsesClauseTests.AddsToProgramUses;
 const
   cText = 'program App;'#10'uses A;'#10'begin'#10'end.';
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   Assert.IsTrue(TPascalUsesEdits.AddUnit(TPascalLexer.Tokenize(cText), OffsetOf(cText, 'end.'), 'B', #10, mEdit));
   Assert.AreEqual('program App;'#10'uses A, B;'#10'begin'#10'end.', Apply(cText, mEdit));
@@ -163,7 +162,7 @@ end;
 
 procedure TUsesClauseTests.FailsWithoutSection;
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   Assert.IsFalse(TPascalUsesEdits.AddUnit(TPascalLexer.Tokenize(''), 0, 'B', #10, mEdit));
   Assert.IsFalse(TPascalUsesEdits.AddUnit(TPascalLexer.Tokenize('unit A;'#10'type'), 0, 'B', #10, mEdit));
@@ -188,7 +187,7 @@ begin
 end;
 
 /// <summary>Edits (auch Ersetzungen) von hinten nach vorn anwenden, damit die Positionen gültig bleiben.</summary>
-function ApplyAll(const AText: string; const AEdits: TArray<TRuleEdit>): string;
+function ApplyAll(const AText: string; const AEdits: TArray<TTextEdit>): string;
 var
   mIndex, mStartOffset, mEndOffset: Integer;
 begin
@@ -203,7 +202,7 @@ end;
 
 function Organized(const AText: string; ASort: Boolean): string;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   if TPascalUsesEdits.Organize(TPascalLexer.Tokenize(AText), AText, ASort, #10, mEdits) then
   begin
@@ -228,7 +227,7 @@ end;
 function Grouped(const AText: string; AStyle: TUsesGroupStyle; AMaxLength: Integer): string;
 var
   mOptions: TUsesRewrite;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mOptions := Default(TUsesRewrite);
   mOptions.Dedupe := True;
@@ -271,7 +270,7 @@ procedure TUsesClauseTests.GroupedTwiceGivesNothing;
 var
   mText: string;
   mOptions: TUsesRewrite;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mText := Grouped(cMixedUses, TUsesGroupStyle.Comments, 0);
   mOptions := Default(TUsesRewrite);
@@ -331,7 +330,7 @@ end;
 
 procedure TUsesClauseTests.OrganizeWithoutChangeGivesNothing;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 const
   cText = 'unit A;'#10'interface'#10'uses A1, B2;'#10'implementation'#10'end.';
 begin
@@ -340,7 +339,7 @@ end;
 
 procedure TUsesClauseTests.AddMissingUnitSkipsUsedUnits;
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   Assert.IsFalse(TPascalUsesEdits.AddMissingUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'interface'),
     'System.SysUtils', TArray<string>.Create('System'), #10, mEdit), 'schon eingebunden');
@@ -356,7 +355,7 @@ procedure TUsesClauseTests.AppendsBehindLastEntryOfMultiLineUses;
 const
   cText = 'unit A;'#10'interface'#10'uses'#10'  Classes, SysUtils;'#10'implementation'#10'end.';
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   // Mehrere Einträge je Zeile: Die neue Unit kommt dahinter, nicht in eine eigene Zeile.
   Assert.IsTrue(TPascalUsesEdits.AddUnit(TPascalLexer.Tokenize(cText), OffsetOf(cText, 'interface'), 'Vcl.Forms', #10,
@@ -368,7 +367,7 @@ end;
 procedure TUsesClauseTests.AppendsOnOwnLineWhenLastLineIsFull;
 var
   mText: string;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   mText := 'unit A;'#10'interface'#10'uses'#10'  ' + StringOfChar('X', 110) + ', Y;'#10'implementation'#10'end.';
   Assert.IsTrue(TPascalUsesEdits.AddUnit(TPascalLexer.Tokenize(mText), OffsetOf(mText, 'interface'), 'Vcl.Forms', #10,
@@ -411,7 +410,7 @@ end;
 procedure TUsesClauseTests.DropKeepsLayoutAndComments;
 var
   mOptions: TUsesRewrite;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   // Ohne Sortieren (/cleanuses): Zeilen und Kommentare bleiben, nur der gestrichene Eintrag fällt weg.
@@ -435,7 +434,7 @@ procedure TUsesClauseTests.SectionsTwiceGiveNothing;
 var
   mText: string;
   mOptions: TUsesRewrite;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mText := Grouped(cSectionUses, TUsesGroupStyle.Comments, 0);
   mOptions := Default(TUsesRewrite);

@@ -74,17 +74,18 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.Prompt,
-  Atlas.Common.Rules.Conventions,
-  Atlas.Common.Rules.Builtin,
+  Rules.Contract,
+  Rules.Catalog,
+  Rules.Prompt,
+  Rules.Conventions,
+  Rules.Builtin,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Mcp.Contract.Formatting,
   Shell.Composition.Mcp,
   Atlas.Common.Mcp.Confirm,
-  Atlas.Common.Mcp.EditTools;
+  Atlas.Common.Mcp.EditTools,
+  Atlas.Common.Findings.Contract;
 
 type
   /// <summary>Meldet jeden Bezeichner "Alt" mit der Korrektur "Neu".</summary>
@@ -130,7 +131,7 @@ begin
     if (mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, 'Alt') then
     begin
       mRange := TTextRange.Create(mToken.StartPos, mToken.EndPos);
-      AReport.Add(mRange, 'Alt gefunden', [TRuleFix.Create('Alt durch Neu ersetzen', [TRuleEdit.Create(mRange, 'Neu')])]);
+      AReport.Add(mRange, 'Alt gefunden', [TRuleFix.Create('Alt durch Neu ersetzen', [TTextEdit.Create(mRange, 'Neu')])]);
     end;
   end;
 end;

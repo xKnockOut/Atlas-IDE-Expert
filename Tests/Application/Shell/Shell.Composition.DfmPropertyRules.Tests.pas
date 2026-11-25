@@ -42,10 +42,11 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Builtin,
+  Rules.Contract,
+  Rules.Builtin,
   Atlas.Common.Lsp.DfmPropertyRules,
-  Atlas.Common.Logging.Providers.Logger;
+  Atlas.Common.Logging.Providers.Logger,
+  Atlas.Common.Findings.Contract;
 
 const
   cUnit = 'C:\Projekt\Haupt.pas';

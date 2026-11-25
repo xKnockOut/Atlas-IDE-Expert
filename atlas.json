@@ -26,7 +26,7 @@
     "generic-exception-raised": {"exclude": ["Tests/**"]},
     "format-without-settings": {"exclude": ["Tests/**"]},
     "security-insecure-http": {"exclude": ["Tests/**"]},
-    "security-hardcoded-credential": {"exclude": ["Tests/**", "**/Atlas.Common.Rules.Catalog.Data.*"]},
+    "security-hardcoded-credential": {"exclude": ["Tests/**", "**/Rules.Catalog.Data.*"]},
     "control-fixed-bounds": {"exclude": ["Tests/**"]},
     "hardcoded-path": {"exclude": ["Tests/**"]},
     "sql-select-star": {"exclude": ["Tests/**"]},
@@ -38,7 +38,7 @@
     "architecture-role-import": {
       "severity": "warning",
       "exclude": ["Tests/**"],
-      "hostedFeatures": ["Replay", "Monitor", "Update"],
+      "hostedFeatures": ["Replay", "Monitor", "Update", "Rules"],
       "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Plugin",
         "Atlas.Vcl", "Atlas.ToolsApi", "Atlas.VersionControl", "Atlas.IDE.Base", "Atlas.IDE.Analysis", "Atlas.IDE.Assistants",
         "Atlas.IDE.Bookmarks", "Atlas.IDE.Build", "Atlas.IDE.BuildPipeline", "Atlas.IDE.Debugger", "Atlas.IDE.Designer", "Atlas.IDE.Editor",
@@ -57,7 +57,7 @@
       "frameworks": ["Vcl", "ToolsAPI", "DesignIntf", "DesignEditors", "DesignMenus", "DesignWindows", "PropInspAPI",
         "DockForm", "PaletteAPI"],
       "allow": [
-        "Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree",
+        "Rules.Contract -> Atlas.Common.Pascal.SyntaxTree",
         "Atlas.Common.Semantics.Contract -> Atlas.Common.Pascal.SyntaxTree",
         "Atlas.Common.Documents.Contract -> Atlas.Text.Lines",
         "Atlas.Plugin.Lsp.Contract -> Atlas.Text.Json",
@@ -82,7 +82,7 @@
     "architecture-contract-content": {
       "severity": "warning",
       "exclude": ["Tests/**"],
-      "hostedFeatures": ["Replay", "Monitor", "Update"],
+      "hostedFeatures": ["Replay", "Monitor", "Update", "Rules"],
       "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Plugin",
         "Atlas.Vcl", "Atlas.ToolsApi", "Atlas.VersionControl", "Atlas.IDE.Base", "Atlas.IDE.Analysis", "Atlas.IDE.Assistants",
         "Atlas.IDE.Bookmarks", "Atlas.IDE.Build", "Atlas.IDE.BuildPipeline", "Atlas.IDE.Debugger", "Atlas.IDE.Designer", "Atlas.IDE.Editor",

@@ -22,12 +22,12 @@ uses
   Atlas.Common.Findings.Contract,
   Atlas.Common.Findings.Scopes,
   Atlas.Common.Checks.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.Builtin,
-  Atlas.Common.Rules.Builtin.SavedQueries,
-  Atlas.Common.Rules.BulkFixRules;
+  Rules.Contract,
+  Rules.Checker,
+  Rules.Catalog,
+  Rules.Builtin,
+  Rules.Builtin.SavedQueries,
+  Rules.BulkFixRules;
 
 /// <summary>Prüfung mit ARules; eigene Routine, damit die anonyme Methode nur ihren Parameter einfängt.</summary>
 function CheckWith(const ARules: TArray<IRule>): TCoreLinterCheckText;

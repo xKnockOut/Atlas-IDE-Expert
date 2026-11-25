@@ -53,7 +53,6 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.CodeActions.Contract,
@@ -131,7 +130,7 @@ procedure TDocCommentsTests.AfterThirdSlash;
 var
   mText: string;
   mTree: TSyntaxTree;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   mText := Format(cSource, ['///']);
   mTree := TPascalParser.Parse(mText);
@@ -153,7 +152,7 @@ procedure TDocCommentsTests.NothingWhenAlreadyDocumented;
 var
   mText: string;
   mTree: TSyntaxTree;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   mText := StringReplace(Format(cSource, ['///']), '  public'#10, '  public'#10'    /// <summary>X</summary>'#10, []);
   mTree := TPascalParser.Parse(mText);
@@ -290,7 +289,7 @@ const
     'end;'#10 +
     'end.';
 
-function SlashEdits(const AText: string; ALine: Integer; out AEdits: TArray<TRuleEdit>): Boolean;
+function SlashEdits(const AText: string; ALine: Integer; out AEdits: TArray<TTextEdit>): Boolean;
 var
   mTree: TSyntaxTree;
 begin
@@ -304,7 +303,7 @@ end;
 
 procedure TDocCommentsTests.SlashAboveImplementationGoesToDeclaration;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(SlashEdits(Format(cMethodSource, ['', '///', 'procedure TFoo.Bar(A, B: Integer);']), 13, mEdits));
   Assert.AreEqual(2, Integer(Length(mEdits)));
@@ -323,7 +322,7 @@ end;
 
 procedure TDocCommentsTests.SlashAboveImplementationFindsOverloadAndNested;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(SlashEdits(Format(cMethodSource, ['', '///', 'procedure TFoo.Bar(const S: string);']), 13, mEdits));
   Assert.AreEqual(10, mEdits[0].Range.StartPos.Line);
@@ -337,7 +336,7 @@ end;
 
 procedure TDocCommentsTests.SlashAboveImplementationKeepsDocumentedAndFallsBack;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   // Die Deklaration hat schon einen Kommentar: "///" bleibt, wie getippt.
   Assert.IsFalse(SlashEdits(Format(cMethodSource, ['    /// <summary>B</summary>'#10, '///',
@@ -355,7 +354,7 @@ end;
 procedure TDocCommentsTests.CommentGoesAboveAttributes;
 var
   mText: string;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mFound: TArray<TCodeAction>;
 begin
   mText := Format(cMethodSource, ['    [Test]'#10, '///', 'procedure TFoo.Bar(A, B: Integer);']);

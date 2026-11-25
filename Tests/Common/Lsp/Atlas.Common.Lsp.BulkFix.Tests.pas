@@ -32,10 +32,10 @@ uses
   System.JSON,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Checker,
+  Rules.Checker,
   Atlas.Common.Findings.Baseline,
-  Atlas.Common.Rules.Builtin,
-  Atlas.Common.Rules.CheckContext,
+  Rules.Builtin,
+  Rules.CheckContext,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.BulkFix,
   Atlas.Tests.LspRules;

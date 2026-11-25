@@ -22,7 +22,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Findings.Contract,
   Atlas.Common.Mcp.Contract.DeadCode,
-  Atlas.Common.Rules.Contract.Api,
+  Rules.Contract.Api,
   Adapters.Mcp.DeadCode;
 
 type

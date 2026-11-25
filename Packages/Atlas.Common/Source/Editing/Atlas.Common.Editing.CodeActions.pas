@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Editing.CodeActions;
 
 // Code-Aktionen ohne Protokollbezug (#42, #147):
-//   - Korrekturen der Regeltreffer: Atlas.Common.Rules.CodeActions
+//   - Korrekturen der Regeltreffer: Rules.CodeActions
 //   - try/finally ergänzen: Atlas.Common.Pascal.TryFinally
 //   - uses-Aktionen (#284): fehlende Unit ergänzen, ungenutzte entfernen,
 //     ins implementation verschieben (Logik in Semantics.UsesActions)

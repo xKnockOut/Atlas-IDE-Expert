@@ -38,7 +38,6 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
@@ -75,7 +74,7 @@ begin
     mImport.FileName := 'C:\Lib\Dialogs.pas';
     mImport.SelectionRange.StartPos := TTextPosition.Create(7, 2);
     Assert.IsTrue(mCollector.Add('ShowMessage', 'Dialogs (uses ergänzen)', cKindFunction, cPenaltyLibraryImport, mImport,
-      [TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(2, 0), TTextPosition.Create(2, 0)), 'Dialogs, ')]));
+      [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(2, 0), TTextPosition.Create(2, 0)), 'Dialogs, ')]));
     Assert.IsTrue(mCollector.Add('begin', '', cKindKeyword, cPenaltyKeyword, Default(TResolvedSymbol)));
     mItems := mCollector.Finish(mIncomplete);
     Assert.AreEqual('begin ShowMessage', ItemNames(mItems));

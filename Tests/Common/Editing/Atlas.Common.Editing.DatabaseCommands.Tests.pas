@@ -37,7 +37,6 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract;
 
@@ -58,13 +57,13 @@ const
     'end;'#10 +                                     // 12
     'end.';
 
-function Run(const ACommand: string; out AEdits: TArray<TRuleEdit>; const AVersion: string): Boolean; overload;
+function Run(const ACommand: string; out AEdits: TArray<TTextEdit>; const AVersion: string): Boolean; overload;
 begin
   Result := TSlashCommandRegistry.Shared.AfterEnter(Format(cRoutineUnit, [ACommand]), TTextPosition.Create(10, 0),
     TSlashEnvironment.Create(nil, nil, nil, AVersion, '', nil), AEdits);
 end;
 
-function Run(const ACommand: string; out AEdits: TArray<TRuleEdit>): Boolean; overload;
+function Run(const ACommand: string; out AEdits: TArray<TTextEdit>): Boolean; overload;
 begin
   Result := Run(ACommand, AEdits, '');
 end;
@@ -73,7 +72,7 @@ end;
 
 procedure TDatabaseCommandsTests.SqlWithTwoParams;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(Run('/sql Q select * from Kunde where Nr = :Nr and Ort = :Ort', mEdits));
   Assert.AreEqual(1, Integer(Length(mEdits)));
@@ -87,7 +86,7 @@ end;
 
 procedure TDatabaseCommandsTests.SqlLongUsesLineBreaks;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(Run('/sql Q select Kunde.Nr, Kunde.Name, Kunde.Ort from Kunde where Kunde.Ort = :Ort ' +
     'order by Kunde.Name', mEdits, '22.0'));
@@ -105,7 +104,7 @@ end;
 
 procedure TDatabaseCommandsTests.SqlAdoUsesParameters;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(Run('/sql Ado select * from T where A = :A', mEdits));
   Assert.AreEqual(
@@ -115,7 +114,7 @@ end;
 
 procedure TDatabaseCommandsTests.ParamsAddsMissing;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   mText := Format(cRoutineUnit, ['/params Q']);
@@ -127,7 +126,7 @@ end;
 
 procedure TDatabaseCommandsTests.ParamsReportsExtra;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
   mProblems: TArray<TSlashProblem>;
 begin
@@ -143,7 +142,7 @@ end;
 
 procedure TDatabaseCommandsTests.LoopWrapsWithNext;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(Run('/loop Q', mEdits));
   Assert.AreEqual(
@@ -163,7 +162,7 @@ end;
 
 procedure TDatabaseCommandsTests.TransactionWraps;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(Run('/transaction FDCon', mEdits));
   Assert.AreEqual(
@@ -180,7 +179,7 @@ end;
 
 procedure TDatabaseCommandsTests.TransactionAdo;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(Run('/transaction Con', mEdits));
   Assert.StartsWith('  Con.BeginTrans;'#10, mEdits[0].NewText);
@@ -191,7 +190,7 @@ procedure TDatabaseCommandsTests.OutsideRoutineFails;
 const
   cOutside = 'unit U;'#10'interface'#10'implementation'#10'%s'#10'end.';
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mCommand: string;
 begin
   for mCommand in TArray<string>.Create('/sql Q select 1', '/params Q', '/loop Q', '/transaction Con') do

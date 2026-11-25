@@ -13,7 +13,7 @@ uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Findings.Contract,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Rules.Contract.Api;
+  Rules.Contract.Api;
 
 type
   /// <summary>ILspRuleActions über die API der Prüfregeln.</summary>

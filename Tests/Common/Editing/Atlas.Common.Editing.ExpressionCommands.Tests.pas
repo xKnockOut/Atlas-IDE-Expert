@@ -44,7 +44,6 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Tests.TextEdits;
 
@@ -72,7 +71,7 @@ end;
 
 function TryRun(const ACommand, AStatement, AVersion: string; out AText: string): Boolean;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   AText := Source(ACommand, AStatement);
   Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(11, 0), TSlashEnvironment.Create(nil,
