@@ -122,7 +122,6 @@
         "Atlas.Common.Lsp.BoundaryCases -> Atlas.Common.Editing.BoundaryCases",
         "Atlas.Common.Lsp.BoundaryCases -> Atlas.Common.Editing.DisableWarning",
         "Atlas.Common.Lsp.BoundaryTests -> Atlas.Common.Editing.TestDrafts",
-        "Atlas.Common.Lsp.ChangeSignature -> Atlas.Common.Editing.ChangeSignature",
         "Atlas.Common.Lsp.ChangeSignature -> Atlas.Common.Editing.ClassCompletion",
         "Atlas.Common.Lsp.CodeActions -> Atlas.Common.Editing.AssignmentSwap",
         "Atlas.Common.Lsp.CodeActions -> Atlas.Common.Editing.ClassActions",
@@ -242,7 +241,6 @@
         "Atlas.Common.Mcp.ImplementationTools -> Atlas.Common.Lsp.References",
         "Atlas.Common.Mcp.IndexTools -> Atlas.Common.Lsp.Rationale",
         "Atlas.Common.Rules.Builtin.Collections -> Atlas.Common.Editing.GenericLists",
-        "Atlas.Common.Rules.Builtin.Declarations.Defaults -> Atlas.Common.Editing.ChangeSignature",
         "Atlas.Common.Rules.Builtin.SlashCommands -> Atlas.Common.Editing.Contract",
         "Atlas.Common.Rules.Builtin.SlashCommands -> Atlas.Common.Editing.MaintenanceCommands",
         "Atlas.Common.Rules.Builtin.SlashCommands -> Atlas.Common.Editing.SlashCommands"
