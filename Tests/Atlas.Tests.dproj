@@ -638,6 +638,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.ClassActions.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.MethodWithoutSelf.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.MethodOrder.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.PropertyGolden.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.InterfaceGolden.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.OverrideGolden.pas"/>
