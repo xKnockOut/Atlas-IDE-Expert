@@ -23,6 +23,7 @@ uses
   Atlas.Common.Lsp.CompilerSwitches,
   Atlas.Common.Lsp.DebugUnavailable,
   Atlas.Common.Lsp.References,
+  Atlas.Common.Semantics.References,
   Atlas.Common.Lsp.Rename;
 
 type

@@ -1,7 +1,7 @@
-﻿unit Atlas.Common.Lsp.SymbolPath.Nodes;
+﻿unit Atlas.Common.Semantics.SymbolPath.Nodes;
 
 // Knoten und Kanten der Pfadsuche zwischen Symbolen (#1117), Teil von
-// Atlas.Common.Lsp.SymbolPath.Search.
+// Atlas.Common.Semantics.SymbolPath.Search.
 //
 // - Ein Knoten ist eine Unit oder eine Deklaration des Index. Die Knotentabelle
 //   vergibt je Unit bzw. Deklaration genau eine Nummer; eine Routine mit

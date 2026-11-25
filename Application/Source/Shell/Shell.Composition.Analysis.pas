@@ -12,9 +12,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.References,
+  Atlas.Common.Semantics.References,
   Atlas.Common.Lsp.SignatureHelp,
-  Atlas.Common.Lsp.Hierarchies,
+  Atlas.Common.Semantics.Hierarchies,
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Lsp.DataFlow,
   Atlas.Common.Lsp.AccessChains,
@@ -53,7 +53,7 @@ type
   private
     FServices: TShellAnalysisServices;
     FSignatureHelp: TLspSignatureHelp;
-    FHierarchies: TLspHierarchies;
+    FHierarchies: THierarchies;
     FImpact: TImpactAnalysis;
     // Datenfluss „Woher/Wohin geht der Wert?“ (#690).
     FDataFlow: TLspDataFlow;
@@ -137,7 +137,7 @@ begin
   FSignatureHelp := TLspSignatureHelp.Create(FServices.Documents, FServices.EditorIndex, ReadText,
     FServices.EnsureUnit);
   FSignatureHelp.FormatRoutinesFor := FServices.FormatRoutinesFor;
-  FHierarchies := TLspHierarchies.Create(FServices.Documents, FServices.Index, ReadText, FServices.ProjectFiles,
+  FHierarchies := THierarchies.Create(FServices.Documents, FServices.Index, ReadText, FServices.ProjectFiles,
     FServices.EnsureUnit);
   FHierarchies.SettingsFor := FServices.ReferenceSettingsFor;
   FImpact := TImpactAnalysis.Create(FServices.Documents, FServices.Index, ReadText, FServices.ProjectFiles,

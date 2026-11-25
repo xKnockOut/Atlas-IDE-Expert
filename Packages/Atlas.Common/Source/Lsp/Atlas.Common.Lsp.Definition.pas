@@ -28,13 +28,13 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Dfm.Navigation,
-  Atlas.Common.Lsp.Internals.Feature,
+  Atlas.Common.Semantics.Feature,
   Atlas.Common.Semantics.Definitions;
 
 type
   TDefinitionRequestKind = (Definition, Declaration, TypeDefinition);
 
-  TLspDefinition = class(TLspIndexFeature)
+  TLspDefinition = class(TIndexFeature)
   public const
     cDefinitionMethod = 'textDocument/definition';
     cDeclarationMethod = 'textDocument/declaration';
@@ -50,7 +50,7 @@ type
     function HandleTypeDefinition(const AParams: TJSONValue;
       const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
+    /// <summary>Unter TSharedNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -75,12 +75,12 @@ implementation
 uses
   Atlas.Common.Pascal.SyntaxTree,
   System.Generics.Collections,
-  Atlas.Common.Lsp.Internals.Namespaces,
+  Atlas.Common.Semantics.Namespaces,
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Lsp.IdeUnits,
   Atlas.Common.Localization.Texts;
@@ -112,12 +112,12 @@ end;
 
 function TLspDefinition.GetNamespaces: TArray<string>;
 begin
-  Result := TLspNamespaces.Read(FNamespaces);
+  Result := TSharedNamespaces.Read(FNamespaces);
 end;
 
 procedure TLspDefinition.SetNamespaces(const AValue: TArray<string>);
 begin
-  TLspNamespaces.Write(FNamespaces, AValue);
+  TSharedNamespaces.Write(FNamespaces, AValue);
 end;
 
 function TLspDefinition.FormTargets(const AText, AUri: string; const APosition: TTextPosition): TJSONValue;

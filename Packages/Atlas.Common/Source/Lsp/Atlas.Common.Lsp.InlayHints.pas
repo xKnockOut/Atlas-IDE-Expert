@@ -105,7 +105,7 @@ type
     FNamespaces: TArray<string>;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
+    /// <summary>Unter TSharedNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -157,7 +157,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.Internals.Namespaces,
+  Atlas.Common.Semantics.Namespaces,
   System.StrUtils,
   Atlas.Common.Editing.MethodWithoutSelf,
   Atlas.Common.Lsp.MethodWithoutSelf,
@@ -169,14 +169,13 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.SignatureHelp,
-  Atlas.Common.Editing.InterfaceStubs,
-  Atlas.Common.Editing.PostfixTemplates,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Text.Chars,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  Atlas.Common.Pascal.TypeTexts;
 
 {$SCOPEDENUMS ON}
 
@@ -508,12 +507,12 @@ end;
 
 function TLspInlayHints.GetNamespaces: TArray<string>;
 begin
-  Result := TLspNamespaces.Read(FNamespaces);
+  Result := TSharedNamespaces.Read(FNamespaces);
 end;
 
 procedure TLspInlayHints.SetNamespaces(const AValue: TArray<string>);
 begin
-  TLspNamespaces.Write(FNamespaces, AValue);
+  TSharedNamespaces.Write(FNamespaces, AValue);
 end;
 
 class function TLspInlayHints.DefinesPrefix: string;
@@ -606,7 +605,7 @@ begin
     mUnqualified := mUnqualified + [Copy(mBinding, 1, Pos('=', mBinding)) +
       AResolver.Queries.UnqualifyType(Copy(mBinding, Pos('=', mBinding) + 1, MaxInt))];
   end;
-  Result := TInterfaceStubs.SubstituteWords(AText, mUnqualified);
+  Result := TPascalTypeTexts.SubstituteWords(AText, mUnqualified);
 end;
 
 /// <summary>Namen der Kette A.B.C von AFirst bis ALast; False, wenn dort etwas anderes steht (z. B. ein Aufruf).
@@ -641,13 +640,13 @@ begin
   begin
     mOwnerType := mOwnerType + '<' + AOwner.TypeArgs + '>';
   end;
-  Result := TPostfixTemplates.ElementOf(mOwnerType);
+  Result := TPascalTypeTexts.ElementOf(mOwnerType);
   if (Result = '') and ATypeFound then
   begin
-    Result := TPostfixTemplates.ElementOf(ATypeInfo.TypeName);
+    Result := TPascalTypeTexts.ElementOf(ATypeInfo.TypeName);
   end;
-  if (Result = '') and (TPostfixTemplates.IsStringType(AOwner.TypeName) or
-    (ATypeFound and ATypeInfo.Builtin and TPostfixTemplates.IsStringType(ATypeInfo.Name))) then
+  if (Result = '') and (TPascalTypeTexts.IsStringType(AOwner.TypeName) or
+    (ATypeFound and ATypeInfo.Builtin and TPascalTypeTexts.IsStringType(ATypeInfo.Name))) then
   begin
     Result := 'Char';
   end;

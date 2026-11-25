@@ -148,7 +148,7 @@ uses
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.CompletionJson,
   Atlas.Common.Lsp.CompletionSyntax,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.Lsp.Completion.Details,
   Atlas.Common.Lsp.Completion.HiddenMembers,
   Atlas.Common.Diagnostics.RequestScope,

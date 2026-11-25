@@ -58,10 +58,6 @@ type
     /// <summary>Vorfahrenliste der Klasse ab Zeile AStartLine wie im Quelltext, samt Typargumenten
     /// ("TInterfacedObject", "IComparer&lt;TKunde&gt;"); nil, wenn kein "class(" folgt (#466).</summary>
     class function HeaderAncestors(const ALines: TArray<string>; AStartLine: Integer): TArray<string>; static;
-    /// <summary>Setzt Bindungen "T=TKunde" wortweise in AText ein (#466).</summary>
-    class function SubstituteWords(const AText: string; const ABindings: TArray<string>): string; static;
-    /// <summary>"IComparer&lt;TKunde&gt;" aus Container und Bindungen; ohne Bindungen der Container.</summary>
-    class function GenericName(const AContainer: string; const ABindings: TArray<string>): string; static;
   end;
 
 implementation
@@ -372,38 +368,6 @@ begin
     mPart := mPart + mText[mIndex];
   end;
   Result := nil;
-end;
-
-class function TInterfaceStubs.SubstituteWords(const AText: string; const ABindings: TArray<string>): string;
-var
-  mBinding: string;
-  mEqual: Integer;
-begin
-  Result := AText;
-  for mBinding in ABindings do
-  begin
-    mEqual := Pos('=', mBinding);
-    Result := TRegEx.Replace(Result, '(?<![\w.])' + TRegEx.Escape(Copy(mBinding, 1, mEqual - 1)) + '(?![\w])',
-      Copy(mBinding, mEqual + 1, MaxInt).Replace('$', '$$'));
-  end;
-end;
-
-class function TInterfaceStubs.GenericName(const AContainer: string; const ABindings: TArray<string>): string;
-var
-  mBinding: string;
-  mValues: TArray<string>;
-begin
-  Result := AContainer;
-  if Length(ABindings) = 0 then
-  begin
-    Exit;
-  end;
-  mValues := nil;
-  for mBinding in ABindings do
-  begin
-    mValues := mValues + [Copy(mBinding, Pos('=', mBinding) + 1, MaxInt)];
-  end;
-  Result := Result + '<' + string.Join(', ', mValues) + '>';
 end;
 
 end.

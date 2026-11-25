@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Hierarchies;
+﻿unit Atlas.Common.Semantics.Hierarchies;
 
 // Typ- und Aufrufhierarchie.
 //   - textDocument/prepareTypeHierarchy, typeHierarchy/supertypes, typeHierarchy/subtypes:
@@ -26,8 +26,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.ReferenceConfidence,
-  Atlas.Common.Lsp.References,
-  Atlas.Common.Lsp.Internals.Feature,
+  Atlas.Common.Semantics.Feature,
   Atlas.Common.Semantics.References;
 
 type
@@ -68,7 +67,7 @@ type
       const ACancellation: IJsonRpcCancellationToken): THierarchyCallSource; static;
   end;
 
-  TLspHierarchies = class(TLspProjectFeature)
+  THierarchies = class(TProjectFeature)
   public const
     cPrepareTypeMethod = 'textDocument/prepareTypeHierarchy';
     cSupertypesMethod = 'typeHierarchy/supertypes';
@@ -88,7 +87,7 @@ type
     function HandleIncoming(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleOutgoing(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
+    /// <summary>Unter TSharedNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -160,14 +159,14 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.Internals.Namespaces,
+  Atlas.Common.Semantics.Namespaces,
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Names,
   Atlas.Common.Semantics.Implementations;
@@ -542,7 +541,7 @@ var
   mKey: string;
 begin
   if IsFormFile(ALocation.FileName) or not ATrees.TryGet(ALocation.FileName, mTree) or
-    not TLspHierarchies.CallerAt(mTree, ALocation.FileName, ALocation.Range.StartPos, mCaller) then
+    not THierarchies.CallerAt(mTree, ALocation.FileName, ALocation.Range.StartPos, mCaller) then
   begin
     Exit;
   end;
@@ -605,43 +604,43 @@ begin
   end;
 end;
 
-{ TLspHierarchies }
+{ THierarchies }
 
-constructor TLspHierarchies.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+constructor THierarchies.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
 begin
   inherited Create(AStore, AIndex, AReadText, AFiles, AEnsureUnit);
 end;
 
-constructor TLspHierarchies.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+constructor THierarchies.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider);
 begin
   Create(AStore, AIndex, AReadText, AFiles, nil);
 end;
 
-function TLspHierarchies.GetNamespaces: TArray<string>;
+function THierarchies.GetNamespaces: TArray<string>;
 begin
-  Result := TLspNamespaces.Read(FNamespaces);
+  Result := TSharedNamespaces.Read(FNamespaces);
 end;
 
-procedure TLspHierarchies.SetNamespaces(const AValue: TArray<string>);
+procedure THierarchies.SetNamespaces(const AValue: TArray<string>);
 begin
-  TLspNamespaces.Write(FNamespaces, AValue);
+  TSharedNamespaces.Write(FNamespaces, AValue);
 end;
 
-function TLspHierarchies.HandlePrepareType(const AParams: TJSONValue;
+function THierarchies.HandlePrepareType(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 begin
   Result := Prepare(AParams, ACancellation, False);
 end;
 
-function TLspHierarchies.HandlePrepareCall(const AParams: TJSONValue;
+function THierarchies.HandlePrepareCall(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 begin
   Result := Prepare(AParams, ACancellation, True);
 end;
 
-procedure TLspHierarchies.Attach(ADispatcher: TJsonRpcDispatcher);
+procedure THierarchies.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(cPrepareTypeMethod, HandlePrepareType);
   ADispatcher.RegisterConcurrentRequest(cSupertypesMethod, HandleSupertypes);
@@ -651,7 +650,7 @@ begin
   ADispatcher.RegisterConcurrentRequest(cOutgoingMethod, HandleOutgoing);
 end;
 
-class function TLspHierarchies.TypeItemAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+class function THierarchies.TypeItemAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const APosition: TTextPosition; out AItem: THierarchyItem): Boolean;
 var
   mResolved: TResolvedSymbol;
@@ -668,7 +667,7 @@ begin
   end;
 end;
 
-class function TLspHierarchies.Supertypes(AResolver: TNameResolver; const AItem: THierarchyItem;
+class function THierarchies.Supertypes(AResolver: TNameResolver; const AItem: THierarchyItem;
   const AReadText: TReferenceReadText): TArray<THierarchyItem>;
 var
   mOwnerUnit: TUnitIndex;
@@ -704,7 +703,7 @@ begin
   end;
 end;
 
-class function TLspHierarchies.Subtypes(const AIndex: ISymbolIndex;
+class function THierarchies.Subtypes(const AIndex: ISymbolIndex;
   const AItem: THierarchyItem): TArray<THierarchyItem>;
 var
   mLocations: TArray<TSymbolLocation>;
@@ -725,7 +724,7 @@ begin
   SetLength(Result, mCount);
 end;
 
-class function TLspHierarchies.CallItemAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+class function THierarchies.CallItemAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const APosition: TTextPosition; out AItem: THierarchyItem): Boolean;
 var
   mResolved: TResolvedSymbol;
@@ -742,7 +741,7 @@ begin
   end;
 end;
 
-class function TLspHierarchies.SymbolItemAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+class function THierarchies.SymbolItemAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const APosition: TTextPosition; out AItem: THierarchyItem): Boolean;
 var
   mResolved: TResolvedSymbol;
@@ -759,7 +758,7 @@ begin
   end;
 end;
 
-class function TLspHierarchies.CallerAt(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
+class function THierarchies.CallerAt(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
   out AItem: THierarchyItem): Boolean;
 var
   mRoutine, mHeader: TSyntaxNode;
@@ -780,7 +779,7 @@ begin
   Result := True;
 end;
 
-class function TLspHierarchies.RoutineAt(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
+class function THierarchies.RoutineAt(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
   out AItem: THierarchyItem): Boolean;
 var
   mRoutine: TSyntaxNode;
@@ -793,17 +792,17 @@ begin
   end;
 end;
 
-class function TLspHierarchies.ItemOf(const AUnitName, AFileName: string; const ASymbol: TIndexSymbol): THierarchyItem;
+class function THierarchies.ItemOf(const AUnitName, AFileName: string; const ASymbol: TIndexSymbol): THierarchyItem;
 begin
   Result := FromIndex(AUnitName, AFileName, ASymbol);
 end;
 
-class function TLspHierarchies.IsRoutine(const AItem: THierarchyItem): Boolean;
+class function THierarchies.IsRoutine(const AItem: THierarchyItem): Boolean;
 begin
   Result := AItem.SymbolKind in cRoutineKinds;
 end;
 
-class function TLspHierarchies.IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+class function THierarchies.IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
   const AItem: THierarchyItem; const AFiles: TArray<string>; const AReadText: TReferenceReadText;
   const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
 begin
@@ -811,14 +810,14 @@ begin
     TReferenceSettings.SureOnly);
 end;
 
-class function TLspHierarchies.IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+class function THierarchies.IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
   const AItem: THierarchyItem; const AFiles: TArray<string>;
     const AReadText: TReferenceReadText): TArray<THierarchyCall>;
 begin
   Result := IncomingCalls(AResolver, AIndex, AItem, AFiles, AReadText, nil);
 end;
 
-class function TLspHierarchies.IncomingCalls(const ASource: THierarchyCallSource; const AItem: THierarchyItem;
+class function THierarchies.IncomingCalls(const ASource: THierarchyCallSource; const AItem: THierarchyItem;
   const AFiles: TArray<string>; const ASettings: TReferenceSettings): TArray<THierarchyCall>;
 var
   mTree: TSyntaxTree;
@@ -850,7 +849,7 @@ begin
   end;
 end;
 
-class function TLspHierarchies.OutgoingCalls(AResolver: TNameResolver; const AItem: THierarchyItem;
+class function THierarchies.OutgoingCalls(AResolver: TNameResolver; const AItem: THierarchyItem;
   const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
 begin
   Result := OutgoingCalls(AResolver, nil, AItem, AReadText, ACancellation);
@@ -879,7 +878,7 @@ begin
   begin
     mCall.Ranges := [mRange];
     mCall.Confidence := TReferenceConfidence.Sure;
-    mCall.Dispatch := TLspHierarchies.DispatchOf(ASource.Index, mResolved, mCall.Implementations);
+    mCall.Dispatch := THierarchies.DispatchOf(ASource.Index, mResolved, mCall.Implementations);
     ACalls.Add(mKey, mCall);
   end;
 end;
@@ -905,13 +904,13 @@ begin
   end;
 end;
 
-class function TLspHierarchies.OutgoingCalls(AResolver: TNameResolver; const AItem: THierarchyItem;
+class function THierarchies.OutgoingCalls(AResolver: TNameResolver; const AItem: THierarchyItem;
   const AReadText: TReferenceReadText): TArray<THierarchyCall>;
 begin
   Result := OutgoingCalls(AResolver, AItem, AReadText, nil);
 end;
 
-class function TLspHierarchies.OutgoingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+class function THierarchies.OutgoingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
   const AItem: THierarchyItem; const AReadText: TReferenceReadText;
   const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
 var
@@ -941,7 +940,7 @@ begin
   end;
 end;
 
-class function TLspHierarchies.DispatchOf(const AIndex: ISymbolIndex; const AResolved: TResolvedSymbol;
+class function THierarchies.DispatchOf(const AIndex: ISymbolIndex; const AResolved: TResolvedSymbol;
   out AImplementations: Integer): TReferenceReason;
 begin
   Result := TReferenceReason.None;
@@ -967,7 +966,7 @@ begin
     Result = TReferenceReason.Interface_);
 end;
 
-class function TLspHierarchies.ItemToJson(const AItem: THierarchyItem): TJSONObject;
+class function THierarchies.ItemToJson(const AItem: THierarchyItem): TJSONObject;
 var
   mData: TJSONObject;
   mDetail: string;
@@ -1007,7 +1006,7 @@ begin
   Result := TJSONArray.Create;
   for mItem in AItems do
   begin
-    Result.AddElement(TLspHierarchies.ItemToJson(mItem));
+    Result.AddElement(THierarchies.ItemToJson(mItem));
   end;
 end;
 
@@ -1016,7 +1015,7 @@ var
   mValue: TJSONValue;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<TJSONValue>('item', mValue) and
-    TLspHierarchies.ItemFromJson(mValue, Result)) then
+    THierarchies.ItemFromJson(mValue, Result)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[THierarchiesText.FieldItemMissingOrIncomplete].Text);
@@ -1030,7 +1029,7 @@ begin
   Result.Namespaces := ANamespaces;
 end;
 
-function TLspHierarchies.Prepare(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken;
+function THierarchies.Prepare(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken;
   ACall: Boolean): TJSONValue;
 var
   mCancellation: IPascalCancellation;
@@ -1080,7 +1079,7 @@ begin
   TJSONArray(Result).AddElement(ItemToJson(mItem));
 end;
 
-function TLspHierarchies.HandleSupertypes(const AParams: TJSONValue;
+function THierarchies.HandleSupertypes(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
   mResolver: TNameResolver;
@@ -1093,13 +1092,13 @@ begin
   end;
 end;
 
-function TLspHierarchies.HandleSubtypes(const AParams: TJSONValue;
+function THierarchies.HandleSubtypes(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 begin
   Result := ItemsToJson(Subtypes(FIndex, ReadItem(AParams)));
 end;
 
-function TLspHierarchies.HandleIncoming(const AParams: TJSONValue;
+function THierarchies.HandleIncoming(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
   mResolver: TNameResolver;
@@ -1133,7 +1132,7 @@ begin
   end;
 end;
 
-function TLspHierarchies.HandleOutgoing(const AParams: TJSONValue;
+function THierarchies.HandleOutgoing(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
   mResolver: TNameResolver;
@@ -1146,7 +1145,7 @@ begin
   end;
 end;
 
-class function TLspHierarchies.ItemFromJson(const AValue: TJSONValue; out AItem: THierarchyItem): Boolean;
+class function THierarchies.ItemFromJson(const AValue: TJSONValue; out AItem: THierarchyItem): Boolean;
 var
   mItem: TJSONObject;
   mUri: string;
@@ -1181,7 +1180,7 @@ begin
   end;
 end;
 
-class function TLspHierarchies.CallsToJson(const ACalls: TArray<THierarchyCall>; const AKey: string): TJSONArray;
+class function THierarchies.CallsToJson(const ACalls: TArray<THierarchyCall>; const AKey: string): TJSONArray;
 var
   mCall: THierarchyCall;
   mEntry, mDispatch: TJSONObject;
@@ -1214,6 +1213,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.Hierarchies', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.Hierarchies', cTexts);
 
 end.

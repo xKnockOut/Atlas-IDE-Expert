@@ -89,11 +89,11 @@ uses
   Atlas.Common.Editing.Contract,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.CompletionEnums,
-  Atlas.Common.Lsp.Completion.Context;
+  Atlas.Common.Lsp.Completion.Context,
+  Atlas.Common.Pascal.TypeTexts;
 
 type
   /// <summary>Texte der Werte-Vervollständigung in beiden Sprachen (#1458).</summary>
@@ -1020,7 +1020,7 @@ begin
     begin
       mTypeText := mTypeText + '<' + mCandidate.TypeArgs + '>';
     end;
-    mMember.TypeName := TInterfaceStubs.SubstituteWords(mTypeText, mCandidate.Bindings);
+    mMember.TypeName := TPascalTypeTexts.SubstituteWords(mTypeText, mCandidate.Bindings);
     mMember.Visibility := mCandidate.Visibility;
     mMember.MaxArgs := mCandidate.MaxArgs;
     Result := Result + [mMember];

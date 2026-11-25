@@ -29,7 +29,7 @@ uses
   Atlas.Common.Pascal.FormatRoutines,
   Atlas.Common.Lsp.SignatureFormat,
   Atlas.Common.Lsp.Hover,
-  Atlas.Common.Lsp.Internals.Feature;
+  Atlas.Common.Semantics.Feature;
 
 type
   TCallSite = record
@@ -93,7 +93,7 @@ type
   /// <summary>Formatroutinen für das Dokument AUri: eingebaute und eigene (#451).</summary>
   TFormatRoutinesFunc = reference to function(const AUri: string): TArray<TFormatRoutine>;
 
-  TLspSignatureHelp = class(TLspIndexFeature)
+  TLspSignatureHelp = class(TIndexFeature)
   public const
     cMethod = 'textDocument/signatureHelp';
   private
@@ -102,7 +102,7 @@ type
     FFormatRoutinesFor: TFormatRoutinesFunc;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
+    /// <summary>Unter TSharedNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -140,7 +140,7 @@ implementation
 
 uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
-  Atlas.Common.Lsp.Internals.Namespaces,
+  Atlas.Common.Semantics.Namespaces,
   Atlas.Common.Index.Files,
   System.Math,
   System.StrUtils,
@@ -154,10 +154,10 @@ uses
   Atlas.Common.Semantics.SystemIntrinsics,
   Atlas.Common.Semantics.Attributes,
   Atlas.Common.Lsp.Documentation,
-  Atlas.Common.Lsp.Internals.Cancellation,
-  Atlas.Common.Editing.InterfaceStubs,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TypeTexts;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -392,12 +392,12 @@ end;
 
 function TLspSignatureHelp.GetNamespaces: TArray<string>;
 begin
-  Result := TLspNamespaces.Read(FNamespaces);
+  Result := TSharedNamespaces.Read(FNamespaces);
 end;
 
 procedure TLspSignatureHelp.SetNamespaces(const AValue: TArray<string>);
 begin
-  TLspNamespaces.Write(FNamespaces, AValue);
+  TSharedNamespaces.Write(FNamespaces, AValue);
 end;
 
 function TLspSignatureHelp.Handle(const AParams: TJSONValue;
@@ -1201,7 +1201,7 @@ begin
   Result := Copy(FLines);
   for mLine := AStart.Line to Min(High(Result), AStart.Line + cMaxHeaderLines) do
   begin
-    Result[mLine] := TInterfaceStubs.SubstituteWords(Result[mLine], ABindings);
+    Result[mLine] := TPascalTypeTexts.SubstituteWords(Result[mLine], ABindings);
   end;
 end;
 

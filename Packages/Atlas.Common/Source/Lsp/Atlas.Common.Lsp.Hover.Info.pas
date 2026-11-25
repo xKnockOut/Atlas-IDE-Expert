@@ -101,7 +101,7 @@ uses
   System.Generics.Collections,
   System.RegularExpressions,
   Atlas.Text.Json,
-  Atlas.Common.Lsp.Rationale,
+  Atlas.Common.Semantics.Rationale,
   Atlas.Common.Lsp.IdeUnits;
 
 // Entfernt nur die Auszeichnung, die der Hover selbst erzeugt: **fett** (Veraltet,
@@ -165,7 +165,7 @@ begin
     mDocumentation.AddPair('sections', TJSONArray.Create);
     AObject.AddPair('documentation', mDocumentation);
   end;
-  TLspRationale.AddSections(TJSONArray(mDocumentation.GetValue('sections')), AInfo.Rationale, AInfo.AdrFiles);
+  TRationaleSelection.AddSections(TJSONArray(mDocumentation.GetValue('sections')), AInfo.Rationale, AInfo.AdrFiles);
   // Inhalt der Unit (#1921) als eigene Abschnitte hinter den Begründungen.
   AInfo.UnitContents.AddSections(TJSONArray(mDocumentation.GetValue('sections')));
 end;
@@ -279,7 +279,7 @@ begin
   end;
   if Length(Rationale) > 0 then
   begin
-    Result := Result + #10#10 + TLspRationale.ToMarkdown(Rationale);
+    Result := Result + #10#10 + TRationaleSelection.ToMarkdown(Rationale);
   end;
   if UnitName <> '' then
   begin
@@ -336,7 +336,7 @@ begin
   end;
   if Length(Rationale) > 0 then
   begin
-    Result := Result + #10#10 + TLspRationale.ToPlainText(Rationale);
+    Result := Result + #10#10 + TRationaleSelection.ToPlainText(Rationale);
   end;
   if UnitName <> '' then
   begin

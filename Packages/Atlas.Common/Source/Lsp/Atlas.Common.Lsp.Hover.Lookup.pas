@@ -53,7 +53,7 @@ uses
   Atlas.Common.Lsp.HoverTypes,
   Atlas.Common.Index.PublishedMembers,
   Atlas.Common.Lsp.Hover.UnitContents,
-  Atlas.Common.Lsp.Rationale,
+  Atlas.Common.Semantics.Rationale,
   Atlas.Common.Rationale.Contract,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Text.Lines,
@@ -472,7 +472,7 @@ begin
     FDocContainer := ASymbol.Name;
   end;
   FInfo.Kind := TLspHoverTypes.KindOf(ASymbol.Kind, FInfo.Declaration);
-  FInfo.Rationale := TLspRationale.OfSymbol(FOwner, ASymbol);
+  FInfo.Rationale := TRationaleSelection.OfSymbol(FOwner, ASymbol);
   FTypeSymbol := (ASymbol.Container = '') and (ASymbol.Kind in [TIndexSymbolKind.ClassType,
     TIndexSymbolKind.ObjectType, TIndexSymbolKind.InterfaceType]);
   FInfo.DocWikiUrl := TDocWiki.Url(FDelphiVersion, FOwner.UnitName, ASymbol.Container, ASymbol.Name);

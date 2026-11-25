@@ -308,7 +308,7 @@
         <DCCReference Include="Source\Lsp\Internals\Atlas.Common.Lsp.Internals.CompletionSource.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SignatureHelp.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SignatureFormat.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hierarchies.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Hierarchies.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Impact.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Impact.Forms.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AffectedTests.pas"/>
@@ -352,10 +352,11 @@
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.UsesService.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.UnitRelations.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UnitRelations.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SymbolPath.Search.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SymbolPath.Nodes.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SymbolPath.Graph.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SymbolPath.Calls.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.SymbolPath.Search.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.SymbolPath.Request.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.SymbolPath.Nodes.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.SymbolPath.Graph.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.SymbolPath.Calls.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SymbolPath.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Louvain.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Overview.pas"/>
@@ -400,6 +401,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodOrder.Protocol.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodOrder.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TypeComments.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TypeTexts.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassBodies.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodMatching.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.BodySpacing.pas"/>
@@ -423,7 +425,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UnitRename.Protocol.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SmartPaste.Protocol.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.ServerStatus.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.QualifiedNames.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.QualifiedNames.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WinApiDocs.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.KeywordReference.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AssignmentSwap.pas"/>
@@ -785,7 +787,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hover.UnitContents.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.HoverTypes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Documentation.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Rationale.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Rationale.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.HoverValues.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LinkedEditing.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlineValues.pas"/>
@@ -1006,9 +1008,9 @@
         <DCCReference Include="Source\Documents\Providers\Atlas.Common.Documents.Providers.DocumentStore.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Positions.pas"/>
         <DCCReference Include="Source\Lsp\Internals\Atlas.Common.Lsp.Internals.Debouncer.pas"/>
-        <DCCReference Include="Source\Lsp\Internals\Atlas.Common.Lsp.Internals.Cancellation.pas"/>
-        <DCCReference Include="Source\Lsp\Internals\Atlas.Common.Lsp.Internals.Feature.pas"/>
-        <DCCReference Include="Source\Lsp\Internals\Atlas.Common.Lsp.Internals.Namespaces.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.RequestCancellation.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Feature.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Namespaces.pas"/>
         <DCCReference Include="Source\Lsp\Internals\Atlas.Common.Lsp.Internals.FormCache.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DocumentSymbols.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FoldingRanges.pas"/>

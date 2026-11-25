@@ -56,7 +56,7 @@ type
     // Eigene Postfix-Vorlagen (#188); unter FLock.
     FCustomPostfix: TArray<TPostfixTemplate>;
     FLock: TObject;
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie beim Laden
+    /// <summary>Unter TSharedNamespaces gelesen und ersetzt: Die Komposition setzt sie beim Laden
     /// eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -118,7 +118,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.Internals.Namespaces;
+  Atlas.Common.Semantics.Namespaces;
 
 { TCompletionHooks }
 
@@ -136,12 +136,12 @@ end;
 
 function TCompletionHooks.GetNamespaces: TArray<string>;
 begin
-  Result := TLspNamespaces.Read(FNamespaces);
+  Result := TSharedNamespaces.Read(FNamespaces);
 end;
 
 procedure TCompletionHooks.SetNamespaces(const AValue: TArray<string>);
 begin
-  TLspNamespaces.Write(FNamespaces, AValue);
+  TSharedNamespaces.Write(FNamespaces, AValue);
 end;
 
 procedure TCompletionHooks.SetCustomPostfix(const ATemplates: TArray<TPostfixTemplate>);

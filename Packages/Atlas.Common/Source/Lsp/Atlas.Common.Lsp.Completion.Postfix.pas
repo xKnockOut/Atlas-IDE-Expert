@@ -51,7 +51,8 @@ uses
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Lsp.FuzzyMatch,
-  Atlas.Common.Lsp.CompletionCollector;
+  Atlas.Common.Lsp.CompletionCollector,
+  Atlas.Common.Pascal.TypeTexts;
 
 type
   TSymbolKinds = set of TIndexSymbolKind;
@@ -182,10 +183,10 @@ begin
   begin
     ATraits.TypeName := AChain.TypeInfo.Name;
   end;
-  ATraits.ElementType := TPostfixTemplates.ElementOf(AOwnerType);
+  ATraits.ElementType := TPascalTypeTexts.ElementOf(AOwnerType);
   if (ATraits.ElementType = '') and AChain.TypeFound then
   begin
-    ATraits.ElementType := TPostfixTemplates.ElementOf(AChain.TypeInfo.TypeName);
+    ATraits.ElementType := TPascalTypeTexts.ElementOf(AChain.TypeInfo.TypeName);
   end;
   ATraits.Enumerable := ATraits.ElementType <> '';
 end;
@@ -243,14 +244,14 @@ var
   mBuiltin: string;
 begin
   mBuiltin := BuiltinName(AChain);
-  ATraits.IsString := TPostfixTemplates.IsStringType(AChain.Owner.TypeName) or
-    ((mBuiltin <> '') and TPostfixTemplates.IsStringType(mBuiltin));
-  ATraits.IsBoolean := TPostfixTemplates.IsBooleanType(AChain.Owner.TypeName) or
-    ((mBuiltin <> '') and TPostfixTemplates.IsBooleanType(mBuiltin));
+  ATraits.IsString := TPascalTypeTexts.IsStringType(AChain.Owner.TypeName) or
+    ((mBuiltin <> '') and TPascalTypeTexts.IsStringType(mBuiltin));
+  ATraits.IsBoolean := TPascalTypeTexts.IsBooleanType(AChain.Owner.TypeName) or
+    ((mBuiltin <> '') and TPascalTypeTexts.IsBooleanType(mBuiltin));
   ATraits.IsClass := OwnTypeOf(AChain, [TIndexSymbolKind.ClassType]);
   ATraits.IsReference := OwnTypeOf(AChain, [TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType]) or
-    TPostfixTemplates.IsPointerType(AChain.Owner.TypeName) or
-    (AChain.TypeFound and TPostfixTemplates.IsPointerType(AChain.TypeInfo.TypeName));
+    TPascalTypeTexts.IsPointerType(AChain.Owner.TypeName) or
+    (AChain.TypeFound and TPascalTypeTexts.IsPointerType(AChain.TypeInfo.TypeName));
 end;
 
 /// <summary>Was über den Typ der Kette bekannt ist; False, wenn er unbekannt ist oder kein Wert vorliegt.</summary>

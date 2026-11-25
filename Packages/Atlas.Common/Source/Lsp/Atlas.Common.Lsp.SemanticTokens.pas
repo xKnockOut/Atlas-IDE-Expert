@@ -23,7 +23,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.Reassigned,
-  Atlas.Common.Lsp.Internals.Feature;
+  Atlas.Common.Semantics.Feature;
 
 type
   /// <summary>Reihenfolge = Index in der Legende.</summary>
@@ -40,7 +40,7 @@ type
     Modifiers: TSemanticTokenModifiers;
   end;
 
-  TLspSemanticTokens = class(TLspIndexFeature)
+  TLspSemanticTokens = class(TIndexFeature)
   public const
     cFullMethod = 'textDocument/semanticTokens/full';
     cRangeMethod = 'textDocument/semanticTokens/range';
@@ -55,7 +55,7 @@ type
       const ARange: TTextRange; AWithRange: Boolean;
       const ACancellation: IJsonRpcCancellationToken): TArray<TSemanticToken>;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
+    /// <summary>Unter TSharedNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -82,7 +82,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.Internals.Namespaces,
+  Atlas.Common.Semantics.Namespaces,
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
@@ -92,7 +92,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Index.LibraryUnits,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.Lsp.Reassigned,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Names;
@@ -422,12 +422,12 @@ end;
 
 function TLspSemanticTokens.GetNamespaces: TArray<string>;
 begin
-  Result := TLspNamespaces.Read(FNamespaces);
+  Result := TSharedNamespaces.Read(FNamespaces);
 end;
 
 procedure TLspSemanticTokens.SetNamespaces(const AValue: TArray<string>);
 begin
-  TLspNamespaces.Write(FNamespaces, AValue);
+  TSharedNamespaces.Write(FNamespaces, AValue);
 end;
 
 function TLspSemanticTokens.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken;

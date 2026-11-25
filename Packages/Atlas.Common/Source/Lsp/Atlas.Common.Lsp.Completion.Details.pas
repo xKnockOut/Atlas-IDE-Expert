@@ -48,7 +48,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Editing.InterfaceStubs,
-  Atlas.Common.Lsp.Documentation;
+  Atlas.Common.Lsp.Documentation,
+  Atlas.Common.Pascal.TypeTexts;
 
 const
   cDirectives: array[0..13] of string = ('class', 'static', 'virtual', 'dynamic', 'override', 'abstract', 'final',
@@ -352,7 +353,7 @@ begin
   if (Length(ABindings) > 0) and ADetails.TryGetValue<string>('declaration', mText) then
   begin
     ADetails.RemovePair('declaration').Free;
-    ADetails.AddPair('declaration', TInterfaceStubs.SubstituteWords(mText, ABindings));
+    ADetails.AddPair('declaration', TPascalTypeTexts.SubstituteWords(mText, ABindings));
   end;
 end;
 
