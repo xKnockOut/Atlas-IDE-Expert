@@ -5,9 +5,10 @@
 // und Unit-Suche importierten dafür den Hover. Nur im Hauptthread.
 // Ersatz-Units des Servers (atlas-ide:…, nur aus der RTTI der Packages) gibt es nicht als Datei: kein Sprung
 // dorthin, die IDE legte sonst einen leeren Reiter unter diesem Namen an.
-// Sprung nach einem Klick in den Text des Editors (Marken, Inlay-Hinweise, Kopf des Sticky Scroll) über
-// JumpAfterClick: erst nach dem Loslassen der Maustaste, sonst zieht der Editor ab der Klickstelle eine Markierung
-// bis zur Sprungstelle auf.
+// Klick auf eigene Elemente im Editor (Marken, Inlay-Hinweise, Kopf des Sticky Scroll, Symbole der Gutter-Spalte)
+// über AfterClick bzw. JumpAfterClick: Der Editor behandelt denselben Klick selbst (im Text beginnt er eine
+// Markierung, in der Gutter-Leiste markiert er die Zeile). Gehandelt wird erst nach dem Loslassen der Maustaste,
+// davor wird seine Markierung verworfen.
 
 interface
 
@@ -30,6 +31,14 @@ type
     /// </summary>
     class procedure JumpAfterClick(AFeature: TAtlasFeature; const AFileName: string; ALine, ACharacter: Integer;
       const AThen: TProc); static;
+    /// <summary>AAction nach einem Klick auf ein eigenes Element im Editor: erst, wenn die linke Maustaste wieder
+    /// oben ist, und nachdem die Markierung verworfen ist, die der Editor für denselben Klick angelegt hat
+    /// (Text bis zur Maus, in der Gutter-Leiste die ganze Zeile). Geschützt über AFeature. AOwner: Wer AAction
+    /// übergibt, ruft vor seiner Freigabe CancelAfterClick(Self); nur aus Base, ein Modul kann bis dahin entladen
+    /// sein. Ein neuer Klick ersetzt einen noch wartenden.</summary>
+    class procedure AfterClick(AFeature: TAtlasFeature; AOwner: TObject; const AAction: TProc); static;
+    /// <summary>Verwirft einen noch wartenden Klick von AOwner.</summary>
+    class procedure CancelAfterClick(AOwner: TObject); static;
     /// <summary>Zeigt AFileName ohne Sprung; öffnet sie nur, wenn sie noch nicht offen ist. False, wenn die IDE sie
     /// nicht öffnen kann.</summary>
     class function ShowFile(const AFileName: string): Boolean; static;
@@ -54,90 +63,96 @@ uses
   Atlas.Core.Lsp.Session;
 
 type
-  /// <summary>Ein wartender Sprung nach einem Klick; der Takt prüft, ob die Maustaste oben ist.</summary>
-  TClickJump = class
+  /// <summary>Ein wartender Klick; der Takt prüft, ob die Maustaste oben ist.</summary>
+  TPendingClick = class
   private
     FTimer: TTimer;
     FFeature: TAtlasFeature;
-    FFileName: string;
-    FLine: Integer;
-    FCharacter: Integer;
-    FThen: TProc;
+    FOwner: TObject;
+    FAction: TProc;
     procedure Tick(Sender: TObject);
   public
     destructor Destroy; override;
-    procedure Start(AFeature: TAtlasFeature; const AFileName: string; ALine, ACharacter: Integer;
-      const AThen: TProc);
+    procedure Start(AFeature: TAtlasFeature; AOwner: TObject; const AAction: TProc);
+    procedure Cancel(AOwner: TObject);
   end;
 
 const
   // Takt, in dem geprüft wird, ob die Maustaste oben ist (ms).
-  cClickJumpInterval = 20;
+  cClickInterval = 20;
 
 var
-  GClickJump: TClickJump;
+  GPendingClick: TPendingClick;
 
-{ TClickJump }
+/// <summary>Markierung der oberen Ansicht verwerfen.</summary>
+procedure ResetTopBlock;
+var
+  mEditors: IOTAEditorServices;
+  mView: IOTAEditView;
+begin
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+  begin
+    mView := mEditors.TopView;
+    if (mView <> nil) and (mView.Block <> nil) then
+    begin
+      mView.Block.Reset;
+    end;
+  end;
+end;
 
-destructor TClickJump.Destroy;
+{ TPendingClick }
+
+destructor TPendingClick.Destroy;
 begin
   FTimer.Free;
-  FThen := nil;
+  FAction := nil;
   inherited Destroy;
 end;
 
-procedure TClickJump.Start(AFeature: TAtlasFeature; const AFileName: string; ALine, ACharacter: Integer;
-  const AThen: TProc);
+procedure TPendingClick.Start(AFeature: TAtlasFeature; AOwner: TObject; const AAction: TProc);
 begin
   FFeature := AFeature;
-  FFileName := AFileName;
-  FLine := ALine;
-  FCharacter := ACharacter;
-  FThen := AThen;
+  FOwner := AOwner;
+  FAction := AAction;
   if FTimer = nil then
   begin
     FTimer := TTimer.Create(nil);
-    FTimer.Interval := cClickJumpInterval;
+    FTimer.Interval := cClickInterval;
     FTimer.OnTimer := Tick;
   end;
   FTimer.Enabled := True;
 end;
 
-procedure TClickJump.Tick(Sender: TObject);
+procedure TPendingClick.Cancel(AOwner: TObject);
+begin
+  if (FAction <> nil) and (FOwner = AOwner) then
+  begin
+    FTimer.Enabled := False;
+    FAction := nil;
+    FOwner := nil;
+  end;
+end;
+
+procedure TPendingClick.Tick(Sender: TObject);
 var
-  mFileName: string;
-  mLine, mCharacter: Integer;
-  mThen: TProc;
+  mAction: TProc;
 begin
   if GetAsyncKeyState(VK_LBUTTON) < 0 then
   begin
     Exit;
   end;
   FTimer.Enabled := False;
-  mFileName := FFileName;
-  mLine := FLine;
-  mCharacter := FCharacter;
-  mThen := FThen;
-  FThen := nil;
+  mAction := FAction;
+  FAction := nil;
+  FOwner := nil;
   TAtlasGuard.Run(FFeature,
     procedure
-    var
-      mEditors: IOTAEditorServices;
-      mView: IOTAEditView;
     begin
-      TAtlasIdeNavigation.GoToLocation(mFileName, mLine, mCharacter);
-      // Was der Editor beim Klick als Markierung begonnen hat, verwerfen.
-      if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+      // Was der Editor für denselben Klick markiert hat, verwerfen.
+      ResetTopBlock;
+      if Assigned(mAction) then
       begin
-        mView := mEditors.TopView;
-        if (mView <> nil) and (mView.Block <> nil) then
-        begin
-          mView.Block.Reset;
-        end;
-      end;
-      if Assigned(mThen) then
-      begin
-        mThen();
+        mAction();
       end;
     end);
 end;
@@ -214,12 +229,41 @@ end;
 
 class procedure TAtlasIdeNavigation.JumpAfterClick(AFeature: TAtlasFeature; const AFileName: string; ALine,
   ACharacter: Integer; const AThen: TProc);
+var
+  mFileName: string;
+  mLine, mCharacter: Integer;
+  mThen: TProc;
 begin
-  if GClickJump = nil then
+  mFileName := AFileName;
+  mLine := ALine;
+  mCharacter := ACharacter;
+  mThen := AThen;
+  AfterClick(AFeature, nil,
+    procedure
+    begin
+      GoToLocation(mFileName, mLine, mCharacter);
+      if Assigned(mThen) then
+      begin
+        mThen();
+      end;
+    end);
+end;
+
+class procedure TAtlasIdeNavigation.AfterClick(AFeature: TAtlasFeature; AOwner: TObject; const AAction: TProc);
+begin
+  if GPendingClick = nil then
   begin
-    GClickJump := TClickJump.Create;
+    GPendingClick := TPendingClick.Create;
   end;
-  GClickJump.Start(AFeature, AFileName, ALine, ACharacter, AThen);
+  GPendingClick.Start(AFeature, AOwner, AAction);
+end;
+
+class procedure TAtlasIdeNavigation.CancelAfterClick(AOwner: TObject);
+begin
+  if GPendingClick <> nil then
+  begin
+    GPendingClick.Cancel(AOwner);
+  end;
 end;
 
 class function TAtlasIdeNavigation.ShowFile(const AFileName: string): Boolean;
@@ -321,6 +365,6 @@ end;
 initialization
 
 finalization
-  FreeAndNil(GClickJump);
+  FreeAndNil(GPendingClick);
 
 end.
