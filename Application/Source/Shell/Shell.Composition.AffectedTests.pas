@@ -12,7 +12,6 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Lsp.TestUnits,
   Atlas.Common.Lsp.AffectedTests,
@@ -20,7 +19,8 @@ uses
   Atlas.Common.Lsp.AffectedTests.Types,
   Core.AffectedTests,
   Shell.Composition.Workspaces,
-  Shell.Composition.Settings;
+  Shell.Composition.Settings,
+  Atlas.Common.Semantics.References;
 
 type
   TShellAffectedNamesFunc = reference to function: TArray<string>;

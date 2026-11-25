@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.GenericLists;
+﻿unit Atlas.Common.Semantics.GenericLists;
 
 // Ungenerische Listen in generische umwandeln (#1105 legacy-tlist, #1106 Stapel
 // und Warteschlangen): TList → TList<T>, TObjectList (Contnrs) →
@@ -44,7 +44,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.GenericLists.Usages;
+  Atlas.Common.Semantics.GenericLists.Usages;
 
 type
   /// <summary>Ergebnis der Umwandlung.</summary>
@@ -100,11 +100,11 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Semantics.LegacyListKinds,
-  Atlas.Common.Editing.GenericLists.Syntax,
-  Atlas.Common.Editing.GenericLists.Source,
-  Atlas.Common.Editing.GenericLists.State,
-  Atlas.Common.Editing.GenericLists.Elements,
-  Atlas.Common.Editing.GenericLists.UsesEdits,
+  Atlas.Common.Semantics.GenericLists.Syntax,
+  Atlas.Common.Semantics.GenericLists.Source,
+  Atlas.Common.Semantics.GenericLists.State,
+  Atlas.Common.Semantics.GenericLists.Elements,
+  Atlas.Common.Semantics.GenericLists.UsesEdits,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -312,6 +312,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.GenericLists', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.GenericLists', cTexts);
 
 end.

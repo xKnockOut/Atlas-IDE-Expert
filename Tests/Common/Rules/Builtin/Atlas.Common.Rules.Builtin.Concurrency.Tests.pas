@@ -965,7 +965,7 @@ begin
     '        Importieren(Datei);'#10'      except'#10'        on E: Exception do'#10'        begin'#10 +
     '          var Fehler := E.Message;'#10'          TThread.Queue(nil,'#10'            procedure'#10 +
     '            begin'#10'              ShowMessage(Fehler);'#10'            end);'#10'        end;'#10 +
-    '      end;'#10'    end);'#10), 'System.Threading;', 'System.Threading,'#10'  Vcl.Dialogs;', []), mFixed);
+    '      end;'#10'    end);'#10), 'System.Threading;', 'System.Threading, Vcl.Dialogs;', []), mFixed);
   mTree := TPascalParser.Parse(mFixed);
   try
     Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));

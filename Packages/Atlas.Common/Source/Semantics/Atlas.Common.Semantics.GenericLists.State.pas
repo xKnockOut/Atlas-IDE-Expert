@@ -1,8 +1,8 @@
-﻿unit Atlas.Common.Editing.GenericLists.State;
+﻿unit Atlas.Common.Semantics.GenericLists.State;
 
 // Gemeinsamer Zustand der Listenumwandlung (#1105, #1106) und unterste Stufe der Klassenkette
 // TGenericListState → TGenericListDeclarations (.Declarations) → TGenericListUsages (.Usages) →
-// TGenericListConversion (Atlas.Common.Editing.GenericLists): Listenart, Namensauflösung, Dateien, Grund des
+// TGenericListConversion (Atlas.Common.Semantics.GenericLists): Listenart, Namensauflösung, Dateien, Grund des
 // Abbruchs, die umzuwandelnde Liste (TGenericListTarget) und was die Stufen über sie sammeln (Casts, Elemente,
 // Properties, Namen für andere Units).
 
@@ -13,7 +13,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.LegacyListKinds,
-  Atlas.Common.Editing.GenericLists.Source;
+  Atlas.Common.Semantics.GenericLists.Source;
 
 type
   {$SCOPEDENUMS ON}
@@ -103,7 +103,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.GenericLists.Syntax,
+  Atlas.Common.Semantics.GenericLists.Syntax,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -288,6 +288,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.GenericLists.State', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.GenericLists.State', cTexts);
 
 end.

@@ -37,8 +37,8 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.Hover,
-  Atlas.Common.Lsp.References,
-  Atlas.Tests.SourceText;
+  Atlas.Tests.SourceText,
+  Atlas.Common.Semantics.References;
 
 const
   cUnitAttribute =
@@ -151,7 +151,7 @@ var
 begin
   mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    mFound := TLspReferences.Find(FResolver, FIndex, mTree,
+    mFound := TReferences.Find(FResolver, FIndex, mTree,
       TReferenceSearch.Create(cHauptFile, TTestSource.PositionOf(cUnitHaupt, 'TestFixture]'), True,
       [cAttributeFile, cHauptFile],
       function(const AFileName: string; out AText: string): Boolean

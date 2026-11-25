@@ -470,6 +470,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 | `format.alignAssignments` | project (atlas.json) | boolean | `false` |  | Align := of assignments on consecutive lines. |
 | `format.alignDeclarations` | project (atlas.json) | boolean | `false` |  | Align colons or = of declarations on consecutive lines (var, const, fields, parameters). |
 | `format.alignComments` | project (atlas.json) | boolean | `false` |  | Align end-of-line comments of consecutive lines. |
+| `format.sortUses` | project (atlas.json) | boolean | `false` |  | When formatting the whole file in the editor (not for a selection, not --format-check/--format-write) sort the uses lists like /sortuses: order from slashCommands.sortUsesOrder, groups as in usesGroupStyle, comment sections stay, duplicate entries are dropped. Formatting never removes unused units; lists with {$IFDEF} stay untouched. Caution: the order determines the initialization of the units. |
 
 ## issues
 

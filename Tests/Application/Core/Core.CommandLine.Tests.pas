@@ -85,7 +85,7 @@ uses
   System.StrUtils,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Output,
+  Atlas.Common.Findings.Output,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Monitor.Commands,
   Core.CommandLine;

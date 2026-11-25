@@ -64,6 +64,10 @@ type
     /// Syntaxfehlern nicht Active.</summary>
     class function ResolveFunc(const ASource: TUsesUsageSource; const AFileName: string;
       const AInfo: TUsesUnitInfoFunc): TUsesResolveFunc; static;
+    /// <summary>TUsesContext.ResolveTree für die Datei AFileName: löst den übergebenen Baum auf, ohne ihn erneut zu
+    /// übersetzen; bei Syntaxfehlern nicht Active.</summary>
+    class function ResolveTreeFunc(const ASource: TUsesUsageSource; const AFileName: string;
+      const AInfo: TUsesUnitInfoFunc): TUsesTreeResolveFunc; static;
   end;
 
 implementation
@@ -119,7 +123,9 @@ type
     function IsHelperMember(const AResolved: TResolvedSymbol): Boolean;
     function NeedsUnit(const AResolved: TResolvedSymbol): Boolean;
     function IsDone(const AEntry: TUsageEntry): Boolean;
-    function IsOpenName(const AName: string): Boolean;
+    function Lacks(const AEntry: TUsageEntry; APart: Integer): Boolean;
+    function AnyLacks(APart: Integer): Boolean;
+    function IsOpenName(const AName: string; APart: Integer): Boolean;
     procedure MarkUnit(const AUnitName: string; APart: Integer);
     procedure MarkDeclaring(const AName: string; APart: Integer);
     function PartAt(AOffset: Integer): Integer;
@@ -282,7 +288,30 @@ begin
   end;
 end;
 
-function TUsageRun.IsOpenName(const AName: string): Boolean;
+/// <summary>Kann ein Bezeichner im Teil APart für AEntry noch etwas ändern? Nur, wenn der Eintrag offen ist und
+/// für diesen Teil noch nicht gezählt wurde. Sonst wiederholte jede Verwendung von Format, IntToStr … im
+/// implementation-Teil die Auflösung für ein interface-uses, das dort längst gebraucht wird, und große Units
+/// brauchten Sekunden.</summary>
+function TUsageRun.Lacks(const AEntry: TUsageEntry; APart: Integer): Boolean;
+begin
+  Result := not IsDone(AEntry) and (AEntry.Mask and APart = 0);
+end;
+
+function TUsageRun.AnyLacks(APart: Integer): Boolean;
+var
+  mEntry: TUsageEntry;
+begin
+  for mEntry in FEntries do
+  begin
+    if Lacks(mEntry, APart) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TUsageRun.IsOpenName(const AName: string; APart: Integer): Boolean;
 var
   mList: TArray<Integer>;
   mPosition: Integer;
@@ -291,7 +320,7 @@ begin
   begin
     for mPosition in mList do
     begin
-      if not IsDone(FEntries[mPosition]) then
+      if Lacks(FEntries[mPosition], APart) then
       begin
         Exit(True);
       end;
@@ -367,8 +396,8 @@ var
 begin
   mToken := FTokens[AIndex];
   mName := TTextNames.WithoutAmpersand(mToken.Text);
-  mRelevant := IsOpenName(LowerCase(mName));
-  mInline := (FCallees <> nil) and FCallees.IsCandidate(mName);
+  mRelevant := IsOpenName(LowerCase(mName), APart);
+  mInline := (FCallees <> nil) and FCallees.IsCandidate(mName) and AnyLacks(APart);
   if not (mRelevant or mInline) then
   begin
     Exit;
@@ -629,8 +658,8 @@ begin
   end;
 end;
 
-class function TUsesUsage.ResolveFunc(const ASource: TUsesUsageSource; const AFileName: string;
-  const AInfo: TUsesUnitInfoFunc): TUsesResolveFunc;
+class function TUsesUsage.ResolveTreeFunc(const ASource: TUsesUsageSource; const AFileName: string;
+  const AInfo: TUsesUnitInfoFunc): TUsesTreeResolveFunc;
 var
   mSource: TUsesUsageSource;
   mFileName: string;
@@ -640,18 +669,31 @@ begin
   mFileName := AFileName;
   mInfo := AInfo;
   Result :=
+    function(ATree: TSyntaxTree; const AInactive: TArray<TTextRange>): TUsesResolution
+    begin
+      Result := Default(TUsesResolution);
+      // Bei Syntaxfehlern fehlen Bezeichner: dann nur der Namensvergleich.
+      if (ATree <> nil) and (Length(ATree.Diagnostics) = 0) then
+      begin
+        Result := TUsesUsage.Resolve(mSource, ATree, mFileName, AInactive, mInfo);
+      end;
+    end;
+end;
+
+class function TUsesUsage.ResolveFunc(const ASource: TUsesUsageSource; const AFileName: string;
+  const AInfo: TUsesUnitInfoFunc): TUsesResolveFunc;
+var
+  mResolveTree: TUsesTreeResolveFunc;
+begin
+  mResolveTree := ResolveTreeFunc(ASource, AFileName, AInfo);
+  Result :=
     function(const AText: string; const AInactive: TArray<TTextRange>): TUsesResolution
     var
       mTree: TSyntaxTree;
     begin
-      Result := Default(TUsesResolution);
       mTree := TSyntaxTreeCache.Parse(AText);
       try
-        // Bei Syntaxfehlern fehlen Bezeichner: dann nur der Namensvergleich.
-        if Length(mTree.Diagnostics) = 0 then
-        begin
-          Result := TUsesUsage.Resolve(mSource, mTree, mFileName, AInactive, mInfo);
-        end;
+        Result := mResolveTree(mTree, AInactive);
       finally
         mTree.Free;
       end;

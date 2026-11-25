@@ -128,7 +128,7 @@ type
     /// Interface), also kein Alias?</summary>
     function IsDeclaredType(const AName: string): Boolean;
     /// <summary>Typ AName jeder Art (Klasse, Record, Interface, Aufzählung, Alias) aus der Datei oder dem Index
-    /// (#1001); bei mehreren gleichnamigen der erste.</summary>
+    /// (#1001); bei mehreren gleichnamigen der erste aus einer eingebundenen Unit, sonst der erste.</summary>
     function FindAnyType(const AName: string; out AType: TSymbolLocation): Boolean;
     /// <summary>In AOwner dieser Unit geschachtelter Typ AName; geht vor gleichnamigen Typen anderer Units.</summary>
     function FindNestedType(const AOwner, AName: string; out AType: TSymbolLocation): Boolean;
@@ -890,18 +890,29 @@ begin
       Exit(True);
     end;
   end;
-  if FIndex <> nil then
+  Result := False;
+  if FIndex = nil then
   begin
-    for mLocation in FIndex.FindSymbols(AName) do
+    Exit;
+  end;
+  // Gleichnamige Typen anderer Units (Record TAtlasFormLayout in Analysis, Klasse im Designer): Die eingebundene
+  // geht vor; die Reihenfolge des Index entscheidet sonst je Lauf anders.
+  for mLocation in FIndex.FindSymbols(AName) do
+  begin
+    if (mLocation.Symbol.Kind in cKinds) and (mLocation.Symbol.Container = '') and Reachable(mLocation) then
     begin
-      if (mLocation.Symbol.Kind in cKinds) and (mLocation.Symbol.Container = '') and Reachable(mLocation) then
+      if Visible(mLocation, '') then
       begin
         AType := mLocation;
         Exit(True);
       end;
+      if not Result then
+      begin
+        AType := mLocation;
+        Result := True;
+      end;
     end;
   end;
-  Result := False;
 end;
 
 function TAncestry.FindNestedType(const AOwner, AName: string; out AType: TSymbolLocation): Boolean;

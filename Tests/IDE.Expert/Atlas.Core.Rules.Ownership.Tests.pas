@@ -67,6 +67,9 @@ begin
   Result.Labels[TAtlasOwnershipKind.Passed] := 'weitergegeben an %s';
   Result.Labels[TAtlasOwnershipKind.Unknown] := 'unklar';
   Result.Labels[TAtlasOwnershipKind.Never] := 'nie freigegeben';
+  Result.Labels[TAtlasOwnershipKind.FreedBy] := 'frei in %s';
+  Result.Labels[TAtlasOwnershipKind.TakenBy] := 'übernommen von %s';
+  Result.Labels[TAtlasOwnershipKind.Lent] := 'nur geliehen an %s';
   Result.FreedIn := 'frei in %s, Z. %d';
   Result.PassedSomewhere := 'weitergegeben';
   Result.Reasons[TAtlasOwnershipKind.InDestroy] := 'Destructor gibt frei.';
@@ -130,7 +133,8 @@ begin
       Mark(mKind).Tone, TAtlasOwnershipMarks.cKindNames[mKind]);
   end;
   for mKind in [TAtlasOwnershipKind.Freed, TAtlasOwnershipKind.Returned, TAtlasOwnershipKind.Passed,
-    TAtlasOwnershipKind.Unknown] do
+    TAtlasOwnershipKind.Unknown, TAtlasOwnershipKind.FreedBy, TAtlasOwnershipKind.TakenBy,
+    TAtlasOwnershipKind.Lent] do
   begin
     Assert.AreEqual<TAtlasOwnershipTone>(TAtlasOwnershipTone.Elsewhere,
       Mark(mKind).Tone, TAtlasOwnershipMarks.cKindNames[mKind]);
@@ -178,6 +182,15 @@ begin
   Assert.AreEqual('weitergegeben', TAtlasOwnershipMarks.Caption(mMark, Texts));
   mMark.Detail := 'Registry.Add';
   Assert.AreEqual('weitergegeben an Registry.Add', TAtlasOwnershipMarks.Caption(mMark, Texts));
+  mMark.Kind := TAtlasOwnershipKind.FreedBy;
+  mMark.Detail := 'Weiter › Weg';
+  Assert.AreEqual('frei in Weiter › Weg', TAtlasOwnershipMarks.Caption(mMark, Texts));
+  mMark.Kind := TAtlasOwnershipKind.TakenBy;
+  mMark.Detail := 'THalter.Create';
+  Assert.AreEqual('übernommen von THalter.Create', TAtlasOwnershipMarks.Caption(mMark, Texts));
+  mMark.Kind := TAtlasOwnershipKind.Lent;
+  mMark.Detail := 'StrBreakApart';
+  Assert.AreEqual('nur geliehen an StrBreakApart', TAtlasOwnershipMarks.Caption(mMark, Texts));
   mMark.Kind := TAtlasOwnershipKind.Owner;
   mMark.Detail := 'Self';
   Assert.AreEqual('Owner Self', TAtlasOwnershipMarks.Caption(mMark, Texts));

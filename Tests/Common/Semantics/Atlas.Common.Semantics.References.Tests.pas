@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.References.Tests;
+﻿unit Atlas.Common.Semantics.References.Tests;
 
 // Tests für die Referenzsuche (#29).
 
@@ -8,11 +8,11 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 type
   [TestFixture]
-  TLspReferencesTests = class
+  TReferencesTests = class
   private
     FIndex: ISymbolIndex;
     FResolver: TNameResolver;
@@ -96,15 +96,15 @@ const
     'end;'#10 +                                      // 10
     'end.';
 
-{ TLspReferencesTests }
+{ TReferencesTests }
 
-function TLspReferencesTests.FindAt(const AMarker: string; ADeclaration: Boolean): TArray<TReferenceLocation>;
+function TReferencesTests.FindAt(const AMarker: string; ADeclaration: Boolean): TArray<TReferenceLocation>;
 var
   mTree: TSyntaxTree;
 begin
   mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Result := TLspReferences.Find(FResolver, FIndex, mTree,
+    Result := TReferences.Find(FResolver, FIndex, mTree,
       TReferenceSearch.Create(cHauptFile, TTestSource.PositionOf(cUnitHaupt, AMarker),
       ADeclaration, [cWerkzeugFile, cHauptFile],
       function(const AFileName: string; out AText: string): Boolean
@@ -128,7 +128,7 @@ begin
   end;
 end;
 
-function TLspReferencesTests.Describe(const ALocations: TArray<TReferenceLocation>): string;
+function TReferencesTests.Describe(const ALocations: TArray<TReferenceLocation>): string;
 var
   mLocation: TReferenceLocation;
 begin
@@ -141,38 +141,38 @@ begin
   Result := Trim(Result);
 end;
 
-procedure TLspReferencesTests.Setup;
+procedure TReferencesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
-procedure TLspReferencesTests.TearDown;
+procedure TReferencesTests.TearDown;
 begin
   FResolver.Free;
   FIndex := nil;
 end;
 
-procedure TLspReferencesTests.FindsUsesAcrossUnits;
+procedure TReferencesTests.FindsUsesAcrossUnits;
 begin
   Assert.AreEqual('Haupt.pas:8:4 Haupt.pas:9:4 Haupt.pas:9:12 Werkzeug.pas:4:13 Werkzeug.pas:8:18 ' +
     'Werkzeug.dfm:1:12 Werkzeug.dfm:2:9', Describe(FindAt('Summe(1', True)));
 end;
 
-procedure TLspReferencesTests.WithoutDeclaration;
+procedure TReferencesTests.WithoutDeclaration;
 begin
   Assert.AreEqual('Haupt.pas:8:4 Haupt.pas:9:4 Haupt.pas:9:12 Werkzeug.pas:8:18 Werkzeug.dfm:1:12 Werkzeug.dfm:2:9',
     Describe(FindAt('Summe(1', False)));
 end;
 
-procedure TLspReferencesTests.IncludesFormReferences;
+procedure TReferencesTests.IncludesFormReferences;
 begin
   // Der Typname kommt in der .dfm als Klasse, nicht als Objektname vor.
   Assert.AreEqual('Haupt.pas:6:5 Werkzeug.pas:3:2 Werkzeug.pas:8:9', Describe(FindAt('TRechner;', True)));
 end;
 
-procedure TLspReferencesTests.ReadsDfmEventsAndObjects;
+procedure TReferencesTests.ReadsDfmEventsAndObjects;
 var
   mRanges: TArray<TTextRange>;
   mModel: TFormModel;
@@ -198,12 +198,12 @@ begin
   end;
 end;
 
-procedure TLspReferencesTests.NothingOutsideIdentifiers;
+procedure TReferencesTests.NothingOutsideIdentifiers;
 begin
   Assert.AreEqual('', Describe(FindAt('begin', True)));
 end;
 
-procedure TLspReferencesTests.FindManyOccurrencesSameResult;
+procedure TReferencesTests.FindManyOccurrencesSameResult;
 const
   cCount = 200;
 var
@@ -221,7 +221,7 @@ begin
   mText := mText + 'end;'#10'end.';
   mTree := TPascalParser.Parse(mText);
   try
-    mFound := TLspReferences.Find(FResolver, FIndex, mTree,
+    mFound := TReferences.Find(FResolver, FIndex, mTree,
       TReferenceSearch.Create(cHauptFile, TTextPosition.Create(8, 4), False,
       [cWerkzeugFile, cHauptFile, cWerkzeugFile],
       function(const AFileName: string; out AText: string): Boolean
@@ -248,7 +248,7 @@ begin
   Assert.AreEqual(8, mFound[cCount].Range.StartPos.Line);
 end;
 
-procedure TLspReferencesTests.FindResolverStaysPinnedAfterForeignTree;
+procedure TReferencesTests.FindResolverStaysPinnedAfterForeignTree;
 var
   mTree: TSyntaxTree;
   mPinned, mAgain: TUnitIndex;
@@ -259,7 +259,7 @@ begin
     FResolver.PinTree(mTree, cHauptFile);
     try
       mPinned := FResolver.ExtractedUnit(mTree, cHauptFile);
-      mFound := TLspReferences.Find(FResolver, FIndex, mTree,
+      mFound := TReferences.Find(FResolver, FIndex, mTree,
         TReferenceSearch.Create(cHauptFile, TTestSource.PositionOf(cUnitHaupt, 'Summe(1'), False,
         [cWerkzeugFile, cHauptFile],
         function(const AFileName: string; out AText: string): Boolean
@@ -277,7 +277,7 @@ begin
       FResolver.UnpinTree;
     end;
     // Ohne Pin des Aufrufers bleibt nach Find nichts gepinnt.
-    mFound := TLspReferences.Find(FResolver, FIndex, mTree,
+    mFound := TReferences.Find(FResolver, FIndex, mTree,
       TReferenceSearch.Create(cHauptFile, TTestSource.PositionOf(cUnitHaupt, 'Summe(1'), True,
       [cHauptFile], nil));
     Assert.AreEqual(3, Integer(Length(mFound)));
@@ -287,6 +287,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspReferencesTests);
+  TDUnitX.RegisterTestFixture(TReferencesTests);
 
 end.

@@ -725,7 +725,7 @@ begin
   Assert.AreEqual(10, mFound[0].Range.StartPos.Character);
   Assert.AreEqual('System.Variants in uses aufnehmen', mFound[0].Fixes[0].Title);
   mFixed := ApplyAny(mSource, mFound[0].Fixes[0].Edits[0]);
-  Assert.AreEqual(Speicher('System.SysUtils,'#10'  System.Variants', 'var Wert: Variant;'#10), mFixed);
+  Assert.AreEqual(Speicher('System.SysUtils, System.Variants', 'var Wert: Variant;'#10), mFixed);
   Assert.AreEqual(0, Integer(Length(VariantFindings(mFixed))));
   // OleVariant als Parameter im interface, Typargument.
   mFound := VariantFindings('unit Speicher;'#10'interface'#10'procedure Setzen(const AWert: OleVariant);'#10 +
@@ -765,7 +765,7 @@ begin
   mSource := Speicher('SysUtils, Classes', 'var Wert: Variant;'#10);
   mFound := VariantFindings(mSource);
   Assert.AreEqual('Variants in uses aufnehmen', mFound[0].Fixes[0].Title);
-  Assert.AreEqual(Speicher('SysUtils, Classes,'#10'  Variants', 'var Wert: Variant;'#10),
+  Assert.AreEqual(Speicher('SysUtils, Classes, Variants', 'var Wert: Variant;'#10),
     ApplyAny(mSource, mFound[0].Fixes[0].Edits[0]));
   // Ohne uses im Abschnitt: neues uses hinter implementation.
   mSource := 'unit Speicher;'#10'interface'#10'implementation'#10'var Wert: Variant;'#10'end.';

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.GenericLists.Syntax;
+﻿unit Atlas.Common.Semantics.GenericLists.Syntax;
 
 // Abfragen am Syntaxbaum, die die Umwandlung ungenerischer Listen (#1105, #1106) braucht: Namen, nil, Klammern,
 // Zuweisungsziele, umgebende Routine und Abschnitt, Sichtbarkeit, Wörter hinter read/write und for var.

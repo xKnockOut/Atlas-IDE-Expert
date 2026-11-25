@@ -25,6 +25,10 @@ type
     class function OfName(const AUnitName: string): TUsesGroup; static;
     /// <summary>Gruppe aus dem Fundort; bei unbekanntem Fundort wie OfName.</summary>
     class function OfFile(const AUnitName: string; const AFile: TUsesUnitFile): TUsesGroup; static;
+    /// <summary>Liegt AFileName in einer Delphi-Installation: unter ABdsRoot oder unter einem anderen
+    /// "…\Embarcadero\Studio\&lt;Version&gt;\" (Suchpfad auf die Quellen einer anderen Version)? AInstallPath ist dann
+    /// der Pfad darunter (source\rtl\common\System.Classes.pas).</summary>
+    class function InstallPathOf(const AFileName, ABdsRoot: string; out AInstallPath: string): Boolean; static;
     /// <summary>Kommentartext der Gruppe in der aktuellen Sprache, z. B. "{ System }".</summary>
     class function LabelOf(AGroup: TUsesGroup): string; static;
     /// <summary>Ist AComment ein Gruppenkommentar ({ … } oder (* … *)) in einer der beiden Sprachen?</summary>
@@ -132,6 +136,39 @@ begin
       Result := TUsesGroup.Project;
   else
     Result := OfName(AUnitName);
+  end;
+end;
+
+class function TUsesGroups.InstallPathOf(const AFileName, ABdsRoot: string; out AInstallPath: string): Boolean;
+const
+  cMarker = '\embarcadero\studio\';
+var
+  mPath, mRoot: string;
+  mStart, mStop: Integer;
+begin
+  AInstallPath := '';
+  mPath := AFileName.Replace('/', '\');
+  mRoot := ABdsRoot.Replace('/', '\');
+  if (mRoot <> '') and not EndsStr('\', mRoot) then
+  begin
+    mRoot := mRoot + '\';
+  end;
+  if (mRoot <> '') and StartsText(mRoot, mPath) then
+  begin
+    AInstallPath := Copy(mPath, Length(mRoot) + 1, MaxInt);
+    Exit(True);
+  end;
+  // Hinter "Studio\" steht die Version ("23.0"), dann der Pfad unter $(BDS).
+  mStart := Pos(cMarker, LowerCase(mPath));
+  mStop := 0;
+  if mStart > 0 then
+  begin
+    mStop := PosEx('\', mPath, mStart + Length(cMarker));
+  end;
+  Result := mStop > 0;
+  if Result then
+  begin
+    AInstallPath := Copy(mPath, mStop + 1, MaxInt);
   end;
 end;
 

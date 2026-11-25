@@ -34,8 +34,11 @@ type
     Names: TArray<string>;
     /// <summary>Im interface einer Unit.</summary>
     InInterface: Boolean;
-    /// <summary>Ohne Direktiven und //-Kommentare; nur solche Listen werden umgeschrieben.</summary>
+    /// <summary>Ohne Direktiven und //-Kommentare.</summary>
     Plain: Boolean;
+    /// <summary>Ohne Direktiven: TPascalUsesEdits.Rewrite schreibt die Liste um, Kommentare auch in Abschnitten.
+    /// </summary>
+    Rewritable: Boolean;
   end;
 
   /// <summary>Liest die uses-Listen einer Unit, eines Programms oder Packages.</summary>
@@ -73,6 +76,8 @@ type
     /// <summary>True, wenn die Liste zwischen AFirst und ALast keine Direktive und keinen //-Kommentar enthält.
     /// </summary>
     class function IsPlainList(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): Boolean; static;
+    /// <summary>Steht zwischen AFirst und ALast eine Direktive ({$IFDEF})?</summary>
+    class function HasDirectives(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): Boolean; static;
     /// <summary>ATokens ohne die Token, die in einem der Bereiche AInactive beginnen (inaktive Zweige, #621);
     /// bei AInactive = nil ATokens selbst.</summary>
     class function ActiveTokens(const ATokens: TArray<TPascalToken>;
@@ -451,6 +456,20 @@ begin
   Result := True;
 end;
 
+class function TPascalUses.HasDirectives(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  for mIndex := AFirst to ALast do
+  begin
+    if ATokens[mIndex].Kind = TPascalTokenKind.Directive then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 class function TPascalUses.Clauses(const ATokens: TArray<TPascalToken>): TArray<TUsesClauseInfo>;
 var
   mIndex: Integer;
@@ -479,6 +498,7 @@ begin
       end;
       mClause.InInterface := mIsUnit and not mInImplementation;
       mClause.Plain := IsPlainList(ATokens, mIndex + 1, mClause.Semicolon - 1);
+      mClause.Rewritable := not HasDirectives(ATokens, mIndex + 1, mClause.Semicolon - 1);
       Result := Result + [mClause];
       mIndex := mClause.Semicolon;
     end;

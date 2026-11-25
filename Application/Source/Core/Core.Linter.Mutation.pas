@@ -35,7 +35,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Rules.Output,
+  Atlas.Common.Findings.Output,
   Atlas.Common.Mutation.Report,
   Core.Linter.Output,
   Core.Linter.Settings,

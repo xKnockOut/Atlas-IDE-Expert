@@ -25,6 +25,10 @@ type
     /// <summary>#293/#43: Schnellbefehle nach Enter rücken nach den Editor-Optionen ein (hier Tabulatoren).</summary>
     [Test]
     procedure SlashCommandFollowsEditorOptions;
+    /// <summary>format.sortUses: Die ganze Datei formatieren sortiert die uses mit, die übrigen Änderungen
+    /// bleiben; ohne Schalter oder bei einer Auswahl nicht.</summary>
+    [Test]
+    procedure FormattingSortsUsesWhenSwitchedOn;
   end;
 
 implementation
@@ -39,6 +43,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Editing.EditorConfig,
+  Atlas.Common.Editing.MaintenanceCommands,
   Atlas.Common.Lsp.Formatting;
 
 const
@@ -106,6 +111,29 @@ begin
   end;
 end;
 
+/// <summary>result der Antwort auf AJson (Anfrage mit id 1) als JSON-Text.</summary>
+function ResultOf(ADispatcher: TJsonRpcDispatcher; const AJson: string): string;
+var
+  mRequest, mResponse: TJSONObject;
+  mResult: TJSONValue;
+begin
+  mRequest := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
+  try
+    mResponse := ADispatcher.DispatchMessage(mRequest);
+    try
+      Result := '';
+      if mResponse.TryGetValue<TJSONValue>('result', mResult) then
+      begin
+        Result := mResult.ToJSON;
+      end;
+    finally
+      mResponse.Free;
+    end;
+  finally
+    mRequest.Free;
+  end;
+end;
+
 { TLspFormattingTests }
 
 procedure TLspFormattingTests.EditorOptionsAreTheBase;
@@ -163,11 +191,13 @@ begin
   mConfigured.Reindent := False;
   mConfigured.BeginPlacement := TBlockPlacement.NewLine;
   mConfigured.AlignComments := True;
+  mConfigured.SortUses := True;
   mConfigured.MaxLineLength := 90;
   mStyle := TLspFormatting.Resolve(nil, 'C:\P\Unit1.pas', mConfigured, nil);
   Assert.IsFalse(mStyle.Reindent);
   Assert.AreEqual<TBlockPlacement>(TBlockPlacement.NewLine, mStyle.BeginPlacement);
   Assert.IsTrue(mStyle.AlignComments);
+  Assert.IsTrue(mStyle.SortUses);
   Assert.AreEqual(0, mStyle.MaxLineLength);
   mConfigured.Given := [TFormatKey.MaxLineLength];
   mStyle := TLspFormatting.Resolve(nil, 'C:\P\Unit1.pas', mConfigured, nil);
@@ -324,6 +354,52 @@ begin
     finally
       mMessage_.Free;
     end;
+  finally
+    mFormatting.Free;
+    mDispatcher.Free;
+  end;
+end;
+
+procedure TLspFormattingTests.FormattingSortsUsesWhenSwitchedOn;
+const
+  cWhole = '{"jsonrpc":"2.0","id":1,"method":"textDocument/formatting","params":{"textDocument":{"uri":"' +
+    cCancelUri + '"},"options":{"tabSize":2,"insertSpaces":true}}}';
+  cRange = '{"jsonrpc":"2.0","id":1,"method":"textDocument/rangeFormatting","params":{"textDocument":{"uri":"' +
+    cCancelUri + '"},"range":{"start":{"line":0,"character":0},"end":{"line":9,"character":0}},' +
+    '"options":{"tabSize":2,"insertSpaces":true}}}';
+var
+  mStore: IDocumentStore;
+  mFormatting: TLspFormatting;
+  mDispatcher: TJsonRpcDispatcher;
+  mSortUses: Boolean;
+  mResult: string;
+begin
+  mStore := TDocumentStore.Create;
+  // Zeta doppelt, Leerzeichen am Ende von "interface" für den Formatter.
+  mStore.Open(cCancelUri, 'objectpascal', 1, 'unit Unit1;'#10'interface   '#10'uses'#10'  Zeta, Alpha, Zeta;'#10 +
+    'implementation'#10'end.');
+  mDispatcher := nil;
+  mFormatting := nil;
+  try
+    mDispatcher := TJsonRpcDispatcher.Create;
+    mSortUses := True;
+    mFormatting := TLspFormatting.Create(mStore,
+      function(const AUri: string): TFormatStyle
+      begin
+        Result := TFormatStyle.Default;
+        Result.SortUses := mSortUses;
+      end, nil);
+    mFormatting.SortUses := SortUsesEdits;
+    mFormatting.Attach(mDispatcher);
+    mResult := ResultOf(mDispatcher, cWhole);
+    Assert.IsTrue(Pos('\n  Alpha, Zeta"', mResult) > 0, mResult);
+    Assert.IsTrue(Pos('"newText":"interface"', mResult) > 0, 'Leerzeichen am Zeilenende: ' + mResult);
+    // Auswahl: nur formatieren.
+    mResult := ResultOf(mDispatcher, cRange);
+    Assert.AreEqual(0, Pos('Alpha', mResult), mResult);
+    mSortUses := False;
+    mResult := ResultOf(mDispatcher, cWhole);
+    Assert.AreEqual(0, Pos('Alpha', mResult), mResult);
   finally
     mFormatting.Free;
     mDispatcher.Free;

@@ -72,7 +72,8 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Documents.FileEncoding;
+  Atlas.Common.Documents.FileEncoding,
+  Atlas.Common.Editing.MaintenanceCommands;
 
 function ReadEditorConfig(const AFileName: string; out AText: string): Boolean;
 begin
@@ -97,6 +98,7 @@ begin
   FFormatting.SlashCommandsFor := FServices.SlashCommandsFor;
   FFormatting.DelphiVersionFor := FServices.LanguageLevelFor;
   FFormatting.DocCommentsFor := FServices.DocCommentsFor;
+  FFormatting.SortUses := SortUsesEdits;
   // Erzeugen-Menü (#719): dieselben Schalter, Versionen und derselbe Host wie die Schnellbefehle nach Enter.
   FSlashMenu := TLspSlashMenu.Create(FServices.Documents);
   FSlashMenu.SlashCommandsFor := FServices.SlashCommandsFor;

@@ -149,6 +149,8 @@
         <DCCReference Include="Common\Index\Atlas.Common.Index.UsageCounts.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.Conditions.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.InlineRefs.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.Routines.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.ParamOwnership.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.Patterns.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.Tokens.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.TypeText.Tests.pas"/>
@@ -199,12 +201,14 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.EventAssignments.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TokenCursor.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.CallOwnership.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.Parts.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Attributes.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ComponentRoots.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.LanguageFeatures.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.TreeUnits.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Definition.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Definitions.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Attributes.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.PublishedMembers.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.TypeInfoClasses.Tests.pas"/>
@@ -250,6 +254,7 @@
         <DCCReference Include="Common\Leaks\Atlas.Common.Leaks.Setup.Tests.pas"/>
         <DCCReference Include="Common\Leaks\Atlas.Common.Leaks.Candidates.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Ownership.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.CallOwnership.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Ownership.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SlashMenu.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.UnitSearch.Tests.pas"/>
@@ -257,8 +262,9 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.KeywordReference.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.AssignmentSwap.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.SignatureChanges.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.GenericLists.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.GenericLists.Parts.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.CommandLines.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.GenericLists.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.GenericLists.Parts.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.StringLiterals.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ExpressionText.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.StatementText.Tests.pas"/>
@@ -284,9 +290,9 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.PromoteVariable.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.FormMentions.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.PromoteVariable.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.References.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ReferenceConfidence.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ParameterHeaders.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.References.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ReferenceConfidence.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ParameterHeaders.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Rename.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.TestSupport.pas"/>
@@ -319,6 +325,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.AffectedTests.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.AffectedTests.Report.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CoveredBy.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Implementations.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Implementations.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.ImplementationSites.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InlayHints.Tests.pas"/>
@@ -527,6 +534,8 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.IncludeDefines.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.SyntaxNodes.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.SyntaxTree.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ParamOwnership.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ObjectUses.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.IncludeFiles.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Internals.Debouncer.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Internals.Feature.Tests.pas"/>
@@ -607,7 +616,9 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Confidence.Tests.pas"/>
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Contract.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Contract.Tests.pas"/>
-        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Output.Tests.pas"/>
+        <DCCReference Include="Common\Findings\Atlas.Common.Findings.Output.Tests.pas"/>
+        <DCCReference Include="Common\Findings\Atlas.Common.Findings.Filter.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Checker.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Prompt.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.FormatOutput.Tests.pas"/>
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Baseline.Tests.pas"/>
@@ -644,6 +655,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.MethodWithoutSelf.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.ClassCompletion.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.MethodOrder.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.SlashCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.PropertyGolden.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.InterfaceGolden.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.OverrideGolden.pas"/>

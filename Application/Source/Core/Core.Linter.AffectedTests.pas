@@ -7,9 +7,9 @@ interface
 
 uses
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.References,
   Core.CommandLine,
-  Core.Linter.Host;
+  Core.Linter.Host,
+  Atlas.Common.Semantics.References;
 
 type
   TLinterAffectedTests = class
@@ -35,7 +35,7 @@ uses
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Diagnostics.CheckProfile,
-  Atlas.Common.Rules.Output,
+  Atlas.Common.Findings.Output,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Lsp.AffectedTests.Report,

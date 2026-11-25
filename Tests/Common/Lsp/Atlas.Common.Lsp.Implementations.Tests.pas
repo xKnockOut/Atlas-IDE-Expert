@@ -1,177 +1,133 @@
 ﻿unit Atlas.Common.Lsp.Implementations.Tests;
 
+// Anfrage textDocument/implementation über den Dispatcher; die Ziele selbst prüft
+// Atlas.Common.Semantics.Implementations.Tests.
+
 interface
 
 uses
-  DUnitX.TestFramework,
-  Atlas.Common.Index.Contract,
-  Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Definition,
-  Atlas.Common.Lsp.Implementations;
+  DUnitX.TestFramework;
 
 type
   [TestFixture]
   TLspImplementationsTests = class
-  private
-    FIndex: ISymbolIndex;
-    FResolver: TNameResolver;
-    function TargetsAt(const AMarker: string; AOffset: Integer): TArray<TDefinitionTarget>;
-    function Lines(const ATargets: TArray<TDefinitionTarget>): string;
   public
-    [Setup]
-    procedure Setup;
-    [TearDown]
-    procedure TearDown;
+    /// <summary>Die Antwort nennt je Ziel Datei und Namen als Location.</summary>
     [Test]
-    procedure VirtualMethodListsOwnAndOverridingBodies;
+    procedure AnswersWithLocations;
+    /// <summary>Ein unbekanntes Dokument ergibt null.</summary>
     [Test]
-    procedure InterfaceMethodListsImplementingClasses;
-    [Test]
-    procedure TypeListsAllDescendants;
-    [Test]
-    procedure InheritedWithNameJumpsToAncestorBody;
-    [Test]
-    procedure BareInheritedUsesEnclosingMethod;
+    procedure UnknownDocumentIsNull;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.JSON,
+  Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Documents.Providers.DocumentStore,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Lsp.Implementations;
 
 const
   cHauptFile = 'C:\P\Haupt.pas';
 
   cUnitHaupt =
-    'unit Haupt;'#10 +                                     // 0
-    'interface'#10 +                                       // 1
-    'type'#10 +                                            // 2
-    '  IZeichner = interface'#10 +                         // 3
-    '    procedure Zeichne;'#10 +                          // 4
-    '  end;'#10 +                                          // 5
-    '  TBasis = class(TInterfacedObject, IZeichner)'#10 + // 6
-    '    procedure Zeichne; virtual;'#10 +                 // 7
-    '    procedure Leer; virtual; abstract;'#10 +          // 8
-    '  end;'#10 +                                          // 9
-    '  TMitte = class(TBasis)'#10 +                        // 10
-    '    procedure Zeichne; override;'#10 +                // 11
-    '  end;'#10 +                                          // 12
-    '  TBlatt = class(TMitte)'#10 +                        // 13
-    '    procedure Zeichne; override;'#10 +                // 14
-    '    procedure Leer; override;'#10 +                   // 15
-    '  end;'#10 +                                          // 16
-    'implementation'#10 +                                  // 17
-    'procedure TBasis.Zeichne;'#10 +                       // 18
-    'begin'#10 +                                           // 19
-    'end;'#10 +                                            // 20
-    'procedure TMitte.Zeichne;'#10 +                       // 21
-    'begin'#10 +                                           // 22
-    '  inherited Zeichne;'#10 +                            // 23
-    'end;'#10 +                                            // 24
-    'procedure TBlatt.Zeichne;'#10 +                       // 25
-    'begin'#10 +                                           // 26
-    '  inherited;'#10 +                                    // 27
-    'end;'#10 +                                            // 28
-    'procedure TBlatt.Leer;'#10 +                          // 29
-    'begin'#10 +                                           // 30
-    'end;'#10 +                                            // 31
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TBasis = class'#10 +
+    '    procedure Zeichne; virtual;'#10 +
+    '  end;'#10 +
+    '  TBlatt = class(TBasis)'#10 +
+    '    procedure Zeichne; override;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TBasis.Zeichne;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'procedure TBlatt.Zeichne;'#10 +
+    'begin'#10 +
+    'end;'#10 +
     'end.';
 
-function PositionOf(const AText, AMarker: string; AOffset: Integer): TTextPosition;
+/// <summary>Antwort des Dispatchers auf textDocument/implementation an Zeile ALine, Spalte ACharacter von AUri.
+/// </summary>
+function Answer(const AStore: IDocumentStore; const AUri: string; ALine, ACharacter: Integer): TJSONObject;
 var
-  mIndex, mLine, mLineStart, mScan: Integer;
+  mIndex: ISymbolIndex;
+  mFeature: TLspImplementations;
+  mDispatcher: TJsonRpcDispatcher;
+  mMessage: TJSONObject;
 begin
-  mIndex := Pos(AMarker, AText);
-  if mIndex = 0 then
-  begin
-    raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
+  mFeature := nil;
+  mDispatcher := nil;
+  mMessage := nil;
+  try
+    mFeature := TLspImplementations.Create(AStore, mIndex);
+    mDispatcher := TJsonRpcDispatcher.Create;
+    mFeature.Attach(mDispatcher);
+    mMessage := TJSONObject.ParseJSONValue(Format('{"jsonrpc":"2.0","id":1,"method":"%s","params":' +
+      '{"textDocument":{"uri":"%s"},"position":{"line":%d,"character":%d}}}',
+      [TLspImplementations.cMethod, AUri.Replace('\', '\\'), ALine, ACharacter])) as TJSONObject;
+    Result := mDispatcher.DispatchMessage(mMessage);
+  finally
+    mMessage.Free;
+    mDispatcher.Free;
+    mFeature.Free;
   end;
-  Inc(mIndex, AOffset);
-  mLine := 0;
-  mLineStart := 1;
-  for mScan := 1 to mIndex - 1 do
-  begin
-    if AText[mScan] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mScan + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 { TLspImplementationsTests }
 
-function TLspImplementationsTests.TargetsAt(const AMarker: string; AOffset: Integer): TArray<TDefinitionTarget>;
+procedure TLspImplementationsTests.AnswersWithLocations;
 var
-  mTree: TSyntaxTree;
+  mStore: IDocumentStore;
+  mUri: string;
+  mResponse: TJSONObject;
+  mLines: string;
+  mItem: TJSONValue;
 begin
-  mTree := TPascalParser.Parse(cUnitHaupt);
+  mStore := TDocumentStore.Create;
+  mUri := TDocumentUris.FromPath(cHauptFile);
+  mStore.Open(mUri, 'delphi', 1, cUnitHaupt);
+  // Auf "Zeichne" in TBasis: der eigene Rumpf und der überschreibende.
+  mResponse := Answer(mStore, mUri, 4, 15);
   try
-    Result := TLspImplementations.Targets(FResolver, FIndex, mTree, cHauptFile,
-      PositionOf(cUnitHaupt, AMarker, AOffset));
+    Assert.IsTrue(mResponse.GetValue('result') is TJSONArray, mResponse.ToJSON);
+    mLines := '';
+    for mItem in TJSONArray(mResponse.GetValue('result')) do
+    begin
+      Assert.AreEqual(mUri, mItem.GetValue<string>('uri'));
+      mLines := mLines + IntToStr(mItem.GetValue<Integer>('range.start.line')) + ' ';
+    end;
+    Assert.AreEqual('10 13', Trim(mLines));
   finally
-    mTree.Free;
+    mResponse.Free;
+    mStore := nil;
   end;
 end;
 
-function TLspImplementationsTests.Lines(const ATargets: TArray<TDefinitionTarget>): string;
+procedure TLspImplementationsTests.UnknownDocumentIsNull;
 var
-  mItem: TDefinitionTarget;
+  mStore: IDocumentStore;
+  mResponse: TJSONObject;
 begin
-  Result := '';
-  for mItem in ATargets do
-  begin
-    Result := Result + IntToStr(mItem.SelectionRange.StartPos.Line) + ' ';
+  mStore := TDocumentStore.Create;
+  mResponse := Answer(mStore, TDocumentUris.FromPath(cHauptFile), 4, 15);
+  try
+    Assert.IsTrue(mResponse.GetValue('result') is TJSONNull, mResponse.ToJSON);
+  finally
+    mResponse.Free;
+    mStore := nil;
   end;
-  Result := Trim(Result);
-end;
-
-procedure TLspImplementationsTests.Setup;
-begin
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
-  FResolver := TNameResolver.Create(FIndex);
-end;
-
-procedure TLspImplementationsTests.TearDown;
-begin
-  FResolver.Free;
-  FIndex := nil;
-end;
-
-procedure TLspImplementationsTests.VirtualMethodListsOwnAndOverridingBodies;
-begin
-  // Auf der Deklaration in TBasis: eigener Rumpf, dann TMitte und TBlatt.
-  Assert.AreEqual('18 21 25', Lines(TargetsAt('Zeichne; virtual', 0)));
-  // Abstrakt: nur der Rumpf in TBlatt.
-  Assert.AreEqual('29', Lines(TargetsAt('Leer; virtual', 0)));
-end;
-
-procedure TLspImplementationsTests.InterfaceMethodListsImplementingClasses;
-begin
-  Assert.AreEqual('18 21 25', Lines(TargetsAt('Zeichne;'#10'  end;'#10'  TBasis', 0)));
-end;
-
-procedure TLspImplementationsTests.TypeListsAllDescendants;
-begin
-  Assert.AreEqual('10 13', Lines(TargetsAt('TBasis = class', 0)));
-  Assert.AreEqual('6 10 13', Lines(TargetsAt('IZeichner = interface', 0)));
-end;
-
-procedure TLspImplementationsTests.InheritedWithNameJumpsToAncestorBody;
-begin
-  Assert.AreEqual('18', Lines(TargetsAt('inherited Zeichne', 2)));
-end;
-
-procedure TLspImplementationsTests.BareInheritedUsesEnclosingMethod;
-begin
-  Assert.AreEqual('21', Lines(TargetsAt('inherited;', 2)));
 end;
 
 initialization

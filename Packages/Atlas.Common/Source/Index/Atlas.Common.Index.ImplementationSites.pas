@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Index.ImplementationSites;
 
 // Umsetzungen einer virtuellen oder Interface-Methode (#2635), gemeinsam für „Gehe zu Implementierung“
-// (TLspImplementations.Targets), die Zahl der Umsetzungen in der Aufrufhierarchie (#1122) und das
+// (TImplementations.Targets), die Zahl der Umsetzungen in der Aufrufhierarchie (#1122) und das
 // MCP-Werkzeug find_implementations, damit alle drei dieselben Stellen sehen.
 // - Virtuelle Methode: der eigene Rumpf (bei abstract die Deklaration) und jede Nachfahrenklasse, die die
 //   Methode neu deklariert (override, reintroduce oder verdeckend).

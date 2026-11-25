@@ -126,10 +126,13 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.Contract,
   System.SysUtils,
   System.StrUtils,
   System.Math,
+  System.Generics.Collections,
+  System.Generics.Defaults,
+  Atlas.Common.Pascal.CommandLines,
+  Atlas.Common.Editing.Contract,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
@@ -137,8 +140,6 @@ uses
   Atlas.Common.Editing.ClassCommands,
   Atlas.Common.Editing.CollectionCommands,
   Atlas.Common.Editing.RecordCommands,
-  System.Generics.Collections,
-  System.Generics.Defaults,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -569,7 +570,7 @@ begin
     Exit;
   end;
   mTokens := TPascalLexer.Tokenize(mVirtual);
-  if TSlashCommandRegistry.IsCodeLine(mTokens, mCommandLine) then
+  if TPascalCommandLines.IsCodeLine(mTokens, mCommandLine) then
   begin
     Result := TypePlaces(mVirtual, mCommandLine);
     if Result = [] then

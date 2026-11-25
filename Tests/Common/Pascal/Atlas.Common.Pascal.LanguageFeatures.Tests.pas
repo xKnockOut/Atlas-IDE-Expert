@@ -47,7 +47,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Lsp.InactiveRegions,
+  Atlas.Common.Pascal.InactiveRegions,
   Atlas.Common.Pascal.LanguageFeatures;
 
 function Findings(const ASource, AVersion: string): TArray<TLanguageFeatureFinding>;
@@ -222,7 +222,7 @@ var
   mInactive: TArray<TTextRange>;
 begin
   // Delphi 10.2 (BDS 19.0) hat CompilerVersion 32: der Zweig ist inaktiv.
-  mInactive := TLspInactiveRegions.Ranges(cSource,
+  mInactive := TInactiveRegions.Ranges(cSource,
     TPascalPreprocessor.PredefinedSymbols('Win64', TPascalPreprocessor.CompilerVersionOfBds(19.0)));
   Assert.AreEqual(1, Integer(Length(mInactive)));
   mTree := TPascalParser.Parse(cSource);

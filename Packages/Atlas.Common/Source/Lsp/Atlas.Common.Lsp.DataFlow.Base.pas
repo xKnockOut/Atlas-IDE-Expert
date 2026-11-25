@@ -13,9 +13,9 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.DataFlow.Types,
-  Atlas.Common.Lsp.DataFlow.Files;
+  Atlas.Common.Lsp.DataFlow.Files,
+  Atlas.Common.Semantics.References;
 
 type
   TDataFlowBase = class
@@ -70,7 +70,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Lsp.Definition,
+  Atlas.Common.Semantics.Definitions,
   Atlas.Common.Lsp.DataFlow.Syntax,
   Atlas.Text.Names;
 
@@ -351,7 +351,7 @@ begin
     ASymbol := SymbolFromResolved(mResolved);
     Exit(True);
   end;
-  mTargets := TLspDefinition.Targets(FResolver, FIndex, ATree, AFileName, APosition, True);
+  mTargets := TDefinitions.Targets(FResolver, FIndex, ATree, AFileName, APosition, True);
   Result := Length(mTargets) > 0;
   if Result then
   begin
@@ -473,7 +473,7 @@ begin
   mTree := FFiles.TreeOf(ASymbol.FileName);
   if mTree <> nil then
   begin
-    Result := TLspReferences.Find(FResolver, FIndex, mTree, TReferenceSearch.Create(ASymbol.FileName,
+    Result := TReferences.Find(FResolver, FIndex, mTree, TReferenceSearch.Create(ASymbol.FileName,
       ASymbol.Position, True, FFiles.Files, FFiles.ReadText), FCancellation);
   end;
 end;

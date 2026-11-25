@@ -27,7 +27,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.AnonymousMethods,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 type
   /// <summary>Stelle im Dokument und wie umgewandelt wird.</summary>

@@ -22,8 +22,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Editing.PromoteVariable,
-  Atlas.Common.Lsp.References,
-  Atlas.Common.Lsp.FormMentions;
+  Atlas.Common.Lsp.FormMentions,
+  Atlas.Common.Semantics.References;
 
 { TLspFormMentionsTests }
 
