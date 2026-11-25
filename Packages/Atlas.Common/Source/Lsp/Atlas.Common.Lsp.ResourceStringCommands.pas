@@ -42,7 +42,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.ResourceStrings,
+  Atlas.Common.Pascal.ResourceStrings,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

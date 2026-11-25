@@ -206,7 +206,7 @@ uses
   Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.TypeComments,
-  Atlas.Common.Editing.BodySpacing,
+  Atlas.Common.Pascal.BodySpacing,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

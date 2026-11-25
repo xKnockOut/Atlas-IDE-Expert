@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.InlineAccessor.Tests;
+﻿unit Atlas.Common.Semantics.InlineAccessor.Tests;
 
 // Tests für „Triviale Zugriffsmethode durch Feld ersetzen“ (#717): Erkennung
 // trivialer Getter und Setter (mit und ohne Gleichheitsprüfung), Ausschlüsse
@@ -43,9 +43,9 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.ClassLayout,
-  Atlas.Common.Editing.MemberTransfer,
+  Atlas.Common.Pascal.MemberTransfer,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Editing.InlineAccessor,
+  Atlas.Common.Semantics.InlineAccessor,
   Atlas.Tests.SourceText;
 
 const

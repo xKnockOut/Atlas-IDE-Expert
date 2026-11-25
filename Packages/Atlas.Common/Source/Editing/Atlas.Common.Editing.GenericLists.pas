@@ -99,7 +99,7 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Editing.GenericLists.Kinds,
+  Atlas.Common.Semantics.LegacyListKinds,
   Atlas.Common.Editing.GenericLists.Syntax,
   Atlas.Common.Editing.GenericLists.Source,
   Atlas.Common.Editing.GenericLists.State,

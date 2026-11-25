@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ConditionalExpression.Tests;
+﻿unit Atlas.Common.Semantics.ConditionalExpression.Tests;
 
 // Tests für „if-Anweisung und Bedingungsausdruck umwandeln“ (#684): Zuweisung,
 // Exit und Aufruf in beide Richtungen, else-if-Ketten und verschachtelte
@@ -55,7 +55,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.StatementText,
-  Atlas.Common.Editing.ConditionalExpression,
+  Atlas.Common.Semantics.ConditionalExpression,
   Atlas.Text.Lines,
   Atlas.Tests.TextEdits;
 

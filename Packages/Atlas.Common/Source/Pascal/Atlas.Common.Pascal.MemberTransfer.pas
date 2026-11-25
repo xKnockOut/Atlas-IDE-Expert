@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.MemberTransfer;
+﻿unit Atlas.Common.Pascal.MemberTransfer;
 
 // Gemeinsame Schritte der Umbauten, die Mitglieder zwischen Klassen einer
 // Vererbungslinie bewegen: „Basisklasse herauslösen“ (#713) und „Mitglied in
@@ -892,6 +892,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.MemberTransfer', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Pascal.MemberTransfer', cTexts);
 
 end.
