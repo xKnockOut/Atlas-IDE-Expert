@@ -87,9 +87,23 @@ end;
 
 { /sortuses }
 
-/// <summary>Ungenutzte Units laut Index (#284) und Namensauflösung (#1925) in AText; nil ohne Host, Index oder bei
-/// abgeschalteter Einstellung.</summary>
-function UnusedUnitsOf(const AContext: TSlashContext; const AText: string;
+/// <summary>Nutzung der uses aus dem Baum der Befehlsquelle; ohne ResolveTree über den Text (übersetzt neu).
+/// </summary>
+function SourceResolution(const AUses: TUsesContext; ASource: TCommandSource; const AText: string): TUsesResolution;
+begin
+  if Assigned(AUses.ResolveTree) then
+  begin
+    Result := AUses.ResolveTree(ASource.Tree, nil);
+  end
+  else
+  begin
+    Result := AUses.Resolution(AText, nil);
+  end;
+end;
+
+/// <summary>Ungenutzte Units laut Index (#284) und Namensauflösung (#1925) in AText (Text von ASource); nil ohne
+/// Host, Index oder bei abgeschalteter Einstellung.</summary>
+function UnusedUnitsOf(const AContext: TSlashContext; ASource: TCommandSource; const AText: string;
   const ATokens: TArray<TPascalToken>): TArray<string>;
 var
   mUses_: TUsesContext;
@@ -102,7 +116,7 @@ begin
   end;
   if AContext.Host.UsesContext(AContext.Uri, mUses_) and Assigned(mUses_.Info) then
   begin
-    Result := TUsesActions.UnusedUnits(ATokens, mUses_.Info, mUses_.Keep, mUses_.Resolution(AText, nil));
+    Result := TUsesActions.UnusedUnits(ATokens, mUses_.Info, mUses_.Keep, SourceResolution(mUses_, ASource, AText));
   end;
 end;
 
@@ -168,7 +182,7 @@ begin
     mTokens := TPascalLexer.Tokenize(mText);
     // Sortieren, doppelte und ungenutzte streichen in einem Durchgang.
     mOptions := SortUsesOptions(AContext);
-    mOptions.Drop := UnusedUnitsOf(AContext, mText, mTokens);
+    mOptions.Drop := UnusedUnitsOf(AContext, mSource, mText, mTokens);
     if not TPascalUsesEdits.Rewrite(mTokens, mText, mOptions, mSource.LineBreak, mEdits) then
     begin
       mEdits := nil;
@@ -201,7 +215,7 @@ begin
     mTokens := TPascalLexer.Tokenize(mText);
     // Nur streichen, nicht sortieren: Die gewählte Reihenfolge bleibt.
     if not TUsesActions.RemoveUnits(mTokens, mText, TUsesActions.UnusedUnits(mTokens, mUses_.Info, mUses_.Keep,
-      mUses_.Resolution(mText, nil)), mSource.LineBreak, mEdits) then
+      SourceResolution(mUses_, mSource, mText)), mSource.LineBreak, mEdits) then
     begin
       mEdits := nil;
     end;

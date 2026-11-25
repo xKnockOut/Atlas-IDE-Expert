@@ -22,7 +22,8 @@
 // Gehe zu Definition die Vorwärtsdeklaration (ohne Vorfahren) statt des Typs.
 //
 // Tokens liest Atlas.Common.Index.Extractor.Tokens, Typtexte Atlas.Common.Index.Extractor.TypeText, bedingte
-// Kompilierung Atlas.Common.Index.Extractor.Conditions und inline-Rümpfe Atlas.Common.Index.Extractor.InlineRefs.
+// Kompilierung Atlas.Common.Index.Extractor.Conditions, inline-Rümpfe Atlas.Common.Index.Extractor.InlineRefs und
+// Besitz je Parameter Atlas.Common.Index.Extractor.ParamOwnership.
 
 interface
 
@@ -144,6 +145,7 @@ uses
   Atlas.Common.Index.Extractor.TypeText,
   Atlas.Common.Index.Extractor.Conditions,
   Atlas.Common.Index.Extractor.InlineRefs,
+  Atlas.Common.Index.Extractor.ParamOwnership,
   Atlas.Common.Index.Extractor.Patterns,
   Atlas.Text.Names,
   Atlas.Common.Pascal.SyntaxNodes;
@@ -770,6 +772,7 @@ begin
     finally
       mInlineRefs.Free;
     end;
+    TIndexParamOwnership.Add(FSymbols, ARoot.FindChild(TSyntaxKind.ImplementationSection));
   end;
   AUnit.Symbols := FSymbols.ToArray;
   AUnit.Naming := TIndexTypeText.NamingOf(ARoot);

@@ -41,7 +41,9 @@ type
     OwnershipPassedSomewhere, OwnershipUnknown, OwnershipNever, OwnershipOwnsElements, OwnershipElementsOwned,
     OwnershipWhyDestroy, OwnershipWhyFinally, OwnershipWhyFreed, OwnershipWhyOwner, OwnershipWhyOwnedList,
     OwnershipWhyInterface, OwnershipWhyReturned, OwnershipWhyPassed, OwnershipWhyUnknown, OwnershipWhyNever,
-    OwnershipWhyOwnsElements, OwnershipWhyElementsOwned, OwnershipTipTitle, OwnershipTipJump);
+    OwnershipWhyOwnsElements, OwnershipWhyElementsOwned, OwnershipTipTitle, OwnershipTipJump,
+    // Freigabe über Unit-Grenzen: was die gerufene Routine mit dem Objekt macht.
+    OwnershipFreedBy, OwnershipTakenBy, OwnershipLent, OwnershipWhyFreedBy, OwnershipWhyTakenBy, OwnershipWhyLent);
 
   TAtlasRulesStrings = class
   public
@@ -192,14 +194,21 @@ const
      'Die Liste besitzt ihre Elemente (OwnsObjects) und gibt sie frei.',
      'Über ein Interface gehalten: Die Referenzzählung gibt das Objekt frei.',
      'Das Objekt geht an den Aufrufer (Result, out-Parameter oder Exit); er muss es freigeben.',
-     'An einen Aufruf oder ein anderes Ziel weitergegeben; ob dort freigegeben wird, sieht Atlas in dieser ' +
-     'Unit nicht.',
+     'An einen Aufruf oder ein anderes Ziel weitergegeben; ob dort freigegeben wird, lässt sich nicht sicher ' +
+     'sagen (virtuelle Methode, Ziel unbekannt, Methodenzeiger oder Rumpf ohne Quelltext).',
      'In dieser Unit ist keine Freigabe erkennbar, und keine Leck-Regel meldet die Stelle.',
      'Die Leck-Regel %s meldet diese Stelle:',
      'Die Liste gibt ihre Elemente selbst frei (OwnsObjects).',
      'Die Elemente gehören der besitzenden Liste %s; diese Liste gibt sie nicht frei.',
      'Wer gibt %s frei?',
-     'Klick springt zur Freigabe in Zeile %d.'),
+     'Klick springt zur Freigabe in Zeile %d.',
+     'frei in %s',
+     'übernommen von %s',
+     'nur geliehen an %s',
+     'Die gerufene Routine gibt das Objekt frei; Atlas hat ihren Rumpf geprüft, auch in einer anderen Unit.',
+     'Die gerufene Routine übernimmt das Objekt (Feld, Liste, Rückgabe …); freigeben muss es danach ihr Besitzer.',
+     'Die gerufene Routine liest bzw. füllt das Objekt nur und gibt es nicht frei; freigeben muss es weiter ' +
+     'diese Routine.'),
     ('Update project baseline',
      'Update baseline: no active project.',
      'Update baseline: the Atlas server wrote no baseline (project not loaded yet, server not ready or ' +
@@ -333,13 +342,21 @@ const
      'The list owns its elements (OwnsObjects) and frees them.',
      'Held through an interface: reference counting frees the object.',
      'The object goes to the caller (Result, out parameter or Exit); the caller has to free it.',
-     'Passed to a call or another target; Atlas cannot see in this unit whether it is freed there.',
+     'Passed to a call or another target; whether it is freed there cannot be told for sure (virtual method, ' +
+     'unknown target, method pointer or body without source).',
      'No release is visible in this unit, and no leak rule reports this place.',
      'The leak rule %s reports this place:',
      'The list frees its elements itself (OwnsObjects).',
      'The elements belong to the owning list %s; this list does not free them.',
      'Who frees %s?',
-     'Click jumps to the release in line %d.'));
+     'Click jumps to the release in line %d.',
+     'freed in %s',
+     'taken over by %s',
+     'only lent to %s',
+     'The called routine frees the object; Atlas checked its body, also in another unit.',
+     'The called routine takes over the object (field, list, result …); its owner has to free it afterwards.',
+     'The called routine only reads or fills the object and does not free it; this routine still has to free ' +
+     'it.'));
 
 { TAtlasRulesStrings }
 

@@ -180,7 +180,8 @@ begin
       TTextChars.StringBytes(mSymbol.Container) + TTextChars.StringBytes(mSymbol.TypeName) +
       ArrayBytes(mSymbol.Ancestors) + TTextChars.StringBytes(mSymbol.Signature) +
       TTextChars.StringBytes(mSymbol.Summary) + ArrayBytes(mSymbol.Directives) +
-      TTextChars.StringBytes(mSymbol.DeprecatedText) + ArrayBytes(mSymbol.InlineRefs) + ArrayBytes(mSymbol.Resolutions) + ArrayBytes(mSymbol.Rationale));
+      TTextChars.StringBytes(mSymbol.DeprecatedText) + ArrayBytes(mSymbol.InlineRefs) + ArrayBytes(mSymbol.Resolutions) + ArrayBytes(mSymbol.Rationale) +
+      TTextChars.StringBytes(mSymbol.ParamOwnership));
   end;
   Inc(Result, UsageBytes(AUnit));
 end;

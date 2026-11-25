@@ -6,11 +6,14 @@
 //   created-result-not-freed   Eine lokale Variable erhält das Ergebnis einer Funktion, die immer ein neues Objekt
 //                              liefert (alle Zuweisungen an Result sind T.Create ohne Owner, Result geht sonst
 //                              nirgends hin), oder einer Funktion aus der Option factories; Rest wie oben.
-// Jedes Vorkommen der Variablen wird im Syntaxbaum nach oben eingeordnet: Free, Destroy, DisposeOf, Release,
-// FreeAndNil und Routinen mit Free/Release/Destroy/Dispose im Namen geben frei; Weitergabe als Argument (außer an
-// lesende Routinen wie Assign, AddStrings, CopyFrom, SaveToStream), Zuweisung an etwas anderes, Exit(X), raise X,
-// X as I, @X, [X], with X, X.Parent := …, Einfangen in einer anonymen Methode und Erwähnung in einer lokalen
-// Routine lassen die Regel schweigen. Records, dynamische Arrays, Threads, Komponenten mit Owner und
+// Jedes Vorkommen der Variablen wird im Syntaxbaum nach oben eingeordnet (Atlas.Common.Pascal.ObjectUses): Free,
+// Destroy, DisposeOf, Release, FreeAndNil und Routinen mit Free/Release/Destroy/Dispose im Namen geben frei;
+// Zuweisung an etwas anderes, Exit(X), raise X, X as I, @X, [X], with X, X.Parent := …, Einfangen in einer
+// anonymen Methode und Erwähnung in einer lokalen Routine lassen die Regel schweigen. Bei Weitergabe als Argument
+// zählt, was die gerufene Routine laut Index damit macht, auch in einer anderen Unit
+// (Atlas.Common.Rules.CallOwnership): Gibt sie frei, ist das Objekt frei; leiht sie es nur (liest, füllt), zählt
+// der Aufruf nicht; übernimmt sie es oder ist das unklar, schweigt die Regel. Lesende Routinen wie Assign,
+// AddStrings, CopyFrom und SaveToStream leihen immer. Records, dynamische Arrays, Threads, Komponenten mit Owner und
 // Interface-Variablen bleiben außen vor. Korrektur: try … finally X.Free end.
 
 interface
@@ -91,8 +94,10 @@ uses
   Atlas.Common.Rules.Builtin.Ownership.TryFinally,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes,
-  Atlas.Text.Names,
-  Atlas.Text.Arrays;
+  Atlas.Common.Pascal.ObjectUses,
+  Atlas.Common.Pascal.ParamOwnership,
+  Atlas.Common.Rules.CallOwnership,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -123,20 +128,9 @@ type
 {$SCOPEDENUMS OFF}
 
 const
-  // Methoden des Objekts, die es freigeben.
-  cReleaseMembers: array[0..4] of string = ('Free', 'Destroy', 'DisposeOf', 'Release', 'FreeInstance');
-  // Methoden, nach denen das Objekt sich selbst verwaltet (Formular mit caFree, Thread).
-  cSelfManagingMembers: array[0..5] of string = ('Show', 'Close', 'Start', 'Resume', 'Run', 'Execute');
-  // Properties, deren Zuweisung den Besitz übergibt bzw. die Freigabe regelt.
-  cOwningProperties: array[0..2] of string = ('Parent', 'Owner', 'FreeOnTerminate');
-  // Teile eines Routinennamens, die auf eine Freigaberoutine schließen lassen.
-  cReleaseWords: array[0..4] of string = ('Free', 'Release', 'Destroy', 'Dispose', 'Frei');
   // Konstruktoren; Klassenfunktionen wie CreateIssue liefern womöglich etwas anderes.
   cConstructorNames: array[0..9] of string = ('Create', 'CreateNew', 'CreateFmt', 'CreateRes', 'CreateResFmt',
     'CreateHelp', 'CreateFmtHelp', 'CreateResHelp', 'CreateParented', 'CreateSize');
-  // Routinen, die ein Objekt als Argument nur lesen und nicht behalten.
-  cReadingCalls: array[0..8] of string = ('Assigned', 'Assign', 'AddStrings', 'CopyFrom', 'LoadFromStream',
-    'SaveToStream', 'IndexOf', 'Contains', 'Equals');
   // Klassen der RTL, die ohne Index als Klassen ohne Owner gelten (Datei und Index kennen die RTL nicht).
   cRtlClasses: array[0..33] of string = ('TObject', 'TStringList', 'TList', 'TObjectList', 'TDictionary',
     'TObjectDictionary', 'TQueue', 'TStack', 'TObjectQueue', 'TObjectStack', 'THashSet', 'TThreadList',
@@ -159,19 +153,6 @@ end;
 function LooksLikeType(const AName: string): Boolean;
 begin
   Result := (Length(AName) > 1) and (AName[1] = 'T') and CharInSet(AName[2], ['A'..'Z']);
-end;
-
-/// <summary>Typumwandlung wie TFoo(X) oder IFoo(X): ein Argument, Aufruf über einen Typnamen.</summary>
-function IsTypeCast(ACall: TSyntaxNode): Boolean;
-var
-  mName: string;
-begin
-  Result := (ACall.ChildCount = 2) and (ACall[0].Kind = TSyntaxKind.Identifier);
-  if Result then
-  begin
-    mName := ACall[0].Name;
-    Result := LooksLikeType(mName) or TTextNames.LooksLikeInterface(mName) or SameText(mName, 'Pointer');
-  end;
 end;
 
 function ConstructorCall(AValue: TSyntaxNode; out ACall: TConstructorCall): Boolean;
@@ -215,13 +196,14 @@ type
     /// </summary>
     FFactories: TDictionary<string, Boolean>;
     FOptionFactories: TArray<string>;
+    /// <summary>Was gerufene Routinen mit einem übergebenen Objekt machen, auch in anderen Units.</summary>
+    FCalls: TRuleCallOwnership;
     function IsFactoryRoutine(ARoutine: TSyntaxNode): Boolean;
     procedure CollectFactories;
     function FactoryCall(AValue: TSyntaxNode; out AName: string): Boolean;
     function IsAllocation(AValue: TSyntaxNode; out AWhat: string): Boolean;
-    function UseInMember(AAccess: TSyntaxNode): TLocalUse;
-    function UseInCall(ACall, ACurrent: TSyntaxNode; out AUse: TLocalUse): Boolean;
-    function UseInAssign(AAssign, ACurrent: TSyntaxNode): TLocalUse;
+    function UseInCall(const AUse: TObjectUse): TLocalUse;
+    function UseInAssign(AAssign: TSyntaxNode): TLocalUse;
     function Classify(ANode: TSyntaxNode): TLocalUse;
     procedure ReportLeak(AStatement: TSyntaxNode; const AName, AWhat: string);
     procedure CheckVariable(ARoutine: TSyntaxNode; const AName, ATypeName: string; AInline: TSyntaxNode);
@@ -452,6 +434,7 @@ end;
 
 destructor TLocalObjectScan.Destroy;
 begin
+  FCalls.Free;
   FFactories.Free;
   FAncestry.Free;
   inherited Destroy;
@@ -578,65 +561,36 @@ begin
   end;
 end;
 
-/// <summary>Vorkommen als Objekt eines Mitgliedszugriffs X.Name.</summary>
-function TLocalObjectScan.UseInMember(AAccess: TSyntaxNode): TLocalUse;
-var
-  mParent: TSyntaxNode;
+/// <summary>Weitergabe als Argument: Was die gerufene Routine laut Index damit macht; weiß er nichts, leihen nur
+/// lesende Routinen wie Assign.</summary>
+function TLocalObjectScan.UseInCall(const AUse: TObjectUse): TLocalUse;
 begin
-  Result := TLocalUse.Use;
-  mParent := AAccess.Parent;
-  if InList(AAccess.Name, cReleaseMembers) then
-  begin
-    Result := TLocalUse.Release;
-  end
-  else if InList(AAccess.Name, cSelfManagingMembers) then
-  begin
-    Result := TLocalUse.Escape;
-  end
-  else if (mParent <> nil) and (mParent.Kind = TSyntaxKind.AssignStatement) and (mParent[0] = AAccess) and
-    InList(AAccess.Name, cOwningProperties) then
-  begin
-    Result := TLocalUse.Escape;
-  end;
-end;
-
-/// <summary>Vorkommen ACurrent als Teil des Aufrufs ACall; False bei einer Typumwandlung (weiter nach oben).
-/// </summary>
-function TLocalObjectScan.UseInCall(ACall, ACurrent: TSyntaxNode; out AUse: TLocalUse): Boolean;
-begin
-  Result := True;
-  if ACall[0] = ACurrent then
-  begin
-    AUse := TLocalUse.Use;
-  end
-  else if TTextArrays.ContainsAnyText(ACall.Name, cReleaseWords) then
-  begin
-    AUse := TLocalUse.Release;
-  end
-  else if InList(ACall.Name, cReadingCalls) then
-  begin
-    AUse := TLocalUse.Use;
-  end
-  else if IsTypeCast(ACall) then
-  begin
-    Result := False;
-  end
+  case FCalls.EffectOf(AUse.Node, AUse.Argument).Effect of
+    TParamEffect.Frees:
+      Result := TLocalUse.Release;
+    TParamEffect.Borrows:
+      Result := TLocalUse.Use;
+    TParamEffect.Keeps:
+      Result := TLocalUse.Escape;
   else
-  begin
-    // Weitergabe als Argument (auch Exit(X)): Die aufgerufene Routine kann das Objekt übernehmen.
-    AUse := TLocalUse.Escape;
+    // Unklar: Die Routine kann das Objekt behalten, außer sie liest dem Namen nach nur.
+    Result := TLocalUse.Escape;
+    if AUse.Reading then
+    begin
+      Result := TLocalUse.Use;
+    end;
   end;
 end;
 
-/// <summary>Vorkommen ACurrent in der Zuweisung AAssign.</summary>
-function TLocalObjectScan.UseInAssign(AAssign, ACurrent: TSyntaxNode): TLocalUse;
+/// <summary>Die Variable steht links von := in AAssign.</summary>
+function TLocalObjectScan.UseInAssign(AAssign: TSyntaxNode): TLocalUse;
 var
   mWhat: string;
   mCall: TConstructorCall;
 begin
-  // Rechts von := oder neu belegt mit etwas anderem: Herkunft bzw. Verbleib unklar.
+  // Neu belegt mit etwas anderem: Herkunft bzw. Verbleib unklar.
   Result := TLocalUse.Escape;
-  if (AAssign[0] = ACurrent) and (AAssign.ChildCount > 1) and (ConstructorCall(AAssign[1], mCall) or
+  if (AAssign.ChildCount > 1) and (ConstructorCall(AAssign[1], mCall) or
     ((FMode = TLocalScanMode.Factories) and FactoryCall(AAssign[1], mWhat))) then
   begin
     Result := TLocalUse.Alloc;
@@ -646,37 +600,20 @@ end;
 /// <summary>Art des Vorkommens ANode vom Knoten aus nach oben bis zur Anweisung.</summary>
 function TLocalObjectScan.Classify(ANode: TSyntaxNode): TLocalUse;
 var
-  mCurrent, mParent: TSyntaxNode;
-  mDone: Boolean;
+  mUse: TObjectUse;
 begin
-  Result := TLocalUse.Use;
-  mCurrent := ANode;
-  mDone := False;
-  while not mDone and (mCurrent.Parent <> nil) do
-  begin
-    mParent := mCurrent.Parent;
-    mDone := True;
-    case mParent.Kind of
-      TSyntaxKind.MemberAccess:
-        Result := UseInMember(mParent);
-      TSyntaxKind.Call:
-        mDone := UseInCall(mParent, mCurrent, Result);
-      TSyntaxKind.ParenExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.IfExpr:
-        mDone := False;
-      TSyntaxKind.BinaryExpr:
-        if SameText(mParent.Name, 'as') then
-        begin
-          Result := TLocalUse.Escape;
-        end;
-      TSyntaxKind.AssignStatement:
-        Result := UseInAssign(mParent, mCurrent);
-      TSyntaxKind.AddressOf, TSyntaxKind.SetConstructor, TSyntaxKind.RaiseStatement, TSyntaxKind.WithStatement,
-      TSyntaxKind.ForInStatement, TSyntaxKind.InlineVar, TSyntaxKind.VarDecl, TSyntaxKind.AnonymousMethod:
-        Result := TLocalUse.Escape;
-    else
-      Result := TLocalUse.Use;
-    end;
-    mCurrent := mParent;
+  mUse := TObjectUses.Classify(ANode);
+  case mUse.Kind of
+    TObjectUseKind.Assigned:
+      Result := UseInAssign(mUse.Node);
+    TObjectUseKind.Release:
+      Result := TLocalUse.Release;
+    TObjectUseKind.Escape:
+      Result := TLocalUse.Escape;
+    TObjectUseKind.Argument:
+      Result := UseInCall(mUse);
+  else
+    Result := TLocalUse.Use;
   end;
 end;
 
@@ -803,6 +740,7 @@ begin
     CollectFactories;
   end;
   FLines := TTextLines.SplitLines(FContext.Text, FLineBreak);
+  FCalls := TRuleCallOwnership.Create(FContext);
   for mRoutine in TRuleDerived.Routines(FDerived, FContext) do
   begin
     CheckRoutine(mRoutine);

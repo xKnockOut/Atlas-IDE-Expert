@@ -125,8 +125,8 @@ const
 var
   mTitles: string;
 begin
-  Assert.AreEqual(StringReplace(Routine(cBody), 'System.SysUtils;', 'System.SysUtils,' + cLB +
-    '  System.Generics.Collections;', []), Fixed(Routine(cBody), TFixMessage.Create('H2443', 7, -1, 'Inline-Funktion ''TJSONArray.GetCount'' wurde ' +
+  Assert.AreEqual(StringReplace(Routine(cBody), 'System.SysUtils;', 'System.SysUtils, ' +
+    'System.Generics.Collections;', []), Fixed(Routine(cBody), TFixMessage.Create('H2443', 7, -1, 'Inline-Funktion ''TJSONArray.GetCount'' wurde ' +
     'nicht expandiert, weil Unit ''System.Generics.Collections'' nicht in der USES-Liste angegeben ist'), mTitles));
   Assert.AreEqual('uses System.Generics.Collections ergänzen (H2443) *|', mTitles);
   // Schon eingebunden: nichts.
@@ -140,7 +140,7 @@ const
 var
   mTitles: string;
 begin
-  Assert.AreEqual(StringReplace(Routine(cBody), 'System.SysUtils;', 'System.SysUtils,' + cLB + '  System.Classes;',
+  Assert.AreEqual(StringReplace(Routine(cBody), 'System.SysUtils;', 'System.SysUtils, System.Classes;',
     []), Fixed(Routine(cBody), TFixMessage.Create('E2003', 7, -1, 'Undeclared identifier: ''TStringList'''), mTitles));
   Assert.AreEqual('uses System.Classes ergänzen (E2003: TStringList) *|' +
     'uses Vcl.Klassen.Alt ergänzen (E2003: TStringList)|uses Meine.Listen ergänzen (E2003: TStringList)|', mTitles);

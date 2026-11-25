@@ -9,7 +9,9 @@
 // auflösbare Namen fallen auf den Namensvergleich zurück, ein Attribut ohne
 // Endung ([Pruef]) hält seine Unit. Dazu die Aufteilung
 // der Namen in UnitInfo, der Fall ohne Index und mit Syntaxfehlern sowie
-// SameUnit über Namespaces.
+// SameUnit über Namespaces. Die Auflösung aus einem fertigen Baum gleicht der
+// aus dem Text, und jede weitere Verwendung im selben Teil wird nicht mehr
+// aufgelöst (große Units).
 
 interface
 
@@ -48,6 +50,10 @@ type
     procedure WithoutIndexOrWithSyntaxErrorIsInactive;
     [Test]
     procedure SameUnitUsesNamespaces;
+    [Test]
+    procedure TreeResolveMatchesTextResolve;
+    [Test]
+    procedure RepeatedUseInSamePartResolvesOnce;
   end;
 
 implementation
@@ -285,6 +291,62 @@ begin
   Assert.IsTrue(mResolve(mText, nil).Active);
   Assert.IsFalse(mResolve('unit Bericht;'#10'interface'#10'uses Liste;'#10'implementation'#10'procedure ;'#10'end.',
     nil).Active);
+end;
+
+procedure TUsesUsageTests.TreeResolveMatchesTextResolve;
+var
+  mIndex: ISymbolIndex;
+  mInfo: TUsesUnitInfoFunc;
+  mSource: TUsesUsageSource;
+  mTree: TSyntaxTree;
+  mText: string;
+  mFromText, mFromTree: TUsesResolution;
+begin
+  mIndex := NewIndex;
+  mInfo := TUsesUsage.UnitInfo(mIndex, nil, nil);
+  mSource := Default(TUsesUsageSource);
+  mSource.Index := mIndex;
+  mText := Bericht('Liste, Mathe', '', 'var'#10'  L: TListe;'#10, '  L := nil;'#10);
+  mFromText := TUsesUsage.ResolveFunc(mSource, 'Bericht.pas', mInfo)(mText, nil);
+  mTree := TSyntaxTreeCache.Parse(mText);
+  try
+    mFromTree := TUsesUsage.ResolveTreeFunc(mSource, 'Bericht.pas', mInfo)(mTree, nil);
+  finally
+    mTree.Free;
+  end;
+  Assert.IsTrue(mFromTree.Active);
+  Assert.AreEqual(string.Join(',', mFromText.Units), string.Join(',', mFromTree.Units));
+  Assert.AreEqual(mFromText.MaskOf('Liste'), mFromTree.MaskOf('Liste'));
+  Assert.AreEqual(mFromText.MaskOf('Mathe'), mFromTree.MaskOf('Mathe'));
+  Assert.AreEqual(Integer(Length(mFromText.Settled)), Integer(Length(mFromTree.Settled)));
+  Assert.IsFalse(TUsesUsage.ResolveTreeFunc(mSource, 'Bericht.pas', mInfo)(nil, nil).Active);
+end;
+
+procedure TUsesUsageTests.RepeatedUseInSamePartResolvesOnce;
+var
+  mIndex: ISymbolIndex;
+  mInfo: TUsesUnitInfoFunc;
+  mSource: TUsesUsageSource;
+  mTree: TSyntaxTree;
+  mResolution: TUsesResolution;
+begin
+  mIndex := NewIndex;
+  mInfo := TUsesUsage.UnitInfo(mIndex, nil, nil);
+  mSource := Default(TUsesUsageSource);
+  mSource.Index := mIndex;
+  // Liste steht im interface-uses, gebraucht wird TListe nur im implementation-Teil, dreimal: Nach der ersten
+  // Verwendung ändert keine weitere mehr etwas, also wird nur sie aufgelöst. Mathe bleibt ungenutzt.
+  mTree := TSyntaxTreeCache.Parse(Bericht('Liste, Mathe', '', 'var'#10'  A, B: TListe;'#10'  C: TListe;'#10,
+    '  A := nil;'#10));
+  try
+    mResolution := TUsesUsage.Resolve(mSource, mTree, 'Bericht.pas', nil, mInfo);
+  finally
+    mTree.Free;
+  end;
+  Assert.IsTrue(mResolution.Active);
+  Assert.AreEqual(TUsesResolution.cImplementationPart, mResolution.MaskOf('Liste'));
+  Assert.AreEqual(0, mResolution.MaskOf('Mathe'));
+  Assert.AreEqual(1, Integer(Length(mResolution.Settled)));
 end;
 
 procedure TUsesUsageTests.SameUnitUsesNamespaces;

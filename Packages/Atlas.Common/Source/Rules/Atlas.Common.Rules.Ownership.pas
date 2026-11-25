@@ -9,7 +9,10 @@
 //   OwnedList   gehört einer Liste, die ihre Elemente besitzt (Liste.Add(…))
 //   RefCounted  Interface-Variable bzw. -Feld: Referenzzählung
 //   Returned    an den Aufrufer zurückgegeben (Result, Exit, out-Parameter)
-//   Passed      weitergegeben (Argument, Zuweisung an etwas anderes)
+//   Passed      weitergegeben (Argument, Zuweisung an etwas anderes); was der Empfänger tut, ist unklar
+//   FreedBy     an eine Routine übergeben, die es freigibt (Rumpf laut Index, auch in einer anderen Unit)
+//   TakenBy     an eine Routine übergeben, die es übernimmt (Feld, Liste, Rückgabe …)
+//   Lent        an eine Routine übergeben, die es nur liest bzw. füllt; freigeben muss weiter diese Routine
 //   Unknown     unklar (Unit-Variable, Ausdruck, Feld ohne Free außerhalb des Konstruktors …)
 //   Never       nie freigegeben: genau die Stellen, die eine der Regeln aus cRuleIds meldet
 // Zusatz bei Containern: TObjectList, TObjectDictionary mit doOwnsValues usw. „besitzt Elemente“; eine Liste ohne
@@ -19,18 +22,21 @@
 // create-without-assignment, local-object-not-freed, created-result-not-freed), die der Aufrufer für denselben
 // Text mitgibt; Felder klärt dieselbe Analyse wie field-not-freed (TOwnedFields.Analyze), Owner und Typen dieselbe
 // Typauflösung (TFreeFieldTypes). So zeigen Marke und Regeln nie Verschiedenes.
+//
+// Über Unit-Grenzen: Geht das Objekt als Argument an eine Routine, fragt die Analyse dieselbe Zusammenfassung je
+// Parameter wie local-object-not-freed (Atlas.Common.Rules.CallOwnership); Detail nennt dann die Routine, bei
+// Weitergaben „Routine › Routine, die freigibt bzw. übernimmt“.
 
 interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Index.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract;
 
 type
 {$SCOPEDENUMS ON}
-  TOwnershipKind = (InDestroy, InFinally, Freed, Owner, OwnedList, RefCounted, Returned, Passed, Unknown, Never);
+  TOwnershipKind = (InDestroy, InFinally, Freed, Owner, OwnedList, RefCounted, Returned, Passed, Unknown, Never,
+    FreedBy, TakenBy, Lent);
   TOwnershipContainer = (None, OwnsElements, ElementsOwned);
 {$SCOPEDENUMS OFF}
 
@@ -58,17 +64,17 @@ type
   TOwnershipSites = class
   public const
     cKindNames: array[TOwnershipKind] of string = ('destroy', 'finally', 'freed', 'owner', 'ownedList', 'interface',
-      'returned', 'passed', 'unknown', 'never');
+      'returned', 'passed', 'unknown', 'never', 'freedBy', 'takenBy', 'lent');
     cContainerNames: array[TOwnershipContainer] of string = ('', 'ownsElements', 'elementsOwned');
     /// <summary>Regeln, deren Befunde „nie freigegeben“ bedeuten.</summary>
     cRuleIds: array[0..3] of string = ('field-not-freed', 'create-without-assignment', 'local-object-not-freed',
       'created-result-not-freed');
   public
-    /// <summary>Alle Erzeugungen in ATree (Text AText) in Reihenfolge des Texts. AIndex (auch nil) klärt Typen aus
-    /// anderen Units; AFindings sind die Befunde der Regeln für denselben Text (andere Regeln stören nicht).
-    /// </summary>
-    class function Analyze(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex;
-      const AFindings: TArray<TRuleFinding>): TArray<TOwnershipSite>; static;
+    /// <summary>Alle Erzeugungen in AContext.Tree (Text AContext.Text) in Reihenfolge des Texts. AContext.Index
+    /// (auch nil) klärt Typen und gerufene Routinen aus anderen Units; AFindings sind die Befunde der Regeln für
+    /// denselben Text (andere Regeln stören nicht).</summary>
+    class function Analyze(const AContext: TRuleContext; const AFindings: TArray<TRuleFinding>):
+      TArray<TOwnershipSite>; static;
     /// <summary>Ist ARuleId eine der Regeln aus cRuleIds?</summary>
     class function IsOwnershipRule(const ARuleId: string): Boolean; static;
   end;
@@ -82,8 +88,13 @@ uses
   Atlas.Common.Semantics.OwnedFields.Types,
   Atlas.Common.Rules.Builtin.Ownership,
   Atlas.Common.Rules.Internals.OwnershipTree,
+  Atlas.Common.Rules.CallOwnership,
   Atlas.Text.Names,
-  Atlas.Common.Pascal.SyntaxNodes;
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Common.Pascal.ObjectUses,
+  Atlas.Common.Pascal.ParamOwnership,
+  Atlas.Common.Semantics.CallOwnership;
 
 const
   /// <summary>Listen, die ihre Elemente besitzen können (TObjectList ohne False usw.).</summary>
@@ -94,9 +105,6 @@ const
     'TComponentList');
   /// <summary>Methoden einer Liste, die ein Element aufnehmen.</summary>
   cTakingMembers: array[0..3] of string = ('Add', 'Insert', 'Push', 'Enqueue');
-  /// <summary>Routinen, die ein Objekt als Argument nur lesen.</summary>
-  cReadingCalls: array[0..8] of string = ('Assigned', 'Assign', 'AddStrings', 'CopyFrom', 'LoadFromStream',
-    'SaveToStream', 'IndexOf', 'Contains', 'Equals');
 
 type
 {$SCOPEDENUMS ON}
@@ -128,6 +136,7 @@ type
     FFields: TArray<TOwnedField>;
     FRaw: TArray<TOwnershipRaw>;
     FSites: TArray<TOwnershipSite>;
+    FCalls: TRuleCallOwnership;
     function Creation(ANode: TSyntaxNode; out ARaw: TOwnershipRaw): Boolean;
     procedure Locate(var ARaw: TOwnershipRaw);
     procedure Collect;
@@ -136,7 +145,8 @@ type
     function IsInterfaceType(const ATypeName: string): Boolean;
     function OwningList(const AClassName, AName: string): Boolean;
     procedure SetContainer(AIndex: Integer);
-    procedure Handover(const AClassName: string; ACall: TSyntaxNode; var ASite: TOwnershipSite);
+    procedure Handover(const AClassName: string; ACall, AArgument: TSyntaxNode; var ASite: TOwnershipSite);
+    procedure CalleeVerdict(ACall, AArgument: TSyntaxNode; var ASite: TOwnershipSite);
     function FieldVerdict(const ARaw: TOwnershipRaw; const AField: string; var ASite: TOwnershipSite): Boolean;
     procedure FieldRelease(const ARaw: TOwnershipRaw; const AField: string; var ASite: TOwnershipSite);
     procedure ClassifyField(const ARaw: TOwnershipRaw; const AField: string; var ASite: TOwnershipSite);
@@ -145,8 +155,7 @@ type
     procedure ClassifyTarget(const ARaw: TOwnershipRaw; var ASite: TOwnershipSite);
     procedure Classify(AIndex: Integer);
   public
-    constructor Create(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex;
-      const AFindings: TArray<TRuleFinding>);
+    constructor Create(const AContext: TRuleContext; const AFindings: TArray<TRuleFinding>);
     destructor Destroy; override;
     function Run: TArray<TOwnershipSite>;
   end;
@@ -162,19 +171,24 @@ begin
   Result.FreeLine := -1;
 end;
 
-/// <summary>Stufe der Freigabe: Höhere ersetzen niedrigere (finally vor anderer Freigabe vor Weitergabe).</summary>
+/// <summary>Stufe der Freigabe: Höhere ersetzen niedrigere (finally vor anderer Freigabe vor Weitergabe vor
+/// Leihgabe).</summary>
 function Rank(AKind: TOwnershipKind): Integer;
 begin
   case AKind of
     TOwnershipKind.InFinally:
-      Result := 5;
-    TOwnershipKind.InDestroy, TOwnershipKind.Freed:
-      Result := 4;
+      Result := 7;
+    TOwnershipKind.InDestroy, TOwnershipKind.Freed, TOwnershipKind.FreedBy:
+      Result := 6;
     TOwnershipKind.OwnedList:
-      Result := 3;
+      Result := 5;
     TOwnershipKind.Returned:
-      Result := 2;
+      Result := 4;
+    TOwnershipKind.TakenBy:
+      Result := 3;
     TOwnershipKind.Passed:
+      Result := 2;
+    TOwnershipKind.Lent:
       Result := 1;
   else
     Result := 0;
@@ -205,6 +219,17 @@ begin
   Result := mCurrent.StartPos.Line;
 end;
 
+/// <summary>Das Argument, als das die Erzeugung an ihren Aufruf geht: der Ausdruck samt umgebender Klammern.
+/// </summary>
+function ArgumentNode(const ARaw: TOwnershipRaw): TSyntaxNode;
+begin
+  Result := ARaw.Node;
+  while (Result.Parent <> nil) and (Result.Parent <> ARaw.Other) do
+  begin
+    Result := Result.Parent;
+  end;
+end;
+
 function LooksLikeType(const AName: string): Boolean;
 begin
   Result := (Length(AName) > 1) and CharInSet(AName[1], ['T']) and CharInSet(AName[2], ['A'..'Z']);
@@ -212,19 +237,20 @@ end;
 
 { TOwnershipScan }
 
-constructor TOwnershipScan.Create(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex;
-  const AFindings: TArray<TRuleFinding>);
+constructor TOwnershipScan.Create(const AContext: TRuleContext; const AFindings: TArray<TRuleFinding>);
 begin
   inherited Create;
-  FTree := ATree;
-  FText := AText;
+  FTree := AContext.Tree;
+  FText := AContext.Text;
   FFindings := AFindings;
-  FTypes := TFreeFieldTypes.Create(ATree, AText, AIndex);
-  FFields := TOwnedFields.Analyze(ATree, AText, AIndex);
+  FTypes := TFreeFieldTypes.Create(FTree, FText, AContext.Index);
+  FFields := TOwnedFields.Analyze(FTree, FText, AContext.Index);
+  FCalls := TRuleCallOwnership.Create(AContext);
 end;
 
 destructor TOwnershipScan.Destroy;
 begin
+  FCalls.Free;
   FTypes.Free;
   inherited Destroy;
 end;
@@ -428,9 +454,45 @@ begin
   end;
 end;
 
-/// <summary>Das Objekt geht als Argument an ACall: Exit gibt zurück, Add… einer besitzenden Liste übergibt den
-/// Besitz, lesende Routinen zählen nicht, alles andere gibt weiter.</summary>
-procedure TOwnershipScan.Handover(const AClassName: string; ACall: TSyntaxNode; var ASite: TOwnershipSite);
+/// <summary>Was die gerufene Routine laut Index mit dem Argument AArgument von ACall macht, auch in einer anderen
+/// Unit: freigeben, übernehmen, nur leihen; unklar bleibt weitergegeben. Lesende Routinen wie Assign zählen nur,
+/// wenn der Index nichts weiß: Eine eigene Methode Assign, die das Objekt behält, geht vor.</summary>
+procedure TOwnershipScan.CalleeVerdict(ACall, AArgument: TSyntaxNode; var ASite: TOwnershipSite);
+var
+  mEffect: TCallEffect;
+  mDetail: string;
+begin
+  mEffect := FCalls.EffectOf(ACall, TSyntaxNodes.IndexOf(ACall, AArgument) - 1);
+  if (mEffect.Effect in [TParamEffect.Unknown, TParamEffect.NoObject]) and
+    MatchText(ACall[0].Name, TObjectUses.cReadingCalls) then
+  begin
+    Exit;
+  end;
+  mDetail := mEffect.Callee;
+  if mDetail = '' then
+  begin
+    mDetail := TFreeFieldTypes.CodeOf(FText, ACall[0]);
+  end;
+  if mEffect.Via <> '' then
+  begin
+    mDetail := mDetail + ' › ' + mEffect.Via;
+  end;
+  case mEffect.Effect of
+    TParamEffect.Frees:
+      Take(ASite, TOwnershipKind.FreedBy, -1, mDetail);
+    TParamEffect.Keeps:
+      Take(ASite, TOwnershipKind.TakenBy, -1, mDetail);
+    TParamEffect.Borrows:
+      Take(ASite, TOwnershipKind.Lent, -1, mDetail);
+  else
+    Take(ASite, TOwnershipKind.Passed, -1, TFreeFieldTypes.CodeOf(FText, ACall[0]));
+  end;
+end;
+
+/// <summary>Das Objekt geht als Argument AArgument an ACall: Exit gibt zurück, Add… einer besitzenden Liste übergibt
+/// den Besitz, sonst entscheidet die gerufene Routine (CalleeVerdict).</summary>
+procedure TOwnershipScan.Handover(const AClassName: string; ACall, AArgument: TSyntaxNode;
+  var ASite: TOwnershipSite);
 var
   mCallee: TSyntaxNode;
   mReceiver: string;
@@ -439,10 +501,6 @@ begin
   if (mCallee.Kind = TSyntaxKind.Identifier) and SameText(mCallee.Name, 'Exit') then
   begin
     Take(ASite, TOwnershipKind.Returned, -1, '');
-    Exit;
-  end;
-  if MatchText(mCallee.Name, cReadingCalls) then
-  begin
     Exit;
   end;
   if (mCallee.Kind = TSyntaxKind.MemberAccess) and (mCallee.ChildCount = 1) and
@@ -455,7 +513,7 @@ begin
       Exit;
     end;
   end;
-  Take(ASite, TOwnershipKind.Passed, -1, TFreeFieldTypes.CodeOf(FText, mCallee));
+  CalleeVerdict(ACall, AArgument, ASite);
 end;
 
 /// <summary>Urteil der Analyse wie field-not-freed über das Feld: nie freigegeben (mit Befund) oder unklar; False,
@@ -582,7 +640,7 @@ begin
   end
   else if (mParent.Kind = TSyntaxKind.Call) and (mParent[0] <> AOccurrence) then
   begin
-    Handover(ARaw.ClassName, mParent, ASite);
+    Handover(ARaw.ClassName, mParent, AOccurrence, ASite);
   end;
 end;
 
@@ -646,7 +704,7 @@ begin
     TOwnershipPlace.Assigned, TOwnershipPlace.InlineVar:
       ClassifyTarget(mRaw, FSites[AIndex]);
     TOwnershipPlace.Argument:
-      Handover(mRaw.ClassName, mRaw.Other, FSites[AIndex]);
+      Handover(mRaw.ClassName, mRaw.Other, ArgumentNode(mRaw), FSites[AIndex]);
     TOwnershipPlace.AsInterface:
       FSites[AIndex].Kind := TOwnershipKind.RefCounted;
     TOwnershipPlace.Statement:
@@ -694,17 +752,17 @@ end;
 
 { TOwnershipSites }
 
-class function TOwnershipSites.Analyze(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex;
+class function TOwnershipSites.Analyze(const AContext: TRuleContext;
   const AFindings: TArray<TRuleFinding>): TArray<TOwnershipSite>;
 var
   mScan: TOwnershipScan;
 begin
   Result := nil;
-  if (ATree = nil) or (ATree.Root = nil) or not ContainsText(AText, 'Create') then
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'Create') then
   begin
     Exit;
   end;
-  mScan := TOwnershipScan.Create(ATree, AText, AIndex, AFindings);
+  mScan := TOwnershipScan.Create(AContext, AFindings);
   try
     Result := mScan.Run;
   finally
