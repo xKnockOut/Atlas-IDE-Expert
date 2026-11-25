@@ -14,6 +14,10 @@ type
     [Test]
     procedure WithoutClassActionsNoEntry;
     [Test]
+    procedure WithoutExtractNoEntry;
+    [Test]
+    procedure ConstantGoesToEditing;
+    [Test]
     procedure OverrideGoesToEditing;
     [Test]
     procedure CreateAccessorGoesToEditing;
@@ -24,10 +28,12 @@ type
 implementation
 
 uses
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.CodeActions.Contract.Classes,
   Atlas.Common.Rules.Contract.Refactorings,
-  Atlas.Common.Editing.Providers.ClassActions,
+  Atlas.Common.Editing.Composition,
   Atlas.Tests.TextEdits,
   Adapters.Rules.Refactorings;
 
@@ -55,16 +61,40 @@ const
     ''#13#10 +
     'end.'#13#10;
 
+  // Zeile 4: Literal 42 ab Spalte 10.
+  cCall =
+    'unit U;'#13#10 +
+    'implementation'#13#10 +
+    'procedure P;'#13#10 +
+    'begin'#13#10 +
+    '  Writeln(42);'#13#10 +
+    'end;'#13#10 +
+    'end.'#13#10;
+
 function Refactorings: TRuleRefactorings;
 begin
-  Result := TRuleRefactoringsAdapters.Create(TEditingClassActionsProvider.New);
+  Result := TRuleRefactoringsAdapters.Create(TEditingComposition.ClassActions, TEditingComposition.ExtractFixes);
 end;
 
 { TRuleRefactoringsAdapterTests }
 
 procedure TRuleRefactoringsAdapterTests.WithoutClassActionsNoEntry;
 begin
-  Assert.IsNull(TRuleRefactoringsAdapters.Create(nil).Classes);
+  Assert.IsNull(TRuleRefactoringsAdapters.Create(nil, TEditingComposition.ExtractFixes).Classes);
+end;
+
+procedure TRuleRefactoringsAdapterTests.WithoutExtractNoEntry;
+begin
+  Assert.IsNull(TRuleRefactoringsAdapters.Create(TEditingComposition.ClassActions, nil).Extract);
+end;
+
+procedure TRuleRefactoringsAdapterTests.ConstantGoesToEditing;
+var
+  mAction: TCodeAction;
+begin
+  Assert.IsTrue(Refactorings.Extract.ConstantExtraction(cCall, Default(TPascalNamePrefixes)).Run(
+    TTextRange.Create(4, 10, 4, 12), mAction));
+  Assert.IsTrue(Pos('= 42;', TTestEdits.Apply(cCall, mAction.Edits)) > 0);
 end;
 
 procedure TRuleRefactoringsAdapterTests.OverrideGoesToEditing;
