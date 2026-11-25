@@ -9,7 +9,10 @@
 // Readln). Fundstellen wie „Datei.pas(12)“ sind unterstrichen; ein Klick darauf
 // meldet OnOpen. Neue Zeilen rollen die Liste mit, solange die letzte Zeile zu
 // sehen ist. Strg+C kopiert die gewählte Zeile, das Kontextmenü auch alles.
-// Die Liste ist ein eigenes Steuerelement (TAtlasConsoleList).
+// Die Liste ist ein eigenes Steuerelement (TAtlasConsoleList). Virtuell wird
+// sie erst in CreateWnd des Frames: SetStyle leert die Einträge per
+// LB_RESETCONTENT und legt dafür ein Fenster an, das im Konstruktor ohne
+// Parent fehlt (die IDE hängt den Frame erst nach dem Anlegen ein).
 // Die DFM ist leer, weil TCustomFrame.Create für abgeleitete Frames eine
 // Ressource verlangt; aufgebaut wird im Code.
 
@@ -27,12 +30,13 @@ uses
   Vcl.ExtCtrls,
   Vcl.Menus,
   Vcl.Forms,
+  Atlas.Vcl.Controls.ListBox,
   Atlas.Core.Debug.ConsoleCapture;
 
 type
   /// <summary>Virtuelle Liste der Zeilen in fester Schrift: Farben je Strom, Fundstellen unterstrichen, Klick auf
   /// eine Fundstelle meldet OnOpen, Strg+C kopiert die Zeile, Enter öffnet die Fundstelle.</summary>
-  TAtlasConsoleList = class(TListBox)
+  TAtlasConsoleList = class(TAtlasListBox)
   private
     FBuffer: TAtlasConsoleBuffer;
     FOnOpen: TProc<TAtlasConsoleLocation>;
@@ -40,6 +44,7 @@ type
     function TextLeft: Integer;
     function LocationAt(AX, AY: Integer; out ALocation: TAtlasConsoleLocation): Boolean;
     procedure UpdateItemHeight;
+    function IsVirtual: Boolean;
     procedure Open(const ALocation: TAtlasConsoleLocation);
   protected
     procedure CreateWnd; override;
@@ -101,6 +106,8 @@ type
     procedure CopyAllClick(Sender: TObject);
     procedure OpenClick(Sender: TObject);
     procedure MenuPopup(Sender: TObject);
+  protected
+    procedure CreateWnd; override;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Zeilen der IDE-Schicht (sie gehört ihr; nil = leer).</summary>
@@ -143,17 +150,21 @@ const
 constructor TAtlasConsoleList.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  Style := lbVirtualOwnerDraw;
+  // Style erst in CreateWnd des Frames: SetStyle bräuchte hier schon ein Fenster.
   MultiSelect := False;
   Font.Name := cFontName;
   Font.Size := cFontSize;
 end;
 
+function TAtlasConsoleList.IsVirtual: Boolean;
+begin
+  Result := Style = lbVirtualOwnerDraw;
+end;
+
 procedure TAtlasConsoleList.CreateWnd;
 begin
   inherited CreateWnd;
-  // Text messen und Count der virtuellen Liste brauchen ein Fenster.
-  UpdateItemHeight;
+  // Count der virtuellen Liste braucht ein Fenster.
   Refill;
 end;
 
@@ -164,13 +175,23 @@ begin
 end;
 
 procedure TAtlasConsoleList.UpdateItemHeight;
+var
+  mDC: HDC;
+  mCanvas: TCanvas;
 begin
-  if not HandleAllocated then
-  begin
-    Exit;
+  // Am Bildschirm messen, nicht am eigenen Fenster: Ohne Fenster fehlt es, und ItemHeight legt ein vorhandenes neu
+  // an (in CreateWnd mitten im Anlegen).
+  mDC := GetDC(0);
+  mCanvas := TCanvas.Create;
+  try
+    mCanvas.Handle := mDC;
+    mCanvas.Font := Font;
+    ItemHeight := mCanvas.TextHeight('Wg') + 2;
+  finally
+    mCanvas.Handle := 0;
+    mCanvas.Free;
+    ReleaseDC(0, mDC);
   end;
-  Canvas.Font := Font;
-  ItemHeight := Canvas.TextHeight('Wg') + 2;
 end;
 
 function TAtlasConsoleList.RowCount: Integer;
@@ -390,8 +411,8 @@ var
   mCount: Integer;
   mFollow: Boolean;
 begin
-  // Count der virtuellen Liste braucht ein Fenster (CreateWnd ruft erneut).
-  if not HandleAllocated then
+  // Count der virtuellen Liste braucht ein Fenster (CreateWnd ruft erneut) und geht nur virtuell.
+  if not HandleAllocated or not IsVirtual then
   begin
     Exit;
   end;
@@ -421,6 +442,13 @@ begin
   CreateMenu;
   CreateList;
   SetState(TAtlasConsoleStrings.Text(TAtlasConsoleTextId.StateIdle), False);
+end;
+
+procedure TAtlasDebugConsoleFrame.CreateWnd;
+begin
+  inherited CreateWnd;
+  // Erst jetzt hat der Parent der Liste ein Fenster (SetStyle leert per LB_RESETCONTENT).
+  FList.Style := lbVirtualOwnerDraw;
 end;
 
 function TAtlasDebugConsoleFrame.AddButton(AParent: TWinControl; const ACaption: string;
