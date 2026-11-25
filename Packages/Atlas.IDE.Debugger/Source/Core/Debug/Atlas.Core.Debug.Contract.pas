@@ -65,7 +65,8 @@ type
     ['{3A27E153-140A-4972-9BE0-FC10ACB9CE65}']
     /// <summary>AExpression an AFileName, ALine (1-basiert) auswerten; ASideEffects erlaubt Aufrufe und Getter.
     /// Ergebnis Value oder Failed; Pending: Der Wert kommt einmal über ADone, außer nach Cancel; None: kein
-    /// angehaltener Prozess.</summary>
+    /// angehaltener Prozess. ADone kommt nie vor der Rückkehr von Evaluate (in der IDE über die Nachrichtenschleife):
+    /// Der Aufrufer merkt sich das Warten erst danach und verwirft frühere Werte.</summary>
     function Evaluate(const AExpression, AFileName: string; ALine: Integer; ASideEffects: Boolean;
       const ADone: TAtlasDebugValueDone): TAtlasDebugValue;
     /// <summary>Laufende verzögerte Auswertung verwerfen; ihr Rückruf kommt nicht mehr.</summary>

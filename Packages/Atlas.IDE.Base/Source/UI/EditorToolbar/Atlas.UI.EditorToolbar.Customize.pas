@@ -109,6 +109,7 @@ uses
   System.UITypes,
   System.Generics.Collections,
   System.Generics.Defaults,
+  Atlas.Vcl.Controls.ListBox,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.EditorToolbar.Strings,
   Atlas.UI.EditorToolbar.Glyphs;
@@ -215,7 +216,7 @@ end;
 
 function TAtlasToolbarCustomizeBuilder.NewList(AParent: TWinControl): TListBox;
 begin
-  Result := TListBox.Create(Dialog);
+  Result := TAtlasListBox.Create(Dialog);
   Result.Parent := AParent;
   Result.AlignWithMargins := True;
   Result.Margins.SetBounds(Dialog.ScaleValue(cGap), Dialog.ScaleValue(cListTop), 0, Dialog.ScaleValue(cGap));

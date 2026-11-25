@@ -3,8 +3,10 @@
 // Tests der Suche außerhalb von Kommentaren und Zeichenketten: jede Art
 // Kommentar, Anweisung und Zeichenkette mit und ohne Abschluss, Wortgrenzen
 // (qualifizierte Namen, &-Bezeichner, Unicode), und dass jede Suche auch bei
-// offenen Kommentaren endet. Eine Zeitmessung prüft, dass die Arbeit bei
-// vielen Zeichenketten linear mit der Länge wächst.
+// offenen Kommentaren endet. Ein Vergleich zweier Textlängen prüft, dass die
+// Arbeit bei vielen Zeichenketten linear mit der Länge wächst; er vergleicht
+// nur die Größenordnung, keine feste Zeit, und hält so auch auf langsamen
+// Rechnern.
 
 interface
 
@@ -48,6 +50,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Math,
   System.Diagnostics,
   Atlas.Text.PascalScan;
 
@@ -182,43 +185,78 @@ begin
   Assert.AreEqual(3, TPascalScan.FirstOpen(cText));
 end;
 
-procedure TPascalScanTests.ManyStringsStayLinear;
-const
-  cEntries = 20000;
+/// <summary>Wie eine große .dpr: AEntries Einträge "Unit in 'Pfad'".</summary>
+function DprWithStrings(AEntries: Integer): string;
 var
   mBuilder: TStringBuilder;
-  mText: string;
-  mIndex, mFound, mCount: Integer;
-  mWatch: TStopwatch;
+  mIndex: Integer;
 begin
-  // Wie eine große .dpr: viele Einträge "Unit in 'Pfad'"; jede Zeichenkette kostet nur ihre eigene Länge.
   mBuilder := TStringBuilder.Create;
   try
     mBuilder.Append('program P;' + cBreak + 'uses' + cBreak);
-    for mIndex := 1 to cEntries do
+    for mIndex := 1 to AEntries do
     begin
       mBuilder.Append('  Unit' + IntToStr(mIndex) + ' in ''Quelle\Ordner\Unit' + IntToStr(mIndex) + '.pas'',' +
         cBreak);
     end;
     mBuilder.Append('  Letzte;' + cBreak + 'begin' + cBreak + 'end.');
-    mText := mBuilder.ToString;
+    Result := mBuilder.ToString;
   finally
     mBuilder.Free;
   end;
-  mWatch := TStopwatch.StartNew;
-  Assert.AreEqual(0, TPascalScan.FirstOpen(mText));
-  mCount := 0;
-  mFound := TPascalScan.FindWord(mText, 'in', 1);
+end;
+
+/// <summary>Alle "in" in AText suchen; Zahl der Treffer.</summary>
+function CountIn(const AText: string): Integer;
+var
+  mFound: Integer;
+begin
+  Result := 0;
+  mFound := TPascalScan.FindWord(AText, 'in', 1);
   while mFound > 0 do
   begin
-    Inc(mCount);
-    mFound := TPascalScan.FindWord(mText, 'in', mFound + 1);
+    Inc(Result);
+    mFound := TPascalScan.FindWord(AText, 'in', mFound + 1);
   end;
-  Assert.AreEqual(Integer(Pos('begin', mText)), TPascalScan.FindWord(mText, 'begin', 1));
-  mWatch.Stop;
-  Assert.AreEqual(cEntries, mCount);
-  Assert.IsTrue(mWatch.ElapsedMilliseconds < 1000, 'Dauer ' + IntToStr(mWatch.ElapsedMilliseconds) + ' ms');
-  mText := '';
+end;
+
+/// <summary>Kürzeste von drei Suchen über AText in Ticks (eine Unterbrechung des Rechners zählt nicht).</summary>
+function BestTicks(const AText: string): Int64;
+var
+  mRound: Integer;
+  mWatch: TStopwatch;
+begin
+  Result := High(Int64);
+  for mRound := 1 to 3 do
+  begin
+    mWatch := TStopwatch.StartNew;
+    CountIn(AText);
+    mWatch.Stop;
+    Result := Min(Result, mWatch.ElapsedTicks);
+  end;
+end;
+
+procedure TPascalScanTests.ManyStringsStayLinear;
+const
+  cSmall = 2000;
+  cFactor = 8;
+var
+  mSmall, mLarge: string;
+  mSmallTicks, mLargeTicks: Int64;
+begin
+  // Jede Zeichenkette kostet nur ihre eigene Länge. Kopierte die Suche je Zeichenkette den Text von vorn, wüchse
+  // die Arbeit mit dem Quadrat der Länge: achtfacher Text, 64-fache Zeit statt achtfacher.
+  mSmall := DprWithStrings(cSmall);
+  mLarge := DprWithStrings(cSmall * cFactor);
+  Assert.AreEqual(0, TPascalScan.FirstOpen(mLarge));
+  Assert.AreEqual(cSmall * cFactor, CountIn(mLarge));
+  Assert.AreEqual(Integer(Pos('begin', mLarge)), TPascalScan.FindWord(mLarge, 'begin', 1));
+  mSmallTicks := Max(BestTicks(mSmall), 1);
+  mLargeTicks := BestTicks(mLarge);
+  Assert.IsTrue(mLargeTicks < 3 * cFactor * mSmallTicks, Format('%d statt höchstens %d Ticks (Kurz: %d)',
+    [mLargeTicks, 3 * cFactor * mSmallTicks, mSmallTicks]));
+  mSmall := '';
+  mLarge := '';
 end;
 
 end.

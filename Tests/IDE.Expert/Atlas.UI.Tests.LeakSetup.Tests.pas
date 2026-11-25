@@ -3,7 +3,8 @@
 // Dialog „Leckprüfung einrichten …“ (#1880) mit VCL: Der Konstruktor setzt die
 // Vorauswahl, bevor die Varianten auf Klicks hören (sonst Zugriffsverletzung
 // und kein Dialog); „Bericht als Datei“ nur mit FastMM, „Einrichten …“ nur mit
-// einer möglichen Variante, ein Klick auf eine andere Variante passt beides an.
+// einer möglichen Variante, ein Klick auf eine andere Variante passt beides an. Die Varianten liegen unter einem
+// gemeinsamen Feld und bilden so für die VCL eine Gruppe.
 
 interface
 
@@ -30,6 +31,8 @@ type
     procedure PackageAllowsNoSetup;
     [Test]
     procedure ClickOnSimpleDisablesFileReport;
+    [Test]
+    procedure ChoicesFormOneGroup;
   end;
 
 implementation
@@ -176,6 +179,37 @@ begin
     ChoiceButton(mDialog, TAtlasTestsTextId.LeakChoiceSimple).Checked := True;
     Assert.IsFalse(FileReportBox(mDialog).Enabled, 'nach Klick auf Einfach');
     Assert.IsTrue(SetUpButton(mDialog).Enabled);
+  finally
+    mDialog.Free;
+  end;
+end;
+
+procedure TAtlasLeakSetupDialogTests.ChoicesFormOneGroup;
+var
+  mInfo: TAtlasLeakSetupInfo;
+  mDialog: TAtlasLeakSetupDialog;
+  mSimple, mFastMM4, mFastMM5: TRadioButton;
+begin
+  mInfo := Info;
+  mInfo.Sources[TAtlasLeakChoice.FastMM4].FileName := 'C:\Lib\FastMM4.pas';
+  mInfo.Sources[TAtlasLeakChoice.FastMM5].FileName := 'C:\Lib\FastMM5.pas';
+  mDialog := TAtlasLeakSetupDialog.CreateFor(nil, mInfo);
+  try
+    mDialog.HandleNeeded;
+    mSimple := ChoiceButton(mDialog, TAtlasTestsTextId.LeakChoiceSimple);
+    mFastMM4 := ChoiceButton(mDialog, TAtlasTestsTextId.LeakChoiceFastMM4);
+    mFastMM5 := ChoiceButton(mDialog, TAtlasTestsTextId.LeakChoiceFastMM5);
+    Assert.AreSame(mSimple.Parent, mFastMM4.Parent, 'ein Feld für alle Varianten');
+    Assert.AreSame(mSimple.Parent, mFastMM5.Parent, 'ein Feld für alle Varianten');
+    // Die Pfeiltasten wechseln unter den Geschwistern im selben Feld; andere Steuerelemente stehen dort nicht.
+    Assert.AreEqual(3, mSimple.Parent.ControlCount, 'nur die Varianten im Feld');
+    mFastMM4.Checked := True;
+    Assert.IsFalse(mSimple.Checked, 'die VCL wählt die übrigen ab');
+    Assert.IsFalse(mFastMM5.Checked, 'die VCL wählt die übrigen ab');
+    Assert.IsTrue(mFastMM4.TabStop, 'Tabstopp am gewählten Knopf');
+    Assert.IsFalse(mSimple.TabStop, 'kein Tabstopp an nicht gewählten Knöpfen');
+    Assert.IsFalse(mFastMM5.TabStop, 'kein Tabstopp an nicht gewählten Knöpfen');
+    Assert.IsTrue(FileReportBox(mDialog).Enabled, 'FastMM4 schreibt den Bericht als Datei');
   finally
     mDialog.Free;
   end;

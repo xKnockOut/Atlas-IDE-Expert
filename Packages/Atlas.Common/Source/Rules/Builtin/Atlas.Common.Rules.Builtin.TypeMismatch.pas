@@ -42,9 +42,17 @@
 //                       Argument einer Variablen, eines Felds oder einer
 //                       Property von prozeduralem Typ (FOnTree(A, Refresh),
 //                       #2309).
-//                     TProc, TFunc und TPredicate aus System.SysUtils gelten
+//                     - Variable, Parameter, Feld oder Property eines
+//                       benannten Methodenreferenztyps an einen anderen
+//                       benannten Methodenreferenztyp (TProc an
+//                       TThreadProcedure): Delphi 12 nimmt das auch bei
+//                       gleicher Signatur nicht an (wie E2010), Delphi 13 und
+//                       FPC schon. Gemeldet wird nur bei verschiedenen
+//                       Grundnamen; Aliase (TX = TProc) bleiben still.
+//                     TProc, TFunc und TPredicate aus System.SysUtils und
+//                     TThreadProcedure aus System.Classes gelten
 //                     auch ohne RTL im Index (Cloud, CI; #2309), wenn die Unit
-//                     des Typs System.SysUtils einbindet und keine Unit
+//                     des Typs dessen Unit einbindet und keine Unit
 //                     dahinter einen gleichnamigen Typ deklarieren kann (jede
 //                     ist im Index oder eine Unit von Embarcadero).
 //                     Sonst keine Korrektur: Welche Seite falsch ist, weiß nur
@@ -98,7 +106,8 @@ uses
 type
   /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
   TTypeMismatchText = (Incompatible, MethodVsProc, ProcVsMethod, ParamList, IncStep, PtrArg, InvalidCast,
-    VarParamTypes, IsNeedsClass, OperatorBinary, OperatorUnary, ReferenceParams, NotCalled, AddParens, Title);
+    VarParamTypes, IsNeedsClass, OperatorBinary, OperatorUnary, ReferenceParams, NotCalled, AddParens, Title,
+    ReferenceTwins);
 
 const
   cTexts: array[TTypeMismatchText] of TAtlasText = (
@@ -136,7 +145,11 @@ const
      En: 'Incompatible types: ''%s'' and ''Procedure''; %s returns %s, but without () the name stands for the ' +
       'function itself (like E2010).'),
     (De: '() ergänzen'; En: 'Add ()'),
-    (De: 'Inkompatible Typen'; En: 'Incompatible types'));
+    (De: 'Inkompatible Typen'; En: 'Incompatible types'),
+    (De: 'Inkompatible Typen: ''%s'' und ''%s''; zwei Methodenreferenztypen sind unter Delphi 12 auch bei ' +
+      'gleicher Signatur verschiedene Typen (wie E2010).';
+     En: 'Incompatible types: ''%s'' and ''%s''; under Delphi 12 two method reference types are distinct types ' +
+      'even with the same signature (like E2010).'));
 
 {$SCOPEDENUMS OFF}
 
@@ -185,6 +198,9 @@ type
     /// nicht kennt. AUnit: die Unit, aus der seine Parametertypen aufzulösen sind.</summary>
     function DeclaredType(const ASymbol: TResolvedSymbol; var AType: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
     function NotCalled(ASource: TSyntaxNode; const ATargetName: string): Boolean;
+    /// <summary>Meldet eine Variable (Parameter, Feld, Property) ASource eines anderen benannten
+    /// Methodenreferenztyps als ATargetName (TProc an TThreadProcedure, wie E2010 unter Delphi 12).</summary>
+    function OtherReferenceType(ASource: TSyntaxNode; const ATarget: TProcShape; const ATargetName: string): Boolean;
     function RoutineCandidates(ANode: TSyntaxNode; out ACandidates: TArray<TResolvedSymbol>): Boolean;
     procedure Mismatch(ANode: TSyntaxNode; const ATarget, ASource: string);
     procedure CheckAssignment(ANode: TSyntaxNode);
@@ -1050,7 +1066,7 @@ var
   mKnown: TResolvedSymbol;
   mUnit: TUnitIndex;
   mUses: TArray<string>;
-  mIndex, mSysUtils: Integer;
+  mIndex, mHome: Integer;
 begin
   AType := Default(TResolvedSymbol);
   Result := TRtlMethodReferences.Find(ATypeText, mReference) and
@@ -1059,18 +1075,18 @@ begin
   begin
     Exit;
   end;
-  // dcc sucht von hinten: Was nach System.SysUtils eingebunden ist, verdeckt dessen Typen.
+  // dcc sucht von hinten: Was nach System.SysUtils (System.Classes) eingebunden ist, verdeckt dessen Typen.
   mUses := AFrom.InterfaceUses + AFrom.ImplementationUses;
-  mSysUtils := -1;
+  mHome := -1;
   for mIndex := 0 to High(mUses) do
   begin
-    if TRtlMethodReferences.IsSysUtils(mUses[mIndex]) then
+    if TRtlMethodReferences.IsUnit(mUses[mIndex], mReference.UnitName) then
     begin
-      mSysUtils := mIndex;
+      mHome := mIndex;
     end;
   end;
-  Result := mSysUtils >= 0;
-  for mIndex := mSysUtils + 1 to High(mUses) do
+  Result := mHome >= 0;
+  for mIndex := mHome + 1 to High(mUses) do
   begin
     Result := Result and (((FContext.Index <> nil) and FContext.Index.FindUnit(mUses[mIndex], mUnit)) or
       not MayDeclareRtlName(mUses[mIndex]));
@@ -1135,6 +1151,54 @@ begin
     [TTextEdit.Create(TTextRange.Create(ASource.EndPos, ASource.EndPos), '()')]);
   FReport.Add(TTextRange.Create(ASource.StartPos, ASource.EndPos), cTexts[TTypeMismatchText.NotCalled].Fmt(
     [ATargetName, ShortText(FScope, ASource), ATargetName]), TRuleConfidence.High, [mFix]);
+end;
+
+/// <summary>Grundname eines Typnamens ohne Typargumente und Unit: "System.SysUtils.TProc&lt;string&gt;" → "TProc";
+/// '' bei einem Text, der kein Name ist ("reference to procedure").</summary>
+function ReferenceBaseName(const ATypeName: string): string;
+var
+  mOpen: Integer;
+begin
+  Result := Trim(ATypeName);
+  mOpen := Pos('<', Result);
+  if mOpen > 0 then
+  begin
+    Result := Trim(Copy(Result, 1, mOpen - 1));
+  end;
+  if (Result = '') or (Pos(' ', Result) > 0) or (Pos('(', Result) > 0) then
+  begin
+    Exit('');
+  end;
+  Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
+end;
+
+function TTypeMismatchCheck.OtherReferenceType(ASource: TSyntaxNode; const ATarget: TProcShape;
+  const ATargetName: string): Boolean;
+var
+  mSymbol, mType: TResolvedSymbol;
+  mUnit: TUnitIndex;
+  mFound: Boolean;
+  mTargetBase, mSourceBase: string;
+begin
+  Result := False;
+  mTargetBase := ReferenceBaseName(ATargetName);
+  if not ATarget.Reference or (mTargetBase = '') or
+    not FScope.Resolver.NodeType(FContext.Tree, FScope.FileName, ASource, mSymbol, mType, mFound) or
+    mSymbol.IsType or not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
+    TIndexSymbolKind.Property_]) or not FScope.DeclarationSure(mSymbol, ASource) or HiddenMember(ASource, mSymbol) or
+    not DeclaredType(mSymbol, mType, mUnit) then
+  begin
+    Exit;
+  end;
+  // Nur zwei benannte Typen, die selbst reference to sind; ein Alias (TX = TProc) ist derselbe Typ.
+  mSourceBase := ReferenceBaseName(mType.Name);
+  Result := (mSourceBase <> '') and not SameText(mSourceBase, mTargetBase) and
+    StartsText('reference', ProceduralText(mSymbol, mType));
+  if Result then
+  begin
+    FReport.Add(TTextRange.Create(ASource.StartPos, ASource.EndPos),
+      cTexts[TTypeMismatchText.ReferenceTwins].Fmt([ATargetName, BoundName(mType)]), TRuleConfidence.High);
+  end;
 end;
 
 function TTypeMismatchCheck.RoutineCandidates(ANode: TSyntaxNode; out ACandidates: TArray<TResolvedSymbol>): Boolean;
@@ -1293,7 +1357,8 @@ begin
     CheckAnonymous(ASource, ATarget, ATargetName);
     Exit;
   end;
-  if (ASource.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and NotCalled(ASource, ATargetName) then
+  if (ASource.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and (NotCalled(ASource, ATargetName) or
+    OtherReferenceType(ASource, ATarget, ATargetName)) then
   begin
     Exit;
   end;

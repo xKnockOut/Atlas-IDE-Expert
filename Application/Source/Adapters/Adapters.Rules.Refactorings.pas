@@ -15,6 +15,7 @@ uses
   Atlas.Common.Rules.Contract.Refactorings,
   Atlas.Common.Editing.Contract.ClassActions,
   Atlas.Common.Editing.Contract.Extract,
+  Atlas.Common.Editing.Contract.MethodOrder,
   Atlas.Common.Editing.Contract.MethodWithoutSelf;
 
 type
@@ -53,11 +54,29 @@ type
     function WithoutSelf(const AScan: TRuleMethodScan): TArray<TRuleMethodWithoutSelf>;
   end;
 
+  /// <summary>IRuleMethodOrderRefactorings über die Prüfung der Methodenordnung von Editing.</summary>
+  TRuleMethodOrderRefactoringsAdapter = class(TInterfacedObject, IRuleMethodOrderRefactorings)
+  private
+    FOrder: IEditingMethodOrderReview;
+  public
+    constructor Create(const AOrder: IEditingMethodOrderReview);
+    function Review(const AText: string; const ATree: IPascalSyntaxTree;
+      const ARequest: TRuleMethodOrderRequest): TRuleMethodOrderReview;
+  end;
+
+  /// <summary>Die APIs von Editing, aus denen die Korrekturen der Prüfregeln entstehen; nil = nicht anbieten.
+  /// </summary>
+  TRuleRefactoringSources = record
+    Classes: IEditingClassActions;
+    Extract: IEditingExtractFixes;
+    Methods: IEditingMethodsWithoutSelf;
+    Order: IEditingMethodOrderReview;
+  end;
+
   /// <summary>Die Refactorings für die Prüfregeln aus den APIs von Editing.</summary>
   TRuleRefactoringsAdapters = record
-    /// <summary>Ein nil-Argument: diese Korrekturen nicht anbieten.</summary>
-    class function Create(const AClasses: IEditingClassActions; const AExtract: IEditingExtractFixes;
-      const AMethods: IEditingMethodsWithoutSelf): TRuleRefactorings; static;
+    /// <summary>Ein nil-Eintrag in ASources: diese Korrekturen nicht anbieten.</summary>
+    class function Create(const ASources: TRuleRefactoringSources): TRuleRefactorings; static;
   end;
 
 implementation
@@ -175,23 +194,61 @@ begin
   end;
 end;
 
+{ TRuleMethodOrderRefactoringsAdapter }
+
+constructor TRuleMethodOrderRefactoringsAdapter.Create(const AOrder: IEditingMethodOrderReview);
+begin
+  inherited Create;
+  FOrder := AOrder;
+end;
+
+function TRuleMethodOrderRefactoringsAdapter.Review(const AText: string; const ATree: IPascalSyntaxTree;
+  const ARequest: TRuleMethodOrderRequest): TRuleMethodOrderReview;
+var
+  mRequest: TEditingMethodOrderRequest;
+  mFound: TEditingMethodOrderReview;
+  mIndex: Integer;
+begin
+  mRequest := Default(TEditingMethodOrderRequest);
+  mRequest.Placement := ARequest.Placement;
+  mRequest.LifecycleFirst := ARequest.LifecycleFirst;
+  mRequest.BlankLines := ARequest.BlankLines;
+  mRequest.TypeComment := ARequest.TypeComment;
+  mRequest.LineLength := ARequest.LineLength;
+  mFound := FOrder.Review(AText, ATree, mRequest);
+  Result := Default(TRuleMethodOrderReview);
+  Result.Placement := mFound.Placement;
+  SetLength(Result.Types, Length(mFound.Types));
+  for mIndex := 0 to High(mFound.Types) do
+  begin
+    Result.Types[mIndex].TypeName := mFound.Types[mIndex].TypeName;
+    Result.Types[mIndex].NameRange := mFound.Types[mIndex].NameRange;
+    Result.Types[mIndex].OrderEdits := mFound.Types[mIndex].OrderEdits;
+    Result.Types[mIndex].CommentEdits := mFound.Types[mIndex].CommentEdits;
+    Result.Types[mIndex].CommentText := mFound.Types[mIndex].CommentText;
+  end;
+end;
+
 { TRuleRefactoringsAdapters }
 
-class function TRuleRefactoringsAdapters.Create(const AClasses: IEditingClassActions;
-  const AExtract: IEditingExtractFixes; const AMethods: IEditingMethodsWithoutSelf): TRuleRefactorings;
+class function TRuleRefactoringsAdapters.Create(const ASources: TRuleRefactoringSources): TRuleRefactorings;
 begin
   Result := Default(TRuleRefactorings);
-  if AClasses <> nil then
+  if ASources.Classes <> nil then
   begin
-    Result.Classes := TRuleClassRefactoringsAdapter.Create(AClasses);
+    Result.Classes := TRuleClassRefactoringsAdapter.Create(ASources.Classes);
   end;
-  if AExtract <> nil then
+  if ASources.Extract <> nil then
   begin
-    Result.Extract := TRuleExtractRefactoringsAdapter.Create(AExtract);
+    Result.Extract := TRuleExtractRefactoringsAdapter.Create(ASources.Extract);
   end;
-  if AMethods <> nil then
+  if ASources.Methods <> nil then
   begin
-    Result.Methods := TRuleMethodRefactoringsAdapter.Create(AMethods);
+    Result.Methods := TRuleMethodRefactoringsAdapter.Create(ASources.Methods);
+  end;
+  if ASources.Order <> nil then
+  begin
+    Result.Order := TRuleMethodOrderRefactoringsAdapter.Create(ASources.Order);
   end;
 end;
 
