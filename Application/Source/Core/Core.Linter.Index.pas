@@ -8,12 +8,12 @@ interface
 
 uses
   Atlas.Common.Projects.PackageReader,
-  Atlas.Common.Rules.Checker,
   Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Common.Diagnostics.CheckMemory,
   Core.CommandLine,
   Core.WorkspaceGroup,
-  Core.Linter.Host;
+  Core.Linter.Host,
+  Atlas.Common.Checks.Contract;
 
 type
   TLinterIndex = class
@@ -45,14 +45,14 @@ uses
   System.IOUtils,
   System.Diagnostics,
   Atlas.Common.Projects.Contract.Group,
-  Atlas.Common.Rules.Builtin.FormFields,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Processes,
   Platform.Server,
   Core.Bootstrap,
   Core.Linter.Output,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Projects.Facts;
 
 type
 {$SCOPEDENUMS ON}
@@ -175,10 +175,15 @@ class function TLinterIndex.ProjectOf(const AFileName: string; const APackages: 
 var
   mIndexed: TCheckProject;
 begin
-  Result := TFileChecker.PackageOf(APackages, ChangeFileExt(ExtractFileName(AFileName), ''));
-  if Result.Name = '' then
+  Result := Default(TCheckProject);
+  Result.Name := TProjectFacts.PackageNameOf(APackages, ChangeFileExt(ExtractFileName(AFileName), ''));
+  if Result.Name <> '' then
   begin
-    Result.AutoCreateForms := TFormAccessBeforeCreateRule.FormsOfProgram(APrograms,
+    Result.Application := TApplicationKind.Package;
+  end
+  else
+  begin
+    Result.AutoCreateForms := TProjectFacts.FormsOfProgram(APrograms,
       ChangeFileExt(ExtractFileName(AFileName), ''));
   end;
   // Formulardatei und Dateien neben der Unit wie im Server (form-resource-missing, #1054).

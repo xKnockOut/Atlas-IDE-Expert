@@ -123,7 +123,7 @@ uses
   System.Generics.Defaults,
   Atlas.Text.Lines,
   Atlas.Text.Fuzzy,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Projects.DprojEditor,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
@@ -136,7 +136,8 @@ uses
   Atlas.Common.Semantics.UnresolvedNames,
   Atlas.Common.Semantics.FreeRoutineMembers,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.Lexer;
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Checks.Contract;
 
 {$SCOPEDENUMS ON}
 
@@ -237,7 +238,7 @@ end;
 
 /// <summary>Kennt die IDE den Typ ANames (Name, ggf. mit Unit davor) in einer Unit, die sichtbar ist: die vor dem
 /// Punkt bzw. eine aus AUsed?</summary>
-function IdeDeclares(const AIdeTypes: IRuleIdeTypes; const ANames, AUsed, ANamespaces: TArray<string>): Boolean;
+function IdeDeclares(const AIdeTypes: ICheckIdeTypes; const ANames, AUsed, ANamespaces: TArray<string>): Boolean;
 var
   mUnit, mQualifier: string;
   mVisible: TArray<string>;
@@ -261,7 +262,7 @@ end;
 
 /// <summary>AUnits und dahinter die Units, in denen die IDE den Typ ABare kennt, ohne Doppelte und ohne AOwnUnit.
 /// </summary>
-function WithIdeUnits(const AIdeTypes: IRuleIdeTypes; const ABare, AOwnUnit: string;
+function WithIdeUnits(const AIdeTypes: ICheckIdeTypes; const ABare, AOwnUnit: string;
   const AUnits: TArray<string>): TArray<string>;
 var
   mUnit: string;

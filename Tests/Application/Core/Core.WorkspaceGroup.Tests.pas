@@ -46,7 +46,8 @@ uses
   Core.Workspace.Listings,
   Core.WorkspaceGroup,
   Atlas.Tests.TempFolder,
-  Shell.Composition.Platform;
+  Shell.Composition.Platform,
+  Atlas.Common.Checks.Contract;
 
 const
   cDproj = '<?xml version="1.0" encoding="utf-8"?>'#13#10 +

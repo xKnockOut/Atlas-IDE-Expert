@@ -72,7 +72,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Semantics.ConsideredUsed,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,

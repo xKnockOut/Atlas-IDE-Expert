@@ -40,7 +40,8 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.BulkFix,
-  Atlas.Common.Rules.Catalog;
+  Atlas.Common.Rules.Catalog,
+  Atlas.Common.Checks.Contract;
 
 /// <summary>Ergebnis einer Datei für die API; Diff mit ADiffPath.</summary>
 function OutputOf(const AResult: TBulkFixFile; const ADiffPath: string): TRuleBulkFixOutput;

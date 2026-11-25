@@ -16,7 +16,8 @@ uses
   Atlas.Common.Mcp.Contract.Extract,
   Atlas.Common.Mcp.Contract.Formatting,
   Atlas.Common.Mcp.Contract.RuleDocs,
-  Atlas.Common.Mcp.Contract.TextChecks;
+  Atlas.Common.Mcp.Contract.TextChecks,
+  Atlas.Common.Checks.Contract;
 
 type
   TMcpComposition = record

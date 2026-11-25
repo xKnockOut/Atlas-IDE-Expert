@@ -43,7 +43,8 @@ uses
   Core.Workspace.RuleProjects,
   Atlas.Common.Localization.Texts,
   Core.Workspace,
-  Shell.Composition.Platform;
+  Shell.Composition.Platform,
+  Atlas.Common.Checks.Contract;
 
 function NewWorkspace(const AName: string): TCoreWorkspace;
 begin

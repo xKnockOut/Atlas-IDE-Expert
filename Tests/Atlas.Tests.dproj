@@ -470,6 +470,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.Tests.pas"/>
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.UnitAliases.Tests.pas"/>
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.UnitLookup.Tests.pas"/>
+        <DCCReference Include="Common\Projects\Atlas.Common.Projects.Facts.Tests.pas"/>
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.GroupProjects.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.Tests.pas"/>
@@ -625,7 +626,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.FormatOutput.Tests.pas"/>
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Baseline.Tests.pas"/>
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Scopes.Tests.pas"/>
-        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Options.Tests.pas"/>
+        <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.RuleOptions.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.WarnSwitches.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.SuppressionStats.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Catalog.Tests.pas"/>
@@ -2745,7 +2746,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Directives.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.FileOptions.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Folders.pas"/>
-        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.RuleRefactorings.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CheckRefactorings.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CompileSetup.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Stdio.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.AffectedTests.pas"/>
@@ -2769,10 +2770,10 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Parts.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.ProtocolWiring.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CoreWiring.pas"/>
-        <DCCReference Include="..\Application\Source\Adapters\Adapters.Rules.IdeTypes.pas"/>
-        <DCCReference Include="Application\Adapters\Adapters.Rules.IdeTypes.Tests.pas"/>
-        <DCCReference Include="..\Application\Source\Adapters\Adapters.Rules.Refactorings.pas"/>
-        <DCCReference Include="Application\Adapters\Adapters.Rules.Refactorings.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Checks.IdeTypes.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Checks.IdeTypes.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Checks.Refactorings.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Checks.Refactorings.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.InheritanceDepths.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Lsp.InheritanceDepths.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.OwnershipReport.pas"/>

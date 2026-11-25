@@ -124,7 +124,10 @@ def main():
                   "      on E: Exception do begin Inc(Failed); WriteLn('FAIL %s.%s: ', E.ClassName, ': ', E.Message); end;"
                   % (cls, test.replace("'", "''")),
                   '    end;', '  finally', '    F.Free;', '  end;', 'end;', '']
-    lines += ['begin', '  DefaultSystemCodePage := 1252;']
+    # Keine eigene Codepage setzen: DelphiCompat stellt DefaultSystemCodePage auf UTF-8 wie im Linux-Server. Format
+    # der FPC-RTL rechnet über AnsiString; mit 1252 würden Zeichen außerhalb davon umschrieben (→ zu ->), was unter
+    # Delphi nicht passiert.
+    lines += ['begin']
     lines += ['  T%d;' % n for n in range(1, len(calls) + 1)]
     lines += ["  WriteLn('passed ', Passed, ' failed ', Failed);", '  if Failed > 0 then', '    Halt(1);', 'end.']
     with open(PROGRAM, 'w', encoding='utf-8', newline='\n') as f:

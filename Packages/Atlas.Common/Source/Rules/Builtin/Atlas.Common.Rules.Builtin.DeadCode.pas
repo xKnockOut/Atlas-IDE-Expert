@@ -156,7 +156,7 @@ uses
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Semantics.UsesUsage,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Semantics.ConsideredUsed,
   Atlas.Common.Rules.Builtin.Units,
   Atlas.Text.Lines,

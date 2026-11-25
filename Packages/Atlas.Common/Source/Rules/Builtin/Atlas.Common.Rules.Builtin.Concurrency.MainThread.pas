@@ -55,9 +55,10 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.Builtin.Concurrency.Syntax,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Projects.Facts;
 
 {$SCOPEDENUMS ON}
 
@@ -395,7 +396,7 @@ begin
   // Ohne Projekt: die .dpk selbst.
   if mKind = TRuleApplicationKind.Unknown then
   begin
-    mKind := TWritelnInGuiAppRule.ApplicationKind('', AContext.Text);
+    mKind := TProjectFacts.ApplicationKind('', AContext.Text);
   end;
   if mKind <> TRuleApplicationKind.Package then
   begin
