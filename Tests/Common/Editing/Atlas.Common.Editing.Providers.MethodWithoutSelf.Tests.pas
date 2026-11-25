@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Editing.Providers.MethodWithoutSelf.Tests;
 
 // Tests für IEditingMethodsWithoutSelf (#686): Treffer samt Umwandlung in eine class-Methode, Methoden mit Feldern
-// und Ereignisse der Formulardatei bleiben draußen, ohne Syntaxbaum kein Treffer.
+// und Ereignisse der Formulardatei bleiben draußen, ohne Syntaxbaum des Aufrufers kein Treffer.
 
 interface
 
@@ -25,6 +25,9 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Editing.Contract.MethodWithoutSelf,
   Atlas.Common.Editing.Composition,
   Atlas.Tests.TextEdits;
@@ -52,14 +55,28 @@ const
     'end;'#10 +
     'end.';
 
-function ScanOf(const AText, AFormText: string): TEditingMethodScan;
+function ScanOf(const AText, AFormText: string; ATree: TSyntaxTree): TEditingMethodScan;
 begin
   Result := Default(TEditingMethodScan);
   Result.FileName := 'Rechner.pas';
   Result.Text := AText;
+  Result.Tree := TSyntaxTreeHandles.Wrap(ATree);
   Result.FormText := AFormText;
   Result.WithStatic := True;
   Result.Style := TFormatStyle.Default;
+end;
+
+/// <summary>Treffer in AText auf einem eigenen Baum.</summary>
+function Found(const AText, AFormText: string): TArray<TEditingMethodWithoutSelf>;
+var
+  mTree: TSyntaxTree;
+begin
+  mTree := TSyntaxTreeCache.Parse(AText);
+  try
+    Result := TEditingComposition.MethodsWithoutSelf.Scan(ScanOf(AText, AFormText, mTree));
+  finally
+    mTree.Free;
+  end;
 end;
 
 { TEditingMethodsWithoutSelfProviderTests }
@@ -69,7 +86,7 @@ var
   mFound: TArray<TEditingMethodWithoutSelf>;
   mText: string;
 begin
-  mFound := TEditingComposition.MethodsWithoutSelf.Scan(ScanOf(cSource, ''));
+  mFound := Found(cSource, '');
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('TRechner', mFound[0].ClassName);
   Assert.AreEqual('Doppelt', mFound[0].Name);
@@ -82,13 +99,13 @@ end;
 
 procedure TEditingMethodsWithoutSelfProviderTests.FormEventIsLeftOut;
 begin
-  Assert.AreEqual(0, Integer(Length(TEditingComposition.MethodsWithoutSelf.Scan(ScanOf(cSource,
-    'object Form1: TForm1'#10'  OnClick = Doppelt'#10'end')))));
+  Assert.AreEqual(0, Integer(Length(Found(cSource, 'object Form1: TForm1'#10'  OnClick = Doppelt'#10'end'))));
 end;
 
 procedure TEditingMethodsWithoutSelfProviderTests.NoUnitNoResult;
 begin
-  Assert.AreEqual(0, Integer(Length(TEditingComposition.MethodsWithoutSelf.Scan(ScanOf('', '')))));
+  Assert.AreEqual(0, Integer(Length(TEditingComposition.MethodsWithoutSelf.Scan(ScanOf(cSource, '', nil)))));
+  Assert.AreEqual(0, Integer(Length(Found('', ''))));
 end;
 
 initialization
