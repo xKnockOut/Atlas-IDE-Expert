@@ -22,6 +22,8 @@ type
     [Test]
     procedure MethodOrderGoesToEditing;
     [Test]
+    procedure ClassCompletionGoesToEditing;
+    [Test]
     procedure OverrideGoesToEditing;
     [Test]
     procedure CreateAccessorGoesToEditing;
@@ -37,6 +39,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.TreeHandles,
+  Atlas.Common.Index.Extractor,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.ClassActions.Contract,
@@ -121,6 +124,7 @@ begin
   Result.Extract := TEditingComposition.ExtractFixes;
   Result.Methods := TEditingComposition.MethodsWithoutSelf;
   Result.Order := TEditingComposition.MethodOrder;
+  Result.Completion := TEditingComposition.ClassCompletion;
 end;
 
 function Refactorings: TRuleRefactorings;
@@ -218,6 +222,63 @@ begin
   Assert.IsTrue(mReview.Types[0].CommentEdits = nil, 'Kommentar steht schon da');
   mText := TTestEdits.Apply(cOrder, mReview.Types[0].OrderEdits);
   Assert.IsTrue(Pos('procedure TFoo.A;'#13#10'begin', mText) < Pos('procedure TFoo.B;'#13#10'begin', mText), mText);
+end;
+
+procedure TRuleRefactoringsAdapterTests.ClassCompletionGoesToEditing;
+const
+  // Foo weicht im Modifizierer ab, Bar fehlt der Rumpf.
+  cPair =
+    'unit U;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  TFoo = class'#13#10 +
+    '    procedure Foo(A: Integer);'#13#10 +
+    '    procedure Bar;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'procedure TFoo.Foo(const A: Integer);'#13#10 +
+    'begin'#13#10 +
+    'end;'#13#10 +
+    'end.'#13#10;
+var
+  mTree: TSyntaxTree;
+  mScan: IRuleClassCompletionScan;
+  mPairs: TArray<TRuleSignaturePair>;
+  mFixes: TArray<TCodeAction>;
+  mMissing: TArray<TRuleUnmatchedMethod>;
+  mMethod: TRuleUnmatchedMethod;
+  mShape: TRuleSignatureShape;
+  mAction: TCodeAction;
+begin
+  Assert.IsNull(TRuleRefactoringsAdapters.Create(Default(TRuleRefactoringSources)).Completion);
+  mTree := TSyntaxTreeCache.Parse(cPair);
+  try
+    mScan := Refactorings.Completion.Scan(cPair, TSyntaxTreeHandles.Wrap(mTree), TIndexExtractor.Extract(mTree, ''),
+      TClassCompletionSettings.Default, TFormatStyle.Default);
+    mPairs := mScan.Pairs;
+    Assert.AreEqual(1, Integer(Length(mPairs)));
+    Assert.AreEqual('const', mPairs[0].BodyShape.Parameters[0].Modifier);
+    Assert.IsTrue(mScan.InPair(mPairs[0].Declaration));
+    Assert.IsTrue(mScan.Shape(mPairs[0].Body.Symbol, mShape));
+    Assert.AreEqual('procedure', mShape.Kind);
+    Assert.IsTrue(mScan.PairFixes(mPairs[0], mFixes));
+    Assert.Contains(TTestEdits.Apply(cPair, mFixes[0].Edits), 'procedure TFoo.Foo(A: Integer);');
+    // Unmatched enthält auch beide Hälften des Paars; ohne Paar bleibt nur Bar.
+    mMissing := nil;
+    for mMethod in mScan.Unmatched do
+    begin
+      if not mScan.InPair(mMethod) then
+      begin
+        mMissing := mMissing + [mMethod];
+      end;
+    end;
+    Assert.AreEqual(1, Integer(Length(mMissing)));
+    Assert.AreEqual('Bar', mMissing[0].Symbol.Name);
+    Assert.IsTrue(mScan.MissingBodies(mMissing[0].Symbol.SelectionRange.StartPos, mAction));
+    mScan := nil;
+  finally
+    mTree.Free;
+  end;
 end;
 
 procedure TRuleRefactoringsAdapterTests.OverrideGoesToEditing;

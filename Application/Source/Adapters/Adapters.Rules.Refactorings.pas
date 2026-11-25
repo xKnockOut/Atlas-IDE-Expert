@@ -10,10 +10,12 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Index.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.ClassActions.Contract,
   Atlas.Common.Rules.Contract.Refactorings,
   Atlas.Common.Editing.Contract.ClassActions,
+  Atlas.Common.Editing.Contract.ClassCompletion,
   Atlas.Common.Editing.Contract.Extract,
   Atlas.Common.Editing.Contract.MethodOrder,
   Atlas.Common.Editing.Contract.MethodWithoutSelf;
@@ -64,6 +66,16 @@ type
       const ARequest: TRuleMethodOrderRequest): TRuleMethodOrderReview;
   end;
 
+  /// <summary>IRuleClassCompletionRefactorings über die Klassenvervollständigung von Editing.</summary>
+  TRuleClassCompletionRefactoringsAdapter = class(TInterfacedObject, IRuleClassCompletionRefactorings)
+  private
+    FCompletion: IEditingClassCompletion;
+  public
+    constructor Create(const ACompletion: IEditingClassCompletion);
+    function Scan(const AText: string; const ATree: IPascalSyntaxTree; const AUnit: TUnitIndex;
+      const ASettings: TClassCompletionSettings; const AStyle: TFormatStyle): IRuleClassCompletionScan;
+  end;
+
   /// <summary>Die APIs von Editing, aus denen die Korrekturen der Prüfregeln entstehen; nil = nicht anbieten.
   /// </summary>
   TRuleRefactoringSources = record
@@ -71,6 +83,7 @@ type
     Extract: IEditingExtractFixes;
     Methods: IEditingMethodsWithoutSelf;
     Order: IEditingMethodOrderReview;
+    Completion: IEditingClassCompletion;
   end;
 
   /// <summary>Die Refactorings für die Prüfregeln aus den APIs von Editing.</summary>
@@ -229,6 +242,178 @@ begin
   end;
 end;
 
+/// <summary>Methode ohne Gegenstück von Editing für Rules.</summary>
+function RuleMethodOf(const AMethod: TEditingUnmatchedMethod): TRuleUnmatchedMethod;
+begin
+  Result.TypeName := AMethod.TypeName;
+  Result.Symbol := AMethod.Symbol;
+  Result.Declared := AMethod.Declared;
+  Result.Header := AMethod.Header;
+end;
+
+/// <summary>Methode ohne Gegenstück von Rules für Editing.</summary>
+function EditingMethodOf(const AMethod: TRuleUnmatchedMethod): TEditingUnmatchedMethod;
+begin
+  Result.TypeName := AMethod.TypeName;
+  Result.Symbol := AMethod.Symbol;
+  Result.Declared := AMethod.Declared;
+  Result.Header := AMethod.Header;
+end;
+
+/// <summary>Kopf von Editing für Rules.</summary>
+function RuleShapeOf(const AShape: TEditingSignatureShape): TRuleSignatureShape;
+var
+  mIndex: Integer;
+begin
+  Result := Default(TRuleSignatureShape);
+  Result.Kind := AShape.Kind;
+  SetLength(Result.Parameters, Length(AShape.Parameters));
+  for mIndex := 0 to High(AShape.Parameters) do
+  begin
+    Result.Parameters[mIndex].Modifier := AShape.Parameters[mIndex].Modifier;
+    Result.Parameters[mIndex].Name := AShape.Parameters[mIndex].Name;
+    Result.Parameters[mIndex].TypeName := AShape.Parameters[mIndex].TypeName;
+  end;
+  Result.ResultType := AShape.ResultType;
+  Result.Convention := AShape.Convention;
+  Result.ConventionRange := AShape.ConventionRange;
+  Result.Conditional := AShape.Conditional;
+end;
+
+/// <summary>Kopf von Rules für Editing.</summary>
+function EditingShapeOf(const AShape: TRuleSignatureShape): TEditingSignatureShape;
+var
+  mIndex: Integer;
+begin
+  Result := Default(TEditingSignatureShape);
+  Result.Kind := AShape.Kind;
+  SetLength(Result.Parameters, Length(AShape.Parameters));
+  for mIndex := 0 to High(AShape.Parameters) do
+  begin
+    Result.Parameters[mIndex].Modifier := AShape.Parameters[mIndex].Modifier;
+    Result.Parameters[mIndex].Name := AShape.Parameters[mIndex].Name;
+    Result.Parameters[mIndex].TypeName := AShape.Parameters[mIndex].TypeName;
+  end;
+  Result.ResultType := AShape.ResultType;
+  Result.Convention := AShape.Convention;
+  Result.ConventionRange := AShape.ConventionRange;
+  Result.Conditional := AShape.Conditional;
+end;
+
+type
+  /// <summary>IRuleClassCompletionScan über die Zuordnung von Editing.</summary>
+  TRuleClassCompletionScanAdapter = class(TInterfacedObject, IRuleClassCompletionScan)
+  private
+    FScan: IEditingClassCompletionScan;
+  public
+    constructor Create(const AScan: IEditingClassCompletionScan);
+    function Unmatched: TArray<TRuleUnmatchedMethod>;
+    function Pairs: TArray<TRuleSignaturePair>;
+    function InPair(const AMethod: TRuleUnmatchedMethod): Boolean;
+    function Shape(const ASymbol: TIndexSymbol; out AShape: TRuleSignatureShape): Boolean;
+    function MissingBodies(const APosition: TTextPosition; out AAction: TCodeAction): Boolean;
+    function AddDeclaration(const AMethod: TRuleUnmatchedMethod; out AEdit: TTextEdit): Boolean;
+    function PairFixes(const APair: TRuleSignaturePair; out AFixes: TArray<TCodeAction>): Boolean;
+  end;
+
+{ TRuleClassCompletionScanAdapter }
+
+constructor TRuleClassCompletionScanAdapter.Create(const AScan: IEditingClassCompletionScan);
+begin
+  inherited Create;
+  FScan := AScan;
+end;
+
+function TRuleClassCompletionScanAdapter.Unmatched: TArray<TRuleUnmatchedMethod>;
+var
+  mFound: TArray<TEditingUnmatchedMethod>;
+  mIndex: Integer;
+begin
+  mFound := FScan.Unmatched;
+  Result := nil;
+  SetLength(Result, Length(mFound));
+  for mIndex := 0 to High(mFound) do
+  begin
+    Result[mIndex] := RuleMethodOf(mFound[mIndex]);
+  end;
+end;
+
+function TRuleClassCompletionScanAdapter.Pairs: TArray<TRuleSignaturePair>;
+var
+  mFound: TArray<TEditingSignaturePair>;
+  mIndex: Integer;
+begin
+  mFound := FScan.Pairs;
+  Result := nil;
+  SetLength(Result, Length(mFound));
+  for mIndex := 0 to High(mFound) do
+  begin
+    Result[mIndex].Declaration := RuleMethodOf(mFound[mIndex].Declaration);
+    Result[mIndex].Body := RuleMethodOf(mFound[mIndex].Body);
+    Result[mIndex].DeclarationShape := RuleShapeOf(mFound[mIndex].DeclarationShape);
+    Result[mIndex].BodyShape := RuleShapeOf(mFound[mIndex].BodyShape);
+  end;
+end;
+
+function TRuleClassCompletionScanAdapter.InPair(const AMethod: TRuleUnmatchedMethod): Boolean;
+begin
+  Result := FScan.InPair(EditingMethodOf(AMethod));
+end;
+
+function TRuleClassCompletionScanAdapter.Shape(const ASymbol: TIndexSymbol; out AShape: TRuleSignatureShape): Boolean;
+var
+  mShape: TEditingSignatureShape;
+begin
+  Result := FScan.Shape(ASymbol, mShape);
+  AShape := RuleShapeOf(mShape);
+end;
+
+function TRuleClassCompletionScanAdapter.MissingBodies(const APosition: TTextPosition;
+  out AAction: TCodeAction): Boolean;
+begin
+  Result := FScan.MissingBodies(APosition, AAction);
+end;
+
+function TRuleClassCompletionScanAdapter.AddDeclaration(const AMethod: TRuleUnmatchedMethod;
+  out AEdit: TTextEdit): Boolean;
+begin
+  Result := FScan.AddDeclaration(EditingMethodOf(AMethod), AEdit);
+end;
+
+function TRuleClassCompletionScanAdapter.PairFixes(const APair: TRuleSignaturePair;
+  out AFixes: TArray<TCodeAction>): Boolean;
+var
+  mPair: TEditingSignaturePair;
+begin
+  mPair.Declaration := EditingMethodOf(APair.Declaration);
+  mPair.Body := EditingMethodOf(APair.Body);
+  mPair.DeclarationShape := EditingShapeOf(APair.DeclarationShape);
+  mPair.BodyShape := EditingShapeOf(APair.BodyShape);
+  Result := FScan.PairFixes(mPair, AFixes);
+end;
+
+{ TRuleClassCompletionRefactoringsAdapter }
+
+constructor TRuleClassCompletionRefactoringsAdapter.Create(const ACompletion: IEditingClassCompletion);
+begin
+  inherited Create;
+  FCompletion := ACompletion;
+end;
+
+function TRuleClassCompletionRefactoringsAdapter.Scan(const AText: string; const ATree: IPascalSyntaxTree;
+  const AUnit: TUnitIndex; const ASettings: TClassCompletionSettings;
+  const AStyle: TFormatStyle): IRuleClassCompletionScan;
+var
+  mScan: IEditingClassCompletionScan;
+begin
+  Result := nil;
+  mScan := FCompletion.Scan(AText, ATree, AUnit, ASettings, AStyle);
+  if mScan <> nil then
+  begin
+    Result := TRuleClassCompletionScanAdapter.Create(mScan);
+  end;
+end;
+
 { TRuleRefactoringsAdapters }
 
 class function TRuleRefactoringsAdapters.Create(const ASources: TRuleRefactoringSources): TRuleRefactorings;
@@ -249,6 +434,10 @@ begin
   if ASources.Order <> nil then
   begin
     Result.Order := TRuleMethodOrderRefactoringsAdapter.Create(ASources.Order);
+  end;
+  if ASources.Completion <> nil then
+  begin
+    Result.Completion := TRuleClassCompletionRefactoringsAdapter.Create(ASources.Completion);
   end;
 end;
 

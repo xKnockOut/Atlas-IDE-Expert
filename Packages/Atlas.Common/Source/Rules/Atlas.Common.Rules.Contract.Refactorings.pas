@@ -125,6 +125,77 @@ type
       const ARequest: TRuleMethodOrderRequest): TRuleMethodOrderReview;
   end;
 
+  /// <summary>Methode ohne Gegenstück: deklariert ohne Rumpf oder Rumpf ohne Deklaration.</summary>
+  TRuleUnmatchedMethod = record
+    /// <summary>Typ, ggf. mit umgebendem Typ (TAussen.TInnen).</summary>
+    TypeName: string;
+    Symbol: TIndexSymbol;
+    /// <summary>True: deklariert, aber ohne Rumpf; False: Rumpf ohne Deklaration.</summary>
+    Declared: Boolean;
+    /// <summary>Kopf ohne ";", z. B. "procedure TFoo.Bar(A: Integer)" beim Rumpf.</summary>
+    Header: string;
+  end;
+
+  /// <summary>Ein Parameter eines Methodenkopfs.</summary>
+  TRuleShapeParameter = record
+    /// <summary>const, var, out, constref oder '' (Kleinbuchstaben).</summary>
+    Modifier: string;
+    Name: string;
+    /// <summary>Typ wie geschrieben; '' bei untypisierten Parametern.</summary>
+    TypeName: string;
+  end;
+
+  /// <summary>Zerlegter Kopf einer Methode.</summary>
+  TRuleSignatureShape = record
+    /// <summary>procedure, function, constructor, destructor oder operator.</summary>
+    Kind: string;
+    Parameters: TArray<TRuleShapeParameter>;
+    /// <summary>Ergebnistyp wie geschrieben; '' ohne.</summary>
+    ResultType: string;
+    /// <summary>Aufrufkonvention in Kleinbuchstaben (stdcall, cdecl …); '' ohne Angabe.</summary>
+    Convention: string;
+    ConventionRange: TTextRange;
+    /// <summary>Im Kopf steht bedingte Übersetzung ({$IFDEF} …); welche Parameter gelten, ist offen.</summary>
+    Conditional: Boolean;
+  end;
+
+  /// <summary>Deklaration und Rumpf gleichen Namens, deren Köpfe voneinander abweichen.</summary>
+  TRuleSignaturePair = record
+    Declaration: TRuleUnmatchedMethod;
+    Body: TRuleUnmatchedMethod;
+    DeclarationShape: TRuleSignatureShape;
+    BodyShape: TRuleSignatureShape;
+  end;
+
+  /// <summary>Zuordnung von Deklarationen und Rümpfen einer Unit samt Korrekturen; gilt, solange der Baum der
+  /// Regel lebt.</summary>
+  IRuleClassCompletionScan = interface
+    ['{C6B1F526-0F6F-4DF6-8C8C-77173F34C13F}']
+    /// <summary>Deklarierte Methoden ohne Rumpf und Rümpfe ohne Deklaration.</summary>
+    function Unmatched: TArray<TRuleUnmatchedMethod>;
+    /// <summary>Deklaration und Rumpf gleichen Namens mit abweichendem Kopf.</summary>
+    function Pairs: TArray<TRuleSignaturePair>;
+    /// <summary>Gehört AMethod zu einem der Paare?</summary>
+    function InPair(const AMethod: TRuleUnmatchedMethod): Boolean;
+    /// <summary>Zerlegter Kopf der Methode ASymbol; False, wenn er sich nicht lesen lässt.</summary>
+    function Shape(const ASymbol: TIndexSymbol; out AShape: TRuleSignatureShape): Boolean;
+    /// <summary>Leere Rümpfe für die fehlenden Methoden an APosition.</summary>
+    function MissingBodies(const APosition: TTextPosition; out AAction: TCodeAction): Boolean;
+    /// <summary>Fehlende Deklaration für den Rumpf AMethod.</summary>
+    function AddDeclaration(const AMethod: TRuleUnmatchedMethod; out AEdit: TTextEdit): Boolean;
+    /// <summary>Rumpf und Deklaration von APair in beide Richtungen angleichen.</summary>
+    function PairFixes(const APair: TRuleSignaturePair; out AFixes: TArray<TCodeAction>): Boolean;
+  end;
+
+  /// <summary>Klassenvervollständigung für die Regeln zu Deklarationen.</summary>
+  IRuleClassCompletionRefactorings = interface
+    ['{7EA15822-8169-488E-ADEB-CE6B0DF8E596}']
+    /// <summary>Zuordnung für AText mit dem Baum ATree der Regel und seinem Index AUnit; neue Rümpfe nach
+    /// ASettings und AStyle. Ohne Baum nil.</summary>
+    function Scan(const AText: string; const ATree: IPascalSyntaxTree; const AUnit: TUnitIndex;
+      const ASettings: TClassCompletionSettings; const AStyle: TFormatStyle): IRuleClassCompletionScan;
+  end;
+
   /// <summary>Alle Refactorings, die Prüfregeln als Korrektur nutzen; je Eintrag nil = nicht verfügbar.</summary>
   TRuleRefactorings = record
     Classes: IRuleClassRefactorings;
@@ -133,6 +204,9 @@ type
     Methods: IRuleMethodRefactorings;
     /// <summary>Ohne Eintrag schweigt method-order.</summary>
     Order: IRuleMethodOrderRefactorings;
+    /// <summary>Ohne Eintrag schweigen declared-not-implemented, implemented-not-declared und signature-mismatch.
+    /// </summary>
+    Completion: IRuleClassCompletionRefactorings;
   end;
 
 implementation
