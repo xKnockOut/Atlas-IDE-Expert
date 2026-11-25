@@ -1,2 +1,2 @@
 ### Behoben
-- Konsolenausgabe (#581): Beim Start eines Programms mit Umleitung wirft das Fokussieren des Eingabefelds nicht mehr EInvalidOperation, wenn die IDE ihr Hauptfenster gerade sperrt. Vorher schaltete die Sicherung nach drei solchen Fehlern das Debuggen ab; ab dann holte Atlas keine Ausgabe mehr ab.
+- Konsolenausgabe (#581): Atlas fokussiert das Eingabefeld erst, wenn das Programm nach dem Anhängen des Debuggers läuft und die IDE ihr Fenster wieder freigibt. Vorher geschah das sofort nach dem Start, während die IDE ihr Hauptfenster noch sperrte; das warf EInvalidOperation, und nach drei Fehlern schaltete die Sicherung das Debuggen ab, ab dann kam keine Ausgabe mehr an.
