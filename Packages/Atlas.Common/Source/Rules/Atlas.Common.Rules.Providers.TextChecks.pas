@@ -6,7 +6,9 @@
 interface
 
 uses
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Findings.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Contract.Api;
@@ -17,12 +19,15 @@ type
   public
     function Check(const AFileName, ARelativePath, AText: string; const ASettings: TServerSettings):
       TArray<TRuleFinding>;
+    function Actions(const AFileName, ARelativePath, AText: string; const ASettings: TServerSettings;
+      const ARange: TTextRange): TArray<TCodeAction>;
   end;
 
 implementation
 
 uses
-  Atlas.Common.Findings.Scopes;
+  Atlas.Common.Findings.Scopes,
+  Atlas.Common.Rules.CodeActions;
 
 { TRuleTextChecksProvider }
 
@@ -33,6 +38,12 @@ var
 begin
   Result := TFileChecker.CheckText(FRules, ASettings, ARelativePath, AText,
     TCheckOrigin.ForFile(FProject, FSource, AFileName), mScopes);
+end;
+
+function TRuleTextChecksProvider.Actions(const AFileName, ARelativePath, AText: string;
+  const ASettings: TServerSettings; const ARange: TTextRange): TArray<TCodeAction>;
+begin
+  Result := TRuleCodeActions.ForRange(Check(AFileName, ARelativePath, AText, ASettings), AText, ARange);
 end;
 
 end.

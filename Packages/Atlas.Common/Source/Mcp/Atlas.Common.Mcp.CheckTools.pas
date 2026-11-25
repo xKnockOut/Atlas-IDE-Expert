@@ -55,7 +55,7 @@ implementation
 uses
   System.Classes,
   System.StrUtils,
-  Atlas.Common.Rules.Output,
+  Atlas.Text.Json,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Metrics.Collector,
@@ -229,7 +229,7 @@ begin
     if ACount <= TMcpCheckTools.cMaxFindings then
     begin
       Result := Result + Format('%d:%d: %s [%s] %s', [mFinding.Range.StartPos.Line + 1,
-        mFinding.Range.StartPos.Character + 1, TFindingsOutput.SeverityName(mFinding.Severity), mFinding.RuleId,
+        mFinding.Range.StartPos.Character + 1, SeverityName(mFinding.Severity), mFinding.RuleId,
         mFinding.Message]) + #10;
     end;
   end;
@@ -263,13 +263,13 @@ begin
   mContext := cTexts[TCheckToolsText.AtlasFound1FindingsIn].Fmt([AFileName, mCount]) +
     cTexts[TCheckToolsText.FixTheCauseInThe].Fmt([mFindings]);
   Result := '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":' +
-    TFindingsOutput.JsonString(mContext) + '}}';
+    TJsonText.Quote(mContext) + '}}';
 end;
 
 class function TMcpCheckTools.FindingLine(const AFinding: TRuleFinding): string;
 begin
   Result := cTexts[TCheckToolsText.Confidence].Fmt([AFinding.Range.StartPos.Line + 1,
-    AFinding.Range.StartPos.Character + 1, TFindingsOutput.SeverityName(AFinding.Severity), AFinding.RuleId,
+    AFinding.Range.StartPos.Character + 1, SeverityName(AFinding.Severity), AFinding.RuleId,
     ConfidenceText(AFinding.Confidence), AFinding.Message]);
 end;
 

@@ -20,6 +20,8 @@ type
     [Test]
     procedure MethodWithoutSelfGoesToEditing;
     [Test]
+    procedure MethodOrderGoesToEditing;
+    [Test]
     procedure OverrideGoesToEditing;
     [Test]
     procedure CreateAccessorGoesToEditing;
@@ -92,22 +94,58 @@ const
     'end;'#13#10 +
     'end.'#13#10;
 
+  // TFoo deklariert A vor B, die Rümpfe stehen umgekehrt; der Typkommentar ist da.
+  cOrder =
+    'unit U;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  TFoo = class'#13#10 +
+    '    procedure A;'#13#10 +
+    '    procedure B;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    '{ TFoo }'#13#10 +
+    'procedure TFoo.B;'#13#10 +
+    'begin'#13#10 +
+    'end;'#13#10 +
+    'procedure TFoo.A;'#13#10 +
+    'begin'#13#10 +
+    'end;'#13#10 +
+    'end.'#13#10;
+
+/// <summary>Alle APIs von Editing, die die Prüfregeln nutzen.</summary>
+function Sources: TRuleRefactoringSources;
+begin
+  Result := Default(TRuleRefactoringSources);
+  Result.Classes := TEditingComposition.ClassActions;
+  Result.Extract := TEditingComposition.ExtractFixes;
+  Result.Methods := TEditingComposition.MethodsWithoutSelf;
+  Result.Order := TEditingComposition.MethodOrder;
+end;
+
 function Refactorings: TRuleRefactorings;
 begin
-  Result := TRuleRefactoringsAdapters.Create(TEditingComposition.ClassActions, TEditingComposition.ExtractFixes,
-    TEditingComposition.MethodsWithoutSelf);
+  Result := TRuleRefactoringsAdapters.Create(Sources);
 end;
 
 { TRuleRefactoringsAdapterTests }
 
 procedure TRuleRefactoringsAdapterTests.WithoutClassActionsNoEntry;
+var
+  mSources: TRuleRefactoringSources;
 begin
-  Assert.IsNull(TRuleRefactoringsAdapters.Create(nil, TEditingComposition.ExtractFixes, nil).Classes);
+  mSources := Sources;
+  mSources.Classes := nil;
+  Assert.IsNull(TRuleRefactoringsAdapters.Create(mSources).Classes);
 end;
 
 procedure TRuleRefactoringsAdapterTests.WithoutExtractNoEntry;
+var
+  mSources: TRuleRefactoringSources;
 begin
-  Assert.IsNull(TRuleRefactoringsAdapters.Create(TEditingComposition.ClassActions, nil, nil).Extract);
+  mSources := Sources;
+  mSources.Extract := nil;
+  Assert.IsNull(TRuleRefactoringsAdapters.Create(mSources).Extract);
 end;
 
 procedure TRuleRefactoringsAdapterTests.ConstantGoesToEditing;
@@ -134,7 +172,7 @@ var
   mScan: TRuleMethodScan;
   mFound: TArray<TRuleMethodWithoutSelf>;
 begin
-  Assert.IsNull(TRuleRefactoringsAdapters.Create(nil, nil, nil).Methods);
+  Assert.IsNull(TRuleRefactoringsAdapters.Create(Default(TRuleRefactoringSources)).Methods);
   mScan := Default(TRuleMethodScan);
   mScan.FileName := 'U.pas';
   mScan.Text := cHelper;
@@ -154,6 +192,32 @@ begin
   Assert.AreEqual(7, mFound[0].NamePosition.Line);
   Assert.IsTrue(mFound[0].HasFix);
   Assert.IsTrue(Length(mFound[0].Fix.Edits) > 0);
+end;
+
+procedure TRuleRefactoringsAdapterTests.MethodOrderGoesToEditing;
+var
+  mRequest: TRuleMethodOrderRequest;
+  mTree: TSyntaxTree;
+  mReview: TRuleMethodOrderReview;
+  mText: string;
+begin
+  Assert.IsNull(TRuleRefactoringsAdapters.Create(Default(TRuleRefactoringSources)).Order);
+  mRequest := Default(TRuleMethodOrderRequest);
+  mRequest.Placement := 'declaration';
+  mRequest.TypeComment := 'brace';
+  mTree := TSyntaxTreeCache.Parse(cOrder);
+  try
+    mReview := Refactorings.Order.Review(cOrder, TSyntaxTreeHandles.Wrap(mTree), mRequest);
+  finally
+    mTree.Free;
+  end;
+  Assert.AreEqual('declaration', mReview.Placement);
+  Assert.AreEqual(1, Integer(Length(mReview.Types)));
+  Assert.AreEqual('TFoo', mReview.Types[0].TypeName);
+  Assert.AreEqual(9, mReview.Types[0].NameRange.StartPos.Line, 'Typname im ersten Rumpf');
+  Assert.IsTrue(mReview.Types[0].CommentEdits = nil, 'Kommentar steht schon da');
+  mText := TTestEdits.Apply(cOrder, mReview.Types[0].OrderEdits);
+  Assert.IsTrue(Pos('procedure TFoo.A;'#13#10'begin', mText) < Pos('procedure TFoo.B;'#13#10'begin', mText), mText);
 end;
 
 procedure TRuleRefactoringsAdapterTests.OverrideGoesToEditing;

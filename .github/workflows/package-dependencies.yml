@@ -161,6 +161,12 @@ jobs:
       - name: Fenster und Editorleisten über die gemeinsamen Hüllen (#1248)
         shell: pwsh
         run: ./Tools/Check-WindowHosts.ps1
+      - name: Jeder Dialog wird in einem Test gebaut, Selbsttest
+        shell: pwsh
+        run: ./Tools/Check-DialogTests.ps1 -SelfTest
+      - name: Jeder Dialog wird in einem Test gebaut
+        shell: pwsh
+        run: ./Tools/Check-DialogTests.ps1
       - name: Sprungziele der F1-Hilfe vorhanden (#1886)
         shell: pwsh
         run: ./Tools/Check-HelpAnchors.ps1

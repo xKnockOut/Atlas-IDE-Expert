@@ -120,6 +120,8 @@ function ConfidenceText(AConfidence: TRuleConfidence): string;
 ///   Meldungstext (#144).
 /// </summary>
 function ConfidenceName(AConfidence: TRuleConfidence): string;
+/// <summary>Kennung des Schweregrads für Ausgaben: "error", "warning", "info", "hint".</summary>
+function SeverityName(ASeverity: TRuleSeverity): string;
 
 implementation
 
@@ -143,6 +145,20 @@ begin
       Result := 'mittel';
   else
     Result := 'hoch';
+  end;
+end;
+
+function SeverityName(ASeverity: TRuleSeverity): string;
+begin
+  case ASeverity of
+    TRuleSeverity.Error:
+      Result := 'error';
+    TRuleSeverity.Warning:
+      Result := 'warning';
+    TRuleSeverity.Information:
+      Result := 'info';
+  else
+    Result := 'hint';
   end;
 end;
 
