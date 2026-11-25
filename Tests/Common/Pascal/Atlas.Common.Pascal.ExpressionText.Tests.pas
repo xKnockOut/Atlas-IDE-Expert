@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ExpressionText.Tests;
+﻿unit Atlas.Common.Pascal.ExpressionText.Tests;
 
 // Tests für die Ausdrucksbausteine der Umformungen (Kette L): Vorrang,
 // Klammern nach Vorrang, lesbares Verneinen, Vergleich zweier Ausdrücke und
@@ -35,7 +35,7 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ExpressionText;
+  Atlas.Common.Pascal.ExpressionText;
 
 /// <summary>Programm, dessen einzige Anweisung "if ACondition then ;" ist.</summary>
 function Program_(const ACondition: string): string;

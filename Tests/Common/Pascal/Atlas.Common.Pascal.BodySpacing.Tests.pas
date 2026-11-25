@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.BodySpacing.Tests;
+﻿unit Atlas.Common.Pascal.BodySpacing.Tests;
 
 interface
 
@@ -53,7 +53,7 @@ uses
   Atlas.Common.Editing.ClassBodies,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Editing.MethodOrder,
-  Atlas.Common.Editing.BodySpacing;
+  Atlas.Common.Pascal.BodySpacing;
 
 const
   cKopf =

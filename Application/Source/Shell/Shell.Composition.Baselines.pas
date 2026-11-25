@@ -176,7 +176,7 @@ begin
   FCompilerBaseline := TLspCompilerBaseline.Create(MetricsSource, ReadText, BaselineFiles);
   FCompilerBaseline.OnWritten := Written;
   // Auftrag für KI-Assistenten (#2570): Befunde wie die Baseline-Prüfung, Text wie im Editor.
-  mPrompts := TRuleFindingPrompts.Create;
+  mPrompts := TRuleFindingPromptsProvider.Create;
   FFindingsPrompt := TLspFindingsPrompt.Create(CheckFor, ReadText, TLspFindingsPromptAdapter.Wrap(mPrompts));
 end;
 

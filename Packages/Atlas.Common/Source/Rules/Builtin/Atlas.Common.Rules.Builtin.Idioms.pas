@@ -35,7 +35,7 @@
 //                    der else-Zweig zählt mit), die denselben ordinalen Ausdruck
 //                    ohne Seiteneffekte mit Konstanten vergleicht und sich ohne
 //                    Bedeutungsänderung als case schreiben lässt (#646; Erkennung
-//                    und Korrektur aus Editing.IfCase, Typen über die
+//                    und Korrektur aus Semantics.IfCase, Typen über die
 //                    Namensauflösung). Standard aus. Keine Meldung bei Direktiven
 //                    in der Kette.
 
@@ -104,7 +104,7 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.StatementText,
-  Atlas.Common.Editing.IfCase,
+  Atlas.Common.Semantics.IfCase,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Options,
   Atlas.Text.Lines,

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.EnumTables.Tests;
+﻿unit Atlas.Common.Pascal.EnumTables.Tests;
 
 // Aufzählung mit Namenstabelle (#667): Präfix und Texte aus den Namen,
 // Tabelle hinter dem Typ, im implementation-Teil und mit resourcestring,
@@ -51,7 +51,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Editing.EnumTables,
+  Atlas.Common.Pascal.EnumTables,
   Atlas.Tests.SourceText;
 
 const

@@ -138,7 +138,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.GenericLists.Kinds,
+  Atlas.Common.Semantics.LegacyListKinds,
   Atlas.Common.Editing.GenericLists,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes;

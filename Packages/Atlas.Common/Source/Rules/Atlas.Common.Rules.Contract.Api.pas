@@ -125,16 +125,6 @@ type
     function ForDocument(const AUri: string; const ACancelled: TRuleCancelled): IRuleDocumentActions;
   end;
 
-  /// <summary>Auftrag an einen KI-Assistenten aus mehreren Befunden (#2570) wie bei explain_finding.</summary>
-  IRuleFindingPrompts = interface
-    ['{43854D46-1F10-4A72-99AD-3DD884310EA6}']
-    /// <summary>Markdown zu AItems mit dem Regelkatalog in der Sprache der Texte; über ALimit Befunden ein Hinweis
-    /// auf check_code.</summary>
-    function Markdown(const AItems: TArray<TFindingPromptItem>; ALimit: Integer): string;
-    /// <summary>Höchstzahl Befunde eines Auftrags, wenn der Aufrufer keine nennt.</summary>
-    function DefaultLimit: Integer;
-  end;
-
   /// <summary>Eine Datei für die Sammelkorrektur (#1352).</summary>
   TRuleBulkFixInput = record
     /// <summary>Absoluter Pfad; daraus Projekt und Symbole der Datei.</summary>
@@ -198,6 +188,27 @@ type
     /// Dateien ohne Text oder ohne Umfeld fehlen im Ergebnis.</summary>
     function Run(const AFileNames: TArray<string>; const AFixRules: TArray<string>; const AMinConfidence: string;
       out ARun: TRuleBulkFixRun; out AError: string): Boolean;
+  end;
+
+  /// <summary>Projektkonventionen (#272) für Assistenten: Regelprofil, Formatstil, Benennungsregeln und aktive
+  /// Prüfregeln als Markdown; die Regeln hat der Anbieter.</summary>
+  IRuleConventions = interface
+    ['{96DA34FA-2B2E-4949-9785-AC67FF766D65}']
+    /// <summary>Konventionen nach den Einstellungen ASettings.</summary>
+    function Markdown(const ASettings: TServerSettings): string;
+  end;
+
+  /// <summary>Aufträge an Assistenten als Markdown: zu einem Befund (#158, explain_finding) mit Regel, Beschreibung,
+  /// Vorher/Nachher und Ausschnitt, oder aus mehreren Befunden (#2570).</summary>
+  IRuleFindingPrompts = interface
+    ['{311A7027-B860-4D22-8BD7-36EA64E58AE1}']
+    /// <summary>Markdown zu AFinding in AText (Datei AFileName), deutscher Katalog.</summary>
+    function MarkdownOf(const AFinding: TRuleFinding; const AFileName, AText: string): string;
+    /// <summary>Markdown zu AItems mit dem Regelkatalog in der Sprache der Texte; über ALimit Befunden ein Hinweis
+    /// auf check_code.</summary>
+    function Markdown(const AItems: TArray<TFindingPromptItem>; ALimit: Integer): string;
+    /// <summary>Höchstzahl Befunde eines Auftrags, wenn der Aufrufer keine nennt.</summary>
+    function DefaultLimit: Integer;
   end;
 
 implementation

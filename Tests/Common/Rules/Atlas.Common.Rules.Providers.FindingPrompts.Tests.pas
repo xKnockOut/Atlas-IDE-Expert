@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Rules.Providers.FindingPrompts.Tests;
 
-// Tests für den Anbieter des Auftrags an KI-Assistenten aus mehreren Befunden: derselbe Text wie
-// TFindingPrompt.Many mit dem gemeinsamen Katalog, Höchstzahl der Vorgabe.
+// Tests des Anbieters der Aufträge an KI-Assistenten: zu einem Befund (#158) Regel, Fundstelle und Ausschnitt wie
+// TFindingPrompt.Markdown; aus mehreren Befunden derselbe Text wie TFindingPrompt.Many mit dem gemeinsamen Katalog,
+// Höchstzahl der Vorgabe.
 
 interface
 
@@ -10,8 +11,10 @@ uses
 
 type
   [TestFixture]
-  TRuleFindingPromptsTests = class
+  TRuleFindingPromptsProviderTests = class
   public
+    [Test]
+    procedure HasRuleAndSnippet;
     [Test]
     procedure MarkdownLikeMany;
     [Test]
@@ -21,6 +24,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Findings.Contract,
   Atlas.Common.Rules.Contract.Api,
@@ -45,27 +49,46 @@ begin
   Result[1] := TFindingPromptItem.Create(mFinding, 'U.pas', cText);
 end;
 
-{ TRuleFindingPromptsTests }
+{ TRuleFindingPromptsProviderTests }
 
-procedure TRuleFindingPromptsTests.MarkdownLikeMany;
+procedure TRuleFindingPromptsProviderTests.HasRuleAndSnippet;
+var
+  mPrompts: IRuleFindingPrompts;
+  mFinding: TRuleFinding;
+  mText: string;
+begin
+  mFinding := Default(TRuleFinding);
+  mFinding.RuleId := 'empty-except';
+  mFinding.Range := TTextRange.Create(2, 2, 2, 8);
+  mFinding.Message := 'Leerer except-Block';
+  mFinding.Severity := TRuleSeverity.Warning;
+  mPrompts := TRuleFindingPromptsProvider.Create;
+  mText := mPrompts.MarkdownOf(mFinding, 'U.pas', 'a'#13#10'b'#13#10'c'#13#10'd');
+  Assert.Contains(mText, '## Befund empty-except');
+  Assert.Contains(mText, 'Zeile 3, Spalte 3');
+  Assert.Contains(mText, '>    3 | c');
+  Assert.Contains(mText, '```pascal');
+end;
+
+procedure TRuleFindingPromptsProviderTests.MarkdownLikeMany;
 var
   mPrompts: IRuleFindingPrompts;
 begin
-  mPrompts := TRuleFindingPrompts.Create;
+  mPrompts := TRuleFindingPromptsProvider.Create;
   Assert.AreEqual(TFindingPrompt.Many(Items, TFindingPrompt.SharedCatalog, TFindingPrompt.cDefaultContext, 1),
     mPrompts.Markdown(Items, 1));
   Assert.Contains(mPrompts.Markdown(Items, 1), 'magic-number');
 end;
 
-procedure TRuleFindingPromptsTests.DefaultLimitOfPrompt;
+procedure TRuleFindingPromptsProviderTests.DefaultLimitOfPrompt;
 var
   mPrompts: IRuleFindingPrompts;
 begin
-  mPrompts := TRuleFindingPrompts.Create;
+  mPrompts := TRuleFindingPromptsProvider.Create;
   Assert.AreEqual(TFindingPrompt.cDefaultLimit, mPrompts.DefaultLimit);
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TRuleFindingPromptsTests);
+  TDUnitX.RegisterTestFixture(TRuleFindingPromptsProviderTests);
 
 end.

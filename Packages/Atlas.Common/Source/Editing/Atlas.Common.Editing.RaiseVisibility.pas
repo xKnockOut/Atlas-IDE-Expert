@@ -62,7 +62,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.MemberTransfer,
+  Atlas.Common.Pascal.MemberTransfer,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Localization.Texts;
 

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.IfCase;
+﻿unit Atlas.Common.Semantics.IfCase;
 
 // if-Kette und case umwandeln (#646).
 //   In case umwandeln: auf einer Kette if X = a then … else if X = b then …
@@ -86,7 +86,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Pascal.RoutineBody,
-  Atlas.Common.Editing.ExpressionText,
+  Atlas.Common.Pascal.ExpressionText,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes;
@@ -1026,6 +1026,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.IfCase', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.IfCase', cTexts);
 
 end.

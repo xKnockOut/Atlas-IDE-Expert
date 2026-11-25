@@ -35,7 +35,7 @@ var
   mFinding: TRuleFinding;
   mItems: TArray<TFindingPromptItem>;
 begin
-  mRules := TRuleFindingPrompts.Create;
+  mRules := TRuleFindingPromptsProvider.Create;
   mPrompt := TLspFindingsPromptAdapter.Wrap(mRules);
   mFinding := Default(TRuleFinding);
   mFinding.RuleId := 'magic-number';

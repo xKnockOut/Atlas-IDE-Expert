@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.MemberTransfer.Tests;
+﻿unit Atlas.Common.Pascal.MemberTransfer.Tests;
 
 // Tests für die gemeinsamen Schritte von #713 und #675: Kandidaten samt
 // Abhängigkeiten, wann ein privates Mitglied gehoben wird, neu geschriebene
@@ -37,7 +37,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.ClassLayout,
-  Atlas.Common.Editing.MemberTransfer,
+  Atlas.Common.Pascal.MemberTransfer,
   Atlas.Tests.SourceText;
 
 const

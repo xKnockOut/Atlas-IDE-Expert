@@ -152,7 +152,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.ClassBodies,
   Atlas.Common.Editing.ClassCompletion,
-  Atlas.Common.Editing.BodySpacing;
+  Atlas.Common.Pascal.BodySpacing;
 
 type
   TBlock = record

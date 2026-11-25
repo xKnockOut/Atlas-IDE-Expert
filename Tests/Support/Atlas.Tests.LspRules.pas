@@ -111,7 +111,7 @@ class function TTestLspRules.FindingsPrompt: ILspFindingsPrompt;
 var
   mPrompts: IRuleFindingPrompts;
 begin
-  mPrompts := TRuleFindingPrompts.Create;
+  mPrompts := TRuleFindingPromptsProvider.Create;
   Result := TLspFindingsPromptAdapter.Wrap(mPrompts);
 end;
 
