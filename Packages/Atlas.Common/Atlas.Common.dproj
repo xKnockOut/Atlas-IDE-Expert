@@ -531,7 +531,9 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.ClassActions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Providers.ClassActions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.MethodWithoutSelf.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.MethodOrder.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Providers.MethodWithoutSelf.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Providers.MethodOrder.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SlashCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DeclarationCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CommandSource.pas"/>

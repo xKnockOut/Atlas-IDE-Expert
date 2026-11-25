@@ -6,7 +6,8 @@
 //   wenn classCompletion.typeComment nicht off ist und über den Rümpfen kein Typkommentar steht. Rümpfe, die beim
 //   Ordnen stehen bleiben (Region, {$IF…}, geteilte Zeile), zählen nicht als falsch. Korrekturen: nur diesen Typ
 //   ordnen wie der Befehl „Methodenrümpfe ordnen“ bzw. den Kommentar in der eingestellten Form einfügen. Prüfung
-//   und Änderungen liefert TMethodOrder.Review.
+//   und Änderungen liefert Editing über TRuleRefactorings.Order (Host-Adapter Adapters.Rules.Refactorings); ohne
+//   diesen Eintrag schweigt die Regel.
 
 interface
 
@@ -23,9 +24,10 @@ type
 implementation
 
 uses
+  System.SysUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.MethodOrder,
-  Atlas.Common.Pascal.TypeComments,
+  Atlas.Common.Rules.Contract.Refactorings,
+  Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Rules.Options,
   Atlas.Common.Localization.Texts;
 
@@ -50,21 +52,25 @@ const
 
 {$SCOPEDENUMS OFF}
 
-/// <summary>Name der Ordnung in der Meldung.</summary>
-function PlacementText(APlacement: TMethodPlacement): string;
+/// <summary>Name der Ordnung APlacement (declaration, alphabetical, grouped) in der Meldung.</summary>
+function PlacementText(const APlacement: string): string;
 begin
-  case APlacement of
-    TMethodPlacement.Alphabetical:
-      Result := cTexts[TMethodOrderText.Alphabetical].Text;
-    TMethodPlacement.Grouped:
-      Result := cTexts[TMethodOrderText.Grouped].Text;
+  if SameText(APlacement, 'alphabetical') then
+  begin
+    Result := cTexts[TMethodOrderText.Alphabetical].Text;
+  end
+  else if SameText(APlacement, 'grouped') then
+  begin
+    Result := cTexts[TMethodOrderText.Grouped].Text;
+  end
   else
+  begin
     Result := cTexts[TMethodOrderText.Declaration].Text;
   end;
 end;
 
 /// <summary>Ordnung und Kommentarform aus der Option placement und classCompletion (#1834).</summary>
-function OptionsOf(const AContext: TRuleContext): TMethodOrderOptions;
+function RequestOf(const AContext: TRuleContext): TRuleMethodOrderRequest;
 var
   mSettings: TClassCompletionSettings;
 begin
@@ -73,11 +79,11 @@ begin
   begin
     mSettings := TClassCompletionSettings.Default;
   end;
-  Result := TMethodOrderOptions.Create(TMethodOrder.PlacementOf(TRuleOptions.Text(AContext.Options, 'placement',
-    TMethodOrder.PlacementName(TMethodPlacement.Grouped))));
+  Result := Default(TRuleMethodOrderRequest);
+  Result.Placement := TRuleOptions.Text(AContext.Options, 'placement', 'grouped');
   Result.LifecycleFirst := mSettings.LifecycleFirst;
   Result.BlankLines := mSettings.BlankLines;
-  Result.TypeComment := TTypeComments.StyleOf(mSettings.TypeComment);
+  Result.TypeComment := mSettings.TypeComment;
   Result.LineLength := AContext.Formatting.MaxLineLength;
 end;
 
@@ -90,16 +96,21 @@ end;
 
 procedure TMethodOrderRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  mOptions: TMethodOrderOptions;
-  mReview: TMethodTypeReview;
+  mResult: TRuleMethodOrderReview;
+  mReview: TRuleMethodTypeReview;
 begin
-  mOptions := OptionsOf(AContext);
-  for mReview in TMethodOrder.Review(AContext.Tree, AContext.Text, mOptions) do
+  if (AContext.Tree = nil) or (AContext.Refactorings.Order = nil) then
+  begin
+    Exit;
+  end;
+  mResult := AContext.Refactorings.Order.Review(AContext.Text, TSyntaxTreeHandles.Wrap(AContext.Tree),
+    RequestOf(AContext));
+  for mReview in mResult.Types do
   begin
     if mReview.OrderEdits <> nil then
     begin
       AReport.Add(mReview.NameRange, cTexts[TMethodOrderText.NotInOrder].Fmt([mReview.TypeName,
-        PlacementText(mOptions.Placement)]), [TRuleFix.Create(cTexts[TMethodOrderText.ArrangeFix].Fmt(
+        PlacementText(mResult.Placement)]), [TRuleFix.Create(cTexts[TMethodOrderText.ArrangeFix].Fmt(
         [mReview.TypeName]), mReview.OrderEdits)]);
     end;
     if mReview.CommentEdits <> nil then
