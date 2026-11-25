@@ -414,23 +414,27 @@ begin
   Result.OnClick := AClick;
 end;
 
-/// <summary>Knöpfe und Chips so breit wie ihr Text in der Schrift des Frames.</summary>
+/// <summary>Knöpfe und Chips in ABar so breit wie ihr Text in der Schrift von AFrame.</summary>
 /// <remarks>Erst mit Fenster (CreateWnd): Vorher hat der Frame noch nicht die Schrift seines Fensters. Ein
 /// DPI-Wechsel skaliert die Breiten danach mit.</remarks>
-procedure FitWidths(AFrame: TAtlasDebugBreakpointsFrame);
+procedure FitWidths(AFrame: TCustomFrame; ABar: TWinControl);
 var
-  mFilter: TAtlasBreakpointFilter;
-  mButton: TButton;
+  mIndex: Integer;
+  mControl: TControl;
 begin
-  for mButton in TArray<TButton>.Create(AFrame.FControls.ResetHits, AFrame.FControls.AddTag,
-    AFrame.FControls.RemoveTag) do
+  for mIndex := 0 to ABar.ControlCount - 1 do
   begin
-    mButton.Width := TAtlasDialog.TextWidth(AFrame.Font, mButton.Caption) + ScaleLogical(AFrame, cButtonPadding);
-  end;
-  for mFilter := Low(TAtlasBreakpointFilter) to High(TAtlasBreakpointFilter) do
-  begin
-    AFrame.FControls.Chips[mFilter].Width := TAtlasDialog.TextWidth(AFrame.Font,
-      AFrame.FControls.Chips[mFilter].Caption) + ScaleLogical(AFrame, cCheckBoxGlyph);
+    mControl := ABar.Controls[mIndex];
+    if mControl is TButton then
+    begin
+      mControl.Width := TAtlasDialog.TextWidth(AFrame.Font, TButton(mControl).Caption) +
+        ScaleLogical(AFrame, cButtonPadding);
+    end
+    else if mControl is TCheckBox then
+    begin
+      mControl.Width := TAtlasDialog.TextWidth(AFrame.Font, TCheckBox(mControl).Caption) +
+        ScaleLogical(AFrame, cCheckBoxGlyph);
+    end;
   end;
 end;
 
@@ -747,7 +751,8 @@ var
   mGrouping: TAtlasBreakpointGrouping;
 begin
   inherited CreateWnd;
-  FitWidths(Self);
+  FitWidths(Self, FControls.Grouping.Parent);
+  FitWidths(Self, FControls.Tag.Parent);
   // Combobox und Liste brauchen ein Fenster.
   if FControls.Grouping.Items.Count = 0 then
   begin
