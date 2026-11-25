@@ -30,8 +30,8 @@ uses
   System.Net.HttpClient,
   System.Net.URLClient,
   Atlas.Plugin.Diagnostics.Deadline,
-  Atlas.Core.Diagnostics.AsyncWait,
-  Atlas.Core.Diagnostics.BoundedStream;
+  Atlas.Plugin.Diagnostics.AsyncWait,
+  Atlas.Plugin.Diagnostics.BoundedStream;
 
 const
   // Die Versionsdatei ist ein paar Byte groß; mehr nimmt der Antwort-Stream nicht an.

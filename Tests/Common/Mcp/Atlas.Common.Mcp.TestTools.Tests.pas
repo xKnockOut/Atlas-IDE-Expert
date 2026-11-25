@@ -25,6 +25,13 @@ type
     procedure TestsFromListOrText;
     [Test]
     procedure LocatesMethodBody;
+    /// <summary>#2895: debug_start mit test ohne project findet das Testprojekt der Fixture.</summary>
+    [Test]
+    procedure FindsTestProjectOfFixture;
+    [Test]
+    procedure FindsTestWithUnitOrFixtureOnly;
+    [Test]
+    procedure FindsNoUnknownTest;
     [Test]
     procedure ReportsFailuresWithFileAndLine;
     [Test]
@@ -216,6 +223,56 @@ begin
     mArguments.Free;
   end;
   Assert.AreEqual(0, Integer(Length(TMcpTestTools.TestsOf(nil))));
+end;
+
+/// <summary>Zwei Testprojekte; nur das zweite enthält Rechner.Tests.</summary>
+function TwoProjects: TArray<TProjectInfo>;
+begin
+  SetLength(Result, 2);
+  Result[0] := Default(TProjectInfo);
+  Result[0].FileName := 'C:\Projekt\Andere\AndereTests.dproj';
+  SetLength(Result[0].Units, 1);
+  Result[0].Units[0].Name := 'Andere.Tests';
+  Result[0].Units[0].FileName := 'C:\Projekt\Andere\Andere.Tests.pas';
+  Result[1] := Default(TProjectInfo);
+  Result[1].FileName := 'C:\Projekt\Tests\RechnerTests.dproj';
+  SetLength(Result[1].Units, 1);
+  Result[1].Units[0].Name := 'Rechner.Tests';
+  Result[1].Units[0].FileName := 'C:\Projekt\Quellen\Rechner.Tests.pas';
+end;
+
+procedure TMcpTestToolsTests.FindsTestProjectOfFixture;
+var
+  mProject, mFullName: string;
+begin
+  Assert.IsTrue(TMcpTestTools.FindTest('trechnertests.addiert', TwoProjects, Reader(), mProject, mFullName));
+  Assert.AreEqual('C:\Projekt\Tests\RechnerTests.dproj', mProject);
+  Assert.AreEqual('Rechner.Tests.TRechnerTests.Addiert', mFullName, 'Namen wie deklariert, mit Unit');
+end;
+
+procedure TMcpTestToolsTests.FindsTestWithUnitOrFixtureOnly;
+var
+  mProject, mFullName: string;
+begin
+  Assert.IsTrue(TMcpTestTools.FindTest('Rechner.Tests.TRechnerTests.Summe', TwoProjects, Reader(), mProject,
+    mFullName));
+  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe', mFullName);
+  Assert.IsTrue(TMcpTestTools.FindTest('TRechnerTests', TwoProjects, Reader(), mProject, mFullName));
+  Assert.AreEqual('Rechner.Tests.TRechnerTests', mFullName, 'nur die Fixture');
+  Assert.IsTrue(TMcpTestTools.FindTest('Rechner.Tests.TRechnerTests', TwoProjects, Reader(), mProject, mFullName));
+  Assert.AreEqual('C:\Projekt\Tests\RechnerTests.dproj', mProject);
+end;
+
+procedure TMcpTestToolsTests.FindsNoUnknownTest;
+var
+  mProject, mFullName: string;
+begin
+  Assert.IsFalse(TMcpTestTools.FindTest('TRechnerTests.Teilt', TwoProjects, Reader(), mProject, mFullName),
+    'Methode fehlt');
+  Assert.IsFalse(TMcpTestTools.FindTest('Andere.Tests.TRechnerTests.Addiert', TwoProjects, Reader(), mProject,
+    mFullName), 'falsche Unit');
+  Assert.IsFalse(TMcpTestTools.FindTest('', TwoProjects, Reader(), mProject, mFullName));
+  Assert.AreEqual('', mProject);
 end;
 
 procedure TMcpTestToolsTests.LocatesMethodBody;

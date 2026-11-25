@@ -16,9 +16,9 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.CrashCases,
+  Atlas.Plugin.Lsp.CrashCases,
   Atlas.IDE.CodeInsight.Manager.Commands;
 
 type
@@ -52,14 +52,14 @@ uses
   System.JSON,
   Atlas.UI.Strings,
   Atlas.UI.CodeInsight.Strings,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Lines,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
-  Atlas.Core.Lsp.Crashes,
-  Atlas.Core.Lsp.IdeMembers,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Lsp.Crashes,
+  Atlas.Plugin.Lsp.IdeMembers,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.IDE.CodeInsight.Manager.State,
   Atlas.IDE.CodeInsight.Manager.Handlers;
 

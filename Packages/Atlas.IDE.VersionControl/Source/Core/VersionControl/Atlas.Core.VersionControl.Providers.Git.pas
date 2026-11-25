@@ -161,6 +161,16 @@ uses
   Atlas.Core.VersionControl.Internals.Text,
   Atlas.Core.VersionControl.Internals.GitParser;
 
+const
+  /// <summary>Größte Datei unter .git, die ReadSmallFile liest (HEAD, Refs, Verweis auf den gitdir).</summary>
+  cSmallFileLimit = 4096;
+  /// <summary>Kürzester abgekürzter Hash (core.abbrev) und Länge eines SHA-256-Hashs.</summary>
+  cShortHashLength = 7;
+  cLongHashLength = 64;
+  /// <summary>Anfang von .git/HEAD auf einem Branch und einer Datei .git in Worktrees und Submodulen.</summary>
+  cHeadRef = 'ref: ';
+  cGitDirLink = 'gitdir:';
+
 function ReadSmallFile(const AFileName: string): string;
 var
   mStream: TFileStream;
@@ -174,7 +184,7 @@ begin
   try
     mStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
     try
-      if mStream.Size > 4096 then
+      if mStream.Size > cSmallFileLimit then
       begin
         Exit;
       end;
@@ -377,7 +387,7 @@ function IsHash(const AText: string): Boolean;
 var
   mIndex: Integer;
 begin
-  Result := (Length(AText) >= 7) and (Length(AText) <= 64);
+  Result := (Length(AText) >= cShortHashLength) and (Length(AText) <= cLongHashLength);
   if Result then
   begin
     for mIndex := 1 to Length(AText) do
@@ -475,7 +485,7 @@ begin
   begin
     for mIndex := 1 to Length(AName) do
     begin
-      if Ord(AName[mIndex]) <= 32 then
+      if AName[mIndex] <= ' ' then
       begin
         Exit(False);
       end;
@@ -522,9 +532,9 @@ begin
   mDir := IncludeTrailingPathDelimiter(mDir);
   mHeadText := ReadSmallFile(mDir + 'HEAD');
   Result := mHeadText + '|' + Stamp(mDir + 'HEAD');
-  if Copy(mHeadText, 1, 5) = 'ref: ' then
+  if mHeadText.StartsWith(cHeadRef) then
   begin
-    mRef := Trim(Copy(mHeadText, 6, MaxInt));
+    mRef := Trim(Copy(mHeadText, Length(cHeadRef) + 1, MaxInt));
     Result := Result + '|' + ReadSmallFile(mDir + StringReplace(mRef, '/', PathDelim, [rfReplaceAll]));
     // Worktrees: Branches liegen im gemeinsamen Ordner (commondir).
     if FileExists(mDir + 'commondir') then
@@ -916,7 +926,7 @@ begin
   end;
   for mIndex := 1 to Length(AText) do
   begin
-    if Ord(AText[mIndex]) < 32 then
+    if AText[mIndex] < ' ' then
     begin
       Exit(TAtlasVcsOutcome.Failed);
     end;
@@ -1044,11 +1054,11 @@ begin
     Exit;
   end;
   mContent := ReadSmallFile(mDotGit);
-  if Copy(mContent, 1, 7) <> 'gitdir:' then
+  if not mContent.StartsWith(cGitDirLink) then
   begin
     Exit;
   end;
-  mContent := Trim(Copy(mContent, 8, MaxInt));
+  mContent := Trim(Copy(mContent, Length(cGitDirLink) + 1, MaxInt));
   if mContent = '' then
   begin
     Exit;

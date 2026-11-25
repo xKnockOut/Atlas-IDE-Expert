@@ -207,6 +207,10 @@ uses
   Atlas.Plugin.Diagnostics.Deadline,
   Atlas.ToolsApi.Theme.Style;
 
+const
+  // Takt, in dem die Anzeige dem aktiven Editor folgt.
+  cTickMs = 250;
+
 { TAtlasIdeTestsLens.TEvents }
 
 function TAtlasIdeTestsLens.TEvents.AllowedEvents: TCodeEditorEvents;
@@ -245,7 +249,7 @@ begin
     FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 250;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;

@@ -30,7 +30,7 @@ uses
   System.SysUtils,
   System.Types,
   Atlas.Plugin.Style.Palette,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.Unwrap,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Unwrap;

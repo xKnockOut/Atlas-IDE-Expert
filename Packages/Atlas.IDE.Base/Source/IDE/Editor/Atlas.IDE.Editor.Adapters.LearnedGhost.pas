@@ -28,7 +28,7 @@ uses
   System.JSON,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Plugin.Lsp.Uris,
   Atlas.Core.Editor.LearnedSuggestions,
   Atlas.IDE.Foundation.Settings,

@@ -53,7 +53,7 @@ uses
   System.SysUtils,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Tracker.Markdown,
-  Atlas.Core.Tracker.Markdown.Inline;
+  Atlas.Core.Tracker.Markdown.Spans;
 
 function Lines(const AParts: TArray<string>): string;
 begin

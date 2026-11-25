@@ -96,7 +96,7 @@ uses
   Atlas.Core.Documentation.Contract,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Plugin.Localization.Language,
   Atlas.Text.Json;
 

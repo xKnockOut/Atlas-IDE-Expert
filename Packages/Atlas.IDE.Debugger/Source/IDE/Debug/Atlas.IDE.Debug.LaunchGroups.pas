@@ -25,7 +25,7 @@ interface
 uses
   System.SysUtils,
   Vcl.ExtCtrls,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Debug.LaunchGroups,
   Atlas.Core.Debug.LaunchProcesses,
   Atlas.Core.Debug.Phases,
@@ -106,7 +106,7 @@ uses
   Vcl.Dialogs,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Status.Registry,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.StartProfiles.Store,
   Atlas.Core.Debug.Reattach,
@@ -118,7 +118,7 @@ uses
   Atlas.IDE.Debug.Processes,
   Atlas.UI.Debug.LaunchGroupsDialog,
   Atlas.UI.Debug.Session.Strings,
-  Atlas.Core.Foundation.Calls,
+  Atlas.Plugin.Calls.Optional,
   Atlas.ToolsApi.Debugger.Services;
 
 const

@@ -165,6 +165,14 @@ uses
   Atlas.Vcl.Controls.Menus,
   Atlas.Vcl.Theme.Service;
 
+const
+  // Spaltenbreiten bei 96 dpi.
+  cNameWidth = 160;
+  cFileWidth = 120;
+  cMethodWidth = 140;
+  cLineWidth = 240;
+  cNumberWidth = 36;
+
 {$R *.dfm}
 
 function AddColumn(AList: TListView; const ACaption: string; AWidth, APPI: Integer): TListColumn;
@@ -250,13 +258,13 @@ end;
 
 procedure AddColumns(AList: TListView; APPI: Integer);
 begin
-  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnName), 160, APPI);
-  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnFile), 120, APPI);
-  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnMethod), 140, APPI);
-  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnLine), 240, APPI);
+  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnName), cNameWidth, APPI);
+  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnFile), cFileWidth, APPI);
+  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnMethod), cMethodWidth, APPI);
+  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnLine), cLineWidth, APPI);
   // „Nr.“ hinten angelegt, damit der Name die bearbeitbare erste Spalte bleibt; CreateWnd zeigt sie vorn.
-  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnNumber), 36, APPI).Alignment :=
-    taCenter;
+  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnNumber), cNumberWidth,
+    APPI).Alignment := taCenter;
 end;
 
 function BuildList(AFrame: TAtlasBookmarksFrame; AEvents: TAtlasBookmarksFrame.TEvents;
@@ -657,7 +665,7 @@ var
   mId: string;
 begin
   mId := SelectedId;
-  if (mId <> '') and (ANumber >= 1) and (ANumber <= 9) and Assigned(FHandlers.OnNumber) then
+  if (mId <> '') and (ANumber >= 1) and (ANumber <= cMaxBookmarkNumber) and Assigned(FHandlers.OnNumber) then
   begin
     FHandlers.OnNumber(mId, ANumber);
   end;

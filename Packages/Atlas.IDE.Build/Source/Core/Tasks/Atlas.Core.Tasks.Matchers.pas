@@ -164,16 +164,21 @@ end;
 /// <summary>Name der Gruppe, die bei AIndex mit (? beginnt: (?&lt;name&gt;…), (?P&lt;name&gt;…), (?'name'…); '' bei
 /// anderen Formen.</summary>
 function GroupName(const APattern: string; AIndex: Integer): string;
+const
+  // „(?<Name>“ bzw. „(?'Name'“: Kennzeichen hinter „(?“, der Name dahinter; bei „(?P<Name>“ ein Zeichen später.
+  cMarkOffset = 2;
+  cNameOffset = cMarkOffset + 1;
+  cPythonNameOffset = cNameOffset + 1;
 var
   mClose: Integer;
 begin
   Result := '';
-  if (AIndex + 2 > Length(APattern)) or not CharInSet(APattern[AIndex + 2], ['<', 'P', '''']) then
+  if (AIndex + cMarkOffset > Length(APattern)) or not CharInSet(APattern[AIndex + cMarkOffset], ['<', 'P', '''']) then
   begin
     Exit;
   end;
-  mClose := AIndex + 3;
-  if APattern[AIndex + 2] = 'P' then
+  mClose := AIndex + cNameOffset;
+  if APattern[AIndex + cMarkOffset] = 'P' then
   begin
     Inc(mClose);
   end;
@@ -181,13 +186,14 @@ begin
   begin
     Inc(mClose);
   end;
-  if (APattern[AIndex + 2] = 'P') and (AIndex + 3 <= Length(APattern)) and (APattern[AIndex + 3] = '<') then
+  if (APattern[AIndex + cMarkOffset] = 'P') and (AIndex + cNameOffset <= Length(APattern)) and
+    (APattern[AIndex + cNameOffset] = '<') then
   begin
-    Result := Copy(APattern, AIndex + 4, mClose - AIndex - 4);
+    Result := Copy(APattern, AIndex + cPythonNameOffset, mClose - AIndex - cPythonNameOffset);
   end
-  else if APattern[AIndex + 2] <> 'P' then
+  else if APattern[AIndex + cMarkOffset] <> 'P' then
   begin
-    Result := Copy(APattern, AIndex + 3, mClose - AIndex - 3);
+    Result := Copy(APattern, AIndex + cNameOffset, mClose - AIndex - cNameOffset);
   end;
 end;
 
@@ -323,24 +329,40 @@ end;
 
 // Datei(Zeile,Spalte) Schwere Code Meldung: dcc auf der Kommandozeile und MSBuild.
 procedure ReadFileFirst(const AFound: TMatch; var AFinding: TAtlasTaskFinding);
+const
+  // Nummern der Gruppen im Muster.
+  cFile = 1;
+  cLine = 2;
+  cColumn = 3;
+  cSeverity = 4;
+  cCode = 5;
+  cMessage = 6;
 begin
-  AFinding.FileName := Trim(GroupText(AFound, 1));
-  AFinding.Line := StrToIntDef(GroupText(AFound, 2), 0);
-  AFinding.Column := StrToIntDef(GroupText(AFound, 3), 0);
-  TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, 4), AFinding.Severity);
-  AFinding.Code := GroupText(AFound, 5);
-  AFinding.Message := Trim(GroupText(AFound, 6));
+  AFinding.FileName := Trim(GroupText(AFound, cFile));
+  AFinding.Line := StrToIntDef(GroupText(AFound, cLine), 0);
+  AFinding.Column := StrToIntDef(GroupText(AFound, cColumn), 0);
+  TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, cSeverity), AFinding.Severity);
+  AFinding.Code := GroupText(AFound, cCode);
+  AFinding.Message := Trim(GroupText(AFound, cMessage));
 end;
 
 // [dcc Schwere] Datei(Zeile,Spalte) Code Meldung: Meldungen der IDE.
 procedure ReadDccIde(const AFound: TMatch; var AFinding: TAtlasTaskFinding);
+const
+  // Nummern der Gruppen im Muster.
+  cSeverity = 1;
+  cFile = 2;
+  cLine = 3;
+  cColumn = 4;
+  cCode = 5;
+  cMessage = 6;
 begin
-  TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, 1), AFinding.Severity);
-  AFinding.FileName := Trim(GroupText(AFound, 2));
-  AFinding.Line := StrToIntDef(GroupText(AFound, 3), 0);
-  AFinding.Column := StrToIntDef(GroupText(AFound, 4), 0);
-  AFinding.Code := GroupText(AFound, 5);
-  AFinding.Message := Trim(GroupText(AFound, 6));
+  TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, cSeverity), AFinding.Severity);
+  AFinding.FileName := Trim(GroupText(AFound, cFile));
+  AFinding.Line := StrToIntDef(GroupText(AFound, cLine), 0);
+  AFinding.Column := StrToIntDef(GroupText(AFound, cColumn), 0);
+  AFinding.Code := GroupText(AFound, cCode);
+  AFinding.Message := Trim(GroupText(AFound, cMessage));
 end;
 
 /// <summary>Wert der ersten beteiligten Gruppe von AFirst und ASecond.</summary>
@@ -354,16 +376,25 @@ begin
 end;
 
 procedure ReadPwsh(const AFound: TMatch; const ALine: string; var AFinding: TAtlasTaskFinding);
+const
+  // Nummern der Gruppen im Muster; Zeile und Spalte stehen je nach Schreibweise in einer von zwei Gruppen.
+  cSeverity = 1;
+  cFile = 2;
+  cLine = 3;
+  cColumn = 4;
+  cLineAlt = 5;
+  cColumnAlt = 6;
+  cMessage = 7;
 var
   mSeverity: TAtlasTaskSeverity;
 begin
-  AFinding.FileName := Trim(GroupText(AFound, 2));
-  AFinding.Line := StrToIntDef(EitherGroup(AFound, 3, 5), 0);
-  AFinding.Column := StrToIntDef(EitherGroup(AFound, 4, 6), 0);
-  AFinding.Message := Trim(GroupText(AFound, 7));
-  if GroupText(AFound, 1) <> '' then
+  AFinding.FileName := Trim(GroupText(AFound, cFile));
+  AFinding.Line := StrToIntDef(EitherGroup(AFound, cLine, cLineAlt), 0);
+  AFinding.Column := StrToIntDef(EitherGroup(AFound, cColumn, cColumnAlt), 0);
+  AFinding.Message := Trim(GroupText(AFound, cMessage));
+  if GroupText(AFound, cSeverity) <> '' then
   begin
-    TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, 1), AFinding.Severity);
+    TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, cSeverity), AFinding.Severity);
   end
   else if UpperSeverity(AFinding.Message, mSeverity) then
   begin
@@ -376,11 +407,17 @@ begin
 end;
 
 procedure ReadMsBuildFile(const AFound: TMatch; var AFinding: TAtlasTaskFinding);
+const
+  // Nummern der Gruppen im Muster.
+  cFile = 1;
+  cSeverity = 2;
+  cCode = 3;
+  cMessage = 4;
 begin
-  AFinding.FileName := Trim(GroupText(AFound, 1));
-  TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, 2), AFinding.Severity);
-  AFinding.Code := GroupText(AFound, 3);
-  AFinding.Message := Trim(GroupText(AFound, 4));
+  AFinding.FileName := Trim(GroupText(AFound, cFile));
+  TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, cSeverity), AFinding.Severity);
+  AFinding.Code := GroupText(AFound, cCode);
+  AFinding.Message := Trim(GroupText(AFound, cMessage));
   // „MSBUILD : error …“ und andere Werkzeugnamen sind keine Dateien.
   if Pos('.', ExtractFileName(AFinding.FileName)) = 0 then
   begin
@@ -389,14 +426,20 @@ begin
 end;
 
 procedure ReadGeneric(const AFound: TMatch; var AFinding: TAtlasTaskFinding);
+const
+  // Nummern der Gruppen im Muster.
+  cFile = 1;
+  cLine = 2;
+  cColumn = 3;
+  cMessage = 4;
 var
   mSeverity: TAtlasTaskSeverity;
   mCode: TMatch;
 begin
-  AFinding.FileName := Trim(GroupText(AFound, 1));
-  AFinding.Line := StrToIntDef(GroupText(AFound, 2), 0);
-  AFinding.Column := StrToIntDef(GroupText(AFound, 3), 0);
-  AFinding.Message := Trim(GroupText(AFound, 4));
+  AFinding.FileName := Trim(GroupText(AFound, cFile));
+  AFinding.Line := StrToIntDef(GroupText(AFound, cLine), 0);
+  AFinding.Column := StrToIntDef(GroupText(AFound, cColumn), 0);
+  AFinding.Message := Trim(GroupText(AFound, cMessage));
   if LeadingSeverity(AFinding.Message, mSeverity) then
   begin
     AFinding.Severity := mSeverity;
@@ -501,7 +544,7 @@ begin
   if Copy(Result, 1, 2) = '\\' then
   begin
     mPrefix := '\\';
-    Result := Copy(Result, 3, MaxInt);
+    Result := Copy(Result, Length(mPrefix) + 1, MaxInt);
   end
   else if (Result <> '') and (Result[1] = '\') then
   begin

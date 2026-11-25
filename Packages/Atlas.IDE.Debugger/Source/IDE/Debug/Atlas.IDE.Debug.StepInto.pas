@@ -35,7 +35,7 @@ uses
   Atlas.Core.Debug.StepInto,
   Atlas.Core.Debug.StepIntoJump,
   Atlas.UI.Debug.StepInto,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.IDE.Editor.CaretPopup;
 
 type
@@ -111,7 +111,7 @@ uses
   Winapi.Windows,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Settings.VisualizerKinds,
   Atlas.UI.Strings,
   Atlas.UI.Debug.Stepping.Strings,

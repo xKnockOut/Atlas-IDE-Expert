@@ -59,7 +59,7 @@ uses
   Atlas.Core.Welcome.ContinueWork,
   Atlas.Core.Welcome.Saved,
   Atlas.IDE.Welcome.ContinueIssueLink,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.UI.Welcome.Contract;
 
 type

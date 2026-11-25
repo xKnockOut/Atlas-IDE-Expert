@@ -31,7 +31,7 @@ implementation
 
 uses
   System.JSON,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Problems.Explanation;
 
 const

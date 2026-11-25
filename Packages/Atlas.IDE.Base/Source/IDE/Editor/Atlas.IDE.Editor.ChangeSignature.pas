@@ -35,7 +35,7 @@ uses
   System.JSON,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Editor.ChangeSignature,
   Atlas.UI.Editor.ChangeSignature,
   Atlas.IDE.Editor.Rename,

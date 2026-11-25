@@ -29,8 +29,8 @@ interface
 
 uses
   ToolsAPI,
-  Atlas.Core.Projects.Contract,
-  Atlas.Core.Projects.PathCheck;
+  Atlas.Plugin.Projects.Contract,
+  Atlas.Plugin.Projects.PathCheck;
 
 type
   TAtlasIdeProjectContext = class

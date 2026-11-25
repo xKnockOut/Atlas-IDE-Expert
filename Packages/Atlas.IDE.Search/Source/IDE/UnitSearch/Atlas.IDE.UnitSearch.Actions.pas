@@ -73,8 +73,8 @@ uses
   System.JSON,
   Vcl.ActnList,
   ToolsAPI,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.TestUnit,
   Atlas.Core.UnitSearch.Plan,
   Atlas.Core.Editor.WorkspacePlan,
@@ -84,7 +84,7 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional;
 
 const
   cUnitsCommand = 'atlas.server.units';

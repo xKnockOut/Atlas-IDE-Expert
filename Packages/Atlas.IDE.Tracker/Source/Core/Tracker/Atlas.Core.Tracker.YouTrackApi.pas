@@ -168,6 +168,13 @@ uses
   Atlas.Text.Json,
   Atlas.Plugin.Diagnostics.Deadline;
 
+const
+  /// <summary>Zeichen darunter sind ASCII.</summary>
+  cFirstNonAscii = 128;
+  /// <summary>Mittag des Tages: das Datum bleibt in jeder Zeitzone gleich.</summary>
+  cNoon = 0.5;
+  cMsPerSecond = 1000;
+
 { TAtlasYouTrackApi }
 
 class function TAtlasYouTrackApi.FullQuery(const ATarget: TAtlasTrackerTarget): string;
@@ -237,11 +244,11 @@ end;
 class function TAtlasYouTrackApi.ErrorOfStatus(AStatus: Integer): TAtlasCiFetchError;
 begin
   case AStatus of
-    401, 403:
+    TAtlasHttpStatus.cUnauthorized, TAtlasHttpStatus.cForbidden:
       Result := TAtlasCiFetchError.Unauthorized;
-    404:
+    TAtlasHttpStatus.cNotFound:
       Result := TAtlasCiFetchError.NotFound;
-    400:
+    TAtlasHttpStatus.cBadRequest:
       Result := TAtlasCiFetchError.Invalid;
   else
     Result := TAtlasCiFetchError.Server;
@@ -315,7 +322,7 @@ begin
   finally
     mValue.Free;
   end;
-  Result := TAtlasYouTrackJson.Shorten(Result, 300);
+  Result := TAtlasYouTrackJson.Shorten(Result, TAtlasTrackerTextLimits.cMessage);
 end;
 
 class function TAtlasYouTrackApi.UsersUrl(const ATarget: TAtlasTrackerTarget; const AText: string;
@@ -452,7 +459,7 @@ end;
 
 class function TAtlasYouTrackApi.TimeTrackingOff(const AResult: TAtlasTrackerWriteResult): Boolean;
 begin
-  Result := (AResult.Status = 400) and (ContainsText(AResult.Message, 'time tracking') or
+  Result := (AResult.Status = TAtlasHttpStatus.cBadRequest) and (ContainsText(AResult.Message, 'time tracking') or
     ContainsText(AResult.Message, 'timetracking') or ContainsText(AResult.Message, 'Zeiterfassung'));
 end;
 
@@ -510,7 +517,7 @@ begin
   begin
     Exit;
   end;
-  if mStatus <> 200 then
+  if mStatus <> TAtlasHttpStatus.cOk then
   begin
     AError := ErrorOfStatus(mStatus);
     Exit;
@@ -594,7 +601,7 @@ begin
   mPlain := Result <> '';
   for mIndex := 1 to Length(Result) do
   begin
-    if (Ord(Result[mIndex]) < 128) and
+    if (Ord(Result[mIndex]) < cFirstNonAscii) and
       not CharInSet(Result[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '-', '_', '.', '@']) then
     begin
       mPlain := False;
@@ -742,7 +749,7 @@ begin
     mDuration := TJSONObject.Create;
     mDuration.AddPair('presentation', TAtlasTimeRounding.Presentation(AItem.Minutes));
     mObject.AddPair('duration', mDuration);
-    mObject.AddPair('date', TJSONNumber.Create(DateTimeToUnix(Trunc(AItem.Date) + 0.5, True) * 1000));
+    mObject.AddPair('date', TJSONNumber.Create(DateTimeToUnix(Trunc(AItem.Date) + cNoon, True) * cMsPerSecond));
     if AItem.WorkType <> '' then
     begin
       mType := TJSONObject.Create;

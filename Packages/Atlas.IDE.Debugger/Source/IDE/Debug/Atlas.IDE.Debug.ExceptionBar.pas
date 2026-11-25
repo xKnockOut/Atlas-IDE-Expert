@@ -45,7 +45,7 @@ uses
   System.Classes,
   Vcl.Controls,
   Vcl.ExtCtrls,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Debug.Exceptions,
   Atlas.Core.Debug.ExceptionBanner,
   Atlas.Core.Debug.Phases,
@@ -152,7 +152,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Status.Registry,
   Atlas.Core.Debug.ExceptionDialog,
   Atlas.Core.Debug.ExceptionBarFlow,
   Winapi.Windows,

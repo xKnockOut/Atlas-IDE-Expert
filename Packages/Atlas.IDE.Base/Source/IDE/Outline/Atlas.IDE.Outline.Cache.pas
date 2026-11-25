@@ -77,8 +77,8 @@ uses
   System.Generics.Collections,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Outline.LoadGuard,
-  Atlas.Core.Lsp.BackgroundRequest,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.BackgroundRequest,
+  Atlas.Plugin.Lsp.Client,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.ToolsApi.Editor.CodeView;
 

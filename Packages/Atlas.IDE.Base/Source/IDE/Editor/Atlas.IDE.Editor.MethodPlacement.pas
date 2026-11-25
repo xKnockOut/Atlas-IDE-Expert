@@ -30,7 +30,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Editor.MethodPlacement,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Plugin.Notifications.MessageSink;
 
 type
   TAtlasMethodPlacementSessionFunc = TFunc<TLspSession>;
@@ -91,8 +91,8 @@ uses
   System.JSON,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Results.Model,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,

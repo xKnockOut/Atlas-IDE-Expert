@@ -176,10 +176,10 @@ implementation
 uses
   Winapi.Windows,
   System.StrUtils,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Files.DataFile,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Assistants.EditPlan,
   Atlas.Core.Assistants.LinkLock,

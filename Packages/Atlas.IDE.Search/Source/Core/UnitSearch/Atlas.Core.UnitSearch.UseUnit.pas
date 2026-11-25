@@ -99,6 +99,8 @@ uses
 
 const
   cArrow = ' → ';
+  /// <summary>Teile des kürzesten Kreises mit eigenem Via („Ziel → Via → Ziel“).</summary>
+  cMinCycleParts = 3;
 
 { TAtlasUseUnit }
 
@@ -263,7 +265,8 @@ begin
   Result := ACycle.Name;
   // "Ziel → Kandidat → … → Via → Ziel": vorletzter Teil.
   mParts := CyclePath(ACycle, ASection).Split([cArrow]);
-  if Length(mParts) >= 3 then
+  // Erst ab Ziel, Via und Ziel gibt es einen Teil vor dem letzten, der nicht das Ziel ist.
+  if Length(mParts) >= cMinCycleParts then
   begin
     Result := mParts[High(mParts) - 1];
   end;

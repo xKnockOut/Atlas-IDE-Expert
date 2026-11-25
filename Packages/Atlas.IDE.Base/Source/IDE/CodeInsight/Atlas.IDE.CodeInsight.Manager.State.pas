@@ -9,17 +9,17 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.Status.Lines,
-  Atlas.Core.Diagnostics.ThreadList,
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Status.Lines,
+  Atlas.Plugin.Diagnostics.ThreadList,
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.Crashes,
-  Atlas.Core.Lsp.CrashCases,
+  Atlas.Plugin.Lsp.Crashes,
+  Atlas.Plugin.Lsp.CrashCases,
   Atlas.Plugin.Files.Contract,
   Atlas.Plugin.Files.WatchedChanges,
   Atlas.Core.Signature.Contract,
-  Atlas.Core.Notifications.Contract,
+  Atlas.Plugin.Notifications.Contract,
   Atlas.IDE.Completion.Editor,
   Atlas.IDE.CodeInsight.Manager.Editors;
 
@@ -135,8 +135,8 @@ implementation
 uses
   Atlas.UI.Strings,
   Atlas.UI.CodeInsight.Strings,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.IDE.CodeInsight.Manager.Paths,
   ToolsAPI;
 

@@ -113,7 +113,7 @@ uses
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Status.ServerWindow,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Plugin.Notifications.MessageSink;
 
 const
   cTickMs = 250;

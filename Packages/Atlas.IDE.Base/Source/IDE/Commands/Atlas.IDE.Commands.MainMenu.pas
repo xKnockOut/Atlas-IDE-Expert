@@ -229,7 +229,7 @@ uses
   Atlas.ToolsApi.Theme.Symbol,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Setup.Checklist,
-  Atlas.Core.Lsp.Progress;
+  Atlas.Plugin.Lsp.Progress;
 
 const
   /// <summary>Takt des Fortschritts im Menütitel, solange ein Vorgang läuft.</summary>

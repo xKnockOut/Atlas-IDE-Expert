@@ -163,7 +163,8 @@ uses
   System.JSON,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Plugin.Style.Color;
 
 /// <summary>Vollständiger Pfad aus Wurzel und relativem Pfad mit "/".</summary>
 function FullPath(const ARoot, APath: string): string;
@@ -258,6 +259,9 @@ end;
 { TAtlasHotspotCommit }
 
 function TAtlasHotspotCommit.ShortRevision(const AVcs: string): string;
+const
+  // Kurzform einer Git-Revision wie in "git log --oneline".
+  cShortRevisionLength = 7;
 begin
   if SameText(AVcs, 'svn') then
   begin
@@ -265,7 +269,7 @@ begin
   end
   else
   begin
-    Result := Copy(Revision, 1, 7);
+    Result := Copy(Revision, 1, cShortRevisionLength);
   end;
 end;
 
@@ -512,23 +516,29 @@ begin
 end;
 
 class function TAtlasHotspotChart.ScoreColor(AScore: Double): Cardinal;
+const
+  // Farbanteile wie im HTML-Bericht; bei cMiddle sind Rot und Grün beide voll (Gelb).
+  cMiddle = 0.5;
+  cFullRed = 200;
+  cFullGreen = 170;
+  cBlue = 40;
 var
   mScore: Double;
   mRed, mGreen: Integer;
 begin
   // Grün → Gelb → Rot wie im HTML-Bericht (hsl 120 → 0).
   mScore := EnsureRange(AScore, 0, 1);
-  if mScore < 0.5 then
+  if mScore < cMiddle then
   begin
-    mRed := Round(200 * mScore * 2);
-    mGreen := 170;
+    mRed := Round(cFullRed * mScore * 2);
+    mGreen := cFullGreen;
   end
   else
   begin
-    mRed := 200;
-    mGreen := Round(170 * (1 - mScore) * 2);
+    mRed := cFullRed;
+    mGreen := Round(cFullGreen * (1 - mScore) * 2);
   end;
-  Result := Cardinal(mRed) or (Cardinal(mGreen) shl 8) or (Cardinal(40) shl 16);
+  Result := TAtlasColorMath.Rgb(mRed, mGreen, cBlue);
 end;
 
 class procedure TAtlasHotspotChart.Extent(const AEntries: TArray<TAtlasHotspotEntry>; const AShown: TArray<Integer>;
@@ -616,8 +626,11 @@ begin
 end;
 
 function IsNameChar(AChar: Char): Boolean;
+const
+  // Zeichen jenseits von ASCII (Umlaute usw.) zählen wie Buchstaben.
+  cLastAscii = 127;
 begin
-  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AChar) > 127);
+  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AChar) > cLastAscii);
 end;
 
 class function TAtlasHotspotCommands.NameColumn(const ALineText, AName: string): Integer;

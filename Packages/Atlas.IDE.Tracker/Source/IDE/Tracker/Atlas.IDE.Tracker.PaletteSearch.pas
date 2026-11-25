@@ -32,7 +32,7 @@ uses
   Atlas.Core.Tracker.PaletteSearchPlan,
   Atlas.IDE.Tracker.IssueContext,
   Atlas.IDE.Tracker.PaletteSearchFetch,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.Core.Commands.Contract;
 
 type

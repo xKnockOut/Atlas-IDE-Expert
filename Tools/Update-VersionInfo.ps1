@@ -7,7 +7,8 @@
     bekommt in der Gruppe für alle Konfigurationen und Plattformen ('$(Base)'!='') dieselben Angaben:
     - VerInfo_MajorVer, VerInfo_MinorVer, VerInfo_Release, VerInfo_Build und FileVersion aus der Version
       in TAtlasVersion.cVersion nach der Regel unten,
-    - ProductVersion als SemVer-Text (z. B. 2.3.0-rc.1),
+    - ProductVersion numerisch wie FileVersion und der SemVer-Text (z. B. 2.3.0-rc.1) in Comments; die IDE
+      schreibt ProductVersion als PRODUCTVERSION-Zahlen in die .vrc, „0-rc“ bricht den Ressourcen-Compiler ab,
     - CompanyName, ProductName, LegalCopyright und ProgramID des Projekts (statt der Vorgaben der IDE
       „com.embarcadero.…“ und „1.0.0.0“).
     VerInfo-Einträge in anderen Gruppen (die IDE legt sie nur für Win64x an) werden entfernt. Damit die
@@ -73,7 +74,7 @@ function Get-Block([string] $SemVer, [string] $Indent, [string] $NewLine) {
     $Keys = "CompanyName=$CompanyName;FileDescription=$ProductName - `$(MSBuildProjectName);" +
         "FileVersion=$FileVersion;InternalName=`$(MSBuildProjectName);LegalCopyright=$Copyright;" +
         "LegalTrademarks=;OriginalFilename=;ProgramID=$ProgramIdPrefix`$(MSBuildProjectName);" +
-        "ProductName=$ProductName;ProductVersion=$SemVer;Comments="
+        "ProductName=$ProductName;ProductVersion=$FileVersion;Comments=$SemVer"
     $Lines = @(
         "<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>",
         "<VerInfo_MajorVer>$($Parts[0])</VerInfo_MajorVer>",

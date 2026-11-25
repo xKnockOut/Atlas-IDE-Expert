@@ -52,6 +52,12 @@ type
 
 implementation
 
+const
+  /// <summary>Zeilen je Mausradraste, wenn das System keinen brauchbaren Wert liefert.</summary>
+  cDefaultWheelLines = 3;
+  /// <summary>Höchstens dieser Bruchteil (ein Drittel) der Höhe ist Randstreifen.</summary>
+  cEdgeDivisor = 3;
+
 { TAtlasWelcomeScroll }
 
 class function TAtlasWelcomeScroll.MaxPosition(AContent, APage: Integer): Integer;
@@ -130,7 +136,7 @@ begin
   end;
   if (ALines < 1) or (ALines > 100) then
   begin
-    ALines := 3;
+    ALines := cDefaultWheelLines;
   end;
   mTotal := ARest + ADelta;
   Result := -((mTotal * ALines) div cWheelDelta);
@@ -173,9 +179,9 @@ begin
   end;
   mEdge := AEdge;
   // Niedrige Fläche: höchstens ein Drittel als Randstreifen, sonst gäbe es keine ruhige Mitte.
-  if mEdge > AHeight div 3 then
+  if mEdge > AHeight div cEdgeDivisor then
   begin
-    mEdge := AHeight div 3;
+    mEdge := AHeight div cEdgeDivisor;
   end;
   if mEdge < 1 then
   begin

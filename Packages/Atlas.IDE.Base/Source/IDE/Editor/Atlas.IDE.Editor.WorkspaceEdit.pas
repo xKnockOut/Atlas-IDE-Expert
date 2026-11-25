@@ -44,7 +44,7 @@ interface
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Undo.Contract,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Editor.Contract;

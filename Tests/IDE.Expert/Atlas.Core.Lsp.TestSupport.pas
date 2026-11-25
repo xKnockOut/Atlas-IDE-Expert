@@ -5,8 +5,8 @@
 interface
 
 uses
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Lsp.Progress;
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Plugin.Lsp.Progress;
 
 /// <summary>Eintrag der Aufrufhierarchie AName in AFileName, Zeile ALine.</summary>
 function Item(const AName, AFileName: string; ALine: Integer): TAtlasHierarchyItem;

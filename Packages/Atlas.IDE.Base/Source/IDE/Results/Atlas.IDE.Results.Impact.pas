@@ -15,7 +15,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type

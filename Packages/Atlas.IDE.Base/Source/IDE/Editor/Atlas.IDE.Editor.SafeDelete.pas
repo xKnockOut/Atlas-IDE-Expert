@@ -42,7 +42,7 @@ uses
   Vcl.StdCtrls,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Results.Model,
   Atlas.Core.Editor.SafeDelete,
   Atlas.IDE.Editor.Rename,

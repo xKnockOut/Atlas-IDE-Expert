@@ -8,7 +8,7 @@
 interface
 
 uses
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.TextChanges,
   Atlas.Core.Lsp.Session,
   Atlas.IDE.Commands.EditorServer;
 
@@ -52,8 +52,8 @@ uses
   Vcl.Controls,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Results.Model,

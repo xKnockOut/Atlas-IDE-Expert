@@ -6,6 +6,8 @@
 interface
 
 uses
+  Atlas.Common.Rules.Checker,
+  Atlas.Common.Mcp.Contract.BulkFix,
   Atlas.Common.Mcp.Contract.CompilerFixes,
   Atlas.Common.Mcp.Contract.Extract,
   Atlas.Common.Mcp.Contract.Formatting;
@@ -18,12 +20,19 @@ type
     class function Formatting: IMcpFormatting; static;
     /// <summary>Schnellkorrekturen für Compilermeldungen aus Editing.</summary>
     class function CompilerFixes: IMcpCompilerFixes; static;
+    /// <summary>Sammelkorrektur aus Rules mit den eingebauten Regeln; AProject und ASource wie bei der Prüfung der
+    /// MCP-Werkzeuge (nil = ohne Index bzw. Vordefinitionen).</summary>
+    class function BulkFix(const AProject: TCheckProjectFunc; const ASource: TCheckSourceFunc): IMcpBulkFix; static;
   end;
 
 implementation
 
 uses
+  Atlas.Common.Rules.Contract.Api,
+  Atlas.Common.Rules.Builtin,
+  Atlas.Common.Rules.Providers.BulkFix,
   Atlas.Common.Editing.Composition,
+  Adapters.Mcp.BulkFix,
   Adapters.Mcp.CompilerFixes,
   Adapters.Mcp.Extract,
   Adapters.Mcp.Formatting;
@@ -43,6 +52,15 @@ end;
 class function TMcpComposition.CompilerFixes: IMcpCompilerFixes;
 begin
   Result := TMcpCompilerFixesAdapter.Create(TEditingComposition.CompilerFixes);
+end;
+
+class function TMcpComposition.BulkFix(const AProject: TCheckProjectFunc;
+  const ASource: TCheckSourceFunc): IMcpBulkFix;
+var
+  mBulkFix: IRuleBulkFix;
+begin
+  mBulkFix := TRuleBulkFixProvider.Create(BuiltinRules, AProject, ASource);
+  Result := TMcpBulkFixAdapter.Create(mBulkFix);
 end;
 
 end.

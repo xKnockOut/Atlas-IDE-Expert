@@ -27,6 +27,26 @@ uses
   Atlas.Core.CiBuild.Contract;
 
 type
+  /// <summary>HTTP-Statuscodes, die Tracker und CI-Anbieter auswerten.</summary>
+  TAtlasHttpStatus = record
+  public const
+    cOk = 200;
+    cCreated = 201;
+    cLastSuccess = 299;
+    cMovedPermanently = 301;
+    cFound = 302;
+    cSeeOther = 303;
+    cNotModified = 304;
+    cTemporaryRedirect = 307;
+    cPermanentRedirect = 308;
+    cBadRequest = 400;
+    cUnauthorized = 401;
+    cForbidden = 403;
+    cNotFound = 404;
+    cGone = 410;
+    cUnprocessable = 422;
+  end;
+
   /// <summary>Antwort einer Anfrage über IAtlasCiSend, IAtlasCiPost und IAtlasCiConditional.</summary>
   TAtlasCiResponse = record
     /// <summary>HTTP-Status; 0 ohne Antwort.</summary>

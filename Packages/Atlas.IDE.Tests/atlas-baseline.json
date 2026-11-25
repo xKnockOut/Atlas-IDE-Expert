@@ -1,7 +1,4 @@
 {
   "version": 1,
-  "findings": [
-    {"path": "Source/Core/Tests/Atlas.Core.Tests.AffectedHook.pas", "rule": "magic-number", "fingerprint": "6f12c42d", "count": 1, "routine": "TAtlasAffectedHook.IsOwn", "context": "1493b6bc"},
-    {"path": "Source/IDE/Tests/Atlas.IDE.Tests.Lens.pas", "rule": "magic-number", "fingerprint": "3df2fa4e", "count": 1, "routine": "TAtlasIdeTestsLens.Create", "context": "9df66e02"}
-  ]
+  "findings": []
 }

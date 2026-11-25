@@ -31,6 +31,9 @@ implementation
 uses
   Atlas.Core.CiBuild.Contract;
 
+const
+  cSchemeSeparator = '://';
+
 { TAtlasCiAddresses }
 
 class function TAtlasCiAddresses.OriginOf(const AUrl: string): string;
@@ -43,10 +46,10 @@ var
   mIndex: Integer;
 begin
   Result := AOrigin;
-  mIndex := Pos('://', Result);
+  mIndex := Pos(cSchemeSeparator, Result);
   if mIndex > 0 then
   begin
-    Result := Copy(Result, mIndex + 3, MaxInt);
+    Result := Copy(Result, mIndex + Length(cSchemeSeparator), MaxInt);
   end;
   mIndex := Pos(':', Result);
   if mIndex > 0 then

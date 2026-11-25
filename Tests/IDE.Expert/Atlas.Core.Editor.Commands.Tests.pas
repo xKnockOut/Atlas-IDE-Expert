@@ -37,7 +37,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.TextChanges,
   Atlas.Core.Editor.Selection,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Editor.SlashTrigger;

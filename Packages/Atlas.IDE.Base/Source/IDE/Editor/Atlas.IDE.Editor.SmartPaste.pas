@@ -35,7 +35,7 @@ uses
   Vcl.AppEvnts,
   ToolsAPI,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.SmartPaste,
   Atlas.UI.Editor.SmartPaste,
   Atlas.Plugin.Diagnostics.WorkerSlot;

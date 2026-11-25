@@ -36,7 +36,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Generate.Menu,
   Atlas.Core.Generate.Protocol;

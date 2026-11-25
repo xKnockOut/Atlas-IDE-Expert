@@ -28,6 +28,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Documents.FileBatch,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Findings.Baseline,
@@ -86,8 +87,7 @@ type
   TBulkFixCheck = reference to function(const AText: string; const ALines: TBulkFixLineMap): TArray<TRuleFinding>;
   /// <summary>Anzahl der Syntaxfehler in AText mit den Symbolen der Datei.</summary>
   TBulkFixSyntaxErrors = reference to function(const AText: string): Integer;
-  /// <summary>Schreibt AText nach AFileName (Kodierung und Zeilenenden erhalten); Fehler als Exception.</summary>
-  TBulkFixWrite = reference to procedure(const AFileName, AText: string);
+  TBulkFixWrite = Atlas.Common.Documents.FileBatch.TFileBatchWrite;
 
   TBulkFixRuleCount = record
     RuleId: string;
@@ -114,7 +114,7 @@ type
     function FixCount: Integer;
   end;
 
-  EBulkFixWrite = class(Exception);
+  EBulkFixWrite = Atlas.Common.Documents.FileBatch.EFileBatchWrite;
 
   TBulkFix = class
   public const
@@ -139,14 +139,10 @@ type
     /// je Grund und verworfene Dateien; Zeilen mit ALineBreak.</summary>
     class function Summary(const AFiles: TArray<TBulkFixFile>; ADryRun: Boolean; const ALineBreak: string): string;
       static;
-    /// <summary>Alle geänderten Dateien aus AFiles schreiben oder keine: Scheitert eine, werden die schon
-    /// geschriebenen auf OldText zurückgesetzt und EBulkFixWrite ausgelöst. Liefert die Anzahl der Dateien.
-    /// </summary>
-    class function WriteAll(const AFiles: TArray<TBulkFixFile>; const AWrite: TBulkFixWrite): Integer; overload;
-      static;
-    /// <summary>Wie oben für Namen, alte und neue Texte gleicher Länge (MCP, #61).</summary>
-    class function WriteAll(const ANames, AOldTexts, ANewTexts: TArray<string>; const AWrite: TBulkFixWrite): Integer;
-      overload; static;
+    /// <summary>Alle geänderten Dateien aus AFiles schreiben oder keine (TFileBatch.WriteAll): Scheitert eine,
+    /// werden die schon geschriebenen auf OldText zurückgesetzt und EBulkFixWrite ausgelöst. Liefert die Anzahl der
+    /// Dateien.</summary>
+    class function WriteAll(const AFiles: TArray<TBulkFixFile>; const AWrite: TBulkFixWrite): Integer; static;
     /// <summary>Kennungen (klein) der Regeln mit "safeFix" in ACatalog.</summary>
     class function SafeRulesOf(const ACatalog: TArray<TRuleCatalogEntry>): TArray<string>; static;
     /// <summary>Untergrenze eines Aufrufs (fix_findings, Befehl des Plugins): ARequested ("medium", "high"; ''
@@ -192,7 +188,7 @@ uses
 
 type
   /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
-  TBulkFixText = (MinConfidenceValues, MinConfidenceBelow, Skipped, Preview, Written, Discarded, WriteFailed);
+  TBulkFixText = (MinConfidenceValues, MinConfidenceBelow, Skipped, Preview, Written, Discarded);
 
 const
   cTexts: array[TBulkFixText] of TAtlasText = (
@@ -205,8 +201,7 @@ const
      En: 'Preview: %d fixes in %d files, nothing written'),
     (De: '%d Korrekturen in %d Dateien geschrieben'; En: '%d fixes written in %d files'),
     (De: 'Verworfen (die Korrekturen hätten Syntaxfehler erzeugt): %s';
-     En: 'Discarded (the fixes would have caused syntax errors): %s'),
-    (De: 'Schreiben fehlgeschlagen (%s); alle Dateien zurückgesetzt.'; En: 'Writing failed (%s); all files restored.'));
+     En: 'Discarded (the fixes would have caused syntax errors): %s'));
 
 {$SCOPEDENUMS OFF}
 
@@ -463,38 +458,7 @@ begin
       mNew := mNew + [mFile.NewText];
     end;
   end;
-  Result := WriteAll(mNames, mOld, mNew, AWrite);
-end;
-
-class function TBulkFix.WriteAll(const ANames, AOldTexts, ANewTexts: TArray<string>;
-  const AWrite: TBulkFixWrite): Integer;
-var
-  mIndex, mWritten: Integer;
-begin
-  mWritten := 0;
-  try
-    for mIndex := 0 to High(ANames) do
-    begin
-      AWrite(ANames[mIndex], ANewTexts[mIndex]);
-      Inc(mWritten);
-    end;
-  except
-    on E: Exception do
-    begin
-      // Alles oder nichts: schon geschriebene Dateien zurücksetzen.
-      for mIndex := mWritten - 1 downto 0 do
-        try
-          AWrite(ANames[mIndex], AOldTexts[mIndex]);
-        except
-          // Zurücksetzen nach Kräften; gemeldet wird der erste Fehler, der die übrigen Dateien verhindert hat.
-          // lsp-ignore: catch-all-without-raise -- Zurücksetzen nach Kräften; der erste Fehler wird ausgelöst
-          on Exception do
-            Continue;
-        end;
-      raise EBulkFixWrite.CreateFmt(cTexts[TBulkFixText.WriteFailed].Text, [E.Message]);
-    end;
-  end;
-  Result := mWritten;
+  Result := TFileBatch.WriteAll(mNames, mOld, mNew, AWrite);
 end;
 
 class function TBulkFix.SafeRulesOf(const ACatalog: TArray<TRuleCatalogEntry>): TArray<string>;

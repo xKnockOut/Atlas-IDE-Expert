@@ -69,7 +69,7 @@ uses
   Atlas.Text.TestResults,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Lsp.Uris,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.Debug,

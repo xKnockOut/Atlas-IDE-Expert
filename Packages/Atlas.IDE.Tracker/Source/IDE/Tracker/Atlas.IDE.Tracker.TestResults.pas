@@ -44,7 +44,7 @@ uses
   Atlas.IDE.Tracker.TestActions,
   Atlas.IDE.Tracker.WelcomeLink,
   Atlas.Plugin.Diagnostics.WorkerSlot,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.Core.Tracker.Contract.TestResults,
   Atlas.IDE.Tracker.TestResultsData;
 
@@ -138,9 +138,9 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Shutdown,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Tracker.TestResults.Strings,

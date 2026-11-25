@@ -125,7 +125,7 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Notifications.Center,
+  Atlas.Plugin.Notifications.Center,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Schema,

@@ -44,7 +44,7 @@ uses
   Vcl.Forms,
   Atlas.Plugin.Style.Palette,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.PluginTimings,
+  Atlas.Plugin.Diagnostics.PluginTimings,
   Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.PluginParts,
   Atlas.UI.Diagnostics.PluginFrame;

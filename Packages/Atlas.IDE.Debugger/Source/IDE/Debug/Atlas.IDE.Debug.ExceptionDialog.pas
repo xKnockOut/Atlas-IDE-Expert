@@ -207,7 +207,7 @@ begin
     if Screen.CustomForms[mIndex] = FHidden then
     begin
       TFormAccess(FHidden).AlphaBlend := False;
-      TFormAccess(FHidden).AlphaBlendValue := 255;
+      TFormAccess(FHidden).AlphaBlendValue := High(Byte);
       Break;
     end;
   end;

@@ -57,7 +57,7 @@ type
     cButtonHeight = 22;
     cButtonPadding = 10;
     /// <summary>Rundung der Schaltfläche „Fortsetzen“.</summary>
-    cButtonRadius = 6;
+    cButtonRadius = TAtlasWelcomeRow.cButtonRadius;
     /// <summary>Einzug der zweiten und dritten Zeile (unter dem Titel).</summary>
     cDetailIndent = 32;
   private

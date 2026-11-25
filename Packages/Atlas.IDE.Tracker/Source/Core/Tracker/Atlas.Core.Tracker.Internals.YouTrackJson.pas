@@ -96,7 +96,7 @@ begin
   begin
     Result := ListText(TJSONArray(AValue));
   end;
-  Result := Shorten(Result, 60);
+  Result := Shorten(Result, TAtlasTrackerTextLimits.cName);
 end;
 
 class function TAtlasYouTrackJson.IsOneOf(const AName: string; const ANames: array of string): Boolean;

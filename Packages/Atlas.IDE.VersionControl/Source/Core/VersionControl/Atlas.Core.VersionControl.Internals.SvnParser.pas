@@ -97,6 +97,13 @@ const
   cBlameLineMissing = 'svn blame: line-number fehlt';
   cLogDiffHeaderMissing = 'svn log --diff: Kopf erwartet';
   cInfoEntryMissing = 'svn info: kein Eintrag';
+  /// <summary>Trenner der Felder im Kopf eines Eintrags von svn log ("r12 | autor | datum | 3 lines").</summary>
+  cLogFieldBar = ' | ';
+  /// <summary>Höchstzahl der Ziffern der Zeilenzahl im Kopf; längere gelten als ungültig.</summary>
+  cMaxLineCountDigits = 6;
+  /// <summary>Platz für die ersten Zeilen bzw. Einträge, bevor die Liste wächst.</summary>
+  cInitialPatchLines = 16;
+  cInitialLogEntries = 4;
 
 function ActionKind(const AAction: string): TAtlasVcsChangeKind;
 begin
@@ -126,7 +133,7 @@ var
 begin
   ARevision := '';
   ALines := 0;
-  mBar := Pos(' | ', ALine);
+  mBar := Pos(cLogFieldBar, ALine);
   Result := (Length(ALine) > 1) and (ALine[1] = 'r') and (mBar > 2);
   if not Result then
   begin
@@ -141,16 +148,16 @@ begin
     end;
   end;
   mLast := ALine;
-  while Pos(' | ', mLast) > 0 do
+  while Pos(cLogFieldBar, mLast) > 0 do
   begin
-    mLast := Copy(mLast, Pos(' | ', mLast) + 3, MaxInt);
+    mLast := Copy(mLast, Pos(cLogFieldBar, mLast) + Length(cLogFieldBar), MaxInt);
   end;
   mPos := 1;
   while (mPos <= Length(mLast)) and CharInSet(mLast[mPos], ['0'..'9']) do
   begin
     Inc(mPos);
   end;
-  if (mPos = 1) or (mPos > 7) or not TryStrToInt(Copy(mLast, 1, mPos - 1), ALines) then
+  if (mPos = 1) or (mPos - 1 > cMaxLineCountDigits) or not TryStrToInt(Copy(mLast, 1, mPos - 1), ALines) then
   begin
     ALines := 0;
   end;
@@ -818,7 +825,7 @@ begin
   // Die Länge ist vorher unbekannt: Platz verdoppeln, am Ende kürzen.
   if FCount = Length(FPatch) then
   begin
-    SetLength(FPatch, FCount * 2 + 16);
+    SetLength(FPatch, FCount * 2 + cInitialPatchLines);
   end;
   FPatch[FCount] := ALine;
   Inc(FCount);
@@ -1037,7 +1044,7 @@ begin
     begin
       if mFound = Length(Result) then
       begin
-        SetLength(Result, mFound * 2 + 4);
+        SetLength(Result, mFound * 2 + cInitialLogEntries);
       end;
       Result[mFound] := mItem;
       Inc(mFound);

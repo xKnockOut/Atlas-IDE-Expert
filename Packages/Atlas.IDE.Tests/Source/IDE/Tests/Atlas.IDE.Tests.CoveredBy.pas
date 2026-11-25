@@ -137,7 +137,7 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Core.Editor.Elements,
-  Atlas.Core.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.Session.Json,
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Host,
   Atlas.ToolsApi.Files.Service,

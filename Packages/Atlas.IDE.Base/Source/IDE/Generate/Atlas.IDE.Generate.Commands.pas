@@ -76,9 +76,9 @@ uses
   Atlas.Text.Lines,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Files.DataFile,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Generate.Protocol,
   Atlas.UI.Strings,
@@ -90,7 +90,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.ToolsApi.Editor.Caret,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Plugin.Notifications.MessageSink;
 
 const
   // Wie die Code-Aktionen: Der Server darf etwas rechnen (Vorfahren, Index).

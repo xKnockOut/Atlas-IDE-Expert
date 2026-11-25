@@ -32,7 +32,7 @@
 // typeDefinition; auch hier gleicht der Aufrufer vorher ab.
 // Formatieren (#43): formatting bzw. rangeFormatting, Abgleich wie oben.
 
-// Aufbau (Atlas-Metriken): TLspSessionJson (Atlas.Core.Lsp.Session.Json, JSON ohne Zustand) <- TLspSessionBase
+// Aufbau (Atlas-Metriken): TLspSessionJson (Atlas.Plugin.Lsp.Session.Json, JSON ohne Zustand) <- TLspSessionBase
 // (.Base, Zustand und Abgleich) <- TLspSessionRequests (.Requests, Anfragen) <- TLspSession (hier).
 
 interface
@@ -41,31 +41,31 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.Progress,
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Lsp.DataFlow,
-  Atlas.Core.Lsp.AccessChains,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.Progress,
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Plugin.Lsp.DataFlow,
+  Atlas.Plugin.Lsp.AccessChains,
   Atlas.Core.InlayHints.Store,
-  Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Lsp.Session.Json,
-  Atlas.Core.Lsp.Session.Base,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.Session.Base,
   Atlas.Core.Lsp.Session.Requests;
 
 type
-  // Fehler einer Anfrage (Zeitlimit, Abbruch, Verbindung weg, Fehlerantwort); steht in Atlas.Core.Lsp.Framing.
-  ELspClientError = Atlas.Core.Lsp.Client.ELspClientError;
-  // Aliase: Die Typen stehen in Atlas.Core.Lsp.Session.Json; Aufrufer binden weiter nur diese Unit ein.
-  TLspLocation = Atlas.Core.Lsp.Session.Json.TLspLocation;
-  TLspCodeAction = Atlas.Core.Lsp.Session.Json.TLspCodeAction;
-  TLspCodeActionChoice = Atlas.Core.Lsp.Session.Json.TLspCodeActionChoice;
-  TLspHoverParts = Atlas.Core.Lsp.Session.Json.TLspHoverParts;
-  TLspDiagnosticReport = Atlas.Core.Lsp.Session.Json.TLspDiagnosticReport;
-  TLspWorkspaceRun = Atlas.Core.Lsp.Session.Json.TLspWorkspaceRun;
-  TLspOpenDocument = Atlas.Core.Lsp.Session.Json.TLspOpenDocument;
-  TLspApplyEditReply = Atlas.Core.Lsp.Session.Json.TLspApplyEditReply;
-  TLspFormatOptions = Atlas.Core.Lsp.Session.Json.TLspFormatOptions;
-  TLspInitializeOptions = Atlas.Core.Lsp.Session.Base.TLspInitializeOptions;
+  // Fehler einer Anfrage (Zeitlimit, Abbruch, Verbindung weg, Fehlerantwort); steht in Atlas.Plugin.Lsp.Framing.
+  ELspClientError = Atlas.Plugin.Lsp.Client.ELspClientError;
+  // Aliase: Die Typen stehen in Atlas.Plugin.Lsp.Session.Json; Aufrufer binden weiter nur diese Unit ein.
+  TLspLocation = Atlas.Plugin.Lsp.Session.Json.TLspLocation;
+  TLspCodeAction = Atlas.Plugin.Lsp.Session.Json.TLspCodeAction;
+  TLspCodeActionChoice = Atlas.Plugin.Lsp.Session.Json.TLspCodeActionChoice;
+  TLspHoverParts = Atlas.Plugin.Lsp.Session.Json.TLspHoverParts;
+  TLspDiagnosticReport = Atlas.Plugin.Lsp.Session.Json.TLspDiagnosticReport;
+  TLspWorkspaceRun = Atlas.Plugin.Lsp.Session.Json.TLspWorkspaceRun;
+  TLspOpenDocument = Atlas.Plugin.Lsp.Session.Json.TLspOpenDocument;
+  TLspApplyEditReply = Atlas.Plugin.Lsp.Session.Json.TLspApplyEditReply;
+  TLspFormatOptions = Atlas.Plugin.Lsp.Session.Json.TLspFormatOptions;
+  TLspInitializeOptions = Atlas.Plugin.Lsp.Session.Base.TLspInitializeOptions;
 
   /// <summary>LSP-Sitzung des Plugins: Zustand und Abgleich aus TLspSessionBase, Anfragen aus
   /// TLspSessionRequests, hier Hierarchien, Auswirkungen, betroffene Tests, Debug-Werte, Inlay Hints, Diagnosen,

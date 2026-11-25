@@ -269,7 +269,8 @@ begin
   Result := False;
   if mBuildFirst then
   begin
-    mBuild := BuildInIde(ARoot, ATarget.Project, 'make', ATarget.Configuration, ATarget.Platform);
+    mBuild := BuildInIde(ARoot, ATarget.Project, 'make', ATarget.Configuration, ATarget.Platform,
+      Default(TMcpIdeOpen));
     Result := not mBuild.Success;
     if Result then
     begin

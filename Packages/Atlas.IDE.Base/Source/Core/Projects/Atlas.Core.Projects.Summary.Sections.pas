@@ -52,7 +52,7 @@ uses
   System.SysUtils,
   System.Math,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Projects.Summary.Json,
+  Atlas.Plugin.Projects.Summary.Json,
   Atlas.Text.Json;
 
 const

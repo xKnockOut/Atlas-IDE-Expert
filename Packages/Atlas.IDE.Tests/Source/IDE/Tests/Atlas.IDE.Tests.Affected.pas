@@ -20,7 +20,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Tests.Run,
   Atlas.Plugin.Diagnostics.WorkerSlot;
 

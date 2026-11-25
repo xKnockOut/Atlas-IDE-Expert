@@ -10,7 +10,7 @@ interface
 
 uses
   System.Rtti,
-  Atlas.Core.Lsp.IdeMembers;
+  Atlas.Plugin.Lsp.IdeMembers;
 
 type
   TAtlasIdeMemberCollector = class
@@ -29,7 +29,7 @@ uses
   System.SysUtils,
   System.TypInfo,
   System.Generics.Collections,
-  Atlas.Core.Lsp.IdeTypes,
+  Atlas.Plugin.Lsp.IdeTypes,
   Atlas.IDE.CodeInsight.IdeTypes,
   Atlas.Plugin.Diagnostics.Guard;
 

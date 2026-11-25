@@ -6,7 +6,9 @@
 // Vertrag IAtlasBuildRequests des Moduls Build-Pipeline (#1888) und antwortet mit Ergebnis und Compilermeldungen. Fehlt
 // das Modul, lehnt der Eingang mit Grund ab. Ist das Projekt nicht offen, öffnet der Eingang es zuvor (mit „group“ die
 // ganze Projektgruppe, sonst zur aktuellen Gruppe hinzu, #1904): So baut auch eine frisch gestartete Bau-IDE
-// (Tools/Build-Ide.ps1).
+// (Tools/Build-Ide.ps1). Das gebaute Projekt wird das aktive der Gruppe (#2895): Ein folgendes debug_start ohne
+// "project" und „Start“ des Benutzers treffen dasselbe Projekt. Ob ein nicht offenes Projekt geöffnet werden darf,
+// hat der MCP-Server vorher nach mcp.openProjects entschieden.
 // Immer nur ein Auftrag zugleich; die übrigen warten, bis der Läufer frei ist
 // (der MCP-Server zieht sie nach seiner Frist zurück). Abschaltbar über die
 // Einstellung „Builds für KI-Assistenten“ (McpBuild); dann läuft der Eingang
@@ -68,9 +70,14 @@ uses
   System.IOUtils,
   Atlas.Text.Files,
   Atlas.Plugin.Diagnostics.Guard,
+  Atlas.IDE.Foundation.StartOptions,
   Atlas.Core.Assistants.BuildInbox,
   Atlas.Core.Assistants.Inbox,
   Atlas.UI.Assistants.Strings;
+
+const
+  // Takt, in dem der Eingang auf neue Anfragen prüft.
+  cTickMs = 250;
 
 var
   /// <summary>Ordner dieses Prozesses schon einmal aufgeräumt?</summary>
@@ -99,7 +106,7 @@ begin
   FSignal := TAtlasFolderSignal.Create(FFolder);
   FPace := Default(TAtlasInboxPace);
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 250;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -300,6 +307,7 @@ begin
   end;
   mRequests := FRequests();
   EnsureProjectOpen(mRequest.Project, mRequest.Group);
+  TAtlasIdeStartOptions.MakeActive(TAtlasIdeStartOptions.FindProject(mRequest.Project));
   mFolder := FFolder;
   mOnMessage := FOnMessage;
   if Assigned(mOnMessage) then

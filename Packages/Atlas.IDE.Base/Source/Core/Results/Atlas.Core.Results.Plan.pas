@@ -10,7 +10,7 @@
 interface
 
 uses
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Commands.Palette;
 
 type
@@ -38,7 +38,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Plugin.Editor.Word,
-  Atlas.Core.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.Session.Json,
   Atlas.Core.Results.Model;
 
 class function TAtlasResultsPlan.Spot(const AText: string; ACursorLine, ACursorColumn, ATabWidth: Integer;

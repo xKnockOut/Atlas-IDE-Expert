@@ -72,9 +72,9 @@ implementation
 
 uses
   Vcl.Forms,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Contract,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Contract,
   Atlas.Plugin.Files.TextDiff,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Assistants.EditPlan,
