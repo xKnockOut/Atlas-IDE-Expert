@@ -8,6 +8,12 @@
 // Compile-Ereignisse als Hintergrund (#527); Builds des Benutzers sperren die
 // Prüfung. Der Compiler läuft im Hauptthread; die Prüfung meldet sich beim
 // Einfrier-Wächter als Atlas-Aktion an (#501).
+// Der Zeitgeber läuft auch in der Nachrichtenschleife eines laufenden Builds
+// (Fortschrittsdialog). Ein Compileraufruf von dort aus träfe den laufenden
+// Compiler (interne Fehler F2084, GPF C0000029). Darum startet die Prüfung
+// nur, wenn Gruppe und Projekte gemeldet fertig sind, die Ruhezeit danach
+// vorbei ist und weder der Fortschrittsdialog noch ein anderer modaler
+// Dialog offen ist.
 // Vorab in RAD Studio 13 geprüft: Die Syntaxprüfung schreibt keine .exe und
 // keine .dcu (nur die .res des Ressourcencompilers), Mini-Projekt ~0,9 s.
 // Schlägt sie fehl, wartet der Fortschrittsdialog der IDE auf OK; nur während
@@ -20,6 +26,7 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.ExtCtrls,
+  Vcl.Forms,
   ToolsAPI,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.CheckOnSave;
@@ -65,6 +72,8 @@ type
     procedure Run(const AProject: string; AManual: Boolean);
     class function ActiveProject: IOTAProject; static;
     class function Debugging: Boolean; static;
+    /// <summary>Fortschrittsdialog des Compilers sichtbar (nil ohne).</summary>
+    class function ProgressForm: TForm; static;
   public
     /// <summary>AEvents gehört dem Aufrufer und muss länger leben; der Wächter wird dort angemeldet.</summary>
     constructor Create(AEvents: TAtlasCompileEvents; const AReport: TProc<string>);
@@ -78,6 +87,10 @@ type
     /// <summary>Drückt OK im Fortschrittsdialog des Compilers (nur dort, nie Abbrechen). Nur während eines eigenen
     /// Laufs aufrufen (auch vom Build-Läufer, #261).</summary>
     class procedure PressProgressOk; static;
+    /// <summary>Darf Atlas jetzt keinen eigenen Compile starten? True, solange der Fortschrittsdialog des Compilers
+    /// oder ein anderer modaler Dialog offen ist: Der Zeitgeber bzw. die Antwort des Servers liefe dann in dessen
+    /// Nachrichtenschleife, also mitten im laufenden Compileraufruf der IDE.</summary>
+    class function CompilerBusy: Boolean; static;
   end;
 
 implementation
@@ -86,7 +99,6 @@ uses
   Atlas.IDE.Foundation.Keys,
   Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
-  Vcl.Forms,
   Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.Menus,
@@ -130,7 +142,7 @@ procedure TAtlasIdeCheckOnSave.TWatcher.GroupStarted(AKind: TAtlasCompileKind);
 begin
   if (FOwner <> nil) and not FOwner.FChecking then
   begin
-    FOwner.FCore.BuildStarted;
+    FOwner.FCore.GroupStarted(NowMs);
   end;
 end;
 
@@ -138,7 +150,7 @@ procedure TAtlasIdeCheckOnSave.TWatcher.GroupFinished(ASucceeded: Boolean; ADura
 begin
   if (FOwner <> nil) and not FOwner.FChecking then
   begin
-    FOwner.FCore.BuildFinished;
+    FOwner.FCore.GroupFinished(NowMs);
   end;
 end;
 
@@ -146,7 +158,7 @@ procedure TAtlasIdeCheckOnSave.TWatcher.ProjectStarted(const AProject: TAtlasCom
 begin
   if (FOwner <> nil) and not AProject.Background then
   begin
-    FOwner.FCore.BuildStarted;
+    FOwner.FCore.ProjectStarted(NowMs);
   end;
 end;
 
@@ -155,7 +167,7 @@ procedure TAtlasIdeCheckOnSave.TWatcher.ProjectFinished(const AProject: TAtlasCo
 begin
   if (FOwner <> nil) and not AProject.Background then
   begin
-    FOwner.FCore.BuildFinished;
+    FOwner.FCore.ProjectFinished(NowMs);
   end;
 end;
 
@@ -254,6 +266,11 @@ begin
     if FChecking then
     begin
       PressProgressOk;
+      Exit;
+    end;
+    // Im Fortschrittsdialog oder einem anderen modalen Dialog nie compilieren; Vorgemerktes wartet.
+    if CompilerBusy then
+    begin
       Exit;
     end;
     if FManual then
@@ -400,36 +417,55 @@ var
   mProject: IOTAProject;
 begin
   mProject := ActiveProject;
-  if (mProject <> nil) and not FChecking and not FCore.BuildRunning and not Debugging then
+  if (mProject <> nil) and not FChecking and FCore.BuildIdle(NowMs) and not CompilerBusy and not Debugging then
   begin
     Run(mProject.FileName, True);
   end;
 end;
 
+class function TAtlasIdeCheckOnSave.ProgressForm: TForm;
+const
+  cProgressForm = 'TProgressForm';
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to Screen.FormCount - 1 do
+  begin
+    Result := Screen.Forms[mIndex];
+    if SameText(Result.ClassName, cProgressForm) and Result.Visible then
+    begin
+      Exit;
+    end;
+  end;
+  Result := nil;
+end;
+
+class function TAtlasIdeCheckOnSave.CompilerBusy: Boolean;
+begin
+  Result := (Application.ModalLevel > 0) or (ProgressForm <> nil);
+end;
+
 class procedure TAtlasIdeCheckOnSave.PressProgressOk;
 var
-  mIndex, mChild: Integer;
+  mChild: Integer;
   mForm: TForm;
   mButton: TButton;
 begin
   // Nur der Fortschrittsdialog des Compilers, nur sein OK (nach dem Ende); Abbrechen nie.
-  for mIndex := 0 to Screen.FormCount - 1 do
+  mForm := ProgressForm;
+  if mForm = nil then
   begin
-    mForm := Screen.Forms[mIndex];
-    if not SameText(mForm.ClassName, 'TProgressForm') or not mForm.Visible then
+    Exit;
+  end;
+  for mChild := 0 to mForm.ComponentCount - 1 do
+  begin
+    if mForm.Components[mChild] is TButton then
     begin
-      Continue;
-    end;
-    for mChild := 0 to mForm.ComponentCount - 1 do
-    begin
-      if mForm.Components[mChild] is TButton then
+      mButton := TButton(mForm.Components[mChild]);
+      if mButton.Visible and mButton.Enabled and (mButton.ModalResult = mrOk) then
       begin
-        mButton := TButton(mForm.Components[mChild]);
-        if mButton.Visible and mButton.Enabled and (mButton.ModalResult = mrOk) then
-        begin
-          mButton.Click;
-          Exit;
-        end;
+        mButton.Click;
+        Exit;
       end;
     end;
   end;
