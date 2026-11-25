@@ -84,14 +84,13 @@ type
 implementation
 
 uses
-  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443),
   Atlas.Common.History.ChangedFiles,
   System.SysUtils,
   System.JSON,
   System.Diagnostics,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Impact;
 
 const
