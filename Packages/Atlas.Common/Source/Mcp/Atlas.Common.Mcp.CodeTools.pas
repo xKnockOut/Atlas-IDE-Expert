@@ -3,9 +3,10 @@
 // MCP-Werkzeuge, die Quelltext auswerten (#48): Verwendungen, Aufrufhierarchie
 // und Befunde der Prüfregeln. Das Symbol wird per Name über den Index gefunden
 // und dann wie im LSP an seiner Deklaration aufgelöst.
-// Befunde und check_code lesen die Dateien mit den Symbolen des Projekts und
-// dessen Include-Dateien (CheckSource, #860), wie der Editor, und geben den
-// Regeln den Symbolindex und die Projektdienste mit (CheckProject, #1112).
+// check_code prüft über AScope.Checks, die der Host mit den Symbolen des
+// Projekts und dessen Include-Dateien (#860) und dem Symbolindex samt
+// Projektdiensten (#1112) gebunden hat; nicht auflösbare Bezeichner sucht es mit
+// den Symbolen aus CheckSource, wie der Editor.
 // Verwendungen und Aufrufer sind nach Treffersicherheit getrennt (#1119):
 // erst die sicheren, dann die erschlossenen mit Grund.
 // get_impact (#1120): Auswirkungen einer Änderung nach Ebenen samt betroffenen
@@ -18,7 +19,7 @@ uses
   System.Classes,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Checker,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Impact,
@@ -40,8 +41,7 @@ type
     FFiles: TReferenceFilesProvider;
     FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
-    FCheckSource: TCheckSourceFunc;
-    FCheckProject: TCheckProjectFunc;
+    FCheckSource: TPascalSourceFunc;
     FSettingsFor: TReferenceSettingsProvider;
     FImpactOptionsFor: TImpactOptionsProvider;
     function Locate(const AName: string; out ALocation: TSymbolLocation; out AHint: string): Boolean;
@@ -51,7 +51,7 @@ type
     procedure AddReferences(ALines: TStrings; const AFound: TArray<TReferenceLocation>; ASure: Boolean;
       var ACount: Integer);
     function CheckedText(const AFileName, AText: string; AStartLine, AEndLine: Integer): string;
-    function UnresolvedOf(const AFileName, AText: string; const ASource: TCheckSource): TArray<TUnresolvedName>;
+    function UnresolvedOf(const AFileName, AText: string; const ASource: TPascalSource): TArray<TUnresolvedName>;
   public
     constructor Create(const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
       const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc); overload;
@@ -84,10 +84,9 @@ type
     /// ungültigem Bereich.</summary>
     class function ReplaceLines(const AOriginal, AText: string; AStartLine, AEndLine: Integer): string; static;
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
-    /// <summary>Symbole und Include-Dateien für check_code (#860); nil = Vordefinitionen (Win32).</summary>
-    property CheckSource: TCheckSourceFunc read FCheckSource write FCheckSource;
-    /// <summary>Projekt, Symbolindex und Projektdienste für check_code (#1112); nil = ohne Index.</summary>
-    property CheckProject: TCheckProjectFunc read FCheckProject write FCheckProject;
+    /// <summary>Symbole und Include-Dateien für die nicht auflösbaren Bezeichner von check_code (#860); nil =
+    /// Vordefinitionen (Win32).</summary>
+    property CheckSource: TPascalSourceFunc read FCheckSource write FCheckSource;
     /// <summary>Einstellungen references.* (#1119); nicht gesetzt: Vorgaben.</summary>
     property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
     /// <summary>Optionen der Auswirkungsanalyse (#1120); nicht gesetzt: Vorgaben mit SettingsFor.</summary>
@@ -107,7 +106,6 @@ uses
   Atlas.Common.Lsp.QualifiedNames,
   Atlas.Common.Lsp.ReferenceConfidence,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Findings.Scopes,
   Atlas.Common.Mcp.IndexTools,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.CheckTools,
@@ -380,7 +378,7 @@ begin
 end;
 
 function TMcpCodeTools.UnresolvedOf(const AFileName, AText: string;
-  const ASource: TCheckSource): TArray<TUnresolvedName>;
+  const ASource: TPascalSource): TArray<TUnresolvedName>;
 var
   mTree: TSyntaxTree;
   mResolver: TNameResolver;
@@ -903,17 +901,16 @@ var
   mName: TUnresolvedName;
   mCount: Integer;
   mCheckNames: Boolean;
-  mSource: TCheckSource;
-  mScopes: TFindingScopes;
+  mSource: TPascalSource;
 begin
   mNewText := CheckedText(AFileName, AText, AStartLine, AEndLine);
-  mSource := TFileChecker.SourceOf(FCheckSource, AFileName);
+  mSource := TPascalSources.ForFile(FCheckSource, AFileName);
   mCheckNames := TUnresolvedNames.Available(FIndex);
   mLines := TStringList.Create;
   try
     mCount := 0;
-    for mFinding in TFileChecker.CheckText(AScope.Rules, AScope.Settings, TTextNames.RelativeTo(AScope.Root, AFileName), mNewText,
-      TCheckOrigin.Make(TFileChecker.ProjectOf(FCheckProject, AFileName), mSource), mScopes) do
+    for mFinding in AScope.Checks.Check(AFileName, TTextNames.RelativeTo(AScope.Root, AFileName), mNewText,
+      AScope.Settings) do
     begin
       Inc(mCount);
       if mCount <= cMaxFindings then

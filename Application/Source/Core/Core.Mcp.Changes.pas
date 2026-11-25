@@ -34,9 +34,7 @@ uses
   Core.Mcp.IssueTools,
   Core.VersionControlChanges,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Rules.Checker,
-  Atlas.Common.Findings.Scopes,
-  Atlas.Common.Rules.Builtin,
+  Atlas.Common.Mcp.Contract.TextChecks,
   Atlas.Common.Localization.Texts;
 
 type
@@ -105,25 +103,25 @@ begin
   Result := AVcs <> nil;
 end;
 
-/// <summary>Geänderte Datei relativ zu ARoot mit ihren Befunden in geänderten Zeilen (wie --changed-lines).</summary>
+/// <summary>Geänderte Datei relativ zu ARoot mit ihren Befunden in geänderten Zeilen (wie --changed-lines); ohne
+/// AChecks ohne Befunde.</summary>
 function ChangedFileOf(AGroup: TCoreWorkspaceGroup; AVcs: TVcsChanges; const ARoot, AFile: string;
-  const ACheckProject: TCheckProjectFunc): TMcpChangedFile;
+  const AChecks: IMcpTextChecks): TMcpChangedFile;
 var
   mText: string;
   mLines: TChangedLines;
   mFinding: TRuleFinding;
-  mScopes: TFindingScopes;
 begin
   Result := Default(TMcpChangedFile);
   Result.Path := ExtractRelativePath(IncludeTrailingPathDelimiter(ARoot), AFile);
   Result.Findings := nil;
-  if not (MatchText(ExtractFileExt(AFile), ['.pas', '.dpr', '.dpk']) and ReadSourceText(AFile, mText) and
+  if (AChecks = nil) or not (MatchText(ExtractFileExt(AFile), ['.pas', '.dpr', '.dpk']) and
+    ReadSourceText(AFile, mText) and
     TChangedFiles.LinesOf(AVcs.Lines, AVcs.RepoRoot, AFile, mLines)) then
   begin
     Exit;
   end;
-  for mFinding in TFileChecker.CheckText(BuiltinRules, AGroup.Main.Configuration.Settings, Result.Path, mText,
-    TCheckOrigin.Make(ACheckProject(AFile), AGroup.Main.State.CheckSource(AFile)), mScopes) do
+  for mFinding in AChecks.Check(AFile, Result.Path, mText, AGroup.Main.Configuration.Settings) do
   begin
     if mLines.Contains(mFinding.Range.StartPos.Line) then
     begin
@@ -139,7 +137,6 @@ var
   mAccess: TCoreVcsAccess;
   mVcs: TVcsChanges;
   mFile: string;
-  mCheckProject: TCheckProjectFunc;
 begin
   Result := Default(TMcpChangeSet);
   Result.Files := nil;
@@ -152,12 +149,11 @@ begin
   end;
   try
     Result.Vcs := mVcs.Name;
-    mCheckProject := CheckProjectOf(AGroup);
     for mFile in mVcs.Files do
     begin
       if TMcpPathGuard.IsInside(ARoot, mFile) then
       begin
-        Result.Files := Result.Files + [ChangedFileOf(AGroup, mVcs, ARoot, mFile, mCheckProject)];
+        Result.Files := Result.Files + [ChangedFileOf(AGroup, mVcs, ARoot, mFile, AAdapters.TextChecks)];
       end;
     end;
     if mVcs is TGitChanges then

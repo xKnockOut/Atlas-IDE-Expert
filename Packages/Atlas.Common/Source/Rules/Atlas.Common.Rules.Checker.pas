@@ -98,6 +98,20 @@ type
     class function Exists(const AFolder: string): TRuleFileExists; static;
   end;
 
+  /// <summary>Grundlage der Anbieter, die mit Regeln, Projekt und Symbolen prüfen, die der Host beim Anlegen
+  /// bindet (IRuleTextChecks, IRuleBulkFix).</summary>
+  TBoundRuleProvider = class(TInterfacedObject)
+  protected
+    FRules: TArray<IRule>;
+    FProject: TCheckProjectFunc;
+    FSource: TCheckSourceFunc;
+  public
+    /// <summary>ARules: die geprüften Regeln; AProject nil = ohne Index, ASource nil = Vordefinitionen (Win32).
+    /// </summary>
+    constructor Create(const ARules: TArray<IRule>; const AProject: TCheckProjectFunc;
+      const ASource: TCheckSourceFunc);
+  end;
+
   TFileChecker = class
   public
     /// <summary>Beschreibung der eingebauten Syntaxprüfung.</summary>
@@ -282,6 +296,17 @@ begin
   Result := Make(TFileChecker.ProjectOf(AProject, AFileName), TFileChecker.SourceOf(ASource, AFileName));
 end;
 
+{ TBoundRuleProvider }
+
+constructor TBoundRuleProvider.Create(const ARules: TArray<IRule>; const AProject: TCheckProjectFunc;
+  const ASource: TCheckSourceFunc);
+begin
+  inherited Create;
+  FRules := ARules;
+  FProject := AProject;
+  FSource := ASource;
+end;
+
 { TFileChecker }
 
 class function TFileChecker.SyntaxDescriptor: TRuleDescriptor;
@@ -428,14 +453,7 @@ end;
 
 class function TFileChecker.SourceOf(const ASource: TCheckSourceFunc; const AFileName: string): TCheckSource;
 begin
-  if Assigned(ASource) then
-  begin
-    Result := ASource(AFileName);
-  end
-  else
-  begin
-    Result := TCheckSource.Default;
-  end;
+  Result := TPascalSources.ForFile(ASource, AFileName);
 end;
 
 class function TFileChecker.ProjectOf(const AProject: TCheckProjectFunc; const AFileName: string): TCheckProject;

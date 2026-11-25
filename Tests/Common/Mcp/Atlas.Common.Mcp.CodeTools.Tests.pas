@@ -37,12 +37,12 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Builtin,
-  Atlas.Common.Rules.Checker,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Lsp.References,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.Contract,
+  Shell.Composition.Mcp,
   Atlas.Common.Mcp.CodeTools,
   Atlas.Common.Mcp.CheckTools;
 
@@ -211,13 +211,15 @@ begin
   mTools := NewTools;
   try
     // Zeile 9 ("begin") bleibt, Zeile 10 "W.Run;" wird durch fehlerhaften Code ersetzt.
-    mText := mTools.CheckCode(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
+    mText := mTools.CheckCode(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil),
+      TServerSettings.Default, 'C:\P'),
       cMainFile, '  if then', 10, 10);
     Assert.Contains(mText, '10:');
     Assert.Contains(mText, '[syntax]');
     // Ohne System im Index werden Bezeichner nicht geprüft, und das steht dabei.
     Assert.Contains(mText, 'Unit System ist nicht im Index');
-    mText := mTools.CheckCode(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
+    mText := mTools.CheckCode(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil),
+      TServerSettings.Default, 'C:\P'),
       cMainFile, cMainUnit, 0, 0);
     Assert.Contains(mText, 'Keine Befunde');
   finally
@@ -236,13 +238,13 @@ const
     'initialization'#10'  X;'#10'end.';
 var
   mTools: TMcpCodeTools;
-  mWin64: TCheckSourceFunc;
+  mWin64: TPascalSourceFunc;
   mReadWin64: TReferenceReadText;
 begin
   mWin64 :=
-    function(const AFileName: string): TCheckSource
+    function(const AFileName: string): TPascalSource
     begin
-      Result := TCheckSource.Create(AFileName, TPascalPreprocessor.PredefinedSymbols('Win64', 37), nil);
+      Result := TPascalSource.Create(AFileName, TPascalPreprocessor.PredefinedSymbols('Win64', 37), nil);
     end;
   mReadWin64 :=
     function(const AFileName: string; out AText: string): Boolean
@@ -253,22 +255,24 @@ begin
   mTools := NewTools;
   try
     // Ohne Projekt gelten Win32 und Delphi 13: Der {$ELSE}-Zweig ist aktiv und kaputt.
-    Assert.Contains(mTools.CheckCode(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
+    Assert.Contains(mTools.CheckCode(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil),
+      TServerSettings.Default, 'C:\P'),
       cZielFile, cWin64Unit, 0, 0),
       '[syntax]');
     mTools.CheckSource := mWin64;
-    Assert.Contains(mTools.CheckCode(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
+    Assert.Contains(mTools.CheckCode(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, mWin64),
+      TServerSettings.Default, 'C:\P'),
       cZielFile, cWin64Unit, 0, 0),
       'Keine Befunde');
   finally
     mTools.Free;
   end;
-  Assert.Contains(TMcpCheckTools.Diagnostics(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
+  Assert.Contains(TMcpCheckTools.Diagnostics(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil),
+    TServerSettings.Default, 'C:\P'),
     [cZielFile],
     mReadWin64), '[syntax]');
-  Assert.Contains(TMcpCheckTools.Diagnostics(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
-    [cZielFile],
-    mReadWin64, mWin64), '0 Befunde');
+  Assert.Contains(TMcpCheckTools.Diagnostics(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, mWin64),
+    TServerSettings.Default, 'C:\P'), [cZielFile], mReadWin64), '0 Befunde');
 end;
 
 initialization

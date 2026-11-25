@@ -8,20 +8,13 @@ interface
 
 uses
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Contract.Api;
 
 type
-  TRuleBulkFixProvider = class(TInterfacedObject, IRuleBulkFix)
-  private
-    FRules: TArray<IRule>;
-    FProject: TCheckProjectFunc;
-    FSource: TCheckSourceFunc;
+  /// <summary>ARules im Konstruktor von TBoundRuleProvider: alle Regeln.</summary>
+  TRuleBulkFixProvider = class(TBoundRuleProvider, IRuleBulkFix)
   public
-    /// <summary>ARules: alle Regeln; AProject nil = ohne Index, ASource nil = Vordefinitionen (Win32).</summary>
-    constructor Create(const ARules: TArray<IRule>; const AProject: TCheckProjectFunc;
-      const ASource: TCheckSourceFunc);
     function Run(const AFiles: TArray<TRuleBulkFixInput>; const AFixRules: TArray<string>;
       const AMinConfidence: string; const ASettings: TServerSettings; out ARun: TRuleBulkFixRun;
       out AError: string): Boolean;
@@ -31,19 +24,11 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.BulkFix,
   Atlas.Common.Rules.Catalog;
 
 { TRuleBulkFixProvider }
-
-constructor TRuleBulkFixProvider.Create(const ARules: TArray<IRule>; const AProject: TCheckProjectFunc;
-  const ASource: TCheckSourceFunc);
-begin
-  inherited Create;
-  FRules := ARules;
-  FProject := AProject;
-  FSource := ASource;
-end;
 
 function TRuleBulkFixProvider.Run(const AFiles: TArray<TRuleBulkFixInput>; const AFixRules: TArray<string>;
   const AMinConfidence: string; const ASettings: TServerSettings; out ARun: TRuleBulkFixRun;

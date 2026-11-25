@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.FormatOutput.Tests;
+﻿unit Atlas.Common.Editing.FormatOutput.Tests;
 
 // Tests für die Ausgabe von --format-check und --format-write (#1358): Text,
 // JSON, Diff, Zusammenfassung und Exit-Codes.
@@ -36,7 +36,7 @@ uses
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Editing.FormatCheck,
   Atlas.Common.Rules.Output,
-  Atlas.Common.Rules.FormatOutput;
+  Atlas.Common.Editing.FormatOutput;
 
 function FileOf(const APath, AText: string): TFormattedFile;
 begin
