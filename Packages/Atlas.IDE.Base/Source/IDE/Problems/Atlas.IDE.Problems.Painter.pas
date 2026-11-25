@@ -30,6 +30,10 @@
 // einen eigenen Zeitgeber danach je Datei an; bis dahin gilt jede Zeile als sie
 // selbst. Scheitert das Anmelden, bleibt der Stand ohne Verfolgung, bis der
 // nächste kommt: Derselbe Fehler wiederholt sich nicht bei jedem Zeichnen.
+// Beim Debuggen ausgeblendet (#2962, problems.hideWhileDebugging): Hidden setzt
+// der Controller, solange ein Programm im Debugger läuft; dann zeichnet der
+// Zeichner nichts, damit Debug-Werte am Zeilenende und unter den Bezeichnern
+// frei bleiben.
 
 interface
 
@@ -69,6 +73,8 @@ type
     // Zeilenverfolgung nach dem Zeichnen anmelden (#1818).
     FFollowTimer: TTimer;
     FFollowFiles: TStringList;
+    // Beim Debuggen ausgeblendet (#2962).
+    FHidden: Boolean;
     /// <summary>Merkt Tastendrücke in der Cursorzeile; True, solange die Pause nicht um ist.</summary>
     function Typing(const AFileName: string; ALine: Integer; const AText: string): Boolean;
     procedure TimerTick(Sender: TObject);
@@ -96,6 +102,8 @@ type
     destructor Destroy; override;
     /// <summary>Oberen Editor neu zeichnen lassen.</summary>
     class procedure Invalidate; static;
+    /// <summary>Nichts zeichnen (#2962, beim Debuggen); der Aufrufer lässt danach neu zeichnen.</summary>
+    property Hidden: Boolean read FHidden write FHidden;
   end;
 
 implementation
@@ -466,7 +474,9 @@ var
   mBusy: Boolean;
 begin
   // Durch die Sicherung abgeschaltet (#493).
-  if TAtlasGuard.Disabled(TAtlasFeature.Problems) or BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
+  // Beim Debuggen ausgeblendet (#2962).
+  if TAtlasGuard.Disabled(TAtlasFeature.Problems) or FHidden or BeforeEvent or (Stage <> plsEndPaint) or
+    (Context = nil) then
   begin
     Exit;
   end;
