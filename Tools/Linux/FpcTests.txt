@@ -117,7 +117,7 @@ Atlas.Common.Editing.Formatter.Tests
 Atlas.Common.Pascal.ForwardDeclarations.Tests
 Atlas.Common.Semantics.OwnedFields.Tests
 Atlas.Common.Editing.FreeFields.Tests
-Atlas.Common.Editing.GenericLists.Parts.Tests
+Atlas.Common.Semantics.GenericLists.Parts.Tests
 Atlas.Common.Editing.GitUser.Tests
 Atlas.Common.Pascal.GuardFree.Tests
 Atlas.Common.Pascal.TryFinally.Tests

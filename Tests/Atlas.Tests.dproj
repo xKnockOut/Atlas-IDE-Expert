@@ -258,8 +258,8 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.AssignmentSwap.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.SignatureChanges.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.CommandLines.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.GenericLists.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.GenericLists.Parts.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.GenericLists.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.GenericLists.Parts.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.StringLiterals.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ExpressionText.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.StatementText.Tests.pas"/>

@@ -15,7 +15,7 @@
 // Deklaration, wenn sie in der Datei steht, sonst am ersten Cast.
 //
 // Schnellkorrektur (#1105): TLegacyCollections.ConversionFix wandelt die
-// Sammlung über Editing.GenericLists in ihr generisches Gegenstück um
+// Sammlung über Semantics.GenericLists in ihr generisches Gegenstück um
 // (Deklaration, Create, Casts, uses in einem Schritt). Steht die Deklaration
 // in einer anderen Unit oder ist die Sammlung außerhalb der Unit sichtbar,
 // liest sie die betroffenen Units über TRuleContext.ProjectFiles; solche
@@ -114,7 +114,7 @@ type
 
   /// <summary>Stapel und Warteschlangen aus System.Contnrs (#1106). Die Korrektur benennt bei Warteschlangen
   /// Push/Pop in Enqueue/Dequeue um und erzeugt TObjectStack&lt;T&gt;/TObjectQueue&lt;T&gt; mit Create(False), weil
-  /// die Contnrs-Klassen ihre Objekte nicht besitzen (Editing.GenericLists).</summary>
+  /// die Contnrs-Klassen ihre Objekte nicht besitzen (Semantics.GenericLists).</summary>
   TLegacyStackQueueRule = class(TLegacyCollectionRule)
   protected
     function CollectionTypes: TArray<TLegacyCollectionType>; override;
@@ -139,7 +139,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Semantics.LegacyListKinds,
-  Atlas.Common.Editing.GenericLists,
+  Atlas.Common.Semantics.GenericLists,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes;
 

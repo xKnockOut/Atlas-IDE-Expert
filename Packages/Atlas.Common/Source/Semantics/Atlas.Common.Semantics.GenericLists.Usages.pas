@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.GenericLists.Usages;
+﻿unit Atlas.Common.Semantics.GenericLists.Usages;
 
 // Dritte Stufe der Listenumwandlung (#1105, #1106): alle Verwendungen der Liste in einer Datei sammeln und einordnen.
 // Lesezugriffe (L[I], L.Items[I], First, Pop, for … in) brauchen einen Cast, der entfällt; Elemente, die
@@ -9,9 +9,9 @@ interface
 
 uses
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.GenericLists.Source,
-  Atlas.Common.Editing.GenericLists.State,
-  Atlas.Common.Editing.GenericLists.Declarations;
+  Atlas.Common.Semantics.GenericLists.Source,
+  Atlas.Common.Semantics.GenericLists.State,
+  Atlas.Common.Semantics.GenericLists.Declarations;
 
 type
   /// <summary>Verwendungen der Liste einsammeln und einordnen.</summary>
@@ -61,7 +61,7 @@ uses
   System.StrUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Semantics.LegacyListKinds,
-  Atlas.Common.Editing.GenericLists.Syntax,
+  Atlas.Common.Semantics.GenericLists.Syntax,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes;
 
@@ -656,6 +656,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.GenericLists.Usages', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.GenericLists.Usages', cTexts);
 
 end.
