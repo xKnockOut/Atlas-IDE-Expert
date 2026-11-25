@@ -9,6 +9,9 @@
 // - Remeasure: Inhaltshöhe nach einer neuen Breite neu rechnen und eine Änderung melden.
 // - KeyHandled: CN_KEYDOWN/CN_SYSKEYDOWN an eine eigene Tastenbehandlung geben, bevor die VCL sie verteilt.
 // - NewHiddenSheet: Reiterseite ohne sichtbaren Reiter einhängen (ein sichtbarer braucht das Fenster).
+// - CanFocusNow: Fokus jetzt möglich, auch am Formular. CanFocus prüft das Formular selbst nicht, SetFocus wirft
+//   dann EInvalidOperation („kann nicht fokussiert werden“), etwa wenn die IDE ihr Hauptfenster beim Start eines
+//   Programms sperrt.
 
 interface
 
@@ -56,6 +59,9 @@ type
     class function BelowLeft(AControl: TControl): TPoint; static;
     /// <summary>Caption von ALabel, wenn es sichtbar ist; sonst ''.</summary>
     class function ShownCaption(ALabel: TCustomLabel): string; static;
+    /// <summary>True, wenn SetFocus auf AControl jetzt gelingt: CanFocus, gezeigt, und das Formular darüber
+    /// sichtbar und freigegeben (CanFocus prüft das Formular selbst nicht).</summary>
+    class function CanFocusNow(AControl: TWinControl): Boolean; static;
   end;
 
 implementation
@@ -173,6 +179,20 @@ begin
   begin
     Result := ALabel.Caption;
   end;
+end;
+
+class function TAtlasControls.CanFocusNow(AControl: TWinControl): Boolean;
+var
+  mForm: TCustomForm;
+begin
+  Result := False;
+  if (AControl = nil) or not AControl.Showing or not AControl.CanFocus then
+  begin
+    Exit;
+  end;
+  // Wie TWinControl.SetFocus: das oberste Formular (FocusControl, dort SetFocus mit Visible und Enabled).
+  mForm := GetParentForm(AControl);
+  Result := (mForm <> nil) and mForm.Visible and mForm.Enabled;
 end;
 
 end.
