@@ -81,7 +81,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ReferenceConfidence,
-  Atlas.Common.Lsp.Hierarchies,
+  Atlas.Common.Semantics.Hierarchies,
   Atlas.Common.Query.Output,
   System.Generics.Collections,
   Atlas.Common.Localization.Texts,
@@ -323,18 +323,18 @@ begin
       mCall: THierarchyCall;
       mEntry: TQueryCall;
     begin
-      mItem := TLspHierarchies.ItemOf(ALocation.UnitName, ALocation.FileName, ALocation.Symbol);
+      mItem := THierarchies.ItemOf(ALocation.UnitName, ALocation.FileName, ALocation.Symbol);
       mResolver := TNameResolver.Create(AIndex, AEnsureUnit);
       try
         mResolver.Namespaces := ANamespaces;
         if AIncoming then
         begin
-          mCalls := TLspHierarchies.IncomingCalls(THierarchyCallSource.Create(mResolver, AIndex, AReadText, nil), mItem,
+          mCalls := THierarchies.IncomingCalls(THierarchyCallSource.Create(mResolver, AIndex, AReadText, nil), mItem,
             AFiles, ASettings);
         end
         else
         begin
-          mCalls := TLspHierarchies.OutgoingCalls(mResolver, AIndex, mItem, AReadText, nil);
+          mCalls := THierarchies.OutgoingCalls(mResolver, AIndex, mItem, AReadText, nil);
         end;
       finally
         mResolver.Free;

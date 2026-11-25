@@ -52,7 +52,6 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.References,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Mcp.Contract.BulkFix,

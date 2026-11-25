@@ -60,7 +60,7 @@ uses
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Query.Contract,
   Atlas.Common.Lsp.Metrics,
-  Atlas.Common.Lsp.Rationale,
+  Atlas.Common.Semantics.Rationale,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.JsonRpc.StreamTransport,

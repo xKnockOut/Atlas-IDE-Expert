@@ -1,9 +1,9 @@
-﻿unit Atlas.Common.Lsp.SymbolPath.Calls;
+﻿unit Atlas.Common.Semantics.SymbolPath.Calls;
 
 // Aufrufkanten der Pfadsuche zwischen Symbolen (#1117), Teil von
-// Atlas.Common.Lsp.SymbolPath.Search.
+// Atlas.Common.Semantics.SymbolPath.Search.
 //
-// - Vorwärts aus dem Rumpf einer Routine über TLspHierarchies.OutgoingCalls
+// - Vorwärts aus dem Rumpf einer Routine über THierarchies.OutgoingCalls
 //   (wie get_call_hierarchy).
 // - Rückwärts nur aus Units, deren Verwendungsindex (#492) den Namen enthält;
 //   ohne Verwendungsindex jede Unit, die die Unit der Routine verwendet.
@@ -17,8 +17,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.SymbolPath.Nodes,
-  Atlas.Common.Lsp.SymbolPath.Graph;
+  Atlas.Common.Semantics.SymbolPath.Nodes,
+  Atlas.Common.Semantics.SymbolPath.Graph;
 
 type
   TSymbolPathCalls = class
@@ -58,7 +58,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Lsp.Hierarchies;
+  Atlas.Common.Semantics.Hierarchies;
 
 { TSymbolPathCalls }
 
@@ -156,7 +156,7 @@ begin
   mItem := HierarchyItemOf(FTable.Node(ANode), AData);
   mList := TSymbolPathEdgeList.Create(FTable);
   try
-    for mCall in TLspHierarchies.OutgoingCalls(Resolver, mItem, FReadText) do
+    for mCall in THierarchies.OutgoingCalls(Resolver, mItem, FReadText) do
     begin
       mTarget := CalleeNode(FTable, mCall);
       if (mTarget >= 0) and (mTarget <> ANode) and (Length(mCall.Ranges) > 0) then

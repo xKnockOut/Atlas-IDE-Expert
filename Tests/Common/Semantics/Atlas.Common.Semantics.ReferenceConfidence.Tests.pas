@@ -101,7 +101,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.ReferenceConfidence,
-  Atlas.Common.Lsp.Hierarchies,
+  Atlas.Common.Semantics.Hierarchies,
   Atlas.Common.Lsp.Rename,
   Atlas.Common.Mcp.CodeTools,
   Atlas.Common.Mcp.Confirm,
@@ -563,7 +563,7 @@ begin
   mItem.SelectionRange := TTextRange.Create(TTestSource.PositionOf(cUnitKunden, 'Speichern; override'),
     TTestSource.PositionOf(cUnitKunden, '; override'));
   mItem.Range := mItem.SelectionRange;
-  mCalls := TLspHierarchies.IncomingCalls(THierarchyCallSource.Create(FResolver, FIndex, ReadText, nil), mItem,
+  mCalls := THierarchies.IncomingCalls(THierarchyCallSource.Create(FResolver, FIndex, ReadText, nil), mItem,
     [cKundenFile, cHauptFile], Settings(True, False));
   mKinds := '';
   for mCall in mCalls do
@@ -573,7 +573,7 @@ begin
   end;
   Assert.AreEqual('sure/ inferred/interface inferred/virtual inferred/unresolved inferred/inactiveBranch',
     Trim(mKinds));
-  mJson := TLspHierarchies.CallsToJson(mCalls, 'from');
+  mJson := THierarchies.CallsToJson(mCalls, 'from');
   try
     Assert.AreEqual('interface', (mJson.Items[1] as TJSONObject).GetValue<string>('atlasConfidence.reason'));
     Assert.AreEqual('sure', (mJson.Items[0] as TJSONObject).GetValue<string>('atlasConfidence.level'));
@@ -581,7 +581,7 @@ begin
     mJson.Free;
   end;
   // Ohne Einstufung nur der sichere Aufrufer.
-  Assert.AreEqual(1, Integer(Length(TLspHierarchies.IncomingCalls(THierarchyCallSource.Create(FResolver, FIndex,
+  Assert.AreEqual(1, Integer(Length(THierarchies.IncomingCalls(THierarchyCallSource.Create(FResolver, FIndex,
     ReadText, nil), mItem, [cKundenFile, cHauptFile], Settings(False, False)))));
 end;
 

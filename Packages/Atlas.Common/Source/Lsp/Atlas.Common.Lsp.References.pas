@@ -18,19 +18,12 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.InactiveRegions,
   Atlas.Common.Semantics.ReferenceConfidence,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Internals.Feature,
+  Atlas.Common.Semantics.Feature,
   Atlas.Common.Semantics.References;
 
 type
-  /// <summary>Einstellungen references.* für die Datei AUri.</summary>
-  TReferenceSettingsProvider = reference to function(const AUri: string): TReferenceSettings;
-
-  /// <summary>Dateien des Projekts, die nach Verweisen durchsucht werden.</summary>
-  TReferenceFilesProvider = TLspFilesProvider;
-
-  TLspReferences = class(TLspProjectFeature)
+  TLspReferences = class(TProjectFeature)
   public const
     cMethod = 'textDocument/references';
   private
@@ -38,7 +31,7 @@ type
     FSettingsFor: TReferenceSettingsProvider;
     function HandleReferences(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
+    /// <summary>Unter TSharedNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -66,20 +59,16 @@ type
     destructor Destroy; override;
   end;
 
-/// <summary>Baum zu AUri: geöffnet aus dem Speicher (AShared), sonst selbst gelesen (AOwnTree, gehört dem
-/// Aufrufer); nil, wenn die Datei nicht lesbar ist.</summary>
-function ReferenceTreeOf(const AStore: IDocumentStore; const AReadText: TReferenceReadText; const AUri: string;
-  const ACancellation: IPascalCancellation; out AShared: ISharedSyntaxTree; out AOwnTree: TSyntaxTree): TSyntaxTree;
-
 implementation
 
 uses
-  Atlas.Common.Lsp.Internals.Namespaces,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Semantics.Namespaces,
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -111,12 +100,12 @@ end;
 
 function TLspReferences.GetNamespaces: TArray<string>;
 begin
-  Result := TLspNamespaces.Read(FNamespaces);
+  Result := TSharedNamespaces.Read(FNamespaces);
 end;
 
 procedure TLspReferences.SetNamespaces(const AValue: TArray<string>);
 begin
-  TLspNamespaces.Write(FNamespaces, AValue);
+  TSharedNamespaces.Write(FNamespaces, AValue);
 end;
 
 procedure TLspReferences.Attach(ADispatcher: TJsonRpcDispatcher);
@@ -133,28 +122,6 @@ begin
     Tree.Free;
   end;
   inherited;
-end;
-
-function ReferenceTreeOf(const AStore: IDocumentStore; const AReadText: TReferenceReadText; const AUri: string;
-  const ACancellation: IPascalCancellation; out AShared: ISharedSyntaxTree; out AOwnTree: TSyntaxTree): TSyntaxTree;
-var
-  mDocument: ITextDocument;
-  mText: string;
-begin
-  AShared := nil;
-  AOwnTree := nil;
-  Result := nil;
-  if AStore.TryGet(AUri, mDocument) then
-  begin
-    AShared := TSyntaxTreeCache.Get(mDocument, ACancellation);
-    Result := AShared.Tree;
-  end
-  // Nicht geöffnete Datei (Verwendungen eines Typs aus dem Atlas-Tooltip, #588): selbst lesen.
-  else if Assigned(AReadText) and AReadText(TDocumentUris.ToPath(AUri), mText) then
-  begin
-    AOwnTree := TSyntaxTreeCache.Parse(mText, ACancellation);
-    Result := AOwnTree;
-  end;
 end;
 
 /// <summary>Antwort auf textDocument/references zu AFound.</summary>

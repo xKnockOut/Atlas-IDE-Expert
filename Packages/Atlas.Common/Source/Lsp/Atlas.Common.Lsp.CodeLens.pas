@@ -25,8 +25,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.References,
-  Atlas.Common.Lsp.Internals.Feature,
+  Atlas.Common.Semantics.Feature,
   Atlas.Common.Semantics.References;
 
 type
@@ -67,7 +66,7 @@ type
     Targets: TArray<TCodeLensLocation>;
   end;
 
-  TLspCodeLens = class(TLspProjectFeature)
+  TLspCodeLens = class(TProjectFeature)
   public const
     cLensMethod = 'textDocument/codeLens';
     cResolveMethod = 'codeLens/resolve';
@@ -82,7 +81,7 @@ type
     function HandleLens(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleResolve(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
+    /// <summary>Unter TSharedNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -127,7 +126,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.Internals.Namespaces,
+  Atlas.Common.Semantics.Namespaces,
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.Positions,
@@ -135,7 +134,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.MessageHandlers,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.Metrics.Calculator,
   Atlas.Common.Metrics.Report,
   Atlas.Common.Localization.Texts,
@@ -273,12 +272,12 @@ end;
 
 function TLspCodeLens.GetNamespaces: TArray<string>;
 begin
-  Result := TLspNamespaces.Read(FNamespaces);
+  Result := TSharedNamespaces.Read(FNamespaces);
 end;
 
 procedure TLspCodeLens.SetNamespaces(const AValue: TArray<string>);
 begin
-  TLspNamespaces.Write(FNamespaces, AValue);
+  TSharedNamespaces.Write(FNamespaces, AValue);
 end;
 
 function TLspCodeLens.NewResolver: TNameResolver;

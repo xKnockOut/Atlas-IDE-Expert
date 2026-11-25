@@ -33,9 +33,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.DataFlow.Types,
-  Atlas.Common.Lsp.Internals.Feature,
+  Atlas.Common.Semantics.Feature,
   Atlas.Common.Semantics.References;
 
 type
@@ -49,7 +48,7 @@ type
   TDataFlowResult = Atlas.Common.Lsp.DataFlow.Types.TDataFlowResult;
   TDataFlowRequest = Atlas.Common.Lsp.DataFlow.Types.TDataFlowRequest;
 
-  TLspDataFlow = class(TLspProjectFeature)
+  TLspDataFlow = class(TProjectFeature)
   public const
     cMethod = 'atlas/dataFlow';
   private
@@ -62,7 +61,7 @@ type
     function Answer(ATree: TSyntaxTree; const AUri: string; AParams: TJSONObject;
       const ACancellation: IJsonRpcCancellationToken): TDataFlowResult;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt wie bei den übrigen Anfragen.</summary>
+    /// <summary>Unter TSharedNamespaces gelesen und ersetzt wie bei den übrigen Anfragen.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
   public
@@ -87,8 +86,8 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.Internals.Namespaces,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.Namespaces,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.Lsp.DataFlow.Targets,
   Atlas.Common.Localization.Texts;
 
@@ -149,12 +148,12 @@ end;
 
 function TLspDataFlow.GetNamespaces: TArray<string>;
 begin
-  Result := TLspNamespaces.Read(FNamespaces);
+  Result := TSharedNamespaces.Read(FNamespaces);
 end;
 
 procedure TLspDataFlow.SetNamespaces(const AValue: TArray<string>);
 begin
-  TLspNamespaces.Write(FNamespaces, AValue);
+  TSharedNamespaces.Write(FNamespaces, AValue);
 end;
 
 function TLspDataFlow.HandleDataFlow(const AParams: TJSONValue;

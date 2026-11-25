@@ -24,9 +24,18 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.Definitions,
   Atlas.Common.Pascal.InactiveRegions,
-  Atlas.Common.Semantics.ReferenceConfidence;
+  Atlas.Common.Semantics.ReferenceConfidence,
+  Atlas.Common.Semantics.Feature,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.TreeCache;
 
 type
+  /// <summary>Einstellungen references.* für die Datei AUri.</summary>
+  TReferenceSettingsProvider = reference to function(const AUri: string): TReferenceSettings;
+
+  /// <summary>Dateien des Projekts, die nach Verweisen durchsucht werden.</summary>
+  TReferenceFilesProvider = TProjectFilesProvider;
+
   TReferenceLocation = record
     FileName: string;
     Range: TTextRange;
@@ -74,6 +83,11 @@ type
       const ASettings: TReferenceSettings): TArray<TInactiveRegion>; static;
   end;
 
+/// <summary>Baum zu AUri: geöffnet aus dem Speicher (AShared), sonst selbst gelesen (AOwnTree, gehört dem
+/// Aufrufer); nil, wenn die Datei nicht lesbar ist.</summary>
+function ReferenceTreeOf(const AStore: IDocumentStore; const AReadText: TReferenceReadText; const AUri: string;
+  const ACancellation: IPascalCancellation; out AShared: ISharedSyntaxTree; out AOwnTree: TSyntaxTree): TSyntaxTree;
+
 implementation
 
 uses
@@ -83,8 +97,6 @@ uses
   Atlas.Common.Dfm.FormFiles,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Dfm.FormModel,
-  Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.ParameterHeaders,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Names;
@@ -513,6 +525,28 @@ begin
   else
   begin
     Result := nil;
+  end;
+end;
+
+function ReferenceTreeOf(const AStore: IDocumentStore; const AReadText: TReferenceReadText; const AUri: string;
+  const ACancellation: IPascalCancellation; out AShared: ISharedSyntaxTree; out AOwnTree: TSyntaxTree): TSyntaxTree;
+var
+  mDocument: ITextDocument;
+  mText: string;
+begin
+  AShared := nil;
+  AOwnTree := nil;
+  Result := nil;
+  if AStore.TryGet(AUri, mDocument) then
+  begin
+    AShared := TSyntaxTreeCache.Get(mDocument, ACancellation);
+    Result := AShared.Tree;
+  end
+  // Nicht geöffnete Datei (Verwendungen eines Typs aus dem Atlas-Tooltip, #588): selbst lesen.
+  else if Assigned(AReadText) and AReadText(TDocumentUris.ToPath(AUri), mText) then
+  begin
+    AOwnTree := TSyntaxTreeCache.Parse(mText, ACancellation);
+    Result := AOwnTree;
   end;
 end;
 

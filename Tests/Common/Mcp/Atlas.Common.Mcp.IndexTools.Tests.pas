@@ -45,7 +45,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.Rationale,
+  Atlas.Common.Semantics.Rationale,
   Atlas.Common.Mcp.IndexTools;
 
 const

@@ -50,7 +50,7 @@ type
     FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
     function HandleLinkedEditing(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt wie bei den übrigen Anfragen.</summary>
+    /// <summary>Unter TSharedNamespaces gelesen und ersetzt wie bei den übrigen Anfragen.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
   public
@@ -84,11 +84,11 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.DocumentHighlights,
-  Atlas.Common.Lsp.Internals.Namespaces,
+  Atlas.Common.Semantics.Namespaces,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor;
 
@@ -184,12 +184,12 @@ end;
 
 function TLspLinkedEditing.GetNamespaces: TArray<string>;
 begin
-  Result := TLspNamespaces.Read(FNamespaces);
+  Result := TSharedNamespaces.Read(FNamespaces);
 end;
 
 procedure TLspLinkedEditing.SetNamespaces(const AValue: TArray<string>);
 begin
-  TLspNamespaces.Write(FNamespaces, AValue);
+  TSharedNamespaces.Write(FNamespaces, AValue);
 end;
 
 function TLspLinkedEditing.HandleLinkedEditing(const AParams: TJSONValue;

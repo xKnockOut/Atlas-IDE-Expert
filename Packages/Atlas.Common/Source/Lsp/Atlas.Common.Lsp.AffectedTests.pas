@@ -92,7 +92,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.ReferenceConfidence,
-  Atlas.Common.Lsp.Hierarchies,
+  Atlas.Common.Semantics.Hierarchies,
   Atlas.Common.Lsp.Impact,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
@@ -308,7 +308,7 @@ begin
   end;
   mPosition := FCode[ALine];
   // Rumpf und Kopf einer Routine: die Routine (bei lokalen Routinen die innerste).
-  if TLspHierarchies.RoutineAt(FTree, FFileName, mPosition, Result.Item) then
+  if THierarchies.RoutineAt(FTree, FFileName, mPosition, Result.Item) then
   begin
     Result.Kind := TAffectedChangeKind.Symbol;
     Result.Item.UnitName := FUnit.UnitName;
@@ -332,7 +332,7 @@ begin
   if mFound then
   begin
     Result.Kind := TAffectedChangeKind.Symbol;
-    Result.Item := TLspHierarchies.ItemOf(FUnit.UnitName, FFileName, mBest);
+    Result.Item := THierarchies.ItemOf(FUnit.UnitName, FFileName, mBest);
     Exit;
   end;
   // uses, initialization, finalization, Rumpf eines Programms: die Unit.
@@ -881,7 +881,7 @@ begin
     if (AUnit.Symbols[mIndex].Kind = TIndexSymbolKind.ClassType) and (AUnit.Symbols[mIndex].Container = '') then
     begin
       AChange.Kind := TAffectedChangeKind.Symbol;
-      AChange.Item := TLspHierarchies.ItemOf(AUnit.UnitName, AUnitFile, AUnit.Symbols[mIndex]);
+      AChange.Item := THierarchies.ItemOf(AUnit.UnitName, AUnitFile, AUnit.Symbols[mIndex]);
       AChange.Source := AFormFile;
       AChange.Place := cTexts[TAffectedTestsText.Form].Text;
       Exit(True);
