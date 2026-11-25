@@ -129,7 +129,7 @@ begin
     'Free Pascal findet es auch in SysUtils (wie E2003). Winapi.Windows einbinden.|', TRuleAssert.LineMessages(mFound));
   Assert.IsFalse(mFound[0].Fixes[0].Safe);
   mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
-  Assert.Contains(mFixed, '  System.SysUtils,'#10'  Winapi.Windows;');
+  Assert.Contains(mFixed, '  System.SysUtils, Winapi.Windows;');
   Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(TWinapiUsesMissingRule.Create, mFixed)));
   // Mit Index: GetTickCount64 aus FPCs Windows bzw. SysUtils zählt nicht.
   Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TWinapiUsesMissingRule.Create, 'unit U;'#10 +

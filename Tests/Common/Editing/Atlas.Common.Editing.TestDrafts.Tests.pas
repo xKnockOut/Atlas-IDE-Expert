@@ -339,7 +339,7 @@ begin
   Assert.IsTrue(ContainsStr(mNewText, '    procedure TestBerechne;'#13#10'    [Test]'#13#10 +
     '    procedure TestBerechne2;'#13#10'  end;'), mNewText);
   Assert.IsTrue(ContainsStr(mNewText, '  Actual := FKunde.Berechne(Menge, Name, Faktor);'), mNewText);
-  Assert.IsTrue(ContainsStr(mNewText, '  DUnitX.TestFramework,'#13#10'  Kunden;'), mNewText);
+  Assert.IsTrue(ContainsStr(mNewText, '  DUnitX.TestFramework, Kunden;'), mNewText);
   Assert.IsTrue(Pos('procedure TKundeTests.TestBerechne2;', mNewText) < Pos('initialization', mNewText), mNewText);
   // Nur wenn er fehlt: TestBerechne gibt es schon, nichts ändert sich.
   Assert.IsTrue(TTestDrafts.AddToTestUnit(cTestUnitText, mDraft, True, mNewText, mName, mReason), mReason);
