@@ -38,7 +38,7 @@ uses
   System.SysUtils,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.MessageCatalog,
+  Atlas.Common.Compiler.MessageCatalog,
   Atlas.Common.Rules.CompilerPitfalls;
 
 type

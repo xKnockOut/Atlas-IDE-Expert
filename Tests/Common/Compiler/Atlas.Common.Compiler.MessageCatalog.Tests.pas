@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.MessageCatalog.Tests;
+﻿unit Atlas.Common.Compiler.MessageCatalog.Tests;
 
 // Tests für die Erklärungen der Compilermeldungen (#54).
 
@@ -32,7 +32,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Rules.MessageCatalog,
+  Atlas.Common.Compiler.MessageCatalog,
   Atlas.Common.Lsp.SettingsCommands;
 
 { TMessageCatalogTests }
