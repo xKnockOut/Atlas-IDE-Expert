@@ -27,6 +27,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker;
 
@@ -41,11 +42,11 @@ type
 
   TFindingsOutput = class
   public const
-    cExitClean = 0;
+    cExitClean = TFindingsExitCodes.cClean;
     /// <summary>Mindestens ein Treffer ab dem Schweregrad aus --fail-on.</summary>
-    cExitFindings = 1;
+    cExitFindings = TFindingsExitCodes.cFindings;
     /// <summary>Aufruf- oder Lesefehler, vergibt der Aufrufer.</summary>
-    cExitFailure = 3;
+    cExitFailure = TFindingsExitCodes.cFailure;
     cSourceRootId = '%SRCROOT%';
   public
     class function TryParseFormat(const AText: string; out AFormat: TFindingsFormat): Boolean; static;
@@ -75,7 +76,6 @@ type
 implementation
 
 uses
-  Atlas.Common.Findings.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Product.Version,
   Atlas.Common.Rules.Catalog,

@@ -603,7 +603,7 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Contract.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Output.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Prompt.Tests.pas"/>
-        <DCCReference Include="Common\Rules\Atlas.Common.Rules.FormatOutput.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.FormatOutput.Tests.pas"/>
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Baseline.Tests.pas"/>
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Scopes.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Options.Tests.pas"/>

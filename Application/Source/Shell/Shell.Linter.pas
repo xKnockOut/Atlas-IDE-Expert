@@ -67,7 +67,7 @@
 // .editorconfig über den Vorgaben (ohne die Einrückung der IDE-Optionen).
 // Geschrieben wird atomar über eine Nachbardatei; Kodierung und Zeilenenden
 // bleiben, außer format.endOfLine verlangt andere. Exit-Codes in
-// Atlas.Common.Rules.FormatOutput.
+// Atlas.Common.Editing.FormatOutput.
 // Wortgleiche Rümpfe (Kopien-Prüfung): --check-duplicates statt der Regeln, siehe Core.Linter.Duplicates.
 
 interface

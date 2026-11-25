@@ -12,6 +12,17 @@ uses
   Atlas.Common.Configuration.Contract;
 
 type
+  /// <summary>Exit-Codes der Kommandozeile für Prüf- und Formatierläufe.</summary>
+  TFindingsExitCodes = record
+  public const
+    cClean = 0;
+    /// <summary>Mindestens ein Treffer ab dem Schweregrad aus --fail-on, beim Formatieren eine Abweichung.
+    /// </summary>
+    cFindings = 1;
+    /// <summary>Aufruf- oder Lesefehler, vergibt der Aufrufer.</summary>
+    cFailure = 3;
+  end;
+
   /// <summary>Edits einer weiteren Datei einer Korrektur (#1105).</summary>
   TRuleFileEdits = record
     FileName: string;
