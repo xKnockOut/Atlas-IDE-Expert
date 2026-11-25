@@ -656,7 +656,7 @@ $ModuleHostHomes = @('Atlas.Core.Diagnostics.ModuleHost', 'Atlas.Core.Modules.Re
 # Schichtpräfixe, noch nicht umgestellte Packages und Frameworks liest das Skript von dort.
 $RolePrefixes = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Linux', 'Atlas.Plugin', 'Atlas.Vcl',
     'Atlas.ToolsApi', 'Atlas.VersionControl', 'Atlas.IDE.Base', 'Atlas.IDE.Analysis', 'Atlas.IDE.Assistants', 'Atlas.IDE.Bookmarks',
-    'Atlas.IDE.Build', 'Atlas.IDE.BuildPipeline', 'Atlas.IDE.Debugger', 'Atlas.IDE.Designer', 'Atlas.IDE.Help',
+    'Atlas.IDE.Build', 'Atlas.IDE.BuildPipeline', 'Atlas.IDE.Debugger', 'Atlas.IDE.Designer', 'Atlas.IDE.Editor', 'Atlas.IDE.Help',
     'Atlas.IDE.Rules', 'Atlas.IDE.Search', 'Atlas.IDE.Tests', 'Atlas.IDE.Tracker', 'Atlas.IDE.VersionControl',
     'Atlas.IDE.Welcome')
 $HostRoles    = @('Foundation', 'Core', 'Shell', 'Adapters', 'Platform')
@@ -700,7 +700,9 @@ function Get-OptionList($Options, [string] $Name) {
 function New-RoleScheme([string[]] $Prefixes, [string[]] $Hosts, [string[]] $Hosted, $Options) {
     # Einordnungsschema wie TRoleImportOptions: Präfixe, Host-Rollen, Hosted-Features der Anwendung und aus $Options
     # domainPackages, basePackage, layerPrefixes, layerPackages, frameworks. Active nennt je Umfang die Präfixe:
-    # Switched = Fachcode-Packages außer layerPackages, All = alle, None = keines (Ziele einer Unit mit Schichtnamen).
+    # Switched = Fachcode-Packages außer layerPackages (deren Units tragen noch Schichtnamen, auch Atlas.IDE.Editor.* in
+    # Base), Target = dazu basePackage (Base bekommt Foundation vor der Umstellung), None = keines (Ziele einer Unit
+    # mit Schichtnamen).
     $domain = @(Get-OptionList $Options 'domainPackages')
     $layerPackages = @(Get-OptionList $Options 'layerPackages')
     $base = ''
@@ -710,12 +712,14 @@ function New-RoleScheme([string[]] $Prefixes, [string[]] $Hosts, [string[]] $Hos
         BasePackage = $base.ToLowerInvariant(); BaseName = $base; LayerPrefixes = @(Get-OptionList $Options 'layerPrefixes')
         LayerPackages = $layerPackages; Frameworks = @(Get-OptionList $Options 'frameworks'); Active = @{}
     }
-    foreach ($scope in 'Switched', 'All', 'None') {
+    foreach ($scope in 'Switched', 'Target', 'None') {
         $active = @()
         foreach ($prefix in @($scheme.Prefixes) + @($scheme.LayerPrefixes) + @($domain)) {
             $isDomain = @($domain | Where-Object { $_ -ieq $prefix }).Count -gt 0
             $isLayer = @($layerPackages | Where-Object { $_ -ieq $prefix }).Count -gt 0
-            if (-not $isDomain -or $scope -eq 'All' -or ($scope -eq 'Switched' -and -not $isLayer)) { $active += $prefix }
+            if (-not $isDomain -or ($scope -ne 'None' -and -not $isLayer) -or ($scope -eq 'Target' -and $prefix -ieq $base)) {
+                $active += $prefix
+            }
         }
         $scheme.Active[$scope] = $active
     }
@@ -805,7 +809,7 @@ function Get-UnitRole([string] $Name, $Scheme, [string] $Scope = 'Switched') {
 function Get-TargetRole($Source, [string] $Name, $Scheme) {
     # Ziel von $Source: Von einer Unit mit Schichtnamen aus alles nach Schichtnamen (alte Regel), sonst jedes
     # Fachcode-Package nach seinem Präfix; aus einem Fachcode-Package ist ein Schichtname eine Unit von Base.
-    $scope = 'All'
+    $scope = 'Target'
     if ($null -ne $Source -and $Source.Layer) { $scope = 'None' }
     $target = Get-UnitRole $Name $Scheme $scope
     if ($null -ne $Source -and $Source.Package -ne '' -and $null -ne $target -and $target.Layer -and $Scheme.BasePackage -ne '') {
@@ -1048,10 +1052,15 @@ if (Test-Path $atlasJson) {
     }
 }
 $RoleScheme = New-RoleScheme $RolePrefixes $HostRoles $HostedFeatures $RoleOptions
-# Fachcode-Packages sind genau die Plugin-Packages; Base nimmt die anderen auf. "layerPackages" ist der
-# Geltungsbereich der alten Schichtregel (keine Befund-Liste) und schrumpft je umgestelltem Package.
-if ((@($RoleScheme.DomainPackages | Sort-Object) -join ', ') -ne (@($PluginFolders | Sort-Object) -join ', ')) {
-    $SchemeProblems += "atlas.json: ""domainPackages"" muss genau die Plugin-Packages nennen: $(@($PluginFolders | Sort-Object) -join ', ')"
+# Fachcode-Packages sind die Plugin-Packages und geplante Module ohne Ordner (nur in "layerPackages", z. B.
+# Atlas.IDE.Editor, dessen Namen heute als Schichtnamen in Base stehen); Base nimmt die anderen auf.
+# "layerPackages" ist der Geltungsbereich der alten Schichtregel (keine Befund-Liste) und schrumpft je
+# umgestelltem Package.
+foreach ($folder in $PluginFolders | Where-Object { $RoleScheme.DomainPackages -notcontains $_ }) {
+    $SchemeProblems += "atlas.json: ""domainPackages"" nennt das Plugin-Package $folder nicht"
+}
+foreach ($name in $RoleScheme.DomainPackages | Where-Object { $PluginFolders -notcontains $_ -and $RoleScheme.LayerPackages -notcontains $_ }) {
+    $SchemeProblems += "atlas.json: ""domainPackages"" nennt $name ohne Ordner Packages/$name; ein geplantes Modul steht bis zu seinem Ordner in ""layerPackages"""
 }
 if ($RoleScheme.BasePackage -ne $PluginBaseFolder.ToLowerInvariant()) {
     $SchemeProblems += "atlas.json: ""basePackage"" muss $PluginBaseFolder sein"
@@ -1897,7 +1906,7 @@ function Get-FeatureName([string] $Name) {
 
 function Test-ContractUnit([string] $Name) {
     # Contract, Verträge zwischen Modulen und die Host-Rolle Foundation eines Fachcode-Packages (nur Verträge).
-    $named = Get-UnitRole $Name $RoleScheme 'All'
+    $named = Get-UnitRole $Name $RoleScheme 'Target'
     return (Test-ContractRole (Get-UnitRole $Name $RoleScheme)) -or $Name -match '^(?i)Atlas\.IDE\.Base\.Foundation\.' -or
         ($null -ne $named -and $named.Package -ne '' -and $named.HostRole -eq 'Foundation')
 }

@@ -1,5 +1,5 @@
 {
-  "description": "Fallliste der Rollenmatrix (docs/Architektur.md). Beide Umsetzungen prüfen sie: TArchitectureMatrix (Atlas.Common.Rules.Builtin.Architecture, Test MatrixCasesFromFile) und Tools/Check-PackageDependencies.ps1 -SelfTest. Atlas.IDE.Base, Atlas.IDE.Modul und Atlas.IDE.Andere sind umgestellte Fachcode-Packages (Host-Matrix, Hosted-Feature-Matrix, Modul nach Base, Frameworks), Atlas.IDE.Alt steht noch in layerPackages.",
+  "description": "Fallliste der Rollenmatrix (docs/Architektur.md). Beide Umsetzungen prüfen sie: TArchitectureMatrix (Atlas.Common.Rules.Builtin.Architecture, Test MatrixCasesFromFile) und Tools/Check-PackageDependencies.ps1 -SelfTest. Atlas.IDE.Base, Atlas.IDE.Modul und Atlas.IDE.Andere sind umgestellte Fachcode-Packages (Host-Matrix, Hosted-Feature-Matrix, Modul nach Base, Frameworks), Atlas.IDE.Alt steht noch in layerPackages: Namen mit seinem Präfix sind Schichtnamen (wie Atlas.IDE.Editor.* in Base vor dem Modul Editor).",
   "prefixes": [
     "Atlas.Text",
     "Atlas.WinBase",
@@ -3487,8 +3487,8 @@
     {
       "from": "Atlas.IDE.Modul.Shell.Sache",
       "to": "Atlas.IDE.Alt.Foundation.Sache",
-      "allowed": false,
-      "note": "auch kein Modul mit Schichtnamen"
+      "allowed": true,
+      "note": "Atlas.IDE.Alt steht in layerPackages: Schichtname (Feature Alt in Base), kein fremdes Package; die Shell sieht Hosted-Features von Base"
     },
     {
       "from": "Atlas.IDE.Base.Gamma.Sache",
@@ -3517,8 +3517,8 @@
     {
       "from": "Atlas.Common.Beta.Sache",
       "to": "Atlas.IDE.Alt.Gamma.Contract.Sache",
-      "allowed": false,
-      "note": "auch keines mit Schichtnamen"
+      "allowed": true,
+      "note": "Atlas.IDE.Alt steht in layerPackages: nach Schichtnamen Contract des Features Alt"
     },
     {
       "from": "Shell.Sache",
@@ -3717,6 +3717,24 @@
       "to": "Atlas.VersionControl.Repository.Internals.Text",
       "allowed": false,
       "note": "Internals eines fremden Platform-Features"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Pages.Sache",
+      "to": "Atlas.IDE.Alt.Puffer",
+      "allowed": false,
+      "note": "wie Atlas.IDE.Editor.* in Base: Package in layerPackages, darum Schichtname und Hosted-Feature von Base, nicht Package nach längstem Präfix"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Alt.Puffer",
+      "allowed": true,
+      "note": "wie Atlas.IDE.Editor.* in Base: Hosted-Feature von Base, die Shell des Moduls darf es einbinden"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Alt.Puffer",
+      "allowed": false,
+      "note": "wie Atlas.IDE.Editor.* in Base: Core des Moduls importiert kein Hosted-Feature von Base"
     }
   ]
 }

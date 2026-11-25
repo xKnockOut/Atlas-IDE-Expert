@@ -152,8 +152,10 @@ type
 
   {$SCOPEDENUMS ON}
   /// <summary>Welche Fachcode-Packages eine Einordnung über ihr Präfix liest: Switched = alle außer
-  /// "layerPackages", All = alle, None = keines (Ziele einer Unit mit Schichtnamen).</summary>
-  TArchitectureScope = (Switched, All, None);
+  /// "layerPackages" (deren Units tragen noch Schichtnamen, auch wenn ein Name mit dem Präfix eines Packages beginnt
+  /// wie Atlas.IDE.Editor.* in Base), Target = dazu "basePackage" (Base bekommt seine Foundation vor der
+  /// Umstellung), None = keines (Ziele einer Unit mit Schichtnamen).</summary>
+  TArchitectureScope = (Switched, Target, None);
   {$SCOPEDENUMS OFF}
 
   /// <summary>Importmatrix des Rollenkonzepts (docs/Architektur.md "Importregeln").</summary>
@@ -580,8 +582,9 @@ begin
   Result := nil;
   for mPrefix in AOptions.Prefixes + AOptions.LayerPrefixes + AOptions.DomainPackages do
   begin
-    if not MatchText(mPrefix, AOptions.DomainPackages) or (AScope = TArchitectureScope.All) or
-      ((AScope = TArchitectureScope.Switched) and not MatchText(mPrefix, AOptions.LayerPackages)) then
+    if not MatchText(mPrefix, AOptions.DomainPackages) or
+      ((AScope <> TArchitectureScope.None) and not MatchText(mPrefix, AOptions.LayerPackages)) or
+      ((AScope = TArchitectureScope.Target) and SameText(mPrefix, AOptions.BasePackage)) then
     begin
       Result := Result + [mPrefix];
     end;
@@ -676,7 +679,7 @@ begin
   end
   else
   begin
-    Result := Classify(AUnitName, AOptions, TArchitectureScope.All);
+    Result := Classify(AUnitName, AOptions, TArchitectureScope.Target);
   end;
   // Aus einem Fachcode-Package ist ein Schichtname eine noch nicht umbenannte Unit von Base.
   if (ASource.Package <> '') and Result.Layer and (AOptions.BasePackage <> '') then

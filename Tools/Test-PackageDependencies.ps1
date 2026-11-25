@@ -331,6 +331,10 @@ try {
         Set-LayerPackages (@(Get-LayerPackages) + 'Atlas.IDE.Gibtsnicht')
     }
 
+    Test-Fails 'Geplantes Modul ohne Ordner nicht mehr in layerPackages' 'nennt Atlas.IDE.Editor ohne Ordner' {
+        Set-LayerPackages @(Get-LayerPackages | Where-Object { $_ -ne 'Atlas.IDE.Editor' })
+    }
+
     Test-Fails 'Architekturregeln ordnen verschieden ein' '"layerPackages" von architecture-role-import' {
         Set-LayerPackages @(Get-LayerPackages | Where-Object { $_ -ne 'Atlas.IDE.Welcome' }) -RoleImportOnly
     }
