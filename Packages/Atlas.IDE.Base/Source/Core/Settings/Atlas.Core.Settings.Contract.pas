@@ -11,6 +11,7 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Plugin.Registration.Contract;
 
 type
