@@ -22,11 +22,16 @@
 //   „15 %“). Der Pfeil im Kopf zeigt Spalte und Richtung. Gleichstand
 //   entscheiden die anderen Spalten, dann Data (die Sortierung von Windows ist
 //   nicht stabil). Nicht für virtuelle Listen (OwnerData).
+// - Gepuffert gezeichnet (LVS_EX_DOUBLEBUFFER): Beim Überfahren mit der Maus
+//   zeichnet die Liste unter dem IDE-Stil die Zeilen neu und flackerte ohne
+//   Puffer. Die VCL setzt die erweiterten Stile bei Änderungen (RowSelect,
+//   Checkboxes …) neu; WndProc hält das Bit dabei fest.
 // Für DFM-Frames bleibt TListView (kein Design-Time-Package).
 
 interface
 
 uses
+  Winapi.Messages,
   System.Classes,
   Vcl.ComCtrls;
 
@@ -49,6 +54,8 @@ type
   protected
     procedure ChangeScale(AM, AD: Integer; AIsDpiChange: Boolean); override;
     procedure Resize; override;
+    procedure CreateWnd; override;
+    procedure WndProc(var Message: TMessage); override;
     procedure ColClick(Field: TListColumn); override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -140,6 +147,23 @@ procedure TAtlasListView.Resize;
 begin
   inherited;
   FitColumns;
+end;
+
+procedure TAtlasListView.CreateWnd;
+begin
+  inherited CreateWnd;
+  ListView_SetExtendedListViewStyleEx(Handle, LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
+end;
+
+procedure TAtlasListView.WndProc(var Message: TMessage);
+begin
+  // Maske 0 setzt alle erweiterten Stile: Der Puffer bleibt an, auch wenn die VCL ihn nicht kennt.
+  if (Message.Msg = LVM_SETEXTENDEDLISTVIEWSTYLE) and
+    ((Message.WParam = 0) or ((Message.WParam and LVS_EX_DOUBLEBUFFER) <> 0)) then
+  begin
+    Message.LParam := Message.LParam or LVS_EX_DOUBLEBUFFER;
+  end;
+  inherited WndProc(Message);
 end;
 
 procedure TAtlasListView.FillColumn(AIndex, AMinWidth96: Integer);

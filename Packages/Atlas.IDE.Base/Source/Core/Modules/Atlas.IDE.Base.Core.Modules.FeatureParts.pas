@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Modules.FeatureParts;
+﻿unit Atlas.IDE.Base.Core.Modules.FeatureParts;
 
 // Teile der Feature-Tabelle als IAtlasFeaturePart (#1455): Ein Modul baut
 // seine Teile aus Methodenreferenzen und stellt sie über seinen Scope bereit;
@@ -8,7 +8,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 type
   TAtlasFeaturePart = class(TInterfacedObject, IAtlasFeaturePart)

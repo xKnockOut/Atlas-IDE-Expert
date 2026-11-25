@@ -19,7 +19,7 @@
 interface
 
 uses
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.IDE.Base.Foundation.DebugStop;
 
 type
@@ -43,8 +43,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Contributions,
   Atlas.Core.Tests.FromDebugStop,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Navigation,

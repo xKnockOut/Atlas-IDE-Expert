@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Modules.Registry.Tests;
+﻿unit Atlas.IDE.Base.Core.Modules.Registry.Tests;
 
 // Modul-Registry von Base (#1455, Modulregeln 1–5, 8, 9): Anmelden,
 // Abmelden rückwärts über den Scope, Objekte nach GUID, Änderungsmeldung,
@@ -82,11 +82,12 @@ uses
   Atlas.Plugin.Diagnostics.TimeLimit,
   Atlas.Plugin.Diagnostics.UnloadSafety,
   Atlas.Plugin.Diagnostics.WorkerSlot,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.Core.Settings.Contract,
   Atlas.Core.Settings.Parts,
-  Atlas.Core.Diagnostics.ModuleHost;
+  Atlas.IDE.Base.Core.ModuleHost,
+  Atlas.Plugin.Registration.Contract;
 
 type
   IProbeService = interface

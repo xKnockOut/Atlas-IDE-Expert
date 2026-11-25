@@ -12,8 +12,8 @@ interface
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.Filter,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Findings.Filter,
   Atlas.Common.Editing.FormatOutput,
   Core.CommandLine,
   Core.VersionControlChanges,
@@ -25,7 +25,7 @@ type
     Options: TCommandLineOptions;
     Settings: TServerSettings;
     Root: string;
-    Sources: TCheckSourceFunc;
+    Sources: TPascalSourceFunc;
     Filter: TFindingFilter;
     /// <summary>Mit --changed bzw. --diff geladen, sonst nil.</summary>
     Git: TVcsChanges;

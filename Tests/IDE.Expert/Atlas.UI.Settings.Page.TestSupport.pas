@@ -7,7 +7,6 @@
 interface
 
 uses
-  Atlas.Core.Modules.Contract,
   Atlas.UI.Settings.Contract,
   Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Section,
@@ -15,7 +14,8 @@ uses
   Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.Forms,
-  Vcl.ComCtrls;
+  Vcl.ComCtrls,
+  Atlas.Plugin.Registration.Contract;
 
 /// <summary>Reiter, auf dem AControl liegt; nil ohne.</summary>
 function SheetOf(AControl: TControl): TTabSheet;
@@ -53,7 +53,9 @@ function TreeNodeOf(APage: TAtlasSettingsPage; ASheet: TTabSheet): TTreeNode;
 implementation
 
 uses
-  Atlas.Core.Modules.Registry;
+  Atlas.UI.Settings.Page.Sections,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Watch;
 
 type
   TAtlasFixedSectionProvider = class(TInterfacedObject, IAtlasSettingsSectionProvider)
@@ -166,5 +168,12 @@ begin
   end;
   Result := nil;
 end;
+
+initialization
+  // Wie die Shell beim Start: Seiten der Tests holen die Abschnitte der Module aus der Registry von Base.
+  TAtlasSettingsSectionsPart.UseRegistry(AtlasModuleRegistry, TAtlasRegistryWatch.Subscribe);
+
+finalization
+  TAtlasSettingsSectionsPart.UseRegistry(nil, nil);
 
 end.

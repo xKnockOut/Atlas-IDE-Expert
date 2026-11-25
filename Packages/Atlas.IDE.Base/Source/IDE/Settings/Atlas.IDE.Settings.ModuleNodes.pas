@@ -14,7 +14,7 @@ uses
   System.Classes,
   Vcl.Forms,
   ToolsAPI,
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 type
   /// <summary>Seite eines Moduls im Optionsdialog.</summary>
@@ -52,10 +52,11 @@ uses
   Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.Graphics,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Watch,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Watch,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.UI.Settings.Strings;
+  Atlas.UI.Settings.Strings,
+  Atlas.Plugin.Registration.Contract;
 
 type
   TAtlasModuleListOptions = class(TInterfacedObject, INTAAddInOptions)

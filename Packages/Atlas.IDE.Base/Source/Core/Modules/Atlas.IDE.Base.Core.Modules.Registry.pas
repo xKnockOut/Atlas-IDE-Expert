@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Modules.Registry;
+﻿unit Atlas.IDE.Base.Core.Modules.Registry;
 
 // Modul-Registry von Base (#1455, Regeln 1–5, 8, 9):
 // - AtlasModuleRegistry besteht ab der Unit-Initialisierung (verzögert
@@ -29,9 +29,10 @@ uses
   System.SysUtils,
   System.SyncObjs,
   System.Generics.Collections,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registration,
-  Atlas.Core.Settings.Contract;
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.Plugin.Registration,
+  Atlas.Core.Settings.Contract,
+  Atlas.Plugin.Registration.Contract;
 
 const
   /// <summary>Name der Liste bekannter Module in der Ablage der Einstellungen.</summary>

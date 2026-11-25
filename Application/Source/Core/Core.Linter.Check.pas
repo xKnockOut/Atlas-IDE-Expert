@@ -14,8 +14,9 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Projects.PackageReader,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.Filter,
+  Atlas.Common.Findings.Filter,
   Atlas.Common.Findings.Baseline,
   Atlas.Common.Findings.Scopes,
   Atlas.Common.Rules.SuppressionStats,
@@ -57,10 +58,10 @@ type
     FMetrics: TArray<TFileMetrics>;
     FTodos: TArray<TFileTodos>;
     function Prepare: Boolean;
-    function Candidates(out ASources: TCheckSourceFunc): TArray<string>;
+    function Candidates(out ASources: TPascalSourceFunc): TArray<string>;
     function MarkFilter(AGit: TVcsChanges; AChangedLines: Boolean): TLinterMarkFilter;
-    procedure CheckFile(const AFileName: string; const ASource: TCheckSource);
-    function RunRules(const AFileName, ARelativePath, AText: string; const ASource: TCheckSource;
+    procedure CheckFile(const AFileName: string; const ASource: TPascalSource);
+    function RunRules(const AFileName, ARelativePath, AText: string; const ASource: TPascalSource;
       out AScopes: TFindingScopes): TArray<TRuleFinding>;
     procedure AddFindings(const AFileName, ARelativePath, AText: string; const AScopes: TFindingScopes;
       const AFindings: TArray<TRuleFinding>);
@@ -135,7 +136,7 @@ begin
   Result := TLinterBaseline.Load(FOptions, FBaselinePath, FBaseline);
 end;
 
-function TLinterCheck.Candidates(out ASources: TCheckSourceFunc): TArray<string>;
+function TLinterCheck.Candidates(out ASources: TPascalSourceFunc): TArray<string>;
 begin
   Result := TLinterFiles.Collect(FOptions.CheckTarget, FSettings, FHost.InstalledVersions, FRoot, ASources);
   FPackages := TLinterFiles.Packages(Result);
@@ -158,7 +159,7 @@ begin
   Result.ChangedLines := AChangedLines;
 end;
 
-procedure TLinterCheck.CheckFile(const AFileName: string; const ASource: TCheckSource);
+procedure TLinterCheck.CheckFile(const AFileName: string; const ASource: TPascalSource);
 var
   mRelativePath, mText: string;
   mFormat: TFileFormat;
@@ -193,7 +194,7 @@ begin
   end;
 end;
 
-function TLinterCheck.RunRules(const AFileName, ARelativePath, AText: string; const ASource: TCheckSource;
+function TLinterCheck.RunRules(const AFileName, ARelativePath, AText: string; const ASource: TPascalSource;
   out AScopes: TFindingScopes): TArray<TRuleFinding>;
 var
   mProject: TCheckProject;
@@ -363,7 +364,7 @@ var
   mOutput: string;
   mFiles: TArray<string>;
   mIndex: Integer;
-  mSources: TCheckSourceFunc;
+  mSources: TPascalSourceFunc;
   mWatch: TStopwatch;
 begin
   if not Prepare then

@@ -11,7 +11,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Plugin.Build.Contract,
   Atlas.IDE.Assistants.DebugBar,
   Atlas.IDE.Assistants.ContextExport;
@@ -66,7 +66,7 @@ implementation
 
 uses
   Atlas.Text.Product.Version,
-  Atlas.Core.Diagnostics.ModuleHost,
+  Atlas.IDE.Base.Core.ModuleHost,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.LogWindow,
   Atlas.UI.Assistants.Strings;

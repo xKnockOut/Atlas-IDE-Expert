@@ -17,7 +17,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Text.DUnitX,
   Atlas.Core.Tests.CaseTable,
   Atlas.IDE.Tests.Runner,

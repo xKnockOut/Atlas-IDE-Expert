@@ -14,7 +14,7 @@
 interface
 
 uses
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 /// <summary>Verträge des Debuggers über AScope bereitstellen.</summary>
 procedure ProvideDebugContracts(const AScope: IAtlasModuleScope);

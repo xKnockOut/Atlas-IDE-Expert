@@ -30,7 +30,7 @@ uses
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Rules.Checker,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Output,
   Atlas.Common.Hotspots.Service,
   Atlas.Common.Hotspots.Report,
@@ -61,7 +61,7 @@ class function TLinterHotspots.Analyze(const ATarget: TLinterTarget; const ASett
   const AVcs: IHotspotVcs; const AHost: TCoreLinterHost): THotspotResult;
 var
   mRoot: string;
-  mSources: TCheckSourceFunc;
+  mSources: TPascalSourceFunc;
   mIndex: ISymbolIndex;
   mService: THotspotService;
   mRequest: THotspotRequest;

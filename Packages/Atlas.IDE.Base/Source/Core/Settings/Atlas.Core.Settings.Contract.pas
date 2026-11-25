@@ -11,7 +11,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract;
+  Atlas.Plugin.Registration.Contract;
 
 type
   /// <summary>Art eines Werts. In der Ablage stehen alle Werte als Text: Wahrheitswerte „1“/„0“, Zahlen
