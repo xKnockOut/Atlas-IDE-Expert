@@ -1,2 +1,0 @@
-### Behoben
-- Bauen: Interne Compilerfehler (F2084, etwa „AV…-R00000000“ oder „GPFC0000029“, danach E_UNEXPECTED) vor allem beim Erzeugen (Umschalt+F9), auch mit abgeschalteter Prüfung nach dem Speichern. Der Einfrier-Wächter hielt jede länger als die Schwelle dauernde Unit für einen Hänger, hielt den Hauptthread mitten im Compile an und wertete den Hänger noch während des Builds aus (Map-Datei, Server, Meldungsfenster). Solange die IDE übersetzt, misst er jetzt nicht.
