@@ -10,6 +10,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Index.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.ClassActions.Contract;
 
@@ -44,10 +45,44 @@ type
     function ConstantExtraction(const AText: string; const ANames: TPascalNamePrefixes): IRuleConstantExtraction;
   end;
 
+  /// <summary>Was die Suche nach Methoden ohne Self über eine Unit wissen muss.</summary>
+  TRuleMethodScan = record
+    /// <summary>Dateiname für die Namensauflösung (TRuleContext.ResolverFileName).</summary>
+    FileName: string;
+    Text: string;
+    /// <summary>Inhalt der Formulardatei; '' ohne.</summary>
+    FormText: string;
+    Index: ISymbolIndex;
+    EnsureUnit: TEnsureUnitFunc;
+    Namespaces: TArray<string>;
+    /// <summary>class-Methoden mit static (refactoring.methodKind).</summary>
+    WithStatic: Boolean;
+    Style: TFormatStyle;
+  end;
+
+  /// <summary>Eine Methode, die Self nicht braucht.</summary>
+  TRuleMethodWithoutSelf = record
+    ClassName: string;
+    Name: string;
+    /// <summary>Name im Kopf der Implementierung.</summary>
+    NamePosition: TTextPosition;
+    /// <summary>Umwandlung in eine class-Methode, nur in dieser Unit; ohne HasFix nicht möglich.</summary>
+    HasFix: Boolean;
+    Fix: TCodeAction;
+  end;
+
+  /// <summary>Methoden ohne Self samt Korrektur „In class-Methode umwandeln“.</summary>
+  IRuleMethodRefactorings = interface
+    ['{49CD21CC-66DB-477C-9138-3E794F2B58A8}']
+    function WithoutSelf(const AScan: TRuleMethodScan): TArray<TRuleMethodWithoutSelf>;
+  end;
+
   /// <summary>Alle Refactorings, die Prüfregeln als Korrektur nutzen; je Eintrag nil = nicht verfügbar.</summary>
   TRuleRefactorings = record
     Classes: IRuleClassRefactorings;
     Extract: IRuleExtractRefactorings;
+    /// <summary>Ohne Eintrag schweigt method-without-self: Erkennung und Korrektur gehören zusammen.</summary>
+    Methods: IRuleMethodRefactorings;
   end;
 
 implementation
