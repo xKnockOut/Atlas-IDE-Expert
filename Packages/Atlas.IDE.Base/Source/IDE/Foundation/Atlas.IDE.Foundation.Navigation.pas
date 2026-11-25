@@ -119,7 +119,8 @@ end;
 
 procedure TPendingClick.Cancel(AOwner: TObject);
 begin
-  if (FAction <> nil) and (FOwner = AOwner) then
+  // Assigned statt <> nil: Delphi würde die Methodenreferenz aufrufen und das Ergebnis vergleichen (E2008/E2015).
+  if Assigned(FAction) and (FOwner = AOwner) then
   begin
     FTimer.Enabled := False;
     FAction := nil;

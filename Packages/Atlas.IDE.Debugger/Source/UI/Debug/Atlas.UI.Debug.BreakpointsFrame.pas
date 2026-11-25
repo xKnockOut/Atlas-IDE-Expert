@@ -149,7 +149,7 @@ implementation
 uses
   Winapi.Windows,
   Winapi.CommCtrl,
-  Atlas.Vcl.Forms.Dialog,
+  Atlas.UI.Foundation.Dialog, // in 2.2 noch unter diesem Namen (2.3: Atlas.Vcl.Forms.Dialog)
   Atlas.UI.Debug.Breakpoints.Strings;
 
 {$R *.dfm}
@@ -399,7 +399,8 @@ end;
 /// <summary>Knöpfe und Chips in ABar so breit wie ihr Text in der Schrift von AFrame.</summary>
 /// <remarks>Erst mit Fenster (CreateWnd): Vorher hat der Frame noch nicht die Schrift seines Fensters. Ein
 /// DPI-Wechsel skaliert die Breiten danach mit.</remarks>
-procedure FitWidths(AFrame: TCustomFrame; ABar: TWinControl);
+// TFrame statt TCustomFrame: Erst TFrame macht Font öffentlich (E2362).
+procedure FitWidths(AFrame: TFrame; ABar: TWinControl);
 var
   mIndex: Integer;
   mControl: TControl;

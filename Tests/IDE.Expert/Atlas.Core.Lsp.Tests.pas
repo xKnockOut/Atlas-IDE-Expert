@@ -331,7 +331,9 @@ begin
       procedure
       begin
         mClient.Request('test', nil, 1000).Free;
-      end, ELspClientError, 'unbekannt');
+      // -32601 ist weder Abbruch noch Ablehnung: ELspResponseError (#2951). WillRaiseWithMessage prüft die Klasse
+      // unter Delphi genau, nicht als Vorfahr.
+      end, ELspResponseError, 'unbekannt');
   finally
     mClient.Free;
   end;
