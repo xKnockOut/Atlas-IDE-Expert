@@ -1370,9 +1370,12 @@ begin
   end;
   mCall := TAtlasTrackerCall.Create(ATarget, ATransport, ATimeoutMs);
   mWatch := TStopwatch.StartNew;
+  APoll.FailedStatus := 0;
+  APoll.FailedMessage := '';
   if not GetNotifications(mCall, APoll, mResponse) then
   begin
     AError := mResponse.Error;
+    APoll.FailedStatus := mResponse.Status;
   end
   else if mResponse.Status = TAtlasHttpStatus.cNotModified then
   begin
@@ -1382,10 +1385,13 @@ begin
   else if mResponse.Status <> TAtlasHttpStatus.cOk then
   begin
     AError := TAtlasGitHubApi.ErrorOfStatus(mResponse.Status);
+    APoll.FailedStatus := mResponse.Status;
   end
   else if not TAtlasGitHubParse.ParseNotifications(mResponse.Text, APoll.Since, mThreads) then
   begin
+    // 200 ohne Liste: z. B. eine HTML-Seite (Anmeldung, Proxy) statt JSON.
     AError := TAtlasCiFetchError.Invalid;
+    APoll.FailedStatus := mResponse.Status;
   end
   else
   begin

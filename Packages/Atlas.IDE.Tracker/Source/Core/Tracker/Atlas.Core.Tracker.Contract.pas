@@ -421,6 +421,14 @@ type
     /// <summary>Neuester Zeitpunkt, den die Abfrage gesehen hat (UTC; auch eigene Änderungen); 0 ohne. Wird zum
     /// nächsten Since, damit eine falsch gehende Uhr nichts verschluckt.</summary>
     Latest: TDateTime;
+    /// <summary>YouTrack: Sprache der Suchabfrage ("de", "en"), mit der die letzte Abfrage gelang; '' = noch
+    /// unbekannt. YouTrack liest Werte wie „me“ in der Systemsprache des Servers („assignee: meine“).
+    /// </summary>
+    Language: string;
+    /// <summary>HTTP-Status der gescheiterten Abfrage; 0 ohne Antwort oder bei Erfolg.</summary>
+    FailedStatus: Integer;
+    /// <summary>Fehlertext des Trackers zur gescheiterten Abfrage (einzeilig, gekürzt); '' ohne.</summary>
+    FailedMessage: string;
     class function Create(ASince: TDateTime; const AMe: string; AScope: TAtlasTrackerNotifyScope): TAtlasTrackerPoll;
       static;
   end;

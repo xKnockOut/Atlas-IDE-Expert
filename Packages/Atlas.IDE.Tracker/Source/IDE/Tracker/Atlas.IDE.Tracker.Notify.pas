@@ -235,8 +235,9 @@ begin
   mSchedule := ScheduleOf(AOutcome.Job.Id);
   if not AOutcome.Succeeded then
   begin
-    TAtlasGuard.Log(Format('Issue-Meldungen: %s nicht abgefragt (%s)', [AOutcome.Job.Target.Provider,
-      TAtlasCiBuild.ErrorKey(AOutcome.Error)]));
+    // Anonym: Anbieter, Fehlerart und HTTP-Status; der Fehlertext des Trackers kann Namen enthalten.
+    TAtlasGuard.Log(Format('Issue-Meldungen: %s nicht abgefragt (%s, HTTP %d)', [AOutcome.Job.Target.Provider,
+      TAtlasCiBuild.ErrorKey(AOutcome.Error), AOutcome.Job.Poll.FailedStatus]));
     if TAtlasNotifyPlan.ReportsError(mSchedule.Failed, AOutcome.Error) then
     begin
       NotifyError(AOutcome.Job, AOutcome.Error);
@@ -249,6 +250,7 @@ begin
   FFile.Find(AOutcome.Job.Id, mConnection);
   mConnection.Me := AOutcome.Job.Poll.Me;
   mConnection.LastModified := AOutcome.Job.Poll.LastModified;
+  mConnection.Language := AOutcome.Job.Poll.Language;
   mConnection.Since := TAtlasTrackerNotify.NextSince(mConnection.Since, AOutcome.Job.Poll.Latest);
   mNotices := TAtlasTrackerNotify.Summarize(TAtlasTrackerNotify.Foreign(AOutcome.Changes, mConnection.Me),
     TAtlasTrackerNotify.cMaxNotices, mRest);
@@ -323,8 +325,8 @@ var
   mTitle, mText, mCaption: string;
   mRun: TProc;
 begin
-  mTitle := TAtlasTrackerNoticeText.ErrorTitle(AError, AJob.Target.Server);
-  mText := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssueNotifyErrorText);
+  mTitle := TAtlasTrackerNoticeText.ErrorTitle(AError, AJob.Poll.FailedStatus, AJob.Target.Server);
+  mText := TAtlasTrackerNoticeText.ErrorText(AJob.Poll.FailedMessage);
   mCaption := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFixSettings);
   mRun := SettingsAction(Self, Self);
   if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cIssues, TAtlasNotificationSeverity.Warning,
@@ -444,6 +446,7 @@ begin
   Result := TAtlasTrackerPoll.Create(AConnection.Since, AConnection.Me,
     TAtlasTrackerNotify.ScopeOf(TAtlasIdeSettings.Current.IssuesNotifyScope));
   Result.LastModified := AConnection.LastModified;
+  Result.Language := AConnection.Language;
   Result.PollSeconds := ASchedule.PollSeconds;
 end;
 
