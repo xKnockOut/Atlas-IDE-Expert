@@ -104,9 +104,9 @@ type
 implementation
 
 uses
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Catalog,
+  Rules.Contract,
+  Rules.Engine,
+  Rules.Catalog,
   System.SysUtils,
   System.IOUtils,
   Atlas.Common.Configuration.Contract,

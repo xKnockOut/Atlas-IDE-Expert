@@ -38,12 +38,13 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
+  Rules.Contract,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.MaintenanceCommands,
-  Atlas.Common.Rules.Builtin.SlashCommands,
-  Atlas.Tests.RuleAssert;
+  Rules.Builtin.SlashCommands,
+  Atlas.Tests.RuleAssert,
+  Atlas.Common.Findings.Contract;
 
 type
   /// <summary>Meldet "probe-line" in jeder Zeile mit "X := 1".</summary>
@@ -91,7 +92,7 @@ end;
 
 procedure TSlashCommandsTests.UsesRunsThroughRegistry;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Source('/uses System.Classes'), TTextPosition.Create(6, 0),
     nil, nil, mEdits));
@@ -105,7 +106,7 @@ end;
 
 procedure TSlashCommandsTests.UnknownCommandStaysWithHint;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mProblems: TArray<TSlashProblem>;
 begin
   Assert.IsFalse(TSlashCommandRegistry.Shared.AfterEnter(Source('/gibtsnicht X'), TTextPosition.Create(6, 0),
@@ -133,7 +134,7 @@ end;
 
 procedure TSlashCommandsTests.CommandInStringOrCommentIsIgnored;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   mText := 'unit U;'#10'interface'#10'implementation'#10'{'#10'/uses System.Classes'#10#10'}'#10'end.';
@@ -149,7 +150,7 @@ end;
 
 procedure TSlashCommandsTests.DisabledCommandIsSkipped;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mProblems: TArray<TSlashProblem>;
 begin
   Assert.IsFalse(TSlashCommandRegistry.Shared.AfterEnter(Source('/uses System.Classes'), TTextPosition.Create(6, 0),

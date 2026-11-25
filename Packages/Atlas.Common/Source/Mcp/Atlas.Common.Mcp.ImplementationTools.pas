@@ -13,7 +13,7 @@ uses
   System.Classes,
   System.JSON,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Semantics.Impact,
   Atlas.Common.Index.ImplementationSites,
   Atlas.Common.Semantics.References;
 

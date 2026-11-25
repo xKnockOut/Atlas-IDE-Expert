@@ -9,7 +9,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Semantics.Impact,
   Atlas.Common.Mcp.Contract.AffectedTests,
   Atlas.Common.Mcp.Contract.Workspace,
   Core.VersionControlChanges;

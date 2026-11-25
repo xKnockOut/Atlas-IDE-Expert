@@ -40,7 +40,6 @@ uses
   Atlas.Core.Welcome.Continue,
   Atlas.Core.Welcome.Saved,
   Atlas.UI.Welcome.Continue,
-  Atlas.UI.Welcome.QuickActions,
   Atlas.UI.Welcome.QuickActions.Tests,
   Atlas.UI.Welcome.Contract;
 

@@ -256,6 +256,7 @@ begin
   Assert.IsTrue(Assigned(mHost.Vcs), 'Vcs');
   Assert.IsTrue(Assigned(mHost.NewGroup), 'NewGroup');
   Assert.IsTrue(Assigned(mHost.Instructions), 'Instructions');
+  Assert.IsTrue(Assigned(mHost.Rules.CheckAll), 'Rules');
 end;
 
 procedure TShellLinterTests.ConfigurationFoundInParentFolder;

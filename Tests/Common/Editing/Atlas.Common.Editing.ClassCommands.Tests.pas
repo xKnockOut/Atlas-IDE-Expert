@@ -60,7 +60,6 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.Contract,
@@ -99,14 +98,14 @@ const
     #10 +                                           // 22
     'end.';
 
-function Run(const AText: string; ALine: Integer; out AEdits: TArray<TRuleEdit>;
+function Run(const AText: string; ALine: Integer; out AEdits: TArray<TTextEdit>;
   const AIndex: ISymbolIndex): Boolean; overload;
 begin
   Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, AEdits,
     AIndex);
 end;
 
-function Run(const AText: string; ALine: Integer; out AEdits: TArray<TRuleEdit>): Boolean; overload;
+function Run(const AText: string; ALine: Integer; out AEdits: TArray<TTextEdit>): Boolean; overload;
 begin
   Result := Run(AText, ALine, AEdits, nil);
 end;
@@ -118,7 +117,7 @@ end;
 
 function Expand(const ACommand: string; const AIndex: ISymbolIndex): string; overload;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(Run(WithCommand(ACommand), 15, mEdits, AIndex), ACommand);
   Result := TTestEdits.Apply(WithCommand(ACommand), mEdits);
@@ -142,7 +141,7 @@ end;
 
 procedure TClassCommandsTests.ImplWithoutMissingFails;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   mText := StringReplace(WithCommand('/impl'), '    procedure Stop;'#10, '', []);
@@ -172,7 +171,7 @@ end;
 procedure TClassCommandsTests.DtorFreesCreatedFields;
 var
   mText, mSource: string;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mSource := StringReplace(WithCommand('/dtor'), '    procedure Stop;'#10, '    constructor Create;'#10, []);
   mSource := StringReplace(mSource, 'procedure TFoo.Run;', 'constructor TFoo.Create;'#10'begin'#10 +
@@ -228,7 +227,7 @@ var
   mIndex: ISymbolIndex;
   mTree: TSyntaxTree;
   mFileName, mText: string;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mFileName := TPath.Combine(TPath.GetTempPath, 'Atlas.ClassCommands.Controls.pas');
   TFile.WriteAllText(mFileName, cControls);
@@ -264,7 +263,7 @@ procedure TClassCommandsTests.OutsideClassFails;
 const
   cText = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  /ctor'#10'end;'#10'end.';
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mProblems: TArray<TSlashProblem>;
 begin
   Assert.IsFalse(Run(cText, 5, mEdits));
@@ -311,7 +310,7 @@ end;
 procedure TClassCommandsTests.DtorKeepsPassedReferences;
 var
   mText, mSource: string;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   // Übergebene Referenz (FListe := AListe) gehört dem Aufrufer und wird nicht freigegeben.
   mSource := StringReplace(WithCommand('/dtor'), '    procedure Stop;'#10, '    constructor Create(AListe: TStringList);'#10,
@@ -327,7 +326,7 @@ end;
 procedure TClassCommandsTests.DtorExtendsExisting;
 var
   mText, mSource: string;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   // Vorhandener Destruktor gibt FListe schon frei; FName2 kommt vor inherited dazu.
   mSource := StringReplace(WithCommand('/dtor'), '    procedure Stop;'#10,
@@ -354,7 +353,7 @@ procedure TClassCommandsTests.DtorAndMsgWrongPlaceFail;
 const
   cText = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  %s'#10'end;'#10'end.';
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mProblems: TArray<TSlashProblem>;
 begin
   Assert.IsFalse(Run(Format(cText, ['/dtor']), 5, mEdits));
@@ -394,7 +393,7 @@ const
 procedure TClassCommandsTests.IntfAddsInterfaceAndMethods;
 var
   mText, mSource: string;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mSource := Format(cIntfUnit, ['class(TInterfacedObject)', '/intf IExporter']);
   Assert.IsTrue(Run(mSource, 10, mEdits));
@@ -422,7 +421,7 @@ end;
 procedure TClassCommandsTests.IntfWithoutAncestorList;
 var
   mText, mSource: string;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mSource := Format(cIntfUnit, ['class', '/intf IExporter']);
   Assert.IsTrue(Run(mSource, 10, mEdits));
@@ -433,7 +432,7 @@ end;
 
 procedure TClassCommandsTests.IntfWrongPlaceFails;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mSource: string;
 begin
   // Unbekanntes Interface, kein Interface, ohne Namen.

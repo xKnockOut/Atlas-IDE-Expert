@@ -40,12 +40,12 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Architecture.Adapters.GroupFiles,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Mcp.Contract,
   Shell.Composition.Mcp,
-  Atlas.Common.Mcp.DeadCodeTools;
+  Atlas.Common.Mcp.DeadCodeTools,
+  Atlas.Common.Projects.Contract.Group;
 
 const
   cRoot = 'C:\P';
@@ -57,7 +57,7 @@ type
   TFixture = record
     Texts: TDictionary<string, string>;
     Index: ISymbolIndex;
-    Files: IRuleProjectFiles;
+    Files: IProjectGroupFiles;
     Sources: TArray<string>;
   end;
 
@@ -79,7 +79,7 @@ var
   mTexts: TDictionary<string, string>;
   mPair: TPair<string, string>;
   mIncomplete: Boolean;
-  mProject: TRuleProject;
+  mProject: TGroupProject;
 begin
   mIncomplete := AIncomplete;
   mTexts := TDictionary<string, string>.Create;
@@ -104,9 +104,9 @@ begin
     end;
   end;
   Result.Sources := [cAppFile, cMainFile, cOrphanFile];
-  mProject := Default(TRuleProject);
+  mProject := Default(TGroupProject);
   mProject.FileName := 'C:\P\App.dproj';
-  mProject.Kind := TRuleProjectKind.Application;
+  mProject.Kind := TGroupProjectKind.Application;
   mProject.Sources := Result.Sources;
   Result.Files := TProjectGroupFiles.Create([mProject], Result.Index,
     function(const AFileName: string; out AText: string): Boolean

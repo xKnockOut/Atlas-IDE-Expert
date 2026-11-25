@@ -50,7 +50,6 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
@@ -234,7 +233,7 @@ end;
 
 procedure TCollectionCommandsTests.FilterWithoutInlineVariables;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   // Delphi 10.2 (BDS 19.0) kennt keine Inline-Variablen (#109): beide in den var-Abschnitt.

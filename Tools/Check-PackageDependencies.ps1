@@ -103,7 +103,7 @@
     Ausnahmen stehen als "allow" der Regeln architecture-role-import und
     architecture-contract-content in atlas.json (eine Liste für Skript und
     Linter). Die Matrix muss TArchitectureMatrix in
-    Atlas.Common.Rules.Builtin.Architecture entsprechen; beide prüfen die
+    Rules.Builtin.Architecture entsprechen; beide prüfen die
     Fallliste Tests/Data/Architecture/role-imports.json (-SelfTest).
 
     Plugin-Struktur: Atlas.IDE.Foundation.* verwendet aus
@@ -342,7 +342,7 @@ $AllowedLocal = @{
     'Atlas.Common.Dfm.DataFieldNames:IsWordChar'                    = 'SQL-Bezeichner mit $, @ und #, keine Pascal-Regel'
     'Atlas.Core.Query.Model:IsWordChar'                                 = 'Wörter der Abfragesprache: Punkt, @name und Masken mit * und ? gehören zum Wort'
     'Atlas.Core.Tracker.CodeLinks:IsWordChar'                           = 'Issue-Kennungen: Buchstaben ab #128 gehören zum Wort (äATL-1 ist keine Kennung, gegen IsAsciiIdentChar), Satzzeichen ab #128 („, “, –) nicht (gegen IsIdentChar)'
-    'Atlas.Common.Rules.Builtin.Unused:IsWordChar'                      = 'verschachtelt mit Index; folgt mit Block Rules'
+    'Rules.Builtin.Unused:IsWordChar'                      = 'verschachtelt mit Index; folgt mit Block Rules'
     'Atlas.Core.InlayHints.Store:TAtlasInlayHintStore.SplitLines'      = 'öffentliche Weiterleitung an TTextLines.SplitLines'
     'Atlas.Plugin.Files.Format:TAtlasFileFormats.IsUtf8'                 = 'Fassade, leitet an TTextEncodingProbe weiter'
     'Atlas.Plugin.Files.Format:TAtlasFileFormats.LineBreakOf'            = 'Fassade mit eigenem Typ TAtlasLineBreak'
@@ -420,8 +420,8 @@ $TokenAllowedLocal = @{
     'Atlas.Common.Editing.Formatter.Indent:TIndentTokens.NextSignificant' = 'Methode über die eigenen Token des Formatierers, leitet an NextCodeAfter weiter'
     'Atlas.Common.Editing.Unwrap:IsCode'                                  = 'Methodendeklaration von TBuilder'
     'Atlas.Common.Editing.Unwrap:TBuilder.IsCode'                         = 'Token-Index statt Token, außerhalb des Arrays False'
-    'Atlas.Common.Rules.Builtin.Capture:NextToken'                        = 'sucht ab einem Offset über den Regelkontext und liefert das Token mit out-Parameter'
-    'Atlas.Common.Rules.Builtin.Todos:IsCode'                             = 'prüft Kommentarzeilen auf auskommentierten Code, keine Token'
+    'Rules.Builtin.Capture:NextToken'                        = 'sucht ab einem Offset über den Regelkontext und liefert das Token mit out-Parameter'
+    'Rules.Builtin.Todos:IsCode'                             = 'prüft Kommentarzeilen auf auskommentierten Code, keine Token'
     'Atlas.Common.Editing.SafeDelete:PreviousSolid'                       = 'schließt AIndex ein'
     'Atlas.Common.Editing.Unwrap:PrevCode'                                = 'Offset im Text statt Token-Index'
     'Atlas.Common.Editing.Unwrap:TBuilder.PrevCode'                       = 'Offset im Text statt Token-Index'
@@ -442,11 +442,11 @@ $TokenAllowedLocal = @{
     'Atlas.Common.Editing.InvertBoolean:TSourceTokens.IdentifierAt'       = 'Bezeichner, der genau bei einem Offset beginnt, nicht nach Zeile und Spalte'
     'Atlas.Common.Pascal.SyntaxChecks:NextCode'                           = 'Methodendeklaration von TTreeChecker'
     'Atlas.Common.Pascal.SyntaxChecks:TTreeChecker.NextCode'              = 'überspringt zusätzlich Token außerhalb aktiver Zweige'
-    'Atlas.Common.Rules.Builtin.Database:TokenAt'                         = 'Methodendeklaration von TSqlBuild'
-    'Atlas.Common.Rules.Builtin.Database:TSqlBuild.TokenAt'               = 'Token eines SQL-Stücks, nicht Token-Index der Unit'
-    'Atlas.Common.Rules.Builtin.Inheritance.Ancestry:TokenAt'             = 'liefert das Token mit out-Parameter über den Regelkontext'
-    'Atlas.Common.Rules.Builtin.Visibility:TokenAt'                       = 'Methodendeklaration von TInaccessibleMemberCheck'
-    'Atlas.Common.Rules.Builtin.Visibility:TInaccessibleMemberCheck.TokenAt' = 'liefert High statt Length ohne Treffer'
+    'Rules.Builtin.Database:TokenAt'                         = 'Methodendeklaration von TSqlBuild'
+    'Rules.Builtin.Database:TSqlBuild.TokenAt'               = 'Token eines SQL-Stücks, nicht Token-Index der Unit'
+    'Rules.Builtin.Inheritance.Ancestry:TokenAt'             = 'liefert das Token mit out-Parameter über den Regelkontext'
+    'Rules.Builtin.Visibility:TokenAt'                       = 'Methodendeklaration von TInaccessibleMemberCheck'
+    'Rules.Builtin.Visibility:TInaccessibleMemberCheck.TokenAt' = 'liefert High statt Length ohne Treffer'
 }
 
 # Kopien-Sperre für JSON-Lesehelfer nach Form (#1969): erlaubte eigene Fassungen ("Unit:Routine") mit Grund.
@@ -487,8 +487,8 @@ $AllowedJsonWriteLocal = @{
 # Kopien-Sperre für JSON lesen (Array -> Liste von Strings): nach Form wie beim Schreiben.
 # Erlaubte eigene Fassungen ("Unit:Routine") mit Grund. Die Liste soll nur schrumpfen.
 $AllowedJsonReadLocal = @{
-    'Atlas.Common.Rules.Catalog:CompilerCodesOf' = 'prüft jeden Eintrag und bricht mit Fehlermeldung ab'
-    'Atlas.Common.Rules.Catalog:OverriddenByOf'  = 'prüft jeden Eintrag und bricht mit Fehlermeldung ab'
+    'Rules.Catalog:CompilerCodesOf' = 'prüft jeden Eintrag und bricht mit Fehlermeldung ab'
+    'Rules.Catalog:OverriddenByOf'  = 'prüft jeden Eintrag und bricht mit Fehlermeldung ab'
 }
 
 # Kopien-Sperre nach Namen (Plugin und Atlas.Common): Name, Ordner, wo es ihn gibt, und erlaubte Fassungen
@@ -543,28 +543,28 @@ $PluginLock = @(
     # Dateiname für die Namensauflösung der Prüfregeln: nur TRuleContext.ResolverFileName.
     [pscustomobject]@{
         Name    = 'ResolverFileName'
-        Folder  = 'Packages/Atlas.Common/Source/Rules'
-        Home    = 'TRuleContext.ResolverFileName in Atlas.Common.Rules.Contract'
+        Folder  = 'Application/Source/Features/Rules'
+        Home    = 'TRuleContext.ResolverFileName in Rules.Contract'
         Allowed = @{
-            'Atlas.Common.Rules.Contract:TRuleContext.ResolverFileName' = 'die eine Fassung'
+            'Rules.Contract:TRuleContext.ResolverFileName' = 'die eine Fassung'
         }
     }
     [pscustomobject]@{
         Name    = 'RuleFileName'
-        Folder  = 'Packages/Atlas.Common/Source/Rules'
-        Home    = 'TRuleContext.ResolverFileName in Atlas.Common.Rules.Contract'
+        Folder  = 'Application/Source/Features/Rules'
+        Home    = 'TRuleContext.ResolverFileName in Rules.Contract'
         Allowed = @{}
     }
     [pscustomobject]@{
         Name    = 'CheckedFileName'
-        Folder  = 'Packages/Atlas.Common/Source/Rules'
-        Home    = 'TRuleContext.ResolverFileName in Atlas.Common.Rules.Contract'
+        Folder  = 'Application/Source/Features/Rules'
+        Home    = 'TRuleContext.ResolverFileName in Rules.Contract'
         Allowed = @{}
     }
     [pscustomobject]@{
         Name    = 'ContextFileName'
-        Folder  = 'Packages/Atlas.Common/Source/Rules'
-        Home    = 'TRuleContext.ResolverFileName in Atlas.Common.Rules.Contract'
+        Folder  = 'Application/Source/Features/Rules'
+        Home    = 'TRuleContext.ResolverFileName in Rules.Contract'
         Allowed = @{}
     }
     # Oberste Editoransicht: nur TAtlasEditorBuffer.TopView/TopSourceView.
@@ -596,13 +596,13 @@ $PluginLock = @(
     }
     [pscustomobject]@{
         Name    = 'Occurrences'
-        Folder  = 'Packages/Atlas.Common/Source/Rules'
+        Folder  = 'Application/Source/Features/Rules'
         Home    = 'TSyntaxNode.IdentifierUses und UsedInNestedRoutine in Atlas.Common.Pascal.SyntaxTree'
         Allowed = @{}
     }
     [pscustomobject]@{
         Name    = 'MentionedInLocalRoutine'
-        Folder  = 'Packages/Atlas.Common/Source/Rules'
+        Folder  = 'Application/Source/Features/Rules'
         Home    = 'TSyntaxNode.IdentifierUses und UsedInNestedRoutine in Atlas.Common.Pascal.SyntaxTree'
         Allowed = @{}
     }
@@ -650,7 +650,7 @@ $PluginLock = @(
 $ModuleHostCalls = @('\.UnregisterModule\s*\(', '\bTAtlasContractHandshake\.Check\s*\(')
 $ModuleHostHomes = @('Atlas.IDE.Base.Core.ModuleHost', 'Atlas.IDE.Base.Core.Modules.Registry', 'Atlas.IDE.Base.Core.Modules.Handshake')
 
-# Rollenmatrix. Muss TArchitectureMatrix in Atlas.Common.Rules.Builtin.Architecture
+# Rollenmatrix. Muss TArchitectureMatrix in Rules.Builtin.Architecture
 # entsprechen; beide prüfen Tests/Data/Architecture/role-imports.json. Präfixe und Hosted-Features stehen gleich in
 # "prefixes" und "hostedFeatures" beider Architekturregeln in atlas.json (wird geprüft); Fachcode-Packages,
 # Schichtpräfixe, noch nicht umgestellte Packages und Frameworks liest das Skript von dort.
@@ -661,7 +661,7 @@ $RolePrefixes = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Common', 'Atlas.Windows'
     'Atlas.IDE.Welcome')
 $HostRoles    = @('Foundation', 'Core', 'Shell', 'Adapters', 'Platform')
 # Hosted-Features der Anwendung (Konzept 8.2): erstes Segment eines Namens ohne Präfix; wie "hostedFeatures" in atlas.json.
-$HostedFeatures = @('Replay', 'Monitor', 'Update')
+$HostedFeatures = @('Replay', 'Monitor', 'Update', 'Rules')
 $FeatureRoles = @('Contract', 'Internals', 'Providers', 'Adapters', 'Composition', 'Hosting')
 # Eigenes Feature (bzw. innerhalb einer Struktur relativ zum Träger): Rolle der Quelle -> erlaubte Rollen des Ziels
 $OwnAllowed = @{
@@ -1473,7 +1473,7 @@ elseif (Test-Path $PluginSource) {
 
 # Kopien-Sperre
 $lockPattern = '(?im)^\s*(?:class\s+)?function\s+((?:\w+\.)?(?:' + ($CopyLockNames -join '|') + '))\b'
-foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages') -Recurse -File -Include '*.pas') {
+foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages'), (Join-Path $Root 'Application/Source/Features') -Recurse -File -Include '*.pas') {
     $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
     if ($relative.StartsWith('Packages/Atlas.Text/')) { continue }
     $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
@@ -1514,7 +1514,7 @@ foreach ($folder in @('Packages', 'Application')) {
 
 # Kopien-Sperre der Token-Helfer (#1979)
 $tokenLockPattern = '(?im)^\s*(?:class\s+)?function\s+((?:\w+\.)?(?:' + ($TokenLockNames -join '|') + '))\b'
-foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages/Atlas.Common') -Recurse -File -Include '*.pas') {
+foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages/Atlas.Common'), (Join-Path $Root 'Application/Source/Features') -Recurse -File -Include '*.pas') {
     $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
     $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
     if ($TokenLockHomes -contains $ownUnit) { continue }
@@ -1531,7 +1531,7 @@ foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages/Atlas.Common') 
 }
 foreach ($key in $TokenAllowedLocal.Keys) {
     $unitName = $key.Split(':')[0]
-    $found = @(Get-ChildItem -Path (Join-Path $Root 'Packages/Atlas.Common') -Recurse -File -Filter "$unitName.pas")
+    $found = @(Get-ChildItem -Path (Join-Path $Root 'Packages/Atlas.Common'), (Join-Path $Root 'Application/Source/Features') -Recurse -File -Filter "$unitName.pas")
     if ($found.Count -eq 0) {
         $violations += "Tools/Check-PackageDependencies.ps1: `$TokenAllowedLocal nennt $key, die Unit gibt es nicht mehr; Zeile streichen"
         continue

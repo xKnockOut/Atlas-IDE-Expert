@@ -40,14 +40,14 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Contract,
   Atlas.Common.Logging.Providers.Logger,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Checker,
+  Rules.Checker,
   Core.Bootstrap,
   Core.Workspace.Listings,
   Core.WorkspaceGroup,
   Atlas.Tests.TempFolder,
   Shell.Composition.Platform,
-  Atlas.Common.Checks.Contract;
+  Atlas.Common.Checks.Contract,
+  Atlas.Common.Projects.Contract.Group;
 
 const
   cDproj = '<?xml version="1.0" encoding="utf-8"?>'#13#10 +
@@ -134,7 +134,7 @@ begin
     Assert.AreEqual(Path('Kunde.pas'), mProject.FileName);
     Assert.IsNotNull(mProject.Services.Index, 'Regeln bekommen den Index');
     Assert.IsTrue(mProject.Services.Index.FindUnit('Kunde', mFound), 'Unit des Projekts im Index');
-    Assert.AreEqual<TRuleApplicationKind>(TRuleApplicationKind.Console,
+    Assert.AreEqual<TApplicationKind>(TApplicationKind.Console,
       mProject.Application, 'Anwendungsart aus der .dproj (DCC_ConsoleTarget)');
     Assert.AreEqual('Lauf', mProject.Name);
     Assert.IsNotNull(mProject.Services.ProjectFiles, 'Projekte der Gruppe für projektweite Regeln');
@@ -157,7 +157,7 @@ begin
     mGroup.Load('');
     Assert.IsTrue(mGroup.WaitForIndex(60000), 'Ohne Projekt wartet nichts');
     mProject := mGroup.RuleProject(Path('Kunde.pas'));
-    Assert.AreEqual<TRuleApplicationKind>(TRuleApplicationKind.Unknown, mProject.Application);
+    Assert.AreEqual<TApplicationKind>(TApplicationKind.Unknown, mProject.Application);
     Assert.AreEqual('', mProject.Name);
     mGroup.Stop;
   finally

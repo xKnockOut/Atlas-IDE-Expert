@@ -24,8 +24,8 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Findings.Contract,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Rules.Contract.Api,
-  Atlas.Common.Rules.Providers.DocumentChecks,
+  Rules.Contract.Api,
+  Rules.Providers.DocumentChecks,
   Adapters.Lsp.RuleDiagnostics;
 
 const

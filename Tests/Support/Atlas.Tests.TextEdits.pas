@@ -7,7 +7,7 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Findings.Contract;
 
 type
   TTestEdits = record

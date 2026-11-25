@@ -47,8 +47,8 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Metrics.Contract,
-  Atlas.Common.Rules.Contract.Api,
-  Atlas.Common.Rules.Providers.InheritanceDepths,
+  Rules.Contract.Api,
+  Rules.Providers.InheritanceDepths,
   Atlas.Common.Lsp.MessageHandlers;
 
 const

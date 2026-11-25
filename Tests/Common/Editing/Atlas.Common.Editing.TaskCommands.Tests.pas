@@ -50,7 +50,6 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
@@ -161,7 +160,7 @@ procedure TTaskCommandsTests.TaskNotesMovedLinesAndReadAfter;
 var
   mHost: TRecordingSlashHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mHost := TRecordingSlashHost.Create;
   mKeep := mHost;
@@ -233,7 +232,7 @@ procedure TTaskCommandsTests.FutureMovesCursorBehind;
 var
   mHost: TRecordingSlashHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
   mLines: TArray<string>;
 begin

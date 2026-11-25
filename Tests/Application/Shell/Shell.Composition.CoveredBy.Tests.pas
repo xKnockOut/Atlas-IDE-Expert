@@ -50,7 +50,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Semantics.Impact,
   Atlas.Common.Lsp.TestUnits,
   Atlas.Common.Lsp.CoveredBy,
   Atlas.Common.Logging.Providers.Logger,

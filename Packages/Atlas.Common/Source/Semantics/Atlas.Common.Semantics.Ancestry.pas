@@ -2,7 +2,7 @@
 
 // Vorfahren einer Klasse über die Datei und den Index (TAncestry): Grundlage der Vererbungsregeln, der
 // Komponentenregeln und der Code-Abfragen (inherits). Die Hilfen nur der Regeln (Methoden der Datei, Korrekturen
-// für Direktiven und Anweisungen) stehen in Atlas.Common.Rules.Builtin.Inheritance.Ancestry.
+// für Direktiven und Anweisungen) stehen in Rules.Builtin.Inheritance.Ancestry.
 
 interface
 

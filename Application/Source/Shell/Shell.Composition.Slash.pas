@@ -14,7 +14,7 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Rules.CheckContext,
+  Rules.CheckContext,
   Atlas.Common.Lsp.TestUnits,
   Atlas.Common.Lsp.ResourceStringCommands,
   Core.SlashHost;
@@ -74,13 +74,13 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.CodeActions,
-  Atlas.Common.Rules.Builtin.General,
+  Rules.Engine,
+  Rules.Catalog,
+  Rules.CodeActions,
+  Rules.Builtin.General,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Findings.Contract;
 
 type
 {$SCOPEDENUMS ON}

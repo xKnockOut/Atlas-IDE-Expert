@@ -81,9 +81,9 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Lsp.IdeProject,
-  Atlas.Common.Rules.Engine,
+  Rules.Engine,
   Atlas.Common.Configuration.RuleOptions,
-  Atlas.Common.Rules.Builtin.FormatArgs,
+  Rules.Builtin.FormatArgs,
   Core.Workspace;
 
 { TShellIdeArea }

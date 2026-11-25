@@ -38,7 +38,7 @@ uses
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Metrics.DuplicateCatalog,
-  Atlas.Common.Rules.Catalog,
+  Rules.Catalog,
   Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Plugin.Files.DataFile,
   Atlas.Plugin.Settings.Catalog,
@@ -218,7 +218,7 @@ end;
 
 /// <summary>Gemeinsame Regelkataloge mit Gruppen und Optionen (#909): TRuleCatalog.Shared (englisch) und
 /// TRuleCatalog.Localized (deutsche Überlagerung) entstehen beim ersten Zugriff und werden in der Finalisierung von
-/// Atlas.Common.Rules.Catalog freigegeben.</summary>
+/// Rules.Catalog freigegeben.</summary>
 procedure WarmUpRuleCatalogs;
 begin
   // Localized liefert nur unter Deutsch die Überlagerung; die Tests beginnen ohnehin deutsch (TLeakMonitor).

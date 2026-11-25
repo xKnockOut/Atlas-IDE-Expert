@@ -28,13 +28,14 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Registry,
-  Atlas.Common.Rules.Builtin.Unresolved,
+  Rules.Contract,
+  Rules.Registry,
+  Rules.Builtin.Unresolved,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Common.Findings.Contract;
 
 const
   cTypen = 'type'#10'  TMeldung = procedure(ASender: TObject) of object;'#10'  TRahmen = class'#10 +

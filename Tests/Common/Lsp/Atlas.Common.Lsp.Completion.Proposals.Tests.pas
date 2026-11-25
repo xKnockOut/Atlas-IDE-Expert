@@ -72,7 +72,6 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.InterfaceStubs,
   Atlas.Common.Editing.AssignFields,
   Atlas.Common.Lsp.CompletionRequest,
@@ -195,7 +194,7 @@ const
 /// implementation.</summary>
 procedure AssertMergedInterfaceStubs(const AItems: TArray<TCompletionItem>);
 var
-  mEdits, mMerged: TArray<TRuleEdit>;
+  mEdits, mMerged: TArray<TTextEdit>;
   mItem: TCompletionItem;
 begin
   // Alle angehakt: ein neuer public-Abschnitt vor dem end, je Interface mit Kommentar; Rümpfe in die implementation.
@@ -562,7 +561,7 @@ var
   mItems: TCompletionItems;
   mItem: TCompletionItem;
   mHandlers, mEdits: string;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(cEventsUnitBasis, 'C:\P\Basis.pas', nil));
   mTree := TPascalParser.Parse(cEventsText);
@@ -992,7 +991,7 @@ var
   mResolver: TNameResolver;
   mItems: TArray<TCompletionItem>;
   mList: TCompletionItems;
-  mEdits, mMerged: TArray<TRuleEdit>;
+  mEdits, mMerged: TArray<TTextEdit>;
   mItem: TCompletionItem;
   mBatch: Boolean;
 begin

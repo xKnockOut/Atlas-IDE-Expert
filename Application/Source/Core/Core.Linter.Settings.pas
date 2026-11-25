@@ -7,7 +7,6 @@ interface
 
 uses
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Findings.Filter,
   Core.CommandLine;
 
@@ -46,10 +45,6 @@ type
     /// mit --changed/--diff ist erlaubt und bekommt nur einen Hinweis (die Baseline gilt immer für alle Dateien).
     /// </summary>
     class function Validate(const AOptions: TCommandLineOptions): Boolean; static;
-    /// <summary>Beschreibungen aller Regeln für SARIF: Syntax, Sprachstand, ARules und mit Index die
-    /// gespeicherten Abfragen mit failIfAny (#1351) als Regeln query:&lt;name&gt;.</summary>
-    class function DescriptorsOf(const ARules: TArray<IRule>; const ASettings: TServerSettings;
-      AWithIndex: Boolean): TArray<TRuleDescriptor>; static;
   end;
 
 implementation
@@ -62,8 +57,6 @@ uses
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Query.Language,
   Atlas.Common.Findings.Output,
-  Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.Builtin.SavedQueries,
   Core.Bootstrap,
   Core.Linter.Output,
   Atlas.Common.Localization.Texts;
@@ -295,26 +288,6 @@ begin
   else if (AOptions.ChangedRef <> '') and AOptions.UpdateBaseline then
   begin
     TLinterOutput.Error(cTexts[TLinterSettingsText.BaselineAll].Text);
-  end;
-end;
-
-class function TLinterSettings.DescriptorsOf(const ARules: TArray<IRule>; const ASettings: TServerSettings;
-  AWithIndex: Boolean): TArray<TRuleDescriptor>;
-var
-  mRule: IRule;
-begin
-  Result := TArray<TRuleDescriptor>.Create(TFileChecker.SyntaxDescriptor, TFileChecker.LanguageFeatureDescriptor);
-  for mRule in ARules do
-  begin
-    Result := Result + [mRule.Descriptor];
-  end;
-  if not AWithIndex then
-  begin
-    Exit;
-  end;
-  for mRule in TSavedQueryRule.RulesOf(ASettings) do
-  begin
-    Result := Result + [mRule.Descriptor];
   end;
 end;
 

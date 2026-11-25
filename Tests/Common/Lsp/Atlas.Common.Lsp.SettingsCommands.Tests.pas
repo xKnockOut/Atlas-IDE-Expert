@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.SettingsCommands.Tests;
 
 // Tests für die Prüfung der Einstellungen im Einstellungsdialog (#227); den Katalog der Regeln prüft
-// Atlas.Common.Rules.SettingsCatalog.Tests.
+// Rules.SettingsCatalog.Tests.
 
 interface
 

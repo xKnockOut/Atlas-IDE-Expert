@@ -39,13 +39,13 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Editing.UnitTemplates,
   Atlas.Tests.TextEdits,
-  Atlas.Tests.SourceText;
+  Atlas.Tests.SourceText,
+  Atlas.Common.Documents.Contract;
 
 { TUnitTemplatesTests }
 
@@ -134,7 +134,7 @@ const
 
 procedure TUnitTemplatesTests.ProgramGetsUsesAndCreateForm;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   Assert.IsTrue(TUnitTemplates.ProgramEdits(cProgramText, 'KundenForm', 'KundenForm.pas', 'TKundenForm',
@@ -150,7 +150,7 @@ end;
 
 procedure TUnitTemplatesTests.ProgramFrameWithoutCreateForm;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(TUnitTemplates.ProgramEdits(cProgramText, 'Adresse', 'Adresse.pas', 'TAdresseFrame',
     TFormKind.Frame, mEdits));
@@ -166,7 +166,7 @@ const
     '        <DCCReference Include="Haupt.pas">'#10'            <Form>HauptForm</Form>'#10 +
     '        </DCCReference>'#10'    </ItemGroup>'#10'</Project>';
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
   mText: string;
 begin
   Assert.IsTrue(TUnitTemplates.ProjectEdit(cProject, 'Daten.pas', 'TDM', TFormKind.DataModule, True, mEdit));
@@ -185,7 +185,7 @@ const
   cTests = 'program Tests;'#10'uses'#10'  DUnitX.TestFramework,'#10'  Kunden.Tests in ''Kunden.Tests.pas'';'#10 +
     'begin'#10'end.';
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
   mText: string;
 begin
   Assert.IsTrue(TUnitTemplates.UnitProgramEdit(cTests, 'Rechnung.Tests', 'Sub\Rechnung.Tests.pas', mEdit));
@@ -203,7 +203,7 @@ const
   cPackage = 'package Paket;'#10'requires'#10'  rtl,'#10'  vcl;'#10'contains'#10 +
     '  Haupt in ''Haupt.pas'';'#10'end.';
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
   mText: string;
 begin
   // Units einer .dpk stehen unter contains, nicht unter requires (#299).
@@ -220,7 +220,7 @@ const
     '        <BuildConfiguration Include="Base">'#10'            <Key>Base</Key>'#10 +
     '        </BuildConfiguration>'#10'    </ItemGroup>'#10'</Project>';
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
   mText: string;
 begin
   Assert.IsTrue(TUnitTemplates.ProjectEdit(cProject, 'Werkzeug.pas', '', TFormKind.Form, False, mEdit));

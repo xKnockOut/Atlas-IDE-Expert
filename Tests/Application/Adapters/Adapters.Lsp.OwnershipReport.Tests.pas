@@ -22,8 +22,8 @@ implementation
 uses
   System.JSON,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Rules.Contract.Api,
-  Atlas.Common.Rules.Providers.OwnershipReport,
+  Rules.Contract.Api,
+  Rules.Providers.OwnershipReport,
   Adapters.Lsp.OwnershipReport;
 
 const

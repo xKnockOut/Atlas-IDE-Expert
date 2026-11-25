@@ -48,8 +48,8 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Checker,
+  Rules.Contract,
+  Rules.Checker,
   Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Tests.RuleAssert;
 

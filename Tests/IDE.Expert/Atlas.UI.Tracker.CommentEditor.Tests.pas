@@ -68,7 +68,6 @@ uses
   Vcl.Forms,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Workflow,
-  Atlas.Core.Tracker.PaletteSearch,
   Atlas.Core.Tracker.CommentEditor,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.IssueFrame,

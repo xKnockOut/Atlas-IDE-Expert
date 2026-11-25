@@ -45,7 +45,6 @@ uses
   Atlas.Core.Welcome.Projects,
   Atlas.UI.Welcome.Projects,
   Atlas.Core.Welcome.QuickActions,
-  Atlas.UI.Welcome.QuickActions,
   Atlas.UI.Welcome.QuickActions.Tests,
   Atlas.UI.Welcome.Contract;
 

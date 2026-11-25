@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Editing.TestUnits.Tests;
 
-// Tests für das DUnitX-Testgerüst (#274) und die Namen von Unit und Testunit (#189).
+// Tests für das DUnitX-Testgerüst (#274).
 
 interface
 
@@ -11,10 +11,6 @@ type
   [TestFixture]
   TTestUnitsTests = class
   public
-    [Test]
-    procedure NamesFollowPattern;
-    [Test]
-    procedure TestedNameOnlyForMatchingPattern;
     [Test]
     procedure FixtureNames;
     [Test]
@@ -113,29 +109,6 @@ begin
 end;
 
 { TTestUnitsTests }
-
-procedure TTestUnitsTests.NamesFollowPattern;
-begin
-  Assert.AreEqual('Kunden.Tests', TTestUnits.TestUnitName('Kunden', '{unit}.Tests'));
-  Assert.AreEqual('Test.Kunden', TTestUnits.TestUnitName('Kunden', 'Test.{unit}'));
-  // Ohne {unit} gilt die Vorgabe.
-  Assert.AreEqual('Kunden.Tests', TTestUnits.TestUnitName('Kunden', ''));
-  Assert.AreEqual('Kunden.Tests', TTestUnits.TestUnitName('Kunden', 'Tests'));
-end;
-
-procedure TTestUnitsTests.TestedNameOnlyForMatchingPattern;
-var
-  mName: string;
-begin
-  Assert.IsTrue(TTestUnits.TestedUnitName('Kunden.Tests', '{unit}.Tests', mName));
-  Assert.AreEqual('Kunden', mName);
-  Assert.IsTrue(TTestUnits.TestedUnitName('kunden.logik.tests', '{unit}.Tests', mName), 'ohne Groß/klein');
-  Assert.AreEqual('kunden.logik', mName);
-  Assert.IsTrue(TTestUnits.TestedUnitName('Test.Kunden', 'Test.{unit}', mName));
-  Assert.AreEqual('Kunden', mName);
-  Assert.IsFalse(TTestUnits.TestedUnitName('Kunden', '{unit}.Tests', mName));
-  Assert.IsFalse(TTestUnits.TestedUnitName('.Tests', '{unit}.Tests', mName), 'leerer Name');
-end;
 
 procedure TTestUnitsTests.FixtureNames;
 begin

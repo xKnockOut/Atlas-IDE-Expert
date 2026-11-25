@@ -14,7 +14,7 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.Contract.Group,
   Atlas.Common.Findings.Memo,
-  Atlas.Common.Rules.CheckContext,
+  Rules.CheckContext,
   Core.Workspace,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings;
@@ -73,8 +73,8 @@ uses
   System.Classes,
   System.SyncObjs,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.Builtin,
+  Rules.Checker,
+  Rules.Builtin,
   Core.Workspace.RuleProjects,
   Shell.Composition.CheckRefactorings,
   Atlas.Common.Checks.Contract;

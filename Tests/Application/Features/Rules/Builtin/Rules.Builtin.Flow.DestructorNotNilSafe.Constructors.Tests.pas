@@ -1,0 +1,154 @@
+﻿unit Rules.Builtin.Flow.DestructorNotNilSafe.Constructors.Tests;
+
+// Tests der Konstruktor-Untersuchung für destructor-not-nil-safe: werfende Aufrufe, ruhige Klassen, bedingtes
+// Anlegen, Reihenfolge der Felder.
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TFlowDestructorConstructorsTests = class
+  public
+    [Test]
+    procedure FieldAfterRaisingCallIsRisky;
+    [Test]
+    procedure QuietCreationIsNoRaiser;
+    [Test]
+    procedure ConditionalCreationIsRisky;
+    /// <summary>Im Rumpf von try … finally angelegt ist nicht bedingt (Fehlalarm in PasVulkan.Scene3D); im Rumpf von
+    /// try … except schon, der Handler kann die Ausnahme schlucken.</summary>
+    [Test]
+    procedure CreationInTryFinallyIsNotConditional;
+    [Test]
+    procedure LaterFieldImpliesEarlier;
+  end;
+
+implementation
+
+uses
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
+  Rules.Builtin.Flow.DestructorNotNilSafe.Constructors,
+  Rules.Builtin.Flow.DestructorNotNilSafe.TestSupport;
+
+/// <summary>Routinen der Unit (auf oberster Ebene des Implementierungsteils).</summary>
+function Routines(ATree: TSyntaxTree): TArray<TSyntaxNode>;
+var
+  mFound: TArray<TSyntaxNode>;
+begin
+  mFound := nil;
+  ATree.Root.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if ANode.Kind = TSyntaxKind.RoutineDecl then
+      begin
+        mFound := mFound + [ANode];
+        Result := TSyntaxSearchStep.Skip;
+      end;
+    end);
+  Result := mFound;
+end;
+
+/// <summary>Untersucht den Konstruktor aus ImportUnit(AConstructor, '') und liefert die gefährdeten Felder.</summary>
+function Scanned(const AConstructor: string; out AImplications: TArray<TGuardImplication>): TArray<TNilAtDestroy>;
+var
+  mText: string;
+  mTree: TSyntaxTree;
+  mRoutines: TArray<TSyntaxNode>;
+  mScan: TConstructorScan;
+begin
+  mText := ImportUnit(AConstructor, '');
+  mTree := TPascalParser.Parse(mText);
+  try
+    mRoutines := Routines(mTree);
+    mScan := TConstructorScan.Create(mText, mTree.Root, mRoutines, False);
+    try
+      mScan.Start(TArray<string>.Create('FStrom', 'FZeilen'));
+      mScan.Scan(mRoutines[0]);
+      Result := mScan.Risky;
+      AImplications := mScan.Implications;
+    finally
+      mScan.Free;
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
+
+{ TFlowDestructorConstructorsTests }
+
+procedure TFlowDestructorConstructorsTests.FieldAfterRaisingCallIsRisky;
+var
+  mRisky: TArray<TNilAtDestroy>;
+  mImplications: TArray<TGuardImplication>;
+begin
+  mRisky := Scanned('  FStrom := TFileStream.Create(Datei, fmOpenRead);'#10'  FZeilen := TStringList.Create;',
+    mImplications);
+  Assert.AreEqual(2, Integer(Length(mRisky)));
+  Assert.AreEqual('FZeilen', mRisky[1].Field);
+  Assert.AreEqual('TFileStream.Create', mRisky[1].Raiser);
+end;
+
+procedure TFlowDestructorConstructorsTests.QuietCreationIsNoRaiser;
+var
+  mRisky: TArray<TNilAtDestroy>;
+  mImplications: TArray<TGuardImplication>;
+begin
+  mRisky := Scanned('  FZeilen := TStringList.Create;'#10'  FStrom := TFileStream.Create(Datei, fmOpenRead);',
+    mImplications);
+  Assert.AreEqual(2, Integer(Length(mRisky)));
+  Assert.AreEqual('FStrom', mRisky[1].Field);
+  Assert.AreEqual('TStringList.Create', mRisky[0].Raiser);
+  Assert.AreEqual('TFileStream.Create', mRisky[1].Raiser);
+end;
+
+procedure TFlowDestructorConstructorsTests.ConditionalCreationIsRisky;
+var
+  mRisky: TArray<TNilAtDestroy>;
+  mImplications: TArray<TGuardImplication>;
+begin
+  mRisky := Scanned('  if Datei <> '''' then'#10'    FZeilen := TStringList.Create;', mImplications);
+  Assert.AreEqual(1, Integer(Length(mRisky)));
+  Assert.IsTrue(mRisky[0].Conditional);
+end;
+
+procedure TFlowDestructorConstructorsTests.CreationInTryFinallyIsNotConditional;
+var
+  mRisky: TArray<TNilAtDestroy>;
+  mImplications: TArray<TGuardImplication>;
+begin
+  mRisky := Scanned('  try'#10'    FStrom := TFileStream.Create(Datei, fmOpenRead);'#10 +
+    '    FZeilen := TStringList.Create;'#10'  finally'#10'    Melde;'#10'  end;', mImplications);
+  // Beide Felder gelten wie einfache Zuweisungen: gefährdet nur, wenn der erste werfende Aufruf wirft.
+  Assert.AreEqual(2, Integer(Length(mRisky)));
+  Assert.IsFalse(mRisky[0].Conditional);
+  Assert.IsFalse(mRisky[1].Conditional);
+  Assert.AreEqual('TFileStream.Create', mRisky[1].Raiser);
+  mRisky := Scanned('  try'#10'    FZeilen := TStringList.Create;'#10'  except'#10'    Melde;'#10'  end;',
+    mImplications);
+  Assert.AreEqual(1, Integer(Length(mRisky)));
+  Assert.IsTrue(mRisky[0].Conditional);
+end;
+
+procedure TFlowDestructorConstructorsTests.LaterFieldImpliesEarlier;
+var
+  mRisky: TArray<TNilAtDestroy>;
+  mImplications: TArray<TGuardImplication>;
+begin
+  mRisky := Scanned('  FZeilen := TStringList.Create;'#10'  FStrom := TFileStream.Create(Datei, fmOpenRead);',
+    mImplications);
+  Assert.AreEqual(2, Integer(Length(mRisky)));
+  Assert.AreEqual(2, Integer(Length(mImplications)));
+  Assert.AreEqual('FStrom', mImplications[1].Guard);
+  Assert.AreEqual(1, Integer(Length(mImplications[1].Implied)));
+  Assert.AreEqual('FZeilen', mImplications[1].Implied[0]);
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TFlowDestructorConstructorsTests);
+
+end.

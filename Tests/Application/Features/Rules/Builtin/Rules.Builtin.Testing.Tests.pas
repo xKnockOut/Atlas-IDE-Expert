@@ -1,0 +1,286 @@
+﻿unit Rules.Builtin.Testing.Tests;
+
+// Tests der Regel dunitx-test-without-assert (#945): Test ohne Prüfung,
+// Prüfung in Hilfsmethoden und Routinen der Unit, eigene Prüfklassen,
+// WillRaise und Ignore, Korrekturen, Optionen, Hilfsroutinen anderer Units über den Index.
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TTestingRulesTests = class
+  public
+    [Test]
+    procedure IssueExampleReported;
+    [Test]
+    procedure FixesInsertPassAndJump;
+    [Test]
+    procedure AssertsAreFound;
+    [Test]
+    procedure HelperMethodsAreFollowed;
+    [Test]
+    procedure HelperInOtherUnitIsFollowed;
+    [Test]
+    procedure WillRaiseAndIgnoreAreSilent;
+    [Test]
+    procedure AssertPatternsOption;
+    [Test]
+    procedure OffAndExclude;
+    [Test]
+    procedure IsAssertion;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Configuration.Parser,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
+  Rules.Contract,
+  Rules.Builtin.Testing,
+  Atlas.Tests.RuleAssert,
+  Atlas.Common.Findings.Contract;
+
+function TestUnit(const ABody: string): string;
+begin
+  Result :=
+    'unit ImportTests;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  [TestFixture]'#10 +
+    '  TImportTests = class'#10 +
+    '  public'#10 +
+    '    [Test]'#10 +
+    '    procedure LeereDateiWirdGelesen;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TImportTests.LeereDateiWirdGelesen;'#10 +
+    'begin'#10 +
+    ABody +
+    'end;'#10 +
+    'end.';
+end;
+
+const
+  cHelperFile = 'C:\Gemeinsam\Gemeinsam.Tests.pas';
+
+/// <summary>Unit Gemeinsam.Tests mit der freien Routine PruefePaar; ABody ist ihr Rumpf.</summary>
+function HelperUnit(const ABody: string): string;
+begin
+  Result :=
+    'unit Gemeinsam.Tests;'#10 +
+    'interface'#10 +
+    'procedure PruefePaar(const A, B: string);'#10 +
+    'implementation'#10 +
+    'procedure Vergleiche(const A, B: string);'#10 +
+    'begin'#10 +
+    ABody +
+    'end;'#10 +
+    'procedure PruefePaar(const A, B: string);'#10 +
+    'begin'#10 +
+    '  Vergleiche(A, B);'#10 +
+    'end;'#10 +
+    'end.';
+end;
+
+/// <summary>Kontext wie im Server: Testunit ImportTests, die PruefePaar ruft; Index und ReadFile kennen
+/// Gemeinsam.Tests mit AHelper.</summary>
+function OtherUnitContext(const AHelper: string): TRuleContext;
+var
+  mIndex: ISymbolIndex;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(AHelper, cHelperFile, nil));
+  Result := Default(TRuleContext);
+  Result.RelativePath := 'Tests/ImportTests.pas';
+  Result.FileName := 'C:\Projekt\Tests\ImportTests.pas';
+  Result.UnitName := 'ImportTests';
+  Result.Text := TestUnit('  PruefePaar(''a'', ''b'');'#10);
+  Result.Index := mIndex;
+  Result.ReadFile :=
+    function(const AName: string; out AData: TBytes): Boolean
+    begin
+      AData := nil;
+      Result := SameText(AName, cHelperFile);
+      if Result then
+      begin
+        AData := TEncoding.UTF8.GetBytes(AHelper);
+      end;
+    end;
+end;
+
+{ TTestingRulesTests }
+
+procedure TTestingRulesTests.IssueExampleReported;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := TRuleAssert.Findings(TDUnitXTestWithoutAssertRule.Create,
+    TestUnit('  FImport.Laden(''leer.csv'');'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('dunitx-test-without-assert', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Der Test prüft nichts; er ist immer grün.', mFindings[0].Message);
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(14, mFindings[0].Range.StartPos.Character);
+  // Korrigierte Form.
+  TRuleAssert.Silent(TDUnitXTestWithoutAssertRule.Create, TestUnit('  FImport.Laden(''leer.csv'');'#10 +
+    '  Assert.AreEqual(0, FImport.Anzahl);'#10));
+end;
+
+procedure TTestingRulesTests.FixesInsertPassAndJump;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := TRuleAssert.Findings(TDUnitXTestWithoutAssertRule.Create,
+    TestUnit('  FImport.Laden(''leer.csv'');'#10));
+  Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Assert.Pass; als Platzhalter einfügen', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(13, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Line);
+  Assert.AreEqual('  Assert.Pass;'#10, mFindings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual('Zur Methode springen', mFindings[0].Fixes[1].Title);
+  Assert.IsTrue(mFindings[0].Fixes[1].HasJump);
+  Assert.AreEqual(10, mFindings[0].Fixes[1].JumpTo.Line);
+end;
+
+procedure TTestingRulesTests.AssertsAreFound;
+begin
+  TRuleAssert.Silent(TDUnitXTestWithoutAssertRule.Create, TestUnit('  Assert.WillRaise(Laden, EImport);'#10));
+  TRuleAssert.Silent(TDUnitXTestWithoutAssertRule.Create, TestUnit('  CheckEquals(1, 1);'#10));
+  TRuleAssert.Silent(TDUnitXTestWithoutAssertRule.Create, TestUnit('  System.Assert(FImport <> nil);'#10));
+  TRuleAssert.Silent(TDUnitXTestWithoutAssertRule.Create, TestUnit('  TRuleAssert.Silent(TRegel.Create, X);'#10));
+  // Nur im Kommentar: gemeldet.
+  TRuleAssert.Reports(TDUnitXTestWithoutAssertRule.Create, TestUnit('  // Assert.IsTrue(X);'#10'  Laden;'#10));
+  // Prüfung in einer lokalen Routine des Tests.
+  TRuleAssert.Silent(TDUnitXTestWithoutAssertRule.Create, StringReplace(TestUnit('  Pruefe(1);'#10),
+    'LeereDateiWirdGelesen;'#10'begin', 'LeereDateiWirdGelesen;'#10'  procedure Pruefe(A: Integer);'#10'  begin'#10 +
+    '    Assert.IsTrue(A > 0);'#10'  end;'#10'begin', []));
+end;
+
+procedure TTestingRulesTests.HelperMethodsAreFollowed;
+const
+  cSource =
+    'unit ImportTests;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TImportTests = class'#10 +
+    '  private'#10 +
+    '    procedure Pruefen(const AName: string);'#10 +
+    '  public'#10 +
+    '    [Test]'#10 +
+    '    procedure Erster;'#10 +
+    '    [TestCase(''a'', ''1'')]'#10 +
+    '    procedure Zweiter(const A: string);'#10 +
+    '    procedure KeinTest;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure Vergleichen;'#10 +
+    'begin'#10 +
+    '  Assert.AreEqual(1, 1);'#10 +
+    'end;'#10 +
+    'procedure TImportTests.Pruefen(const AName: string);'#10 +
+    'begin'#10 +
+    '  Assert.IsNotEmpty(AName);'#10 +
+    'end;'#10 +
+    'procedure TImportTests.Erster;'#10 +
+    'begin'#10 +
+    '  Self.Pruefen(''x'');'#10 +
+    'end;'#10 +
+    'procedure TImportTests.Zweiter(const A: string);'#10 +
+    'begin'#10 +
+    '  Vergleichen;'#10 +
+    'end;'#10 +
+    'procedure TImportTests.KeinTest;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'end.';
+begin
+  TRuleAssert.Silent(TDUnitXTestWithoutAssertRule.Create, cSource);
+  // Ohne Prüfung im Helfer meldet die Regel den TestCase.
+  TRuleAssert.Reports(TDUnitXTestWithoutAssertRule.Create, StringReplace(cSource, '  Assert.AreEqual(1, 1);'#10,
+    '  Laden;'#10, []));
+end;
+
+procedure TTestingRulesTests.HelperInOtherUnitIsFollowed;
+var
+  mContext: TRuleContext;
+begin
+  // Prüfung in einer Routine der anderen Unit, die PruefePaar ruft.
+  mContext := OtherUnitContext(HelperUnit('  Assert.AreEqual(A, B);'#10));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ContextFindings(TDUnitXTestWithoutAssertRule.Create, mContext,
+    ''))));
+  // Prüft der Helfer nichts, bleibt der Test gemeldet.
+  mContext := OtherUnitContext(HelperUnit('  Writeln(A, B);'#10));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.ContextFindings(TDUnitXTestWithoutAssertRule.Create, mContext,
+    ''))));
+  // Ohne Datei bzw. ohne Index keine Auflösung: gemeldet wie bisher.
+  mContext := OtherUnitContext(HelperUnit('  Assert.AreEqual(A, B);'#10));
+  mContext.ReadFile := nil;
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.ContextFindings(TDUnitXTestWithoutAssertRule.Create, mContext,
+    ''))));
+  mContext := OtherUnitContext(HelperUnit('  Assert.AreEqual(A, B);'#10));
+  mContext.Index := nil;
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.ContextFindings(TDUnitXTestWithoutAssertRule.Create, mContext,
+    ''))));
+end;
+
+procedure TTestingRulesTests.WillRaiseAndIgnoreAreSilent;
+begin
+  TRuleAssert.Silent(TDUnitXTestWithoutAssertRule.Create, StringReplace(TestUnit('  Laden;'#10), '    [Test]'#10,
+    '    [Test]'#10'    [WillRaise(EImport)]'#10, []));
+  TRuleAssert.Silent(TDUnitXTestWithoutAssertRule.Create, StringReplace(TestUnit('  Laden;'#10), '    [Test]'#10,
+    '    [Test, Ignore(''später'')]'#10, []));
+  // Ohne Attribut Test kein Test.
+  TRuleAssert.Silent(TDUnitXTestWithoutAssertRule.Create, StringReplace(TestUnit('  Laden;'#10), '    [Test]'#10,
+    '', []));
+end;
+
+procedure TTestingRulesTests.AssertPatternsOption;
+var
+  mSource: string;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSource := TestUnit('  Expect(Laden).ToBe(1);'#10);
+  TRuleAssert.Reports(TDUnitXTestWithoutAssertRule.Create, mSource);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDUnitXTestWithoutAssertRule.Create, mSource,
+    '{"rules": {"dunitx-test-without-assert": {"assertPatterns": ["Expect"]}}}'))));
+  // Eigene Muster ersetzen die Vorgabe.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDUnitXTestWithoutAssertRule.Create,
+    TestUnit('  CheckEquals(1, 1);'#10), '{"rules": {"dunitx-test-without-assert": {"assertPatterns": ["Expect"]}}}'))));
+  TConfigurationParser.Parse('{"rules": {"dunitx-test-without-assert": {"assertPatterns": "Expect"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+end;
+
+procedure TTestingRulesTests.OffAndExclude;
+var
+  mSource: string;
+begin
+  mSource := TestUnit('  Laden;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDUnitXTestWithoutAssertRule.Create, mSource,
+    '{"rules": {"dunitx-test-without-assert": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDUnitXTestWithoutAssertRule.Create, mSource,
+    '{"rules": {"dunitx-test-without-assert": {"exclude": ["Tests/*.pas"]}}}', 'Tests/ImportTests.pas'))));
+end;
+
+procedure TTestingRulesTests.IsAssertion;
+begin
+  Assert.IsTrue(TDUnitXTestWithoutAssertRule.IsAssertion('Assert.AreEqual',
+    TDUnitXTestWithoutAssertRule.DefaultPatterns));
+  Assert.IsTrue(TDUnitXTestWithoutAssertRule.IsAssertion('WillRaiseAny', TDUnitXTestWithoutAssertRule.DefaultPatterns));
+  Assert.IsTrue(TDUnitXTestWithoutAssertRule.IsAssertion('TJsonAssert.Equal', nil));
+  Assert.IsTrue(TDUnitXTestWithoutAssertRule.IsAssertion('Assert', nil));
+  Assert.IsFalse(TDUnitXTestWithoutAssertRule.IsAssertion('Laden', TDUnitXTestWithoutAssertRule.DefaultPatterns));
+  Assert.IsFalse(TDUnitXTestWithoutAssertRule.IsAssertion('FAssert', nil));
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TTestingRulesTests);
+
+end.

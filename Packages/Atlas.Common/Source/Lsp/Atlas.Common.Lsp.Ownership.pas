@@ -2,7 +2,7 @@
 
 // Befehl atlas.server.ownership [uri] (#1877): „Wer gibt das frei?“ für jede Erzeugung T.Create(…) der Unit, für
 // die Marke am Zeilenende im Plugin. Die Antwort rechnet der Host über ILspOwnershipReport (Prüfregeln, Anbieter
-// Atlas.Common.Rules.Providers.OwnershipReport); ohne Anbieter ist sites leer.
+// Rules.Providers.OwnershipReport); ohne Anbieter ist sites leer.
 
 interface
 

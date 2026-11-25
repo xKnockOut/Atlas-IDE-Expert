@@ -48,7 +48,6 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
@@ -75,14 +74,14 @@ const
     'end;'#10 +                                     // 13
     'end.';
 
-function Run(const AText: string; ALine: Integer; out AEdits: TArray<TRuleEdit>): Boolean;
+function Run(const AText: string; ALine: Integer; out AEdits: TArray<TTextEdit>): Boolean;
 begin
   Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, AEdits);
 end;
 
 function Expand(const ACommand: string): string;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(Run(Format(cRoutineUnit, [ACommand]), 10, mEdits), ACommand);
   Result := TTestEdits.Apply(Format(cRoutineUnit, [ACommand]), mEdits);
@@ -101,7 +100,7 @@ end;
 
 procedure TRefactoringCommandsTests.FmtOutsideRoutineFails;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   mText := StringReplace(Format(cRoutineUnit, ['']), 'procedure Run;'#10'implementation',
@@ -125,7 +124,7 @@ end;
 
 procedure TRefactoringCommandsTests.MeasureOutsideRoutineFails;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   mText := StringReplace(Format(cRoutineUnit, ['']), 'procedure Run;'#10'implementation',
@@ -173,7 +172,7 @@ const
 
   cFixUri = 'file:///U.pas';
 
-function RunWith(const AText: string; ALine: Integer; const AHost: ISlashHost; out AEdits: TArray<TRuleEdit>;
+function RunWith(const AText: string; ALine: Integer; const AHost: ISlashHost; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 begin
   Result := TSlashCommandRegistry.Shared.Run(AText, ALine, 0, TSlashEnvironment.Create(nil, nil, nil, '', cFixUri,
@@ -194,7 +193,7 @@ end;
 
 procedure TRefactoringCommandsTests.ExtractMakesValueAndVarParameters;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   // Abnahme: AValue wird nur gelesen (Wertparameter), Total geschrieben und danach gelesen (var).
@@ -209,7 +208,7 @@ end;
 
 procedure TRefactoringCommandsTests.ExtractOutsideRoutineFails;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText, mReason: string;
 begin
   mText := StringReplace(Format(cExtractUnit, ['']), 'procedure Run(AValue: Integer);'#10'implementation',
@@ -223,7 +222,7 @@ end;
 
 procedure TRefactoringCommandsTests.InlineEmbedsCall;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   mText := Format(cInlineUnit, ['/inline', 'Y := Twice(X) + 1;']);
@@ -235,7 +234,7 @@ end;
 
 procedure TRefactoringCommandsTests.InlineEmbedsVariable;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   mText := Format(cInlineUnit, ['/inline', 'Y := X + 1;']);
@@ -247,7 +246,7 @@ end;
 
 procedure TRefactoringCommandsTests.InlineOutsideRoutineFails;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText, mReason: string;
 begin
   mText := StringReplace(Format(cInlineUnit, ['', '']), 'implementation'#10, 'implementation'#10'/inline'#10, []);
@@ -259,7 +258,7 @@ procedure TRefactoringCommandsTests.FixAppliesSafeFix;
 var
   mHost: TRecordingSlashHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mReason: string;
 begin
   mHost := TRecordingSlashHost.Create;
@@ -277,7 +276,7 @@ procedure TRefactoringCommandsTests.FixSkipsUnsafeFix;
 var
   mHost: TRecordingSlashHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mReason: string;
 begin
   // Abnahme: Ein Treffer ohne sichere Korrektur ändert nichts.
@@ -295,7 +294,7 @@ procedure TRefactoringCommandsTests.FixWithoutFindingFails;
 var
   mHost: TRecordingSlashHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mReason: string;
 begin
   mHost := TRecordingSlashHost.Create;
@@ -313,7 +312,7 @@ procedure TRefactoringCommandsTests.ExplainNotifiesFinding;
 var
   mHost: TRecordingSlashHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   mHost := TRecordingSlashHost.Create;
@@ -335,7 +334,7 @@ procedure TRefactoringCommandsTests.ExplainWithoutFindingHints;
 var
   mHost: TRecordingSlashHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mReason: string;
 begin
   // Abnahme: Ohne Treffer ein Hinweis; die Zeile bleibt.

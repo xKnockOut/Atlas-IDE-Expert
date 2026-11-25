@@ -1,0 +1,166 @@
+﻿unit Rules.Providers.OwnershipReport.Tests;
+
+// Tests für die Antwort von atlas.server.ownership (#1877): Zeile, Art, Freigabezeile und Zeilentext, „nie
+// freigegeben“ nur mit eingeschalteter Regel, leere Antwort ohne Text oder ohne Eingabe.
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TRuleOwnershipReportTests = class
+  public
+    [Test]
+    procedure AnswerListsSites;
+    [Test]
+    procedure NeverOnlyWithTheRule;
+    [Test]
+    procedure UnreadableFileGivesNoSites;
+    [Test]
+    procedure WithoutInputGivesNoSites;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  System.JSON,
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
+  Atlas.Common.Configuration.Contract,
+  Rules.Contract,
+  Rules.Contract.Api,
+  Rules.Builtin.FreeFields,
+  Rules.CheckContext,
+  Rules.Providers.OwnershipReport,
+  Atlas.Text.Json;
+
+const
+  cNl = #10;
+  cUri = 'file:///C:/P/U.pas';
+  cSource = 'unit U;' + cNl + 'interface' + cNl + 'uses' + cNl + '  System.Classes;' + cNl + 'type' + cNl +
+    '  TKunde = class' + cNl + '  private' + cNl + '    FNamen: TStringList;' + cNl + '    FAlt: TStringList;' + cNl +
+    '  public' + cNl + '    constructor Create;' + cNl + '    destructor Destroy; override;' + cNl + '  end;' + cNl +
+    'implementation' + cNl + 'constructor TKunde.Create;' + cNl + 'begin' + cNl +
+    '  FNamen := TStringList.Create;  ' + cNl + '  FAlt := TStringList.Create;' + cNl + 'end;' + cNl +
+    'destructor TKunde.Destroy;' + cNl + 'begin' + cNl + '  FNamen.Free;' + cNl + 'end;' + cNl + 'end.';
+
+/// <summary>Eingabe mit cSource; AWithRule schaltet field-not-freed zu.</summary>
+function Input(AWithRule: Boolean): TRuleOwnershipInput;
+begin
+  Result :=
+    function(const AUri: string; out AText: string; out ARules: TRuleCheckContext): Boolean
+    var
+      mRule: IRule;
+    begin
+      AText := cSource;
+      ARules := Default(TRuleCheckContext);
+      ARules.Settings := TServerSettings.Default;
+      if AWithRule then
+      begin
+        mRule := TOwnedFieldNotFreedRule.Create;
+        ARules.Rules := [mRule];
+      end;
+      Result := True;
+    end;
+end;
+
+function NoFile: TRuleOwnershipInput;
+begin
+  Result :=
+    function(const AUri: string; out AText: string; out ARules: TRuleCheckContext): Boolean
+    begin
+      AText := '';
+      ARules := Default(TRuleCheckContext);
+      Result := False;
+    end;
+end;
+
+function Run(const AInput: TRuleOwnershipInput; out ASites: TJSONArray): TJSONObject;
+var
+  mReport: IRuleOwnershipReport;
+begin
+  mReport := TRuleOwnershipReport.Create(AInput);
+  Result := mReport.Report(cUri);
+  ASites := Result.GetValue('sites') as TJSONArray;
+end;
+
+function Text(ASite: TJSONValue; const AName: string): string;
+begin
+  Result := TJsonRead.Text(TJsonRead.AsObject(ASite), AName);
+end;
+
+{ TRuleOwnershipReportTests }
+
+procedure TRuleOwnershipReportTests.AnswerListsSites;
+var
+  mAnswer: TJSONObject;
+  mSites: TJSONArray;
+begin
+  mAnswer := Run(Input(True), mSites);
+  try
+    Assert.AreEqual(cUri, Text(mAnswer, 'uri'));
+    Assert.AreEqual(2, Integer(mSites.Count));
+    Assert.AreEqual('16', Text(mSites.Items[0], 'line'));
+    Assert.AreEqual('12', Text(mSites.Items[0], 'character'));
+    Assert.AreEqual('  FNamen := TStringList.Create;', Text(mSites.Items[0], 'lineText'));
+    Assert.AreEqual('TStringList', Text(mSites.Items[0], 'className'));
+    Assert.AreEqual('FNamen', Text(mSites.Items[0], 'target'));
+    Assert.AreEqual('destroy', Text(mSites.Items[0], 'kind'));
+    Assert.AreEqual('21', Text(mSites.Items[0], 'freeLine'));
+    Assert.AreEqual('Destroy', Text(mSites.Items[0], 'detail'));
+    Assert.AreEqual('', Text(mSites.Items[0], 'rule'));
+    Assert.AreEqual('never', Text(mSites.Items[1], 'kind'));
+    Assert.AreEqual('field-not-freed', Text(mSites.Items[1], 'rule'));
+    Assert.AreEqual('', Text(mSites.Items[1], 'freeLine'));
+  finally
+    mAnswer.Free;
+  end;
+end;
+
+procedure TRuleOwnershipReportTests.NeverOnlyWithTheRule;
+var
+  mAnswer: TJSONObject;
+  mSites: TJSONArray;
+begin
+  mAnswer := Run(Input(False), mSites);
+  try
+    Assert.AreEqual(2, Integer(mSites.Count));
+    Assert.AreEqual('unknown', Text(mSites.Items[1], 'kind'));
+  finally
+    mAnswer.Free;
+  end;
+end;
+
+procedure TRuleOwnershipReportTests.UnreadableFileGivesNoSites;
+var
+  mAnswer: TJSONObject;
+  mSites: TJSONArray;
+begin
+  mAnswer := Run(NoFile(), mSites);
+  try
+    Assert.AreEqual(0, Integer(mSites.Count));
+  finally
+    mAnswer.Free;
+  end;
+end;
+
+procedure TRuleOwnershipReportTests.WithoutInputGivesNoSites;
+var
+  mAnswer: TJSONObject;
+  mSites: TJSONArray;
+begin
+  mAnswer := Run(nil, mSites);
+  try
+    Assert.AreEqual(cUri, Text(mAnswer, 'uri'));
+    Assert.AreEqual(0, Integer(mSites.Count));
+  finally
+    mAnswer.Free;
+  end;
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TRuleOwnershipReportTests);
+
+end.

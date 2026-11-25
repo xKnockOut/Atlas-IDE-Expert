@@ -8,7 +8,7 @@ interface
 
 uses
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Findings.Filter,
   Atlas.Common.Findings.Baseline,
   Core.CommandLine,
@@ -19,7 +19,8 @@ type
   TLinterMarkFilter = record
     Filter: TFindingFilter;
     Settings: TServerSettings;
-    Descriptors: TArray<TRuleDescriptor>;
+    /// <summary>Regeln mit ihrem Standard-Schweregrad.</summary>
+    Rules: TArray<TFindingRuleInfo>;
     /// <summary>Mit Git und ChangedLines nur Treffer in geänderten Zeilen.</summary>
     Git: TVcsChanges;
     ChangedLines: Boolean;
@@ -155,14 +156,14 @@ end;
 /// <summary>Standard-Schweregrad der Regel ARuleId, angepasst durch die Einstellungen.</summary>
 function DefaultSeverityOf(const AFilter: TLinterMarkFilter; const ARuleId: string): TRuleSeverity;
 var
-  mDescriptor: TRuleDescriptor;
+  mRule: TFindingRuleInfo;
 begin
   Result := TRuleSeverity.Hint;
-  for mDescriptor in AFilter.Descriptors do
+  for mRule in AFilter.Rules do
   begin
-    if SameText(mDescriptor.Id, ARuleId) then
+    if SameText(mRule.Id, ARuleId) then
     begin
-      Result := mDescriptor.DefaultSeverity;
+      Result := mRule.DefaultSeverity;
     end;
   end;
   Result := AFilter.Settings.RuleSeverity(ARuleId, Result);

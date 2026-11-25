@@ -21,7 +21,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Semantics.Impact,
   Atlas.Common.Semantics.UnresolvedNames,
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Semantics.References;

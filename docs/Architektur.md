@@ -50,8 +50,9 @@ Die Regeln für die Packages prüft `Tools/Check-PackageDependencies.ps1` (uses-
 
 Nach der Rollenregel enthält ein Platform-Package nur technische Abstraktionen; der Fachcode des Servers
 (LSP-Methoden in `Lsp`, Prüfregeln in `Rules`, Refactoring- und Schnellbefehle in `Editing`,
-Namensauflösung in `Semantics`, MCP-Werkzeuge in `Mcp`) gehörte als Hosted-Features in die Anwendung
-Er liegt bewusst weiter in `Atlas.Common`:
+Namensauflösung in `Semantics`, MCP-Werkzeuge in `Mcp`) gehörte als Hosted-Features in die Anwendung.
+`Rules` ist umgezogen (`Application/Source/Features/Rules`, Units `Rules.*`); der übrige Fachcode liegt
+bewusst weiter in `Atlas.Common`:
 
 - Die Verschiebung beträfe rund 300 Dateien mit Tests, jede `uses`-Klausel, alle Projektdateien und
   `Check-PackageDependencies.ps1`. Ohne Compiler in der Cloud fällt jeder vergessene Import erst
@@ -71,7 +72,7 @@ Features dürfen `Semantics` verwenden. Was zwei Hosted-Features teilen, liegt i
 `Documents`, `Semantics` …) oder als Interface im Contract des anbietenden Features, das der Host verbindet.
 
 Die Kanten von heute stehen als schrumpfende Liste unter `knownEdges` der Regel `architecture-feature-cycle` in
-`atlas.json` (Stand des Umbaus: 72 Kanten, kein Zyklus). Eine neue Kante ist ein Befund, eine abgebaute wird gestrichen.
+`atlas.json` (Stand des Umbaus: 69 Kanten, kein Zyklus). Eine neue Kante ist ein Befund, eine abgebaute wird gestrichen.
 
 | Von | Nach | Erlaubt | Stand |
 |---|---|---|---|
@@ -134,7 +135,7 @@ Application/
     Core/                          Host-Core: Abläufe ohne Adapter (Kommandozeile, Start, Arbeitsbereich, Linter, MCP-Werkzeuge)
     Adapters/                      Host-Adapters: implementieren Contracts von Platform- und Hosted-Features
     Platform/                      Host-Platform: Plattformdienste des Servers (Platform.Server)
-    Features/<Feature>/            Hosted-Features der Anwendung (Replay, Monitor, Update)
+    Features/<Feature>/            Hosted-Features der Anwendung (Replay, Monitor, Update, Rules)
     Shell/                         Einstiegspunkte und Komposition (Shell.Composition.*), erzeugt alle Adapter
 Setup/                             Daten des Release-Pakets: Tipps, Vorlagen, Profile, Beispiele, tips.json (der Installer AtlasSetup ist seit 1.2.0 entfernt)
 Tests/
@@ -216,7 +217,7 @@ Ein Provider oder Adapter kann eigene Bedürfnisse haben (eigener Contract, Inte
 Die Matrix wird zweimal umgesetzt und gegen dieselbe Fallliste `Tests/Data/Architecture/role-imports.json` getestet (je Matrixzelle ein Fall):
 
 - `Tools/Check-PackageDependencies.ps1` (CI, ohne Delphi) prüft alle Units unter `Packages/` und `Application/`; `-SelfTest` prüft nur die Fallliste.
-- Die Prüfregeln `architecture-role-import` und `architecture-contract-content` (`Atlas.Common.Rules.Builtin.Architecture`, `TArchitectureMatrix`) zeigen Verstöße im Editor und in der Selbstprüfung des Servers. Sie sind experimentell und ohne `prefixes` stumm.
+- Die Prüfregeln `architecture-role-import` und `architecture-contract-content` (`Rules.Builtin.Architecture`, `TArchitectureMatrix`) zeigen Verstöße im Editor und in der Selbstprüfung des Servers. Sie sind experimentell und ohne `prefixes` stumm.
 - Für die Fachcode-Packages tragen beide Regeln dieselben Optionen (das Skript prüft die Gleichheit): `domainPackages` (Base und alle Modul-Packages, gleich den Ordnern unter `Packages/Atlas.IDE.*`), `basePackage` (`Atlas.IDE.Base`), `layerPrefixes` (`Atlas.Core`, `Atlas.UI`, `Atlas.IDE`), `layerPackages` (Teilmenge von `domainPackages`) und `frameworks` (Namen oder Namensanfänge vor einem Punkt, z. B. `Vcl`, `ToolsAPI`, `DesignIntf`). Die Fallliste deckt jede Zelle von Host- und Hosted-Feature-Matrix in einem Fachcode-Package sowie Modul → Base ab.
 
 Eingeordnet wird nach `Ausgabeartefakt.Feature.Rolle.Sache`: längstes passendes Präfix, dann Feature, dann der erste Rollenbezeichner an beliebiger Stelle danach oder Root (`Atlas.Common.Lsp.Hover.Contract` ist ein Contract von `Lsp`); jeder weitere Rollenbezeichner eröffnet eine [Verschachtelung](#verschachtelung). Units ohne Präfix mit einer Host-Rolle als erstem Segment gehören zum Host; alles andere (RTL, VCL, `Setup.*`, Tests) wird nicht geprüft. Contract-Units, auch Sub-Contracts, dürfen im interface keine Klassen deklarieren und kein Framework (VCL, FMX, Windows-API, Open Tools API) einbinden, außer genehmigten Ausnahmen. Gemeinsame Typen mehrerer Units eines Features, die kein Vertrag nach außen sind, heißen `…<Sache>.Types` (Root), nicht `…<Sache>.Contract`.
@@ -263,7 +264,7 @@ Die Liste steht einmal in `atlas.json` (`allow` der beiden Regeln) und gilt für
 
 | Ausnahme | Grund |
 |---|---|
-| `Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree` | Der Syntaxbaum ist das Framework, auf dem jede Prüfregel läuft (wie die RTL für andere Verträge), und hängt selbst nur an Contracts; ein Baum-Interface würde alle Regeln ändern. |
+| `Rules.Contract -> Atlas.Common.Pascal.SyntaxTree` | Der Syntaxbaum ist das Framework, auf dem jede Prüfregel läuft (wie die RTL für andere Verträge), und hängt selbst nur an Contracts; ein Baum-Interface würde alle Regeln ändern. |
 | `Atlas.Common.Semantics.Contract -> Atlas.Common.Pascal.SyntaxTree` | `ITreeUnits` (#1322) gehört zu genau einem Syntaxbaum und muss ihn wiedererkennen; aus demselben Grund wie bei `Rules.Contract`. |
 | `Atlas.Common.Documents.Contract -> Atlas.Text.Lines` | `TTextPosition` ist derselbe Typ wie in `Atlas.Text`; `Atlas.Text` hat nur zustandslose Funktionen und Records. |
 | `Atlas.Plugin.Lsp.Contract -> Atlas.Text.Json`, `Atlas.Plugin.Projects.Contract -> Atlas.Text.Json` | Die Verträge reichen JSON-Werte des Protokolls weiter; `Atlas.Text.Json` ist die gemeinsame JSON-Schicht aus zustandslosen Lese- und Schreibhelfern. |

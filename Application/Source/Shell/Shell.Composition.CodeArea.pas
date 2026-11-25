@@ -117,10 +117,10 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Rules.CheckContext,
+  Rules.CheckContext,
   Atlas.Common.Lsp.Completion.Names,
-  Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Builtin.DeadCode,
+  Rules.Engine,
+  Rules.Builtin.DeadCode,
   Atlas.Common.Pascal.UsesGroups,
   Shell.Composition.Workspaces,
   Core.Workspace.Jobs;

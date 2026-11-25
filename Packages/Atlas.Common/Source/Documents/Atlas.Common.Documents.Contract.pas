@@ -38,7 +38,7 @@ type
     class function AnyEncloses(const ARanges: TArray<TTextRange>; const APosition: TTextPosition): Boolean; static;
   end;
 
-  /// <summary>Textänderung: Bereich Range ersetzen durch NewText (früher TRuleEdit in Rules.Contract).</summary>
+  /// <summary>Textänderung: Bereich Range ersetzen durch NewText (früher TTextEdit in Rules.Contract).</summary>
   TTextEdit = record
     Range: TTextRange;
     NewText: string;

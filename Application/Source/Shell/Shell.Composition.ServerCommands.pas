@@ -99,7 +99,7 @@ uses
   Atlas.Common.Index.CacheDirectory,
   Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Lsp.SettingsCommands,
-  Atlas.Common.Rules.SettingsCatalog,
+  Rules.SettingsCatalog,
   Atlas.Common.Lsp.PullDiagnostics,
   Atlas.Common.Lsp.FormFiles,
   Platform.Server,

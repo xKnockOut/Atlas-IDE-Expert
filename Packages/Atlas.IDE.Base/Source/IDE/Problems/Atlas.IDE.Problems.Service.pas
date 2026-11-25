@@ -15,7 +15,7 @@
 // Uhrzeit, TAtlasProblemsController.LastCheck) und „a von b Units geprüft“
 // für das Projekt. Rechts „Live“ bzw. „Angehalten“ nach problems.live.
 // Aktionen: Springen (TAtlasIdeNavigation), Schnellkorrektur über die
-// Code-Aktion mit Kennung (Hook ApplyTagged, Atlas.Common.Rules.CodeActions),
+// Code-Aktion mit Kennung (Hook ApplyTagged, Rules.CodeActions),
 // „Regel erklären“ zeigt den Katalogtext (Hook Command,
 // atlas.server.settingsCatalog im Hintergrund, #874). „Regel einstellen…“,
 // „Für diese Zeile unterdrücken“ und „Regel abschalten“ liefert das Modul

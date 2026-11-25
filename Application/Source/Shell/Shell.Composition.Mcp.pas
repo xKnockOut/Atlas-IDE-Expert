@@ -7,8 +7,8 @@ interface
 
 uses
   Atlas.Common.Index.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Checker,
+  Rules.Contract,
+  Rules.Checker,
   Atlas.Common.Mcp.Contract.BulkFix,
   Atlas.Common.Mcp.Contract.CompilerFixes,
   Atlas.Common.Mcp.Contract.Conventions,
@@ -17,7 +17,9 @@ uses
   Atlas.Common.Mcp.Contract.Formatting,
   Atlas.Common.Mcp.Contract.RuleDocs,
   Atlas.Common.Mcp.Contract.TextChecks,
-  Atlas.Common.Checks.Contract;
+  Atlas.Common.Checks.Contract,
+  Atlas.Common.Projects.Contract.Group,
+  Atlas.Common.Pascal.Contract;
 
 type
   TMcpComposition = record
@@ -29,17 +31,17 @@ type
     class function CompilerFixes: IMcpCompilerFixes; static;
     /// <summary>Sammelkorrektur aus Rules mit den eingebauten Regeln; AProject und ASource wie bei der Prüfung der
     /// MCP-Werkzeuge (nil = ohne Index bzw. Vordefinitionen).</summary>
-    class function BulkFix(const AProject: TCheckProjectFunc; const ASource: TCheckSourceFunc): IMcpBulkFix; static;
+    class function BulkFix(const AProject: TCheckProjectFunc; const ASource: TPascalSourceFunc): IMcpBulkFix; static;
     /// <summary>Prüfung von Texten aus Rules mit den eingebauten Regeln; AProject und ASource je Datei (nil = ohne
     /// Index bzw. Vordefinitionen).</summary>
-    class function TextChecks(const AProject: TCheckProjectFunc; const ASource: TCheckSourceFunc): IMcpTextChecks;
+    class function TextChecks(const AProject: TCheckProjectFunc; const ASource: TPascalSourceFunc): IMcpTextChecks;
       static;
     /// <summary>Wie TextChecks mit den Regeln ARules.</summary>
     class function TextChecksWith(const ARules: TArray<IRule>; const AProject: TCheckProjectFunc;
-      const ASource: TCheckSourceFunc): IMcpTextChecks; static;
+      const ASource: TPascalSourceFunc): IMcpTextChecks; static;
     /// <summary>Regeln für ungenutzten Code aus Rules mit den eingebauten Regeln, dem Index AIndex, den Projekten
     /// AProjectFiles (nil = keine Datei lesbar) und den Namensräumen ANamespaces.</summary>
-    class function DeadCode(const AIndex: ISymbolIndex; const AProjectFiles: IRuleProjectFiles;
+    class function DeadCode(const AIndex: ISymbolIndex; const AProjectFiles: IProjectGroupFiles;
       const ANamespaces: TArray<string>): IMcpDeadCode; static;
     /// <summary>Projektkonventionen aus Rules mit den eingebauten Regeln.</summary>
     class function Conventions: IMcpConventions; static;
@@ -52,14 +54,14 @@ type
 implementation
 
 uses
-  Atlas.Common.Rules.Contract.Api,
-  Atlas.Common.Rules.Builtin,
-  Atlas.Common.Rules.Providers.BulkFix,
-  Atlas.Common.Rules.Providers.Conventions,
-  Atlas.Common.Rules.Providers.DeadCode,
-  Atlas.Common.Rules.Providers.FindingPrompts,
-  Atlas.Common.Rules.Providers.RuleDocs,
-  Atlas.Common.Rules.Providers.TextChecks,
+  Rules.Contract.Api,
+  Rules.Builtin,
+  Rules.Providers.BulkFix,
+  Rules.Providers.Conventions,
+  Rules.Providers.DeadCode,
+  Rules.Providers.FindingPrompts,
+  Rules.Providers.RuleDocs,
+  Rules.Providers.TextChecks,
   Atlas.Common.Editing.Composition,
   Adapters.Mcp.BulkFix,
   Adapters.Mcp.CompilerFixes,
@@ -88,7 +90,7 @@ begin
 end;
 
 class function TMcpComposition.BulkFix(const AProject: TCheckProjectFunc;
-  const ASource: TCheckSourceFunc): IMcpBulkFix;
+  const ASource: TPascalSourceFunc): IMcpBulkFix;
 var
   mBulkFix: IRuleBulkFix;
 begin
@@ -97,13 +99,13 @@ begin
 end;
 
 class function TMcpComposition.TextChecks(const AProject: TCheckProjectFunc;
-  const ASource: TCheckSourceFunc): IMcpTextChecks;
+  const ASource: TPascalSourceFunc): IMcpTextChecks;
 begin
   Result := TextChecksWith(BuiltinRules, AProject, ASource);
 end;
 
 class function TMcpComposition.TextChecksWith(const ARules: TArray<IRule>; const AProject: TCheckProjectFunc;
-  const ASource: TCheckSourceFunc): IMcpTextChecks;
+  const ASource: TPascalSourceFunc): IMcpTextChecks;
 var
   mChecks: IRuleTextChecks;
 begin
@@ -111,7 +113,7 @@ begin
   Result := TMcpTextChecksAdapter.Create(mChecks);
 end;
 
-class function TMcpComposition.DeadCode(const AIndex: ISymbolIndex; const AProjectFiles: IRuleProjectFiles;
+class function TMcpComposition.DeadCode(const AIndex: ISymbolIndex; const AProjectFiles: IProjectGroupFiles;
   const ANamespaces: TArray<string>): IMcpDeadCode;
 var
   mDeadCode: IRuleDeadCode;

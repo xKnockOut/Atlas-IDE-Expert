@@ -26,7 +26,6 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.InterfaceStubs;
 
@@ -84,7 +83,7 @@ end;
 procedure TInterfaceStubsTests.MergesInsertions;
 var
   mExport_, mName, mFlush: TInterfaceStub;
-  mEdits, mMerged: TArray<TRuleEdit>;
+  mEdits, mMerged: TArray<TTextEdit>;
 begin
   TInterfaceStubs.Make('IExporter', 'TJsonExporter', 'procedure Export;', #10, mExport_);
   TInterfaceStubs.Make('IExporter', 'TJsonExporter', 'function GetName: string;', #10, mName);
@@ -92,7 +91,7 @@ begin
   mEdits := TInterfaceStubs.ClassEdits(mExport_, 6, '  ', 'public', True, #10);
   Assert.AreEqual(3, Integer(Length(mEdits)));
   mEdits := mEdits + TInterfaceStubs.ClassEdits(mName, 6, '  ', 'public', True, #10);
-  mEdits := mEdits + [TRuleEdit.Create(TTextRange.Create(9, 0, 9, 0), 'Rumpf')];
+  mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(9, 0, 9, 0), 'Rumpf')];
   mEdits := mEdits + TInterfaceStubs.ClassEdits(mFlush, 6, '  ', 'public', True, #10);
   mMerged := TInterfaceStubs.Merge(mEdits);
   Assert.AreEqual(2, Integer(Length(mMerged)));

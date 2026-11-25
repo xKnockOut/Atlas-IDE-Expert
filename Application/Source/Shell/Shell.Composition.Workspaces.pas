@@ -10,7 +10,6 @@ interface
 uses
   System.Generics.Collections,
   Atlas.Common.Logging.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Projects.Contract.Group,
   Core.Workspace,
   Shell.Composition.Contract;
@@ -46,16 +45,16 @@ type
     FGroupProjectFiles: TArray<string>;
     /// <summary>Gültig, solange FRuleProjectsStamp = FStamp; FStamp steigt mit jedem geladenen Projekt und
     /// jedem hinzugefügten oder entfernten Arbeitsbereich.</summary>
-    FRuleProjects: TArray<TRuleProject>;
+    FRuleProjects: TArray<TGroupProject>;
     FRuleProjectsStamp: Integer;
     FStamp: Integer;
     function FolderWorkspace(const AFileName: string): TCoreWorkspace;
     function ChooseProject(const AFileName: string; const ACandidates: TArray<TCoreWorkspace>): TCoreWorkspace;
     function PreferredProject(const ACandidates: TArray<TCoreWorkspace>; out AReason: string): TCoreWorkspace;
     procedure LogChoice(const AFileName: string; ACount: Integer; AChosen: TCoreWorkspace; const AReason: string);
-    function CollectRuleProjects(out AStamp: Integer; out AMainSources: TArray<string>): TArray<TRuleProject>;
-    function CachedRuleProjects(out AProjects: TArray<TRuleProject>): Boolean;
-    procedure StoreRuleProjects(const AProjects: TArray<TRuleProject>; AStamp: Integer);
+    function CollectRuleProjects(out AStamp: Integer; out AMainSources: TArray<string>): TArray<TGroupProject>;
+    function CachedRuleProjects(out AProjects: TArray<TGroupProject>): Boolean;
+    procedure StoreRuleProjects(const AProjects: TArray<TGroupProject>; AStamp: Integer);
   public
     constructor Create(const AServices: TShellWorkspaceRegistryServices);
     destructor Destroy; override;
@@ -95,7 +94,7 @@ type
     /// <summary>Ein Projekt wird noch indiziert.</summary>
     function ProjectIndexPending: Boolean;
     /// <summary>Projekte aller Arbeitsbereiche für projektweite Prüfregeln (#1102).</summary>
-    function RuleProjects: TArray<TRuleProject>;
+    function RuleProjects: TArray<TGroupProject>;
     function RuleProjectsComplete(out AReason: string): Boolean;
     /// <summary>Ruft AVisit mit allen Arbeitsbereichen unter der Sperre auf.</summary>
     procedure Visit(const AVisit: TShellWorkspacesProc);
@@ -110,7 +109,7 @@ uses
   System.SysUtils,
   System.Math,
   Atlas.Common.Lsp.WorkspaceFolders,
-  Atlas.Common.Rules.LibrarySources,
+  Rules.LibrarySources,
   Atlas.Text.LogMarks,
   Core.Bootstrap;
 
@@ -213,10 +212,10 @@ begin
 end;
 
 function TShellWorkspaceRegistry.CollectRuleProjects(out AStamp: Integer;
-  out AMainSources: TArray<string>): TArray<TRuleProject>;
+  out AMainSources: TArray<string>): TArray<TGroupProject>;
 var
   mWorkspace: TCoreWorkspace;
-  mProject: TRuleProject;
+  mProject: TGroupProject;
   mMainSource: string;
 begin
   Result := nil;
@@ -237,7 +236,7 @@ begin
   end;
 end;
 
-function TShellWorkspaceRegistry.CachedRuleProjects(out AProjects: TArray<TRuleProject>): Boolean;
+function TShellWorkspaceRegistry.CachedRuleProjects(out AProjects: TArray<TGroupProject>): Boolean;
 begin
   System.TMonitor.Enter(FLock);
   try
@@ -248,7 +247,7 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceRegistry.StoreRuleProjects(const AProjects: TArray<TRuleProject>; AStamp: Integer);
+procedure TShellWorkspaceRegistry.StoreRuleProjects(const AProjects: TArray<TGroupProject>; AStamp: Integer);
 begin
   System.TMonitor.Enter(FLock);
   try
@@ -562,7 +561,7 @@ begin
   end;
 end;
 
-function TShellWorkspaceRegistry.RuleProjects: TArray<TRuleProject>;
+function TShellWorkspaceRegistry.RuleProjects: TArray<TGroupProject>;
 var
   mStamp, mIndex: Integer;
   mMainSources: TArray<string>;

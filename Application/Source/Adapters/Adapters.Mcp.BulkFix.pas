@@ -8,7 +8,7 @@ interface
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Mcp.Contract.BulkFix,
-  Atlas.Common.Rules.Contract.Api;
+  Rules.Contract.Api;
 
 type
   TMcpBulkFixAdapter = class(TInterfacedObject, IMcpBulkFix)

@@ -70,7 +70,6 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
@@ -296,7 +295,7 @@ begin
   Result := False;
 end;
 
-function Run(const ACommand: string; const AHost: ISlashHost; out AEdits: TArray<TRuleEdit>): Boolean;
+function Run(const ACommand: string; const AHost: ISlashHost; out AEdits: TArray<TTextEdit>): Boolean;
 begin
   Result := TSlashCommandRegistry.Shared.AfterEnter(Format(cFormUnit, [ACommand]), TTextPosition.Create(10, 0),
     TSlashEnvironment.Create(nil, nil, nil, '', TDocumentUris.FromPath(TPath.Combine(GetCurrentDir, 'Main.pas')),
@@ -309,7 +308,7 @@ procedure TProjectCommandsTests.DefineAddsToActiveConfiguration;
 var
   mHost: TFakeHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mHost := TFakeHost.Create;
   mKeep := mHost;
@@ -324,7 +323,7 @@ procedure TProjectCommandsTests.DefineBangAddsToBase;
 var
   mHost: TFakeHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mHost := TFakeHost.Create;
   mKeep := mHost;
@@ -337,7 +336,7 @@ procedure TProjectCommandsTests.DefinePresentStays;
 var
   mHost: TFakeHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mHost := TFakeHost.Create;
   mKeep := mHost;
@@ -350,7 +349,7 @@ procedure TProjectCommandsTests.SearchPathNeedsExistingFolder;
 var
   mHost: TFakeHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mHost := TFakeHost.Create;
   mKeep := mHost;
@@ -366,7 +365,7 @@ procedure TProjectCommandsTests.ConfigSelectsBuild;
 var
   mHost: TFakeHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mHost := TFakeHost.Create;
   mKeep := mHost;
@@ -382,7 +381,7 @@ procedure TProjectCommandsTests.DfmJumpsToEvent;
 var
   mHost: TFakeHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mHost := TFakeHost.Create;
   mKeep := mHost;
@@ -398,7 +397,7 @@ end;
 
 procedure TProjectCommandsTests.WithoutHostNothingHappens;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mProblems: TArray<TSlashProblem>;
 begin
   Assert.IsFalse(Run('/define TEST', nil, mEdits));
@@ -419,7 +418,7 @@ procedure TProjectCommandsTests.UnitCreatesAndRegisters;
 var
   mHost: TFakeHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mHost := TFakeHost.Create;
   mKeep := mHost;
@@ -449,7 +448,7 @@ procedure TProjectCommandsTests.UnitWrongPlaceFails;
 var
   mHost: TFakeHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mHost := TFakeHost.Create;
   mKeep := mHost;
@@ -469,7 +468,7 @@ procedure TProjectCommandsTests.OpenFindsInSearchPath;
 var
   mHost: TFakeHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mHost := TFakeHost.Create;
   mKeep := mHost;
@@ -491,7 +490,7 @@ procedure TProjectCommandsTests.OpenUnknownFails;
 var
   mHost: TFakeHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mProblems: TArray<TSlashProblem>;
 begin
   mHost := TFakeHost.Create;
@@ -507,7 +506,7 @@ end;
 
 /// <summary>FormUnit mit ACommand und angewandten AEdits; von hinten, damit frühere Positionen gültig
 /// bleiben.</summary>
-function Expanded(const ACommand: string; const AEdits: TArray<TRuleEdit>): string;
+function Expanded(const ACommand: string; const AEdits: TArray<TTextEdit>): string;
 var
   mTable: TLineTable;
   mIndex, mStart, mStop: Integer;
@@ -526,7 +525,7 @@ procedure TProjectCommandsTests.LogUsesConfiguredCall;
 var
   mHost: TFakeHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   mHost := TFakeHost.Create;
@@ -553,7 +552,7 @@ const
 var
   mHost: TFakeHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
   mProblems: TArray<TSlashProblem>;
 begin
@@ -580,7 +579,7 @@ const
     'end.'#13#10;
 
 function RunWithIndex(const ACommand: string; const AHost: ISlashHost; const AIndex: ISymbolIndex;
-  out AEdits: TArray<TRuleEdit>): Boolean;
+  out AEdits: TArray<TTextEdit>): Boolean;
 begin
   Result := TSlashCommandRegistry.Shared.AfterEnter(Format(cFormUnit, [ACommand]), TTextPosition.Create(10, 0),
     TSlashEnvironment.Create(nil, nil, AIndex, '', TDocumentUris.FromPath(TPath.Combine(GetCurrentDir, 'Main.pas')),
@@ -591,7 +590,7 @@ procedure TProjectCommandsTests.ComponentGoesIntoPackage;
 var
   mHost: TFakeHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   mHost := TFakeHost.Create;
@@ -624,7 +623,7 @@ procedure TProjectCommandsTests.ComponentAncestorFromIndex;
 var
   mHost: TFakeHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mIndex: ISymbolIndex;
   mText: string;
 begin
@@ -648,7 +647,7 @@ procedure TProjectCommandsTests.ComponentWrongPlaceFails;
 var
   mHost: TFakeHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mProblems: TArray<TSlashProblem>;
 begin
   mHost := TFakeHost.Create;
@@ -666,7 +665,7 @@ procedure TProjectCommandsTests.ComponentFollowsLineBreakAndStyle;
 var
   mHost: TFakeHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mStyle: TFormatStyle;
   mText, mUri: string;
 begin
@@ -738,10 +737,10 @@ end;
 
 function RunEvent(const ACommand: string; const AHost: ISlashHost; out AText: string): Boolean;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mTable: TLineTable;
   mIndex, mNext, mStart, mStop: Integer;
-  mSwap: TRuleEdit;
+  mSwap: TTextEdit;
 begin
   AText := Format(cEventUnit, [ACommand]);
   Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(13, 0),
@@ -874,7 +873,7 @@ const
     'begin'#13#10 +
     'end.'#13#10;
 
-function RunTest(const AText: string; ALine: Integer; const AHost: ISlashHost; out AEdits: TArray<TRuleEdit>;
+function RunTest(const AText: string; ALine: Integer; const AHost: ISlashHost; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   mProblems: TArray<TSlashProblem>;
@@ -897,7 +896,7 @@ procedure TProjectCommandsTests.TestCreatesTestUnit;
 var
   mHost: TFakeHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mReason, mText: string;
 begin
   mHost := TFakeHost.Create;
@@ -930,7 +929,7 @@ procedure TProjectCommandsTests.TestAddsToExistingTestUnit;
 var
   mHost: TFakeHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mReason, mText: string;
 begin
   mHost := TFakeHost.Create;
@@ -960,7 +959,7 @@ procedure TProjectCommandsTests.TestWrongPlaceFails;
 var
   mHost: TFakeHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mReason, mText: string;
 begin
   mHost := TFakeHost.Create;

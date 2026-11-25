@@ -54,8 +54,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Engine,
+  Rules.Contract,
+  Rules.Engine,
   Atlas.Common.Semantics.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.TreeUnits;

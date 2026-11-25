@@ -37,7 +37,7 @@ uses
   Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Common.Findings.Output,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Semantics.Impact,
   Atlas.Common.Lsp.AffectedTests.Report,
   Atlas.Common.Lsp.AffectedTests.Types,
   Core.Bootstrap,

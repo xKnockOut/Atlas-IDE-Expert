@@ -13,8 +13,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Lsp.SyntaxDiagnostics,
-  Atlas.Common.Rules.CheckContext,
-  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Semantics.Impact,
   Shell.Composition.Core,
   Shell.Composition.Analysis,
   Shell.Composition.Overviews,
@@ -72,6 +71,7 @@ type
 implementation
 
 uses
+  Rules.CheckContext,
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Preprocessor,

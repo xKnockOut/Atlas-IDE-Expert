@@ -93,7 +93,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.ReferenceConfidence,
   Atlas.Common.Semantics.Hierarchies,
-  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Semantics.Impact,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
   Atlas.Text.DUnitX.CommandLine,

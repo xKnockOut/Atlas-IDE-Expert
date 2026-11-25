@@ -22,8 +22,8 @@ implementation
 uses
   Atlas.Common.Findings.Contract,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Rules.Contract.Api,
-  Atlas.Common.Rules.Providers.FindingPrompts,
+  Rules.Contract.Api,
+  Rules.Providers.FindingPrompts,
   Adapters.Lsp.FindingsPrompt;
 
 { TLspFindingsPromptAdapterTests }
