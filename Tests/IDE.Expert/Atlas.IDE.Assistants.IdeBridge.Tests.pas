@@ -8,6 +8,7 @@ interface
 uses
   DUnitX.TestFramework,
   System.SysUtils,
+  System.Classes,
   System.Generics.Collections,
   Atlas.IDE.Contracts.AiText,
   Atlas.Tests.AiTextFake,
@@ -34,7 +35,7 @@ type
     FTextRef: IAtlasAiText;
     FBridge: TAtlasIdeAiBridge;
     FLog: TList<string>;
-    FPosted: TList<TProc>;
+    FPosted: TList<TThreadProcedure>;
     FLimitReached: Boolean;
     FIds: Integer;
     FModels: TAtlasIdeAiModelsDone;
@@ -103,7 +104,7 @@ begin
   FText := TAtlasFakeAiText.Create(True, 'lokal, llama3.1');
   FTextRef := FText;
   FLog := TList<string>.Create;
-  FPosted := TList<TProc>.Create;
+  FPosted := TList<TThreadProcedure>.Create;
   FLimitReached := False;
   FIds := 0;
 end;
@@ -145,7 +146,7 @@ begin
         Result := 'Tagesgrenze';
       end;
     end, mModels,
-    procedure(const AWork: TProc)
+    procedure(const AWork: TThreadProcedure)
     begin
       mSelf.FPosted.Add(AWork);
     end, mTexts,
@@ -159,7 +160,7 @@ end;
 
 procedure TAtlasIdeAiBridgeTests.RunPosted;
 var
-  mWork: TProc;
+  mWork: TThreadProcedure;
 begin
   for mWork in FPosted.ToArray do
   begin

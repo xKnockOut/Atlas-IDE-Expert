@@ -17,6 +17,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Classes,
   System.Generics.Collections,
   Atlas.IDE.Contracts.AiText,
   Atlas.Core.Assistants.Contract.IdeAi;
@@ -28,8 +29,9 @@ type
   TAtlasIdeAiModelLister = reference to procedure(const ADone: TAtlasIdeAiModelsDone);
   /// <summary>Zählt eine Anfrage zur Tagesgrenze: '' wenn sie zählt, sonst der Grund.</summary>
   TAtlasIdeAiTake = reference to function: string;
-  /// <summary>AWork später im Hauptthread ausführen.</summary>
-  TAtlasIdeAiPost = reference to procedure(const AWork: TProc);
+  /// <summary>AWork später im Hauptthread ausführen. TThreadProcedure wie TAtlasMainThread.Queue: Delphi 12 nimmt
+  /// kein TProc dafür an (E2010).</summary>
+  TAtlasIdeAiPost = reference to procedure(const AWork: TThreadProcedure);
 
   /// <summary>Notifier der IDE; nach Cut leer. Rückmeldungen aus dem Hintergrund halten nur diese Liste.</summary>
   IAtlasIdeAiNotifierList = interface
@@ -152,7 +154,8 @@ begin
 end;
 
 /// <summary>Rückmeldung an alle Notifier der Liste, wie sie bei der Ausführung ist.</summary>
-function DeliveryOf(const AList: IAtlasIdeAiNotifierList; const AId, AText: string; AIsError: Boolean): TProc;
+function DeliveryOf(const AList: IAtlasIdeAiNotifierList; const AId, AText: string;
+  AIsError: Boolean): TThreadProcedure;
 begin
   Result :=
     procedure
