@@ -27,7 +27,6 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Findings.Scopes,
-  Atlas.Common.Findings.Baseline,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Projects.PackageReader;
 
@@ -36,18 +35,6 @@ const
   cLanguageFeatureRuleId = 'language-feature';
 
 type
-  /// <summary>Treffer einer geprüften Datei.</summary>
-  TCheckedFile = record
-    /// <summary>Pfad relativ zum Ordner der Konfiguration, mit "\" oder "/".</summary>
-    Path: string;
-    /// <summary>Vollständiger Pfad für SARIF (#95); '' = unbekannt, dann gilt Path.</summary>
-    FullPath: string;
-    Findings: TArray<TRuleFinding>;
-    /// <summary>Für SARIF (#97): alle Treffer mit Fingerabdrücken und Zustand gegenüber der Baseline, samt der
-    /// unveränderten und nicht mehr gefundenen. Leer = SARIF nimmt Findings ohne Fingerabdrücke.</summary>
-    Marks: TArray<TBaselineMark>;
-  end;
-
   /// <summary>Projekt einer geprüften Datei (#943); Default = unbekannt.</summary>
   TCheckProject = record
     Application: TRuleApplicationKind;

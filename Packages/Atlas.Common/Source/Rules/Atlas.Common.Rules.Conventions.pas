@@ -34,7 +34,7 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Output,
+  Atlas.Common.Findings.Output,
   Atlas.Common.Rules.Profiles,
   Atlas.Common.Localization.Texts;
 

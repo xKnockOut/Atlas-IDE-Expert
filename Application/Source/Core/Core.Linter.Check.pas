@@ -16,6 +16,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Checker,
+  Atlas.Common.Findings.Output,
   Atlas.Common.Findings.Filter,
   Atlas.Common.Findings.Baseline,
   Atlas.Common.Findings.Scopes,
@@ -85,8 +86,8 @@ uses
   System.IOUtils,
   System.Diagnostics,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Rules.Output,
   Atlas.Common.Rules.Builtin,
+  Atlas.Common.Rules.Catalog,
   Atlas.Common.Lsp.ServerActivity,
   Core.Linter.Output,
   Core.Linter.Settings,
@@ -338,7 +339,7 @@ begin
   end
   else
   begin
-    Result := TFindingsOutput.Render(FFiles, FOptions.CheckFormat, FDescriptors,
+    Result := TFindingsOutput.Render(FFiles, FOptions.CheckFormat, TRuleCatalog.RuleInfos(FDescriptors),
       TLinterSettings.SourceRootOf(FOptions, FConfigRoot));
   end;
 end;
