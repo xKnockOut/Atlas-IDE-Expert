@@ -110,11 +110,17 @@ type
     /// <summary>Adresse der VCS-Änderungen eines Issues (#1269); '' bei ungültiger Kennung oder ohne Server.
     /// </summary>
     class function VcsChangesUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string; static;
-    /// <summary>Umfang als Suchausdruck (#1271), z. B. "(for: me or reporter: me)".</summary>
-    class function ScopeQuery(AScope: TAtlasTrackerNotifyScope): string; static;
-    /// <summary>Adresse der geänderten Issues ab ASince (UTC) im Umfang AScope; '' ohne Server.</summary>
+    /// <summary>Umfang als Suchausdruck (#1271) in der Sprache ALanguage ("de" oder sonst Englisch), z. B.
+    /// "(for: me or reporter: me)" bzw. "(assignee: meine OR reporter: meine)". YouTrack liest Werte wie „me“ in
+    /// der Systemsprache des Servers und lehnt die englischen dort ab.</summary>
+    class function ScopeQuery(AScope: TAtlasTrackerNotifyScope; const ALanguage: string): string; static;
+    /// <summary>Adresse der geänderten Issues ab ASince (UTC) im Umfang AScope, Suchbegriffe in ALanguage; '' ohne
+    /// Server.</summary>
     class function ChangedIssuesUrl(const ATarget: TAtlasTrackerTarget; ASince: TDateTime;
-      AScope: TAtlasTrackerNotifyScope): string; static;
+      AScope: TAtlasTrackerNotifyScope; const ALanguage: string): string; static;
+    /// <summary>Sprachen, in denen die Änderungsabfrage versucht wird: AKnown zuerst (die zuletzt gelungene oder
+    /// die erkannte), dann die andere; ohne bekannte Sprache Englisch, dann Deutsch.</summary>
+    class function QueryLanguages(const AKnown: string): TArray<string>; static;
     /// <summary>Adresse der Aktivitäten von AKey nach ASince; '' bei ungültiger Kennung oder ohne Server.</summary>
     class function ActivitiesUrl(const ATarget: TAtlasTrackerTarget; const AKey: string; ASince: TDateTime): string;
       static;
@@ -535,32 +541,57 @@ begin
     TTextUris.PercentEncode(cVcsChangeFields) + '&$top=' + IntToStr(TAtlasTrackerDevelopment.cMaxChanges);
 end;
 
-class function TAtlasYouTrackApi.ScopeQuery(AScope: TAtlasTrackerNotifyScope): string;
+class function TAtlasYouTrackApi.ScopeQuery(AScope: TAtlasTrackerNotifyScope; const ALanguage: string): string;
+const
+  cEnglish: array[TAtlasTrackerNotifyScope] of string = ('for: me', '(for: me or reporter: me)',
+    '(for: me or reporter: me or has: star)');
+  // Systemsprache Deutsch: „meine“ statt „me“ wie in den Vorlagen (Atlas.Core.Tracker.Templates); so an einem
+  // deutschen YouTrack geprüft.
+  cGerman: array[TAtlasTrackerNotifyScope] of string = ('assignee: meine', '(assignee: meine OR reporter: meine)',
+    '(assignee: meine OR reporter: meine OR has: star)');
 begin
-  case AScope of
-    TAtlasTrackerNotifyScope.Assigned:
-      Result := 'for: me';
-    TAtlasTrackerNotifyScope.Watched:
-      Result := '(for: me or reporter: me or has: star)';
+  if TAtlasTrackerTemplates.NormalLanguage(ALanguage) = TAtlasTrackerTemplates.cGerman then
+  begin
+    Result := cGerman[AScope];
+  end
   else
-    Result := '(for: me or reporter: me)';
+  begin
+    Result := cEnglish[AScope];
   end;
 end;
 
 class function TAtlasYouTrackApi.ChangedIssuesUrl(const ATarget: TAtlasTrackerTarget; ASince: TDateTime;
-  AScope: TAtlasTrackerNotifyScope): string;
+  AScope: TAtlasTrackerNotifyScope; const ALanguage: string): string;
 var
-  mQuery: string;
+  mQuery, mUpdated: string;
 begin
   Result := '';
   if ATarget.Server = '' then
   begin
     Exit;
   end;
+  mUpdated := 'updated';
+  if TAtlasTrackerTemplates.NormalLanguage(ALanguage) = TAtlasTrackerTemplates.cGerman then
+  begin
+    mUpdated := 'Aktualisiert';
+  end;
   // Einen Tag früher: Der Server wertet den Tag in seiner Zeitzone; genau gefiltert wird mit "updated".
-  mQuery := ScopeQuery(AScope) + ' updated: ' + FormatDateTime('yyyy"-"mm"-"dd', ASince - 1) + ' .. *';
+  mQuery := ScopeQuery(AScope, ALanguage) + ' ' + mUpdated + ': ' + FormatDateTime('yyyy"-"mm"-"dd', ASince - 1) +
+    ' .. *';
   Result := ATarget.Url + '/api/issues?query=' + TTextUris.PercentEncode(mQuery) + '&fields=' +
     TTextUris.PercentEncode(cChangeIssueFields) + '&$top=' + IntToStr(cMaxChangedIssues * 2);
+end;
+
+class function TAtlasYouTrackApi.QueryLanguages(const AKnown: string): TArray<string>;
+begin
+  if TAtlasTrackerTemplates.NormalLanguage(AKnown) = TAtlasTrackerTemplates.cGerman then
+  begin
+    Result := TArray<string>.Create(TAtlasTrackerTemplates.cGerman, TAtlasTrackerTemplates.cEnglish);
+  end
+  else
+  begin
+    Result := TArray<string>.Create(TAtlasTrackerTemplates.cEnglish, TAtlasTrackerTemplates.cGerman);
+  end;
 end;
 
 class function TAtlasYouTrackApi.ActivitiesUrl(const ATarget: TAtlasTrackerTarget; const AKey: string;

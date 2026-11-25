@@ -85,6 +85,9 @@ type
     Me: string;
     /// <summary>GitHub: Last-Modified der letzten Antwort.</summary>
     LastModified: string;
+    /// <summary>YouTrack: Sprache der Suchbegriffe, mit der die letzte Abfrage gelang ("de", "en"); '' = unbekannt.
+    /// </summary>
+    Language: string;
     Unseen: TArray<TAtlasTrackerUnseen>;
     class function Create(const AId: string; ASince: TDateTime): TAtlasTrackerNotifyConnection; static;
     function IndexOfUnseen(const AKey, AProject: string): Integer;
@@ -727,6 +730,7 @@ begin
       mObject.AddPair('since', IsoOf(mConnection.Since));
       mObject.AddPair('me', mConnection.Me);
       mObject.AddPair('lastModified', mConnection.LastModified);
+      mObject.AddPair('language', mConnection.Language);
       mUnseen := TJSONArray.Create;
       mObject.AddPair('unseen', mUnseen);
       for mItem in mConnection.Unseen do
@@ -787,6 +791,7 @@ begin
   begin
     AConnection.Me := TJsonRead.Text(mObject, 'me');
     AConnection.LastModified := TJsonRead.Text(mObject, 'lastModified');
+    AConnection.Language := TJsonRead.Text(mObject, 'language');
     ReadUnseen(mObject.Values['unseen'], AConnection);
   end;
 end;
