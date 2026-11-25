@@ -52,7 +52,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.DocsIndex,
-  Atlas.Common.Mcp.DocsTools;
+  Atlas.Common.Mcp.DocsTools,
+  Shell.Composition.Mcp;
 
 function RequestFor(const AJson: string): TMcpDocsRequest;
 var
@@ -61,6 +62,7 @@ begin
   mArguments := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
   try
     Result := TMcpDocsTools.RequestOf(mArguments);
+    Result.RuleDocs := TMcpComposition.RuleDocs;
   finally
     mArguments.Free;
   end;
