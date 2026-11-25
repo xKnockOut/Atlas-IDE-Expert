@@ -779,7 +779,8 @@ var
         Exit(mItem);
       end;
     end;
-    raise Exception.CreateFmt('Eintrag "%s" fehlt', [AName]);
+    Result := Default(TCompletionItem);
+    Assert.Fail(Format('Eintrag "%s" fehlt', [AName]));
   end;
 
 var

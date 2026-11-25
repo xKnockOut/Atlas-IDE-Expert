@@ -15,7 +15,6 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.Contract;
 
 type
