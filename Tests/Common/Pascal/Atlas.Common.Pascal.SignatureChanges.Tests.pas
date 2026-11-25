@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ChangeSignature.Tests;
+﻿unit Atlas.Common.Pascal.SignatureChanges.Tests;
 
 // Tests für die Textbausteine von „Signatur ändern“ (#100).
 
@@ -39,7 +39,7 @@ uses
   Atlas.Common.Pascal.Signatures,
   Atlas.Common.Pascal.TestSupport,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Editing.ChangeSignature;
+  Atlas.Common.Pascal.SignatureChanges;
 
 function CallText(const AText, AName: string; AOccurrence: Integer; const AOld: TArray<TSignatureParameter>;
   const AChanges: TArray<TParameterChange>): string;

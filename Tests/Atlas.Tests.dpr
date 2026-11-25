@@ -433,7 +433,7 @@ uses
   Atlas.Common.Lsp.WinApiDocs.Tests in 'Common\Lsp\Atlas.Common.Lsp.WinApiDocs.Tests.pas',
   Atlas.Common.Lsp.KeywordReference.Tests in 'Common\Lsp\Atlas.Common.Lsp.KeywordReference.Tests.pas',
   Atlas.Common.Editing.AssignmentSwap.Tests in 'Common\Editing\Atlas.Common.Editing.AssignmentSwap.Tests.pas',
-  Atlas.Common.Editing.ChangeSignature.Tests in 'Common\Editing\Atlas.Common.Editing.ChangeSignature.Tests.pas',
+  Atlas.Common.Pascal.SignatureChanges.Tests in 'Common\Pascal\Atlas.Common.Pascal.SignatureChanges.Tests.pas',
   Atlas.Common.Editing.GenericLists.Tests in 'Common\Editing\Atlas.Common.Editing.GenericLists.Tests.pas',
   Atlas.Common.Editing.GenericLists.Parts.Tests in 'Common\Editing\Atlas.Common.Editing.GenericLists.Parts.Tests.pas',
   Atlas.Common.Pascal.StringLiterals.Tests in 'Common\Pascal\Atlas.Common.Pascal.StringLiterals.Tests.pas',

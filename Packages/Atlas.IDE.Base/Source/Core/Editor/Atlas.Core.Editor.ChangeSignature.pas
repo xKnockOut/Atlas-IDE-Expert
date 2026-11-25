@@ -4,7 +4,7 @@
 // Parameterliste mit ihrer Herkunft in der alten, Hinzufügen, Entfernen,
 // Verschieben und Umbenennen, die Vorschau der neuen Signatur, die Prüfung
 // vor dem Absenden und das JSON für atlas.server.changeSignature. Die
-// Prüfung ist dieselbe wie im Server (Atlas.Common.Editing.ChangeSignature),
+// Prüfung ist dieselbe wie im Server (Atlas.Common.Pascal.SignatureChanges),
 // damit der Dialog Fehler schon vor dem Absenden zeigt; sie liefert die Art
 // des Fehlers, den Text wählt die Oberfläche in ihrer Sprache.
 
