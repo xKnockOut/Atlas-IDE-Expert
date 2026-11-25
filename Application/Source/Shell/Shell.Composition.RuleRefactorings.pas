@@ -22,7 +22,8 @@ uses
 
 class function TShellRuleRefactorings.Create: TRuleRefactorings;
 begin
-  Result := TRuleRefactoringsAdapters.Create(TEditingComposition.ClassActions, TEditingComposition.ExtractFixes);
+  Result := TRuleRefactoringsAdapters.Create(TEditingComposition.ClassActions, TEditingComposition.ExtractFixes,
+    TEditingComposition.MethodsWithoutSelf);
 end;
 
 end.
