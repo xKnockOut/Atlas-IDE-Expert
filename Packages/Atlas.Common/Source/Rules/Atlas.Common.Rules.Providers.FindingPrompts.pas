@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Rules.Providers.FindingPrompts;
 
-// Anbieter von IRuleFindingPrompts (Atlas.Common.Rules.Contract.Api): TFindingPrompt.Markdown mit dem deutschen
-// Regelkatalog wie bisher bei explain_finding.
+// Anbieter von IRuleFindingPrompts (Atlas.Common.Rules.Contract.Api): Auftrag zu einem Befund über
+// TFindingPrompt.Markdown mit dem deutschen Regelkatalog wie bisher bei explain_finding, Auftrag aus mehreren Befunden
+// über TFindingPrompt.Many mit dem gemeinsamen Regelkatalog und dem üblichen Ausschnitt.
 
 interface
 
@@ -12,7 +13,9 @@ uses
 type
   TRuleFindingPromptsProvider = class(TInterfacedObject, IRuleFindingPrompts)
   public
-    function Markdown(const AFinding: TRuleFinding; const AFileName, AText: string): string;
+    function MarkdownOf(const AFinding: TRuleFinding; const AFileName, AText: string): string;
+    function Markdown(const AItems: TArray<TFindingPromptItem>; ALimit: Integer): string;
+    function DefaultLimit: Integer;
   end;
 
 implementation
@@ -23,7 +26,7 @@ uses
 
 { TRuleFindingPromptsProvider }
 
-function TRuleFindingPromptsProvider.Markdown(const AFinding: TRuleFinding; const AFileName, AText: string): string;
+function TRuleFindingPromptsProvider.MarkdownOf(const AFinding: TRuleFinding; const AFileName, AText: string): string;
 var
   mCatalog: TRuleCatalog;
 begin
@@ -33,6 +36,16 @@ begin
   finally
     mCatalog.Free;
   end;
+end;
+
+function TRuleFindingPromptsProvider.Markdown(const AItems: TArray<TFindingPromptItem>; ALimit: Integer): string;
+begin
+  Result := TFindingPrompt.Many(AItems, TFindingPrompt.SharedCatalog, TFindingPrompt.cDefaultContext, ALimit);
+end;
+
+function TRuleFindingPromptsProvider.DefaultLimit: Integer;
+begin
+  Result := TFindingPrompt.cDefaultLimit;
 end;
 
 end.

@@ -80,7 +80,7 @@ uses
   Atlas.Common.Product.Version,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Catalog.Data,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Atlas.Text.Json,
   System.Generics.Collections,
   Atlas.Common.Localization.Texts;
@@ -698,16 +698,7 @@ end;
 
 class function TFindingsOutput.SeverityName(ASeverity: TRuleSeverity): string;
 begin
-  case ASeverity of
-    TRuleSeverity.Error:
-      Result := 'error';
-    TRuleSeverity.Warning:
-      Result := 'warning';
-    TRuleSeverity.Information:
-      Result := 'info';
-  else
-    Result := 'hint';
-  end;
+  Result := Atlas.Common.Findings.Contract.SeverityName(ASeverity);
 end;
 
 class function TFindingsOutput.JsonString(const AText: string): string;

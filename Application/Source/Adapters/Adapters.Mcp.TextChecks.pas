@@ -6,7 +6,9 @@
 interface
 
 uses
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Findings.Contract,
   Atlas.Common.Mcp.Contract.TextChecks,
   Atlas.Common.Rules.Contract.Api;
@@ -19,6 +21,8 @@ type
     constructor Create(const AChecks: IRuleTextChecks);
     function Check(const AFileName, ARelativePath, AText: string; const ASettings: TServerSettings):
       TArray<TRuleFinding>;
+    function Actions(const AFileName, ARelativePath, AText: string; const ASettings: TServerSettings;
+      const ARange: TTextRange): TArray<TCodeAction>;
   end;
 
 implementation
@@ -35,6 +39,12 @@ function TMcpTextChecksAdapter.Check(const AFileName, ARelativePath, AText: stri
   const ASettings: TServerSettings): TArray<TRuleFinding>;
 begin
   Result := FChecks.Check(AFileName, ARelativePath, AText, ASettings);
+end;
+
+function TMcpTextChecksAdapter.Actions(const AFileName, ARelativePath, AText: string;
+  const ASettings: TServerSettings; const ARange: TTextRange): TArray<TCodeAction>;
+begin
+  Result := FChecks.Actions(AFileName, ARelativePath, AText, ASettings, ARange);
 end;
 
 end.

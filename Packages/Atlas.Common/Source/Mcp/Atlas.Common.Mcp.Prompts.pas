@@ -141,7 +141,6 @@ uses
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Rules.Output,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -1339,7 +1338,7 @@ begin
       for mFinding in mFile.Findings do
       begin
         mBuilder.Append(sLineBreak).Append(Format('  - %d:%d: %s [%s] %s', [mFinding.Range.StartPos.Line + 1,
-          mFinding.Range.StartPos.Character + 1, TFindingsOutput.SeverityName(mFinding.Severity), mFinding.RuleId,
+          mFinding.Range.StartPos.Character + 1, SeverityName(mFinding.Severity), mFinding.RuleId,
           mFinding.Message]));
       end;
     end;

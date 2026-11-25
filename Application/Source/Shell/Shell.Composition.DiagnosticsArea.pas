@@ -83,6 +83,7 @@ uses
   Atlas.Common.Rules.Contract.Api,
   Atlas.Common.Rules.CheckContext,
   Atlas.Common.Rules.Providers.DocumentChecks,
+  Atlas.Common.Rules.Providers.CatalogInfo,
   Adapters.Lsp.RuleDiagnostics,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Text.LogMarks;
@@ -137,6 +138,7 @@ var
   mMessages: TShellDiagnosticsMessagesFunc;
   mContexts: TRuleContextProvider;
   mChecks: IRuleDocumentChecks;
+  mCatalog: IRuleCatalogInfo;
 begin
   mCore := FServices.Core;
   mMessages := FServices.CompilerMessages;
@@ -162,7 +164,8 @@ begin
     begin
       Result := mCore().RuleContext.LiveRuleContextFor(AUri, AContext);
     end;
-  mChecks := TRuleDocumentChecks.Create(mContexts);
+  mCatalog := TRuleCatalogInfo.Create;
+  mChecks := TRuleDocumentChecks.Create(mContexts, mCatalog);
   Result.Rules := TLspRuleDiagnosticsAdapter.Wrap(mChecks);
   Result.CompilerMessages :=
     function(const AFileName: string): TArray<TCompilerMessage>

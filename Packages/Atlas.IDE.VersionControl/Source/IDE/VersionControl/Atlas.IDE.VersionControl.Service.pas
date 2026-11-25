@@ -534,7 +534,7 @@ begin
   end;
   if Worker = nil then
   begin
-    Worker := TAtlasBackgroundJobs.Create(HInstance);
+    Worker := TAtlasBackgroundJobs.Create(HInstance, TAtlasFeature.Status);
   end;
   Backend.SetToolMissing(ToolMissing);
 end;

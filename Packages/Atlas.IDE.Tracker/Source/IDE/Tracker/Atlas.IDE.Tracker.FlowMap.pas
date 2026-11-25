@@ -102,7 +102,7 @@ begin
   inherited Create;
   FHooks := AHooks;
   FCacheFolder := ACacheFolder;
-  FWorker := TAtlasBackgroundJobs.Create(HInstance);
+  FWorker := TAtlasBackgroundJobs.Create(HInstance, TAtlasFeature.Tracker);
 end;
 
 destructor TAtlasIdeFlowMap.Destroy;

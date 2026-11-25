@@ -91,10 +91,10 @@ var
 begin
   mRequest := RequestFor('/');
   try
-    Assert.IsTrue(TCompletionSlash.SlashItems(mRequest, nil, nil, mItems));
+    Assert.IsTrue(TCompletionSlash.SlashItems(mRequest, nil, nil, nil, mItems));
     Assert.IsTrue(MatchText('uses', Names(mItems)));
     Assert.IsTrue(MatchText('ignore', Names(mItems)));
-    Assert.IsTrue(TCompletionSlash.SlashItems(mRequest, ['uses'], nil, mItems));
+    Assert.IsTrue(TCompletionSlash.SlashItems(mRequest, ['uses'], nil, nil, mItems));
     Assert.IsFalse(MatchText('uses', Names(mItems)));
   finally
     mRequest.Free;
@@ -108,7 +108,7 @@ var
 begin
   mRequest := RequestFor('/ignore ');
   try
-    Assert.IsTrue(TCompletionSlash.SlashItems(mRequest, nil, RulesBelow(), mItems));
+    Assert.IsTrue(TCompletionSlash.SlashItems(mRequest, nil, RulesBelow(), nil, mItems));
     Assert.AreEqual('magic-number', string.Join(',', Names(mItems)));
     Assert.AreEqual('/ignore', mItems.Items[0].Detail);
   finally
@@ -123,7 +123,7 @@ var
 begin
   mRequest := RequestFor('// /');
   try
-    Assert.IsFalse(TCompletionSlash.SlashItems(mRequest, nil, nil, mItems));
+    Assert.IsFalse(TCompletionSlash.SlashItems(mRequest, nil, nil, nil, mItems));
   finally
     mRequest.Free;
   end;

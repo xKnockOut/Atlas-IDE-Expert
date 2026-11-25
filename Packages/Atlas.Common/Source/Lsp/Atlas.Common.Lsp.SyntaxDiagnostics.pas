@@ -247,7 +247,7 @@ begin
   end;
   for mFinding in mFindings do
   begin
-    AItems.AddElement(TLspDiagnosticItems.FindingToJson(mFinding));
+    AItems.AddElement(TLspDiagnosticItems.FindingToJson(mFinding, ARules.Catalog));
   end;
 end;
 
@@ -483,14 +483,14 @@ begin
     // Code und Korrektur wie bei den übrigen Regeln. Ohne Konfiguration gilt Default = Fehler.
     for mFinding in AInput.Rules.SyntaxFindings(ADocument, AInput.Defines) do
     begin
-      mItems.AddElement(TLspDiagnosticItems.FindingToJson(mFinding));
+      mItems.AddElement(TLspDiagnosticItems.FindingToJson(mFinding, AInput.Rules.Catalog));
     end;
     // Merkmale in inaktiven Zweigen ({$IF CompilerVersion >= …}) sind gewollt (#109). Als Treffer der Regel
     // language-feature wie im Linter und in den MCP-Werkzeugen (#1126); DelphiVersion ist der Sprachstand.
     for mFinding in AInput.Rules.LanguageFeatureFindings(ADocument, AInput.Defines, AInput.DelphiVersion,
       TLspInactiveRegions.RangesOf(AInput.Inactive)) do
     begin
-      mItems.AddElement(TLspDiagnosticItems.FindingToJson(mFinding));
+      mItems.AddElement(TLspDiagnosticItems.FindingToJson(mFinding, AInput.Rules.Catalog));
     end;
     AddRuleFindings(mItems, ADocument, AInput.Defines, AInput.Rules);
   end;

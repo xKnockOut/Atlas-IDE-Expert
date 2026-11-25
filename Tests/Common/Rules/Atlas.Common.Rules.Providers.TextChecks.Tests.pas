@@ -18,11 +18,15 @@ type
     procedure ExcludesRelativePath;
     [Test]
     procedure AsksProjectAndSourceForFile;
+    [Test]
+    procedure OffersFixInRange;
   end;
 
 implementation
 
 uses
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Findings.Contract,
@@ -99,6 +103,30 @@ begin
   mChecks.Check('C:\P\Src\U.pas', 'Src\U.pas', cAssignedFree, TServerSettings.Default);
   Assert.AreEqual('C:\P\Src\U.pas', mProjectFile);
   Assert.AreEqual('C:\P\Src\U.pas', mSourceFile);
+end;
+
+procedure TRuleTextChecksProviderTests.OffersFixInRange;
+var
+  mChecks: IRuleTextChecks;
+  mActions: TArray<TCodeAction>;
+  mAction: TCodeAction;
+  mFixes: Integer;
+begin
+  mChecks := TRuleTextChecksProvider.Create(BuiltinRules, nil, nil);
+  // Zeile 11 (ab 0): "  if Assigned(AList) then".
+  mActions := mChecks.Actions('C:\P\U.pas', 'U.pas', cAssignedFree, TServerSettings.Default,
+    TTextRange.Create(11, 0, 11, 100));
+  mFixes := 0;
+  for mAction in mActions do
+  begin
+    if Length(mAction.Edits) > 0 then
+    begin
+      Inc(mFixes);
+    end;
+  end;
+  Assert.IsTrue(mFixes > 0);
+  Assert.AreEqual(0, Integer(Length(mChecks.Actions('C:\P\U.pas', 'U.pas', cAssignedFree, TServerSettings.Default,
+    TTextRange.Create(0, 0, 0, 5)))));
 end;
 
 initialization

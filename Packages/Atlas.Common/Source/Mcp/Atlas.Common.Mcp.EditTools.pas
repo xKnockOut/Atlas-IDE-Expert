@@ -258,7 +258,6 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.ReferenceConfidence,
-  Atlas.Common.Rules.CodeActions,
   Atlas.Common.Lsp.Rename,
   Atlas.Common.Documents.FileBatch,
   Atlas.Common.Documents.TextChanges,
@@ -889,9 +888,8 @@ begin
     raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadable].Text, [AFileName]);
   end;
   Result := nil;
-  for mAction in TRuleCodeActions.ForRange(AScope.Checks.Check(AFileName,
-    TTextNames.RelativeTo(AScope.Root, AFileName), mText, AScope.Settings), mText,
-    TTextRange.Create(ALine - 1, 0, ALine - 1, MaxInt div 2)) do
+  for mAction in AScope.Checks.Actions(AFileName, TTextNames.RelativeTo(AScope.Root, AFileName), mText,
+    AScope.Settings, TTextRange.Create(ALine - 1, 0, ALine - 1, MaxInt div 2)) do
   begin
     if (Length(mAction.Edits) > 0) and (mAction.Command = '') then
     begin

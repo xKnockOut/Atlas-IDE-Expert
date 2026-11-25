@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.Baseline;
+﻿unit Atlas.Common.Findings.Baseline;
 
 // Baseline für Altprojekte (#97): bestehende Treffer werden einmalig in
 // atlas-baseline.json festgehalten und danach ausgeblendet; gemeldet
@@ -48,7 +48,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Findings.Scopes;
 
 const
@@ -1313,6 +1313,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Rules.Baseline', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Findings.Baseline', cTexts);
 
 end.

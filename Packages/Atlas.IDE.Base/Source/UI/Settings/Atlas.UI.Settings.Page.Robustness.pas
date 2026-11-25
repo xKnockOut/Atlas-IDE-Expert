@@ -44,6 +44,7 @@ uses
   System.SysUtils,
   Atlas.Plugin.Diagnostics.Hangs,
   Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Vcl.Controls.ListBox,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page.General,
@@ -113,7 +114,7 @@ var
 begin
   AddTitle(TAtlasSettingsTextId.SettingsFuseTitle);
   mPanel := AddPanel(cFuseListHeight);
-  FFuseList := TListBox.Create(FPage);
+  FFuseList := TAtlasListBox.Create(FPage);
   FFuseList.Parent := mPanel;
   FFuseList.Align := alClient;
   FFuseList.MultiSelect := True;

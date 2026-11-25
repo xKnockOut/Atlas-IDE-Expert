@@ -10,7 +10,7 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.Instructions,
+  Atlas.Common.Rules.InstructionFiles,
   Core.VersionControlChanges,
   Core.WorkspaceGroup;
 

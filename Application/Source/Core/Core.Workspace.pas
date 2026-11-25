@@ -22,7 +22,7 @@ uses
   Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Core.Compiler,
   Core.Workspace.Setup,
   Core.Workspace.State,
