@@ -80,7 +80,7 @@ uses
   System.Math,
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.Vcl.Popup.Accessibility;
 

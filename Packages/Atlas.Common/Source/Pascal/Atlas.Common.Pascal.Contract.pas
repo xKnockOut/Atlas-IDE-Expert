@@ -84,6 +84,11 @@ type
   /// <summary>Quelle der Symbole je Datei, etwa aus dem Projekt des MCP-Servers.</summary>
   TPascalSourceFunc = reference to function(const AFileName: string): TPascalSource;
 
+  TPascalSources = record
+    /// <summary>ASource(AFileName), ohne Quelle TPascalSource.Default.</summary>
+    class function ForFile(const ASource: TPascalSourceFunc; const AFileName: string): TPascalSource; static;
+  end;
+
   /// <summary>Wert einer Bedingung (#847). Unknown: ein Wert ist dem Server nicht bekannt; der Zweig gilt als
   /// aktiv, ein {$ELSE} dazu ebenfalls.</summary>
   TConditionValue = (No, Yes, Unknown);
@@ -166,6 +171,18 @@ uses
 class function TPascalSource.Default: TPascalSource;
 begin
   Result := Create('', nil, nil);
+end;
+
+class function TPascalSources.ForFile(const ASource: TPascalSourceFunc; const AFileName: string): TPascalSource;
+begin
+  if Assigned(ASource) then
+  begin
+    Result := ASource(AFileName);
+  end
+  else
+  begin
+    Result := TPascalSource.Default;
+  end;
 end;
 
 class function TPascalSource.Create(const AFileName: string; const ADefines: TArray<string>;

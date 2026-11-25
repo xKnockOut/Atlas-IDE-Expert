@@ -14,7 +14,7 @@ uses
   System.SysUtils,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.QuickActions,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Welcome.QuickActions,
   DUnitX.TestFramework,
   Atlas.UI.Welcome.Contract;

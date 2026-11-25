@@ -242,7 +242,7 @@ implementation
 uses
   System.Generics.Collections,
   System.JSON,
-  Atlas.Core.Settings.Choices,
+  Atlas.Plugin.Settings.Choices,
   Atlas.Text.Json;
 
 function Make(ACheck: TAtlasSetupCheck; AFinding: TAtlasSetupFinding; AState: TAtlasStatusState;

@@ -66,12 +66,12 @@ uses
   System.Math,
   System.StrUtils,
   Vcl.Controls,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Editor.RoutineNesting,
-  Atlas.Core.Settings.ToolbarItems,
-  Atlas.Core.Settings.StatusBarItems;
+  Atlas.Plugin.Settings.ToolbarItems,
+  Atlas.Plugin.Settings.StatusBarItems;
 
 { TAtlasSettingsEditorViewPart }
 

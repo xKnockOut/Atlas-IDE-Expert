@@ -25,7 +25,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.ToolbarItems,
+  Atlas.Plugin.Settings.ToolbarItems,
   Atlas.UI.EditorToolbar.Customize;
 
 function Commands: TArray<TAtlasToolbarCommandInfo>;

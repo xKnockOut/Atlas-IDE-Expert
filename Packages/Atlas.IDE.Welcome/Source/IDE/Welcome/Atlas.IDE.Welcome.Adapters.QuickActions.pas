@@ -153,7 +153,7 @@ uses
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Pull,
   Atlas.Core.Welcome.Sections,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Welcome.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,

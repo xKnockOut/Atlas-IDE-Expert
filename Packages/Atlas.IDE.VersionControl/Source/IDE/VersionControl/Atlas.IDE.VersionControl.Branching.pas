@@ -131,7 +131,7 @@ uses
   Atlas.Core.Setup.Checklist,
   Atlas.Core.VersionControl.BranchNames,
   Atlas.Core.VersionControl.Plan,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.ToolsApi.Windows.DockWindow,
   Atlas.ToolsApi.Files.Service,

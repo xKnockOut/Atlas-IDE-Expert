@@ -48,7 +48,7 @@ uses
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Commands.MenuContext,
-  Atlas.Core.Settings.ContextMenuGroups,
+  Atlas.Plugin.Settings.ContextMenuGroups,
   Atlas.IDE.Foundation.Settings,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.ToolsApi.Files.OpenWatch,

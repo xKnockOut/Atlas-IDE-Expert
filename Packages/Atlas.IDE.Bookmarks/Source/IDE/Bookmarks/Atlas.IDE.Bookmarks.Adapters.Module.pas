@@ -61,7 +61,7 @@ uses
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Bookmarks.QuickService,
   Atlas.IDE.Bookmarks.QuickChord,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Bookmarks.Strings;
 
 { TAtlasBookmarksModule }

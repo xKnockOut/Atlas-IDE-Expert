@@ -53,10 +53,10 @@ uses
   System.Classes,
   Vcl.Menus,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.VisualizerKinds,
-  Atlas.Core.Settings.PageNames,
+  Atlas.Plugin.Settings.VisualizerKinds,
+  Atlas.Plugin.Settings.PageNames,
   Atlas.Text.StepFilter,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Page,
   Atlas.UI.Settings.Page.TestSupport;
 

@@ -139,7 +139,7 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Plugin.Projects.PathCheck,
   Atlas.Core.Projects.Baseline,
-  Atlas.Core.Settings.SchemaData,
+  Atlas.Plugin.Settings.SchemaData,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.SetupPreview,

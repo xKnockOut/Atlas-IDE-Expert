@@ -25,7 +25,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Plugin.Settings.VisualizerKinds,
   Atlas.Core.Debug.Visualizers.Format;
 
 type

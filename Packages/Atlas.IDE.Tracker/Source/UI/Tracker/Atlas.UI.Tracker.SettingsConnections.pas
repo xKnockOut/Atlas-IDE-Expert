@@ -92,7 +92,7 @@ implementation
 uses
   Atlas.Core.Tracker.Contract,
   System.SysUtils,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.Settings.Strings;
 
 const

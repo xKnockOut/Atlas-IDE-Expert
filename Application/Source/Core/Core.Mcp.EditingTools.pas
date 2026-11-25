@@ -23,6 +23,7 @@ uses
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Mcp.Contract.Formatting,
+  Atlas.Common.Mcp.Contract.TextChecks,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Mcp.ExtractTools,
   Atlas.Common.Mcp.RefactorTools,
@@ -32,9 +33,6 @@ uses
   Atlas.Common.Mcp.EditFindings,
   Atlas.Common.Mcp.CheckTools,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Rules.Checker,
-  Atlas.Common.Findings.Scopes,
-  Atlas.Common.Rules.Builtin,
   Atlas.Common.Localization.Texts,
   Core.Texts,
   Core.WorkspaceGroup,
@@ -210,7 +208,7 @@ begin
   begin
     raise EMcpToolError.Create(TCoreTexts.Missing(['line']));
   end;
-  Result := AContext.Edit.ApplyCodeAction(TMcpRuleScope.Create(BuiltinRules,
+  Result := AContext.Edit.ApplyCodeAction(TMcpRuleScope.Checking(AContext.Adapters.TextChecks,
     AContext.Group.Main.Configuration.Settings, AContext.Root), mFileName, mLine,
     TMcpArgs.OptionalString(AArguments, 'title'), DryRunOf(AArguments));
 end;
@@ -263,7 +261,7 @@ begin
   begin
     raise EMcpToolError.Create(TCoreTexts.NoProjectGiveFile);
   end;
-  Result := AContext.Edit.FixFindings(TMcpRuleScope.Create(BuiltinRules,
+  Result := AContext.Edit.FixFindings(TMcpRuleScope.Checking(AContext.Adapters.TextChecks,
     AContext.Group.Main.Configuration.Settings, AContext.Root), mFiles, mRules,
     TMcpArgs.OptionalString(AArguments, 'minConfidence'), DryRunOf(AArguments));
 end;
@@ -488,23 +486,20 @@ begin
 end;
 
 /// <summary>Befunde wie get_diagnostics (#2603): Regeln und overrides für den Pfad relativ zu ARoot, mit Symbolen,
-/// Include-Dateien und Index des Projekts. Ohne Gruppe (Tests) keine.</summary>
-function FindingsOf(AGroup: TCoreWorkspaceGroup; const ARoot: string; const ASource: TCheckSourceFunc;
-  const AProject: TCheckProjectFunc): TMcpFindingsFunc;
+/// Include-Dateien und Index des Projekts aus AChecks. Ohne Gruppe oder Prüfung (Tests) keine.</summary>
+function FindingsOf(AGroup: TCoreWorkspaceGroup; const ARoot: string; const AChecks: IMcpTextChecks):
+  TMcpFindingsFunc;
 begin
   Result :=
     function(const AFileName, AText: string): TArray<TRuleFinding>
-    var
-      mScopes: TFindingScopes;
     begin
       Result := nil;
-      if AGroup = nil then
+      if (AGroup = nil) or (AChecks = nil) then
       begin
         Exit;
       end;
-      Result := TFileChecker.CheckText(BuiltinRules, AGroup.Main.Configuration.Settings,
-        TTextNames.RelativeTo(ARoot, AFileName), AText, TCheckOrigin.ForFile(AProject, ASource, AFileName),
-        mScopes);
+      Result := AChecks.Check(AFileName, TTextNames.RelativeTo(ARoot, AFileName), AText,
+        AGroup.Main.Configuration.Settings);
     end;
 end;
 
@@ -543,7 +538,7 @@ var
   mEvaluation: IMcpEditEvaluation;
 begin
   mEvaluation := TMcpEditEvaluation.Create(AContext.Root, FindingsOf(AContext.Group, AContext.Root,
-    AContext.CheckSource, AContext.CheckProject), ReadSourceText, ReportFindingsOf(AContext.Group));
+    AContext.Adapters.TextChecks), ReadSourceText, ReportFindingsOf(AContext.Group));
   if AContext.Edit <> nil then
   begin
     AContext.Edit.AfterWrite := AfterWriteOf(mEvaluation);

@@ -65,7 +65,7 @@ uses
   System.DateUtils,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.QuickToggles,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Diagnostics.SafeMode;

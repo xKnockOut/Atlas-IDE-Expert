@@ -43,7 +43,7 @@ uses
   Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Welcome.QuickActionRows,
   Atlas.UI.Welcome.Frame,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Contract;
 

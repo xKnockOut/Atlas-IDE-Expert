@@ -71,7 +71,7 @@ implementation
 uses
   System.Math,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Debug.Stepping.Strings,
   Atlas.Vcl.Popup.Accessibility;
 

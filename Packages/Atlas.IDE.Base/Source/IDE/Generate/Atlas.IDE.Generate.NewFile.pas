@@ -45,7 +45,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Generate.Menu,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Generate.Strings,
   Atlas.UI.Generate.Window,
   Atlas.ToolsApi.Theme.Style,

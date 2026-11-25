@@ -80,7 +80,7 @@ uses
   Atlas.Core.EditorToolbar.Icons,
   Atlas.Core.Settings.Plugin,
   Atlas.Plugin.Style.Palette,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.Bar,
   Atlas.UI.Designer.Search,

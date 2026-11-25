@@ -33,7 +33,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.ToolbarItems;
+  Atlas.Plugin.Settings.ToolbarItems;
 
 { TAtlasToolbarIcons }
 

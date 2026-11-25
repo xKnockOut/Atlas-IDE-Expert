@@ -116,7 +116,7 @@ uses
   Atlas.Plugin.Files.DataFile,
   Atlas.Plugin.Files.TextFile,
   Atlas.Plugin.Settings.JsonText,
-  Atlas.Core.Settings.Layers,
+  Atlas.Plugin.Settings.Layers,
   Atlas.Core.Tests.ListFile,
   Atlas.Core.Tests.ListView,
   Atlas.IDE.Foundation.Settings,

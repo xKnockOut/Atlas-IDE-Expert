@@ -284,6 +284,7 @@ Adapters.Mcp.Formatting.Tests
 Atlas.Common.Editing.Providers.CompilerFixes.Tests
 Adapters.Mcp.CompilerFixes.Tests
 Adapters.Mcp.BulkFix.Tests
+Adapters.Mcp.TextChecks.Tests
 Adapters.Mcp.Conventions.Tests
 Atlas.Common.Compiler.MessageTexts.Tests
 Atlas.Common.Mcp.RefactorTools.Tests
@@ -471,6 +472,7 @@ Atlas.Common.Rules.Derived.Tests
 Atlas.Common.Rules.Engine.Tests
 Atlas.Common.Rules.Providers.InheritanceDepths.Tests
 Atlas.Common.Rules.Providers.BulkFix.Tests
+Atlas.Common.Rules.Providers.TextChecks.Tests
 Atlas.Common.Rules.Providers.Conventions.Tests
 Atlas.Common.Rules.Providers.FindingPrompts.Tests
 Atlas.Common.Rules.Providers.OwnershipReport.Tests
@@ -633,7 +635,7 @@ Atlas.Core.Tracker.AiSummary.Tests
 Atlas.Core.Tracker.KnownErrors.Tests
 Atlas.Core.Commands.MenuContext.Tests
 Atlas.Core.Commands.QuickOpenTarget.Tests
-Atlas.Core.Settings.ContextMenuGroups.Tests
+Atlas.Plugin.Settings.ContextMenuGroups.Tests
 Atlas.Core.Debug.Modules.Tests
 Atlas.Core.Debug.Threads.Tests
 Atlas.Core.Debug.Deadlocks.Tests
@@ -664,7 +666,7 @@ Atlas.Core.Debug.LaunchGroups.Tests
 Atlas.Core.Debug.ConsoleCapture.Tests
 Atlas.Core.Processes.OutputLines.Tests
 Atlas.Core.Settings.BuildDebug.Tests
-Atlas.Core.Settings.KeyCodes.Tests
+Atlas.Plugin.Settings.KeyCodes.Tests
 Atlas.Core.Architecture.Model.Tests
 Atlas.Core.Hotspots.Model.Tests
 Atlas.UI.Debug.Deadlocks.Tests
@@ -701,7 +703,8 @@ Atlas.UI.Settings.Strings.Tests
 Atlas.UI.Setup.Strings.Tests
 Atlas.UI.Status.Strings.Tests
 Atlas.UI.StatusBar.Strings.Tests
-Atlas.UI.Strings.Tests
+Atlas.Plugin.Localization.Strings.Tests
+Atlas.UI.Signature.FormatText.Tests
 Atlas.UI.SymbolPath.Strings.Tests
 Atlas.UI.Tests.Strings.Tests
 Atlas.UI.Tracker.Strings.Tests
@@ -814,7 +817,7 @@ Atlas.Core.Debug.EventBreakWatch.Tests
 Atlas.Core.Debug.DataBreak.Tests
 Atlas.Core.Debug.DataBreakPatterns.Tests
 Atlas.Core.Debug.DataBreakWatch.Tests
-Atlas.Core.Settings.DataBreakClasses.Tests
+Atlas.Plugin.Settings.DataBreakClasses.Tests
 Atlas.Core.Debug.StopProgress.Tests
 Atlas.Core.Debug.Phases.Tests
 Atlas.Core.Debug.WhyHereFlow.Tests

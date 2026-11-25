@@ -35,7 +35,7 @@ uses
   Atlas.Core.Search.ReplaceList,
   Atlas.Core.Search.Scopes,
   Atlas.Text.Lines,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Search.Strings,
   Atlas.UI.Search.ReplaceFrame,
   Atlas.ToolsApi.Editor.Buffer,

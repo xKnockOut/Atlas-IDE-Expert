@@ -53,7 +53,7 @@ uses
   Vcl.Menus,
   Atlas.Plugin.Status.Contract,
   Atlas.Core.Problems.Findings,
-  Atlas.Core.Settings.StatusBarItems;
+  Atlas.Plugin.Settings.StatusBarItems;
 
 function Sample: TAtlasStatusBarView;
 begin

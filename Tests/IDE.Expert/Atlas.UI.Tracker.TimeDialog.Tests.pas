@@ -51,7 +51,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.TimeLog,
-  Atlas.UI.Strings,  Atlas.UI.Tracker.Time.Strings,
+  Atlas.Plugin.Localization.Strings,  Atlas.UI.Tracker.Time.Strings,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.TimeDialog,
   Atlas.UI.Tracker.TimeList;

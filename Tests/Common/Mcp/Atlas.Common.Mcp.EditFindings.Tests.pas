@@ -48,7 +48,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Builtin,
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Mcp.EditTools,
   Atlas.Common.Mcp.EditFindings;
@@ -340,10 +339,12 @@ begin
         Result := 'Auswertung ' + ATool;
       end;
     mFiles.Files.Add('U.pas', cAssignedFree);
-    mReport := mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), ['U.pas'],
+    mReport := mEdit.FixFindings(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil),
+      TServerSettings.Default, ''), ['U.pas'],
       ['redundant-assigned-free'], '', True);
     Assert.AreEqual(0, Integer(mNames.Count), 'Vorschau ohne Auswertung');
-    mReport := mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), ['U.pas'],
+    mReport := mEdit.FixFindings(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil),
+      TServerSettings.Default, ''), ['U.pas'],
       ['redundant-assigned-free'], '', False);
     Assert.AreEqual(1, Integer(mNames.Count));
     Assert.AreEqual('U.pas', mNames[0]);

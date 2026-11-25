@@ -9,7 +9,7 @@ uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Editor.Overview,
-  Atlas.Core.Settings.Reassigned,
+  Atlas.Plugin.Settings.Reassigned,
   Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Page.Host;
 
@@ -63,7 +63,7 @@ uses
   System.SysUtils,
   System.Math,
   System.StrUtils,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Editor.RegionFolds,
   Atlas.Core.Settings.Plugin.Store,

@@ -54,7 +54,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.StatusBarItems;
+  Atlas.Plugin.Settings.StatusBarItems;
 
 { TAtlasStatusFieldPlan }
 

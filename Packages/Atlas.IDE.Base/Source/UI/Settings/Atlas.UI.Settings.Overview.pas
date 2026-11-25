@@ -19,7 +19,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Forms,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.Groups,
   Atlas.Core.Settings.Search;
 
@@ -81,7 +81,7 @@ uses
   Winapi.Windows,
   System.UITypes,
   Vcl.Graphics,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings;
 
 const

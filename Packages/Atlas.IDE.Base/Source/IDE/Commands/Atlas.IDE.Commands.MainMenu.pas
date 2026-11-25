@@ -71,7 +71,7 @@ uses
   System.JSON,
   Vcl.Menus,
   Vcl.ExtCtrls,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.IDE.Commands.MenuModules;
 
 type

@@ -48,7 +48,7 @@ uses
   Atlas.Core.Diagnostics.SafeMode,
   Atlas.UI.Settings.Bindings,
   Atlas.UI.Settings.Page.Sheets,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Updates.Strings,
   Atlas.UI.Diagnostics.Strings,

@@ -22,7 +22,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 const
   cTexts: array[TAtlasLanguage, TAtlasCommandsTextId] of string = (

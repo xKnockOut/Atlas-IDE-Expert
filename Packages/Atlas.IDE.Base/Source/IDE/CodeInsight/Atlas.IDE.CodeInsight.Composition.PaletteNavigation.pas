@@ -22,7 +22,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Lsp.Contract,
   Atlas.Plugin.Lsp.DataFlow,

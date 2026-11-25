@@ -136,7 +136,7 @@ uses
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.VersionControl.BranchPlan,
   Atlas.Core.VersionControl.Contract,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.MyIssues.Strings,
   Atlas.UI.Tracker.LinkDialogs,

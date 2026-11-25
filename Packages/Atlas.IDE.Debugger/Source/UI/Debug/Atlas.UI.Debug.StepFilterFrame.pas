@@ -110,7 +110,7 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Debug.Stepping.Strings,
   Atlas.Vcl.Controls.WrapLabel,
   Atlas.Vcl.Theme.Service;

@@ -47,7 +47,7 @@ uses
   System.Generics.Collections,
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Settings.DataBreakClasses;
+  Atlas.Plugin.Settings.DataBreakClasses;
 
 const
   cAnswer =

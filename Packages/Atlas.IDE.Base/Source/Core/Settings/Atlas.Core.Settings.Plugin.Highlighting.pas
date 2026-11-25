@@ -94,7 +94,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Settings.Reassigned,
+  Atlas.Plugin.Settings.Reassigned,
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette;
 

@@ -37,7 +37,7 @@ implementation
 
 uses
   System.JSON,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.Core.Editor.ClassExtraction,
   Atlas.IDE.Editor.WorkspaceEdit,

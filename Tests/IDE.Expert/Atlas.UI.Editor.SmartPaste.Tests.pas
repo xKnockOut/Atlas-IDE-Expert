@@ -28,7 +28,7 @@ uses
   System.Types,
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.SmartPaste,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.SmartPaste;
 
 function Analysis: TAtlasPasteAnalysis;

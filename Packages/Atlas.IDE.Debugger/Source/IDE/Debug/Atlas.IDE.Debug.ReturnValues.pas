@@ -100,7 +100,7 @@ uses
   System.JSON,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Plugin.Settings.VisualizerKinds,
   Atlas.Core.Debug.StopProgress,
   Atlas.Core.Debug.StepInto,
   Atlas.ToolsApi.Files.Service,

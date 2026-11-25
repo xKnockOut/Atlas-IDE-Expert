@@ -93,7 +93,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Plugin.Files.Contract,
   Atlas.Plugin.Files.TextFile,
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,

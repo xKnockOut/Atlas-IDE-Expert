@@ -40,7 +40,7 @@ uses
   System.Classes, // TShortCut
   Vcl.Menus, // ShortCutToText
   Atlas.Core.VersionControl.Pull,
-  Atlas.UI.Strings, // TAtlasStrings
+  Atlas.Plugin.Localization.Strings, // TAtlasStrings
   Atlas.UI.Welcome.Strings;
 
 const

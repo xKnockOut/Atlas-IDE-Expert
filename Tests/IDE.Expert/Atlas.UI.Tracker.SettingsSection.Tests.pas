@@ -68,7 +68,7 @@ uses
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Tracker.CommentEditor,
   Atlas.UI.Settings.Page,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.Settings.Strings,
   Atlas.Core.Tracker.Contract.CommentAssist,
   Atlas.Core.Tracker.Contract.MyIssues,

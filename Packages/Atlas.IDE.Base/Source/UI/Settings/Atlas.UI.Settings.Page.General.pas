@@ -83,7 +83,7 @@ uses
   Vcl.Graphics,
   Vcl.Dialogs,
   Atlas.UI.Settings.Page.Sheets,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.Core.Commands.ShortcutTips,
   Atlas.Plugin.Notifications.Contract,

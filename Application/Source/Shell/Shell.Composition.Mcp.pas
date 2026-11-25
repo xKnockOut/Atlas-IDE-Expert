@@ -6,12 +6,14 @@
 interface
 
 uses
+  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Mcp.Contract.BulkFix,
   Atlas.Common.Mcp.Contract.CompilerFixes,
   Atlas.Common.Mcp.Contract.Conventions,
   Atlas.Common.Mcp.Contract.Extract,
-  Atlas.Common.Mcp.Contract.Formatting;
+  Atlas.Common.Mcp.Contract.Formatting,
+  Atlas.Common.Mcp.Contract.TextChecks;
 
 type
   TMcpComposition = record
@@ -24,6 +26,13 @@ type
     /// <summary>Sammelkorrektur aus Rules mit den eingebauten Regeln; AProject und ASource wie bei der Prüfung der
     /// MCP-Werkzeuge (nil = ohne Index bzw. Vordefinitionen).</summary>
     class function BulkFix(const AProject: TCheckProjectFunc; const ASource: TCheckSourceFunc): IMcpBulkFix; static;
+    /// <summary>Prüfung von Texten aus Rules mit den eingebauten Regeln; AProject und ASource je Datei (nil = ohne
+    /// Index bzw. Vordefinitionen).</summary>
+    class function TextChecks(const AProject: TCheckProjectFunc; const ASource: TCheckSourceFunc): IMcpTextChecks;
+      static;
+    /// <summary>Wie TextChecks mit den Regeln ARules.</summary>
+    class function TextChecksWith(const ARules: TArray<IRule>; const AProject: TCheckProjectFunc;
+      const ASource: TCheckSourceFunc): IMcpTextChecks; static;
     /// <summary>Projektkonventionen aus Rules mit den eingebauten Regeln.</summary>
     class function Conventions: IMcpConventions; static;
     /// <summary>Auftrag zu einem Befund aus Rules.</summary>
@@ -38,12 +47,14 @@ uses
   Atlas.Common.Rules.Providers.BulkFix,
   Atlas.Common.Rules.Providers.Conventions,
   Atlas.Common.Rules.Providers.FindingPrompts,
+  Atlas.Common.Rules.Providers.TextChecks,
   Atlas.Common.Editing.Composition,
   Adapters.Mcp.BulkFix,
   Adapters.Mcp.CompilerFixes,
   Adapters.Mcp.Conventions,
   Adapters.Mcp.Extract,
-  Adapters.Mcp.Formatting;
+  Adapters.Mcp.Formatting,
+  Adapters.Mcp.TextChecks;
 
 { TMcpComposition }
 
@@ -69,6 +80,21 @@ var
 begin
   mBulkFix := TRuleBulkFixProvider.Create(BuiltinRules, AProject, ASource);
   Result := TMcpBulkFixAdapter.Create(mBulkFix);
+end;
+
+class function TMcpComposition.TextChecks(const AProject: TCheckProjectFunc;
+  const ASource: TCheckSourceFunc): IMcpTextChecks;
+begin
+  Result := TextChecksWith(BuiltinRules, AProject, ASource);
+end;
+
+class function TMcpComposition.TextChecksWith(const ARules: TArray<IRule>; const AProject: TCheckProjectFunc;
+  const ASource: TCheckSourceFunc): IMcpTextChecks;
+var
+  mChecks: IRuleTextChecks;
+begin
+  mChecks := TRuleTextChecksProvider.Create(ARules, AProject, ASource);
+  Result := TMcpTextChecksAdapter.Create(mChecks);
 end;
 
 class function TMcpComposition.Conventions: IMcpConventions;

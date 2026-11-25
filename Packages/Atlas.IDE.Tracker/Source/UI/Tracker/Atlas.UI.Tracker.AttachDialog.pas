@@ -118,7 +118,7 @@ uses
   System.UITypes,
   Vcl.ExtCtrls,
   Atlas.Core.Tracker.Files,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Attach.Strings,
   Atlas.Vcl.Controls.WrapLabel,

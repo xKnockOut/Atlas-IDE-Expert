@@ -32,7 +32,7 @@ uses
   System.Generics.Collections,
   ToolsAPI,
   Atlas.Core.Debug.Visualizers,
-  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Plugin.Settings.VisualizerKinds,
   Atlas.UI.Debug.Viewer;
 
 type
@@ -141,7 +141,7 @@ uses
   Atlas.Core.Debug.VisualizerFlow,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Evaluator,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Debug.Values.Strings;
 
 const

@@ -22,7 +22,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Vcl.ExtCtrls,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.Transfer,
   Atlas.Vcl.Forms.Dialog;
 
@@ -113,7 +113,7 @@ implementation
 uses
   Vcl.Graphics,
   Vcl.Menus,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.Vcl.Controls.WrapLabel,
   Atlas.Vcl.Controls.ListView,

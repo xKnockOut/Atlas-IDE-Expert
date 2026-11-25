@@ -19,7 +19,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Settings.DataBreakClasses,
+  Atlas.Plugin.Settings.DataBreakClasses,
   Atlas.Core.Debug.BreakLocations;
 
 type
