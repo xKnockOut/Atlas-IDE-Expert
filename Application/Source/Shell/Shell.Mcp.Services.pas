@@ -78,7 +78,7 @@ uses
   Core.Mcp.Ide,
   Core.Mcp.ArchitectureTools,
   Atlas.Common.Compiler.Contract,
-  Atlas.Core.VersionControl.Providers.Git,
+  Atlas.VersionControl.Repository.Providers.Git,
   Core.VersionControlChanges,
   Shell.Composition.Platform,
   Core.Bootstrap,

@@ -46,8 +46,8 @@ uses
   Atlas.Core.Settings.Transfer,
   Atlas.Common.Projects.PackageLocator,
   Atlas.Windows.Diagnostics.StackTrace,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Tools,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.Tools,
   Atlas.Text.IndexCache,
   Atlas.Tests.FirstUse.Vcl;
 
@@ -417,7 +417,7 @@ end;
 { TFirstUse }
 
 /// <summary>Fundorte von git und svn (TAtlasVcsTools.Where): gemerkt bis Programmende in Klassenvariablen von
-/// Atlas.Core.VersionControl.Tools, freigegeben mit deren Finalisierung. Tests, die einen Fundort vorgeben, stellen
+/// Atlas.VersionControl.Repository.Tools, freigegeben mit deren Finalisierung. Tests, die einen Fundort vorgeben, stellen
 /// den echten danach mit Remember wieder her, statt ihn zu vergessen.</summary>
 procedure WarmUpVcsTools;
 var

@@ -44,8 +44,8 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Graphics,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.BranchPlan,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.BranchPlan,
   Atlas.Vcl.Forms.Dialog;
 
 type
@@ -283,7 +283,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.VersionControl.BranchNames,
+  Atlas.VersionControl.Repository.BranchNames,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.Plugin.Style.Signal,

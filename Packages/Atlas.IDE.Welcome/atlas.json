@@ -32,6 +32,7 @@
         "Atlas.Plugin",
         "Atlas.Vcl",
         "Atlas.ToolsApi",
+        "Atlas.VersionControl",
         "Atlas.Core",
         "Atlas.UI",
         "Atlas.IDE"
@@ -54,8 +55,9 @@
         "Atlas.IDE.Debug.Composition -> Atlas.Core.*.Providers.*",
         "Atlas.IDE.Tests.Composition -> Atlas.Core.*.Providers.*",
         "Atlas.IDE.Tracker.Composition -> Atlas.Core.*.Providers.*",
-        "Atlas.IDE.VersionControl.Composition -> Atlas.Core.*.Providers.*",
-        "Atlas.IDE.VersionControl.Composition -> Atlas.Core.VersionControl.Composition"
+        "Atlas.IDE.Tests.Composition -> Atlas.VersionControl.Repository.Providers.ProcessRunner",
+        "Atlas.IDE.VersionControl.Composition -> Atlas.VersionControl.Repository.Providers.ProcessRunner",
+        "Atlas.IDE.VersionControl.Composition -> Atlas.VersionControl.Repository.Composition"
       ]
     },
     "architecture-contract-content": {
@@ -77,6 +79,7 @@
         "Atlas.Plugin",
         "Atlas.Vcl",
         "Atlas.ToolsApi",
+        "Atlas.VersionControl",
         "Atlas.Core",
         "Atlas.UI",
         "Atlas.IDE"

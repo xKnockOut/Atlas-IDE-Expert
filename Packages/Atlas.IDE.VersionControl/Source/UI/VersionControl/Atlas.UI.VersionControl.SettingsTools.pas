@@ -8,9 +8,9 @@ interface
 uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Contract,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Tools,
-  Atlas.Core.VersionControl.ToolCheck,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.Tools,
+  Atlas.VersionControl.Repository.ToolCheck,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.UI.VersionControl.SettingsPart;

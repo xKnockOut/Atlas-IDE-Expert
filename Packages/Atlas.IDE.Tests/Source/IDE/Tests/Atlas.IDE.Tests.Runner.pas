@@ -56,7 +56,7 @@ uses
   System.Classes,
   System.Generics.Collections,
   ToolsAPI,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Build.Events,
   Atlas.Core.Projects.Summary,

@@ -17,7 +17,7 @@ uses
   Atlas.Core.Build.Messages,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 type
   /// <summary>Art eines Compiles für RecordCompile: Hintergrundprüfung (#548) oder Build mit Art, Konfiguration

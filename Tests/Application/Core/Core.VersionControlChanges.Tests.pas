@@ -9,8 +9,8 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Tools;
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.Tools;
 
 type
   [TestFixture]

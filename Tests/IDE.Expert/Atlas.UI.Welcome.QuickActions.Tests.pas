@@ -105,7 +105,7 @@ uses
   Vcl.Forms,
   Vcl.Menus,
   Vcl.ExtCtrls,
-  Atlas.Core.VersionControl.Pull,
+  Atlas.VersionControl.Repository.Pull,
   Atlas.UI.Welcome.QuickActions.Texts;
 
 const
