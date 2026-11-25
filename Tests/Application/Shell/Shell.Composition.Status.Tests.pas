@@ -8,7 +8,7 @@ interface
 uses
   DUnitX.TestFramework,
   Atlas.Common.Index.Scheduler,
-  Atlas.Common.Lsp.Status,
+  Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Lsp.WorkspaceCheck,
   Core.Workspace,
   Shell.Composition.Contract,

@@ -14,7 +14,7 @@ uses
   System.JSON,
   System.Classes,
   System.Generics.Collections,
-  Atlas.Common.Lsp.StatusFile;
+  Atlas.Common.Diagnostics.StatusFile;
 
 type
   /// <summary>Ausführlicher Status des LSP-Servers: Wurzeln der Arbeitsbereiche, Status (gehört dem Aufrufer, nil

@@ -32,7 +32,7 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.StringLiterals,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;

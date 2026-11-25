@@ -16,7 +16,7 @@ uses
   Atlas.Common.Compiler.Edition,
   Atlas.Common.Compiler.Results,
   Atlas.Common.Lsp.WorkDoneProgress,
-  Atlas.Common.Lsp.Status,
+  Atlas.Common.JsonRpc.ServerStatus,
   Core.Compiler;
 
 type

@@ -33,7 +33,7 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Localization.Texts;

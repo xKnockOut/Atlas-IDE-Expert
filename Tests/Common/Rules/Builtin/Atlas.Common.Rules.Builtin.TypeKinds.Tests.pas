@@ -49,7 +49,7 @@ type
     [Test]
     procedure RuleIsRegistered;
     /// <summary>X.TryGetValue&lt;Integer&gt;(…) ist kein Punkt auf dem Boolean-Ergebnis (Fehlalarm in
-    /// Atlas.Common.Lsp.Positions).</summary>
+    /// Atlas.Common.JsonRpc.Positions).</summary>
     [Test]
     procedure GenericMethodCallIsNoDotOnResult;
   end;

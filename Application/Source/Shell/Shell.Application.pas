@@ -22,7 +22,7 @@ uses
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Common.Index.PublishedMembers,
   Atlas.Common.Lsp.ServerActivity,
-  Atlas.Common.Lsp.StatusFile,
+  Atlas.Common.Diagnostics.StatusFile,
   Atlas.Common.Lsp.StatusHeartbeat,
   Atlas.Common.Index.CacheDirectory,
   Platform.Server,

@@ -39,7 +39,7 @@ implementation
 uses
   Atlas.Common.Product.Version,
   Atlas.Common.Diagnostics.ShutdownLeaks,
-  Atlas.Common.Lsp.StatusFile;
+  Atlas.Common.Diagnostics.StatusFile;
 
 { TServerStatusHeartbeat }
 
