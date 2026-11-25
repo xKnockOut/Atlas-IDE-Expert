@@ -7,7 +7,9 @@
 interface
 
 uses
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Findings.Contract;
 
 type
@@ -18,6 +20,10 @@ type
     /// </summary>
     function Check(const AFileName, ARelativePath, AText: string; const ASettings: TServerSettings):
       TArray<TRuleFinding>;
+    /// <summary>Korrekturen und Unterdrückungen der Treffer in ARange samt try/finally um Create-Zuweisungen der
+    /// Startzeile (#42), geprüft wie Check.</summary>
+    function Actions(const AFileName, ARelativePath, AText: string; const ASettings: TServerSettings;
+      const ARange: TTextRange): TArray<TCodeAction>;
   end;
 
 implementation

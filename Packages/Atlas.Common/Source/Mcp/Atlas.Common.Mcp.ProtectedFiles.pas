@@ -59,7 +59,7 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Mcp.Server,
-  Atlas.Common.Rules.Output,
+  Atlas.Text.Json,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -234,12 +234,12 @@ begin
   begin
     mText := Block(cTexts[TProtectedFilesText.HookBefore].Fmt([RelativePath(FRoot, AFileName)]), mEntry, '');
     Result := '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny",' +
-      '"permissionDecisionReason":' + TFindingsOutput.JsonString(mText) + '}}';
+      '"permissionDecisionReason":' + TJsonText.Quote(mText) + '}}';
   end
   else
   begin
     mText := Block(cTexts[TProtectedFilesText.HookAfter].Fmt([RelativePath(FRoot, AFileName)]), mEntry, '');
-    Result := '{"decision":"block","reason":' + TFindingsOutput.JsonString(mText) + '}';
+    Result := '{"decision":"block","reason":' + TJsonText.Quote(mText) + '}';
   end;
 end;
 
