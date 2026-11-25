@@ -15,8 +15,8 @@ uses
   Atlas.Core.Hover.History,
   Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Explanation,
-  Atlas.Core.Documentation.Contract,
-  Atlas.Core.Hover.Contract.DebugValue;
+  Atlas.Plugin.Documentation.Contract,
+  Atlas.Plugin.Hover.Contract.DebugValue;
 
 type
   {$SCOPEDENUMS ON}

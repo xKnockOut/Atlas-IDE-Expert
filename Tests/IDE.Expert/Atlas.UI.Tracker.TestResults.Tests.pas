@@ -40,7 +40,7 @@ uses
   System.DateUtils,
   Vcl.Forms,
   Vcl.Graphics,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.TestResults,
   Atlas.Plugin.Localization.Strings,

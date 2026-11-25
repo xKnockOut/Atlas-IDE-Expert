@@ -35,7 +35,7 @@ uses
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Base.Foundation.LineChanges,
   Atlas.ToolsApi.Debugger.Services,
-  Atlas.Core.Editor.Contract;
+  Atlas.Plugin.Editor.Contract;
 
 const
   cBookmarkCount = 10;

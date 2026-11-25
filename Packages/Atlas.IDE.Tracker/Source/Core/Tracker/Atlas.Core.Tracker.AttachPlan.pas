@@ -10,7 +10,7 @@
 interface
 
 uses
-  Atlas.Core.CiBuild.Contract;
+  Atlas.Plugin.CiBuild.Contract;
 
 type
 {$SCOPEDENUMS ON}

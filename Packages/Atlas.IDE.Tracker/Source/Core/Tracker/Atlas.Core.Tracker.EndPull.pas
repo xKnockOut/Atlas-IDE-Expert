@@ -42,7 +42,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.VersionControl.Repository.Pull;
 
 { TAtlasEndPull }

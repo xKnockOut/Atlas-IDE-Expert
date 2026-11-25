@@ -112,7 +112,7 @@ uses
   DockForm,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Documentation.Contract,
+  Atlas.Plugin.Documentation.Contract,
   Atlas.Core.Completion.Parentheses,
   Atlas.Core.Completion.Preview,
   Atlas.Core.Completion.Favorites,

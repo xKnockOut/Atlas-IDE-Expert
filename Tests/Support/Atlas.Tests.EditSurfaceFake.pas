@@ -18,7 +18,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Core.Editor.EditSurface,
-  Atlas.Core.Editor.Contract;
+  Atlas.Plugin.Editor.Contract;
 
 type
   TAtlasEditSurfaceFake = class(TInterfacedObject, IAtlasEditSurface)

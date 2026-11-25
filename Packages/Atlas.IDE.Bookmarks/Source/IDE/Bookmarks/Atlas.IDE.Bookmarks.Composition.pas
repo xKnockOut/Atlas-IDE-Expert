@@ -29,7 +29,7 @@ uses
   Atlas.UI.Bookmarks.SettingsSection,
   Atlas.Text.Product.Version,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Editor.Contract,
+  Atlas.Plugin.Editor.Contract,
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Bookmarks.Plan,
@@ -44,7 +44,7 @@ uses
   Atlas.IDE.Bookmarks.QuickChord,
   Atlas.IDE.Bookmarks.Adapters.SavedPlaces,
   Atlas.IDE.Bookmarks.Composition.Todos,
-  Atlas.Core.SavedPlaces.Contract,
+  Atlas.Plugin.SavedPlaces.Contract,
   Atlas.IDE.Bookmarks.Adapters.Module;
 
 const

@@ -142,7 +142,7 @@ implementation
 uses
   System.SysUtils,
   System.Character,
-  Atlas.Core.CiBuild.Contract;
+  Atlas.Plugin.CiBuild.Contract;
 
 { TAtlasTrackerFieldValue }
 

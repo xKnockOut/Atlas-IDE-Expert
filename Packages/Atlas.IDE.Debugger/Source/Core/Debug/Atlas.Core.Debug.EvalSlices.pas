@@ -19,7 +19,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Hover.Contract.DebugValue,
+  Atlas.Plugin.Hover.Contract.DebugValue,
   Atlas.Core.Debug.Contract,
   Atlas.Core.Debug.Evaluate,
   Atlas.Core.Debug.EvaluateRows;

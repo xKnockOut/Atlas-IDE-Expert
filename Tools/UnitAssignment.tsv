@@ -110,7 +110,6 @@ Atlas.IDE.Base	Atlas.Core.Build.Pipeline	Core/Build/Atlas.Core.Build.Pipeline.pa
 Atlas.IDE.Base	Atlas.Core.Build.PipelineSettings	Core/Build/Atlas.Core.Build.PipelineSettings.pas	Werte der Einstellungen von Prüfung vor dem Kompilieren und Release-Wächter für Einstellungen und Optionsdialog, #1455
 Atlas.IDE.Base	Atlas.Core.Build.Target	Core/Build/Atlas.Core.Build.Target.pas	Konfiguration und Symbole für den Server ({$IFDEF}-Zweige, #615)
 Atlas.IDE.Base	Atlas.Core.Build.Verdict	Core/Build/Atlas.Core.Build.Verdict.pas	Bewertung als Typen und `IAtlasBuildVerdictListener`; Benachrichtigungszentrale (Base) und Module lesen sie, #1455
-Atlas.IDE.Base	Atlas.Core.CiBuild.Contract	Core/CiBuild/Atlas.Core.CiBuild.Contract.pas	CI-Stand als Daten (Lauf, Job, Fehler); Projektzusammenfassung, Willkommensseite und Modul Tracker lesen ihn, #1455
 Atlas.IDE.Base	Atlas.Core.CodeInsight.Plan	Core/CodeInsight/Atlas.Core.CodeInsight.Plan.pas	Ordner `Core/CodeInsight`; Entscheidungen des Code Insight-Managers (Zeichen, Dateien, Start, Projekte), #1967
 Atlas.IDE.Base	Atlas.Core.Commands.Contract	Core/Commands/Atlas.Core.Commands.Contract.pas	Contract des Features Commands, Verträge zu Modulen, #1443
 Atlas.IDE.Base	Atlas.Core.Commands.KeyConflicts	Core/Commands/Atlas.Core.Commands.KeyConflicts.pas	Ordner `Core/Commands`
@@ -160,7 +159,6 @@ Atlas.IDE.Base	Atlas.Core.Diagnostics.FeatureTable	Core/Diagnostics/Atlas.Core.D
 Atlas.IDE.Base	Atlas.Core.Diagnostics.ModuleHost	Core/Diagnostics/Atlas.Core.Diagnostics.ModuleHost.pas	gemeinsame Beschreibung, Zulassung und Abmeldung der Module, #1455
 Atlas.IDE.Base	Atlas.Core.Diagnostics.ModuleHosting	Core/Diagnostics/Atlas.Core.Diagnostics.ModuleHosting.pas	Module und ihre Teile in der Feature-Tabelle, #1455
 Atlas.IDE.Base	Atlas.Core.Diagnostics.SafeMode	Core/Diagnostics/Atlas.Core.Diagnostics.SafeMode.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Documentation.Contract	Core/Documentation/Atlas.Core.Documentation.Contract.pas	Ordner `Core/Documentation`
 Atlas.IDE.Base	Atlas.Core.Documentation.Layout	Core/Documentation/Atlas.Core.Documentation.Layout.pas	Ordner `Core/Documentation`
 Atlas.IDE.Base	Atlas.Core.Documentation.Typeset	Core/Documentation/Atlas.Core.Documentation.Typeset.pas	Ordner `Core/Documentation`
 Atlas.IDE.Base	Atlas.Core.Editor.BlockComment	Core/Editor/Atlas.Core.Editor.BlockComment.pas	Ordner `Core/Editor`
@@ -171,7 +169,6 @@ Atlas.IDE.Base	Atlas.Core.Editor.ClassExtraction	Core/Editor/Atlas.Core.Editor.C
 Atlas.IDE.Base	Atlas.Core.Editor.CodeInsightKeys	Core/Editor/Atlas.Core.Editor.CodeInsightKeys.pas	Ordner `Core/Editor`
 Atlas.IDE.Base	Atlas.Core.Editor.CommentContinuation	Core/Editor/Atlas.Core.Editor.CommentContinuation.pas	Ordner `Core/Editor`
 Atlas.IDE.Base	Atlas.Core.Editor.Conditionals	Core/Editor/Atlas.Core.Editor.Conditionals.pas	Ordner `Core/Editor`
-Atlas.IDE.Base	Atlas.Core.Editor.Contract	Core/Editor/Atlas.Core.Editor.Contract.pas	Contract des Features Editor, Verträge zu Modulen, #1443
 Atlas.IDE.Base	Atlas.Core.Editor.CrumbCard	Core/Editor/Atlas.Core.Editor.CrumbCard.pas	Ordner `Core/Editor`; Kennzahlen-Karte der Brotkrumen aus `Core.Editor.Metrics` (Outline → Editor wäre ein Feature-Zyklus)
 Atlas.IDE.Base	Atlas.Core.Editor.DisableWarning	Core/Editor/Atlas.Core.Editor.DisableWarning.pas	Ordner `Core/Editor`
 Atlas.IDE.Base	Atlas.Core.Editor.EditSurface	Core/Editor/Atlas.Core.Editor.EditSurface.pas	Ordner `Core/Editor`
@@ -245,13 +242,11 @@ Atlas.IDE.Base	Atlas.Core.Forms.Changes	Core/Forms/Atlas.Core.Forms.Changes.pas	
 Atlas.IDE.Base	Atlas.Core.Forms.PropertyValues	Core/Forms/Atlas.Core.Forms.PropertyValues.pas	Ordner `Core/Forms`
 Atlas.IDE.Base	Atlas.Core.Forms.Text	Core/Forms/Atlas.Core.Forms.Text.pas	Ordner `Core/Forms`
 Atlas.IDE.Base	Atlas.Core.Generate.Choice	Core/Generate/Atlas.Core.Generate.Choice.pas	Ordner `Core/Generate`: Auswahl mit Suchfeld, #1821
-Atlas.IDE.Base	Atlas.Core.Generate.Contract	Core/Generate/Atlas.Core.Generate.Contract.pas	Ordner `Core/Generate`
 Atlas.IDE.Base	Atlas.Core.Generate.FileTemplates	Core/Generate/Atlas.Core.Generate.FileTemplates.pas	Ordner `Core/Generate`
 Atlas.IDE.Base	Atlas.Core.Generate.Gallery	Core/Generate/Atlas.Core.Generate.Gallery.pas	Ordner `Core/Generate`: Assistenten der Objektgalerie, #1821
 Atlas.IDE.Base	Atlas.Core.Generate.Menu	Core/Generate/Atlas.Core.Generate.Menu.pas	Ordner `Core/Generate`
 Atlas.IDE.Base	Atlas.Core.Generate.Protocol	Core/Generate/Atlas.Core.Generate.Protocol.pas	Ordner `Core/Generate`
 Atlas.IDE.Base	Atlas.Core.Hover.Contract	Core/Hover/Atlas.Core.Hover.Contract.pas	Ordner `Core/Hover`
-Atlas.IDE.Base	Atlas.Core.Hover.Contract.DebugValue	Core/Hover/Atlas.Core.Hover.Contract.DebugValue.pas	Wert eines Ausdrucks im angehaltenen Debugger (Vertrag für Hover und Auswertung), #1443
 Atlas.IDE.Base	Atlas.Core.Hover.DebugValue	Core/Hover/Atlas.Core.Hover.DebugValue.pas	Ordner `Core/Hover`
 Atlas.IDE.Base	Atlas.Core.Hover.Declaration	Core/Hover/Atlas.Core.Hover.Declaration.pas	Ordner `Core/Hover`; Typ aus der Hover-Deklaration, bis #1455 im Debugger-Kern
 Atlas.IDE.Base	Atlas.Core.Hover.History	Core/Hover/Atlas.Core.Hover.History.pas	Ordner `Core/Hover`
@@ -315,7 +310,6 @@ Atlas.IDE.Base	Atlas.Core.Problems.Store	Core/Problems/Atlas.Core.Problems.Store
 Atlas.IDE.Base	Atlas.Core.Problems.Switches	Core/Problems/Atlas.Core.Problems.Switches.pas	Ordner `Core/Problems`
 Atlas.IDE.Base	Atlas.Core.Processes.OutputLines	Core/Processes/Atlas.Core.Processes.OutputLines.pas	Zeilen aus der Ausgabe eines Prozesses für die Projektaufgaben (Modul Build) und die Konsolenausgabe (Modul Debugger), #581
 Atlas.IDE.Base	Atlas.Core.Projects.Baseline	Core/Projects/Atlas.Core.Projects.Baseline.pas	Stand der Baseline-Datei; Build-Zusammenfassung, Projektverlauf und Modul Prüfregeln lesen ihn, #1455
-Atlas.IDE.Base	Atlas.Core.Projects.Contract.Summary	Core/Projects/Atlas.Core.Projects.Contract.Summary.pas	Datentypen der Projekt-Zusammenfassung und der Einrichtung als Vertrag; Willkommensseite und Tracker tragen sie in ihren Schnittstellen, #1443
 Atlas.IDE.Base	Atlas.Core.Projects.Recording	Core/Projects/Atlas.Core.Projects.Recording.pas	Build, Versionsverwaltung und Regeltreffer in die Projekt-Zusammenfassung, #1455
 Atlas.IDE.Base	Atlas.Core.Projects.Setup	Core/Projects/Atlas.Core.Projects.Setup.pas	Ordner `Core/Projects`
 Atlas.IDE.Base	Atlas.Core.Projects.Summary	Core/Projects/Atlas.Core.Projects.Summary.pas	Ordner `Core/Projects`
@@ -330,7 +324,6 @@ Atlas.IDE.Base	Atlas.Core.Results.CallDiagramTemplate	Core/Results/Atlas.Core.Re
 Atlas.IDE.Base	Atlas.Core.Results.DataFlow	Core/Results/Atlas.Core.Results.DataFlow.pas	Ordner `Core/Results`
 Atlas.IDE.Base	Atlas.Core.Results.Model	Core/Results/Atlas.Core.Results.Model.pas	Ordner `Core/Results`
 Atlas.IDE.Base	Atlas.Core.Results.Plan	Core/Results/Atlas.Core.Results.Plan.pas	Ordner `Core/Results`
-Atlas.IDE.Base	Atlas.Core.SavedPlaces.Contract	Core/SavedPlaces/Atlas.Core.SavedPlaces.Contract.pas	Gemerkte Stellen als Daten und Quelle (Lesezeichen → Willkommensseite), #1456
 Atlas.IDE.Base	Atlas.Core.Settings.Contract	Core/Settings/Atlas.Core.Settings.Contract.pas	Ordner `Core/Settings`; Vertrag für die Einstellungsteile der Module (#1455, Entscheidung 3)
 Atlas.IDE.Base	Atlas.Core.Settings.Experimental	Core/Settings/Atlas.Core.Settings.Experimental.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.Groups	Core/Settings/Atlas.Core.Settings.Groups.pas	Ordner `Core/Settings`
@@ -400,6 +393,7 @@ Atlas.IDE.Base	Atlas.IDE.Base.Foundation.IssueWork	Foundation/Atlas.IDE.Base.Fou
 Atlas.IDE.Base	Atlas.IDE.Base.Foundation.KnownErrors	Foundation/Atlas.IDE.Base.Foundation.KnownErrors.pas	Vertrag bekannte Fehler beim Exception-Halt zwischen Debugger und Tracker (#2460)
 Atlas.IDE.Base	Atlas.IDE.Base.Foundation.LineChanges	Foundation/Atlas.IDE.Base.Foundation.LineChanges.pas	Vertrag Änderungsmarken und Zeilenhistorie (#1905)
 Atlas.IDE.Base	Atlas.IDE.Base.Foundation.MouseHistory	Foundation/Atlas.IDE.Base.Foundation.MouseHistory.pas	Vertrag Fenster mit eigenem Verlauf für die Maustasten Zurück/Vor (#1889)
+Atlas.IDE.Base	Atlas.IDE.Base.Foundation.Projects	Foundation/Atlas.IDE.Base.Foundation.Projects.pas	Contract des Features Projects (IDE), Zusammenfassungen hören, #1443
 Atlas.IDE.Base	Atlas.IDE.Base.Foundation.Rules	Foundation/Atlas.IDE.Base.Foundation.Rules.pas	Baseline aktualisieren (Prüfregeln → Willkommensseite) und Regel-Aktionen am Befund (Base → Prüfregeln, #1755), Vertrag zwischen Modulen, #1455
 Atlas.IDE.Base	Atlas.IDE.Base.Foundation.Tests	Foundation/Atlas.IDE.Base.Foundation.Tests.pas	Testprojekte ausführen, Tests debuggen und finden, Ende eines Laufs; für andere Module, Vertrag zwischen Modulen, #1455
 Atlas.IDE.Base	Atlas.IDE.Base.Foundation.VersionControl	Foundation/Atlas.IDE.Base.Foundation.VersionControl.pas	Vertrag zwischen Modulen: Dienst und Dialoge der Versionsverwaltung, Zugang TAtlasIdeVcs mit Null-Objekt ohne Modul (#1891)
@@ -615,7 +609,6 @@ Atlas.IDE.Base	Atlas.IDE.Problems.RuleActions	IDE/Problems/Atlas.IDE.Problems.Ru
 Atlas.IDE.Base	Atlas.IDE.Problems.Service	IDE/Problems/Atlas.IDE.Problems.Service.pas	Ordner `IDE/Problems`
 Atlas.IDE.Base	Atlas.IDE.Problems.Window	IDE/Problems/Atlas.IDE.Problems.Window.pas	Ordner `IDE/Problems`
 Atlas.IDE.Base	Atlas.IDE.Projects.Context	IDE/Projects/Atlas.IDE.Projects.Context.pas	Ordner `IDE/Projects`
-Atlas.IDE.Base	Atlas.IDE.Projects.Contract	IDE/Projects/Atlas.IDE.Projects.Contract.pas	Contract des Features Projects (IDE), Zusammenfassungen hören, #1443
 Atlas.IDE.Base	Atlas.IDE.Projects.Summaries	IDE/Projects/Atlas.IDE.Projects.Summaries.pas	Projekt-Zusammenfassungen pflegen (auch ohne Willkommensseite), `IAtlasProjectSummaryListener`, #1455
 Atlas.IDE.Base	Atlas.IDE.Results.Commands	IDE/Results/Atlas.IDE.Results.Commands.pas	Ordner `IDE/Results`
 Atlas.IDE.Base	Atlas.IDE.Results.Impact	IDE/Results/Atlas.IDE.Results.Impact.pas	Ordner `IDE/Results`

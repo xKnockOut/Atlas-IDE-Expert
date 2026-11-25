@@ -15,7 +15,7 @@
 interface
 
 uses
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Notify,
   Atlas.Core.Tracker.Contract.MyIssues;
 

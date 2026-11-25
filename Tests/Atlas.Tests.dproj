@@ -909,7 +909,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Layout.DebugTree.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.View.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Declaration.Tests.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Contract.DebugValue.pas"/>
+        <DCCReference Include="..\Packages\Atlas.Plugin\Source\Hover\Atlas.Plugin.Hover.Contract.DebugValue.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.DebugValue.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.IdeHelpInsight.pas"/>
@@ -947,7 +947,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.DataBreakpoint.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.DataBreakpoint.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Tests.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.Plugin\Source\Documentation\Atlas.Plugin.Documentation.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Documentation\Atlas.Core.Documentation.Typeset.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Documentation.Tests.pas"/>
@@ -1238,7 +1238,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Snippets.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Completion\Atlas.Core.Completion.ServerPlaceholders.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.ServerPlaceholders.Tests.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Generate\Atlas.Core.Generate.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.Plugin\Source\Generate\Atlas.Plugin.Generate.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Generate\Atlas.Core.Generate.Menu.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Generate\Atlas.Core.Generate.Protocol.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Generate\Atlas.UI.Generate.Window.pas"/>
@@ -1349,7 +1349,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Plugin.Files.EncodingDefault.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.Plugin\Source\Projects\Atlas.Plugin.Projects.Contract.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Plugin.Projects.Contract.Tests.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\CiBuild\Atlas.Core.CiBuild.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.Plugin\Source\CiBuild\Atlas.Plugin.CiBuild.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Ci\Atlas.Core.Ci.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Credentials\Atlas.Core.Credentials.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Ci\Atlas.Core.Ci.Providers.Credentials.pas"/>
@@ -1581,7 +1581,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.BoardPainter.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.AttachDialog.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.AttachDialog.Tests.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Contract.Summary.pas"/>
+        <DCCReference Include="..\Packages\Atlas.Plugin\Source\Projects\Atlas.Plugin.Projects.Contract.Summary.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Plugin.Projects.Contract.Summary.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Summary.pas"/>
         <DCCReference Include="..\Packages\Atlas.Plugin\Source\Projects\Atlas.Plugin.Projects.Summary.Json.pas"/>
@@ -1692,7 +1692,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Marks.Ids.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\Core\Bookmarks\Atlas.Core.Bookmarks.SavedPlaces.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Bookmarks.SavedPlaces.Tests.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\SavedPlaces\Atlas.Core.SavedPlaces.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.Plugin\Source\SavedPlaces\Atlas.Plugin.SavedPlaces.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\Core\Bookmarks\Atlas.Core.Bookmarks.Quick.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Bookmarks.Quick.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\Core\Bookmarks\Atlas.Core.Bookmarks.ColumnPlan.pas"/>
@@ -2422,7 +2422,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.StatementCompletion.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.StatementCompletion.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.Overview.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.Plugin\Source\Editor\Atlas.Plugin.Editor.Contract.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Overview.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Editor\Atlas.UI.Editor.OverviewRuler.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Editor.OverviewRuler.Tests.pas"/>

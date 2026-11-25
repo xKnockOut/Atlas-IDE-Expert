@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Projects.Contract.Summary;
+﻿unit Atlas.Plugin.Projects.Contract.Summary;
 
 // Datentypen der Projekt-Zusammenfassung (#592) als Vertrag: Die Willkommensseite und andere Features tragen sie
 // in den Signaturen ihrer Schnittstellen. Lesen und Schreiben der JSON-Datei bleibt in
@@ -8,7 +8,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.CiBuild.Contract;
+  Atlas.Plugin.CiBuild.Contract;
 
 type
   /// <summary>Fund der Pfadprüfung (#759): fehlende Unit oder Define ohne Quelle.</summary>

@@ -16,7 +16,7 @@ uses
   Atlas.Core.Editor.LinkedEditing,
   Atlas.Core.Editor.LinkedSession,
   Atlas.Tests.EditSurfaceFake,
-  Atlas.Core.Editor.Contract;
+  Atlas.Plugin.Editor.Contract;
 
 type
   [TestFixture]

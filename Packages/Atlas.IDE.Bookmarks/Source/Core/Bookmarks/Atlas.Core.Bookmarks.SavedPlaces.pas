@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Bookmarks.SavedPlaces;
 
 // Gemerkte Stellen für andere Module (#1456, Vertrag
-// Atlas.Core.SavedPlaces.Contract), Teil ohne VCL und Open Tools API:
+// Atlas.Plugin.SavedPlaces.Contract), Teil ohne VCL und Open Tools API:
 // persönliche Notizen (#545) und benannte Lesezeichen (#622) als Einträge mit
 // Art, Text, Datei, Zeile und Projekt. Vorher rechnete die Willkommensseite
 // das selbst aus den Ablagen dieses Moduls (#755).
@@ -16,7 +16,7 @@ interface
 uses
   Atlas.Core.Notes.Store,
   Atlas.Core.Bookmarks.Store,
-  Atlas.Core.SavedPlaces.Contract;
+  Atlas.Plugin.SavedPlaces.Contract;
 
 type
   TAtlasBookmarksSavedPlaces = class

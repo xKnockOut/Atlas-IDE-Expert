@@ -150,24 +150,24 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Projects.Contract.Summary,
+  Atlas.Plugin.Projects.Contract.Summary,
   Atlas.Core.Projects.Summary.Sections;
 
 type
-  TAtlasProjectLocation = Atlas.Core.Projects.Contract.Summary.TAtlasProjectLocation;
-  TAtlasProjectVcs = Atlas.Core.Projects.Contract.Summary.TAtlasProjectVcs;
-  TAtlasProjectBuild = Atlas.Core.Projects.Contract.Summary.TAtlasProjectBuild;
-  TAtlasProjectCheck = Atlas.Core.Projects.Contract.Summary.TAtlasProjectCheck;
-  TAtlasMetricNumbers = Atlas.Core.Projects.Contract.Summary.TAtlasMetricNumbers;
-  TAtlasProjectMetrics = Atlas.Core.Projects.Contract.Summary.TAtlasProjectMetrics;
-  TAtlasProjectTodos = Atlas.Core.Projects.Contract.Summary.TAtlasProjectTodos;
-  TAtlasProjectRules = Atlas.Core.Projects.Contract.Summary.TAtlasProjectRules;
-  TAtlasProjectBaseline = Atlas.Core.Projects.Contract.Summary.TAtlasProjectBaseline;
-  TAtlasTrendSeries = Atlas.Core.Projects.Contract.Summary.TAtlasTrendSeries;
-  TAtlasTrendNumbers = Atlas.Core.Projects.Contract.Summary.TAtlasTrendNumbers;
-  TAtlasTrendFlags = Atlas.Core.Projects.Contract.Summary.TAtlasTrendFlags;
-  TAtlasTrendPoint = Atlas.Core.Projects.Contract.Summary.TAtlasTrendPoint;
-  TAtlasProjectTrends = Atlas.Core.Projects.Contract.Summary.TAtlasProjectTrends;
+  TAtlasProjectLocation = Atlas.Plugin.Projects.Contract.Summary.TAtlasProjectLocation;
+  TAtlasProjectVcs = Atlas.Plugin.Projects.Contract.Summary.TAtlasProjectVcs;
+  TAtlasProjectBuild = Atlas.Plugin.Projects.Contract.Summary.TAtlasProjectBuild;
+  TAtlasProjectCheck = Atlas.Plugin.Projects.Contract.Summary.TAtlasProjectCheck;
+  TAtlasMetricNumbers = Atlas.Plugin.Projects.Contract.Summary.TAtlasMetricNumbers;
+  TAtlasProjectMetrics = Atlas.Plugin.Projects.Contract.Summary.TAtlasProjectMetrics;
+  TAtlasProjectTodos = Atlas.Plugin.Projects.Contract.Summary.TAtlasProjectTodos;
+  TAtlasProjectRules = Atlas.Plugin.Projects.Contract.Summary.TAtlasProjectRules;
+  TAtlasProjectBaseline = Atlas.Plugin.Projects.Contract.Summary.TAtlasProjectBaseline;
+  TAtlasTrendSeries = Atlas.Plugin.Projects.Contract.Summary.TAtlasTrendSeries;
+  TAtlasTrendNumbers = Atlas.Plugin.Projects.Contract.Summary.TAtlasTrendNumbers;
+  TAtlasTrendFlags = Atlas.Plugin.Projects.Contract.Summary.TAtlasTrendFlags;
+  TAtlasTrendPoint = Atlas.Plugin.Projects.Contract.Summary.TAtlasTrendPoint;
+  TAtlasProjectTrends = Atlas.Plugin.Projects.Contract.Summary.TAtlasProjectTrends;
 
   TAtlasSetupFinding = Atlas.Core.Projects.Summary.Sections.TAtlasSetupFinding;
   TAtlasProjectSetup = Atlas.Core.Projects.Summary.Sections.TAtlasProjectSetup;
@@ -177,7 +177,7 @@ type
   TAtlasProjectRelease = Atlas.Core.Projects.Summary.Sections.TAtlasProjectRelease;
   TAtlasProjectCi = Atlas.Core.Projects.Summary.Sections.TAtlasProjectCi;
 
-  TAtlasProjectSummary = Atlas.Core.Projects.Contract.Summary.TAtlasProjectSummary;
+  TAtlasProjectSummary = Atlas.Plugin.Projects.Contract.Summary.TAtlasProjectSummary;
 
   /// <summary>Lesen der Serverantwort für TAtlasProjectMetrics (der Record selbst steht im Vertrag).</summary>
   TAtlasProjectMetricsHelper = record helper for TAtlasProjectMetrics

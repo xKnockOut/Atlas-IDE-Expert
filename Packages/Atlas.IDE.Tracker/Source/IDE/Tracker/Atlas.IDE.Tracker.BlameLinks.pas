@@ -35,7 +35,7 @@ uses
   Vcl.Controls,
   Vcl.AppEvnts,
   Vcl.Menus,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.BlamePlan,
   Atlas.Core.Tracker.CodeLinks,

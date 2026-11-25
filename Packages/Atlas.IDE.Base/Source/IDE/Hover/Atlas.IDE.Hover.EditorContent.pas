@@ -26,7 +26,7 @@ uses
   Atlas.Core.Hover.View,
   Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Explanation,
-  Atlas.Core.Hover.Contract.DebugValue,
+  Atlas.Plugin.Hover.Contract.DebugValue,
   Atlas.IDE.Hover.DebugValue,
   Atlas.UI.Hover.Tip;
 
@@ -238,7 +238,7 @@ uses
   Vcl.Forms,
   Vcl.Clipbrd,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Documentation.Contract,
+  Atlas.Plugin.Documentation.Contract,
   Atlas.Core.Hover.Plan,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorSettings,

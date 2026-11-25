@@ -105,7 +105,7 @@ uses
   Atlas.Plugin.Style.Palette,
   Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Explanation,
-  Atlas.Core.Hover.Contract.DebugValue,
+  Atlas.Plugin.Hover.Contract.DebugValue,
   Atlas.Core.Hover.Layout.TestSupport;
 
 function Unavailable(const AReason: string): TAtlasDebugValue;

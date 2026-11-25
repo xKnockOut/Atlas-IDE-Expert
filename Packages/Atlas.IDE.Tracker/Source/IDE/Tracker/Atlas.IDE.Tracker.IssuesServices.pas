@@ -88,7 +88,7 @@ implementation
 
 uses
   Atlas.Core.Ci.Contract,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.Notify,
   Atlas.Core.Tracker.Review,

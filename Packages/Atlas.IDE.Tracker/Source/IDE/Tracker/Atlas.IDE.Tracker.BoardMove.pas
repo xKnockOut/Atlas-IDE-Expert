@@ -70,7 +70,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.BoardPlan,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,

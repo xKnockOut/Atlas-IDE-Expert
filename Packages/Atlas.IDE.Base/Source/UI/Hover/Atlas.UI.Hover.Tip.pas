@@ -252,7 +252,7 @@ implementation
 uses
   Atlas.Plugin.Problems.Contract,
   Atlas.Plugin.Style.Palette,
-  Atlas.Core.Documentation.Contract,
+  Atlas.Plugin.Documentation.Contract,
   Atlas.Core.Hover.Texts,
   Atlas.Plugin.Diagnostics.Guard,
   System.Math,

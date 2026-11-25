@@ -67,7 +67,7 @@ implementation
 
 uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   System.SysUtils,
   System.Diagnostics,
   Atlas.Core.Tracker.YouTrackApi,

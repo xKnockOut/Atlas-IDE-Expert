@@ -14,7 +14,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Hover.Contract.DebugValue;
+  Atlas.Plugin.Hover.Contract.DebugValue;
 
 type
   {$SCOPEDENUMS ON}

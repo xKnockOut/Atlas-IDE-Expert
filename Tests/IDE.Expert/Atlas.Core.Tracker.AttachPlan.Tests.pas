@@ -26,7 +26,7 @@ type
 implementation
 
 uses
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.AttachPlan;
 
 function Report(ASucceeded: Boolean; AError: TAtlasCiFetchError; AUploaded: Integer; ACommented,

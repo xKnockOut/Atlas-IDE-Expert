@@ -40,7 +40,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Text.Lines,
-  Atlas.Core.Editor.Contract,
+  Atlas.Plugin.Editor.Contract,
   Atlas.Core.Editor.BlockFolds;
 
 const
