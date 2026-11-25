@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.MethodOrder;
+﻿unit Atlas.Common.Editing.MethodOrder.Protocol;
 
 // Befehl atlas.server.methodOrder (#660): Methodenrümpfe im
 // implementation-Teil in Deklarationsreihenfolge.
@@ -31,7 +31,7 @@ type
   /// <summary>Einstellungen zum Ordnen je Datei (#1834); die Ordnung selbst kommt aus "mode".</summary>
   TMethodOrderOptionsFunc = reference to function(const AUri: string): TMethodOrderOptions;
 
-  TLspMethodOrder = class
+  TMethodOrderProtocol = class
   public const
     cCommand = 'atlas.server.methodOrder';
   public
@@ -69,9 +69,9 @@ const
 
 {$SCOPEDENUMS OFF}
 
-{ TLspMethodOrder }
+{ TMethodOrderProtocol }
 
-class function TLspMethodOrder.Json(const AResult: TMethodOrderResult): TJSONObject;
+class function TMethodOrderProtocol.Json(const AResult: TMethodOrderResult): TJSONObject;
 var
   mEdits, mMoves: TJSONArray;
   mEdit: TTextEdit;
@@ -139,12 +139,12 @@ begin
   end;
 end;
 
-class function TLspMethodOrder.Execute(const AStore: IDocumentStore; const AArguments: TJSONArray): TJSONValue;
+class function TMethodOrderProtocol.Execute(const AStore: IDocumentStore; const AArguments: TJSONArray): TJSONValue;
 begin
   Result := Execute(AStore, nil, AArguments);
 end;
 
-class function TLspMethodOrder.Execute(const AStore: IDocumentStore; const AOptionsFor: TMethodOrderOptionsFunc;
+class function TMethodOrderProtocol.Execute(const AStore: IDocumentStore; const AOptionsFor: TMethodOrderOptionsFunc;
   const AArguments: TJSONArray): TJSONValue;
 var
   mUri: string;
@@ -188,6 +188,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.MethodOrder', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.MethodOrder.Protocol', cTexts);
 
 end.

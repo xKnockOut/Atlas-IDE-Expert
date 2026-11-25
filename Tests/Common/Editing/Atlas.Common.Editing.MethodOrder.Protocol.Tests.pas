@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.MethodOrder.Tests;
+﻿unit Atlas.Common.Editing.MethodOrder.Protocol.Tests;
 
 // Befehl atlas.server.methodOrder (#660): Argumente, Antwort und Fehler.
 
@@ -12,7 +12,7 @@ uses
 
 type
   [TestFixture]
-  TLspMethodOrderTests = class
+  TMethodOrderProtocolTests = class
   private
     FStore: IDocumentStore;
     function Run(const AText, AOptions: string): TJSONObject;
@@ -38,7 +38,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
-  Atlas.Common.Lsp.MethodOrder;
+  Atlas.Common.Editing.MethodOrder.Protocol;
 
 const
   cMainFile = 'C:\P\Reihe.pas';
@@ -55,9 +55,9 @@ const
   cRumpfB = #10'procedure TFoo.B;'#10'begin'#10'end;'#10;
   cEnde = #10'end.';
 
-{ TLspMethodOrderTests }
+{ TMethodOrderProtocolTests }
 
-function TLspMethodOrderTests.Run(const AText, AOptions: string): TJSONObject;
+function TMethodOrderProtocolTests.Run(const AText, AOptions: string): TJSONObject;
 var
   mUri: string;
   mArguments: TJSONArray;
@@ -73,7 +73,7 @@ begin
     begin
       mArguments.AddElement(TJSONObject.ParseJSONValue(AOptions));
     end;
-    mReply := TLspMethodOrder.Execute(FStore, mArguments);
+    mReply := TMethodOrderProtocol.Execute(FStore, mArguments);
   finally
     mArguments.Free;
   end;
@@ -81,17 +81,17 @@ begin
   Result := TJSONObject(mReply);
 end;
 
-procedure TLspMethodOrderTests.Setup;
+procedure TMethodOrderProtocolTests.Setup;
 begin
   FStore := TDocumentStore.Create;
 end;
 
-procedure TLspMethodOrderTests.TearDown;
+procedure TMethodOrderProtocolTests.TearDown;
 begin
   FStore := nil;
 end;
 
-procedure TLspMethodOrderTests.ArrangesWholeUnit;
+procedure TMethodOrderProtocolTests.ArrangesWholeUnit;
 var
   mReply: TJSONObject;
   mMove: TJSONObject;
@@ -112,7 +112,7 @@ begin
   end;
 end;
 
-procedure TLspMethodOrderTests.PlacesNewBody;
+procedure TMethodOrderProtocolTests.PlacesNewBody;
 var
   mReply, mOptions: TJSONObject;
 begin
@@ -140,7 +140,7 @@ begin
   end;
 end;
 
-procedure TLspMethodOrderTests.OffGivesNothing;
+procedure TMethodOrderProtocolTests.OffGivesNothing;
 var
   mReply: TJSONObject;
 begin
@@ -153,7 +153,7 @@ begin
   end;
 end;
 
-procedure TLspMethodOrderTests.UnknownDocumentGivesError;
+procedure TMethodOrderProtocolTests.UnknownDocumentGivesError;
 var
   mArguments: TJSONArray;
 begin
@@ -162,7 +162,7 @@ begin
     Assert.WillRaise(
       procedure
       begin
-        TLspMethodOrder.Execute(FStore, mArguments).Free;
+        TMethodOrderProtocol.Execute(FStore, mArguments).Free;
       end,
       EJsonRpcError);
   finally
@@ -171,6 +171,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspMethodOrderTests);
+  TDUnitX.RegisterTestFixture(TMethodOrderProtocolTests);
 
 end.

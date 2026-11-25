@@ -33,8 +33,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Rules.CodeActions,
-  Atlas.Common.Lsp.CodeActions,
-  Atlas.Common.Lsp.DfmPropertyRules;
+  Atlas.Common.Lsp.DfmPropertyRules,
+  Atlas.Common.CodeActions.Json;
 
 const
   cUnitA = 'C:\P\A.pas';
@@ -146,7 +146,7 @@ begin
   Assert.IsTrue(Length(mActions) > 0);
   Assert.AreEqual(0, Integer(Length(mActions[0].Edits)));
   Assert.AreEqual('C:\P\A.dfm', mActions[0].FileEdits[0].FileName);
-  mJson := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(cUnitA), mActions[0]);
+  mJson := TCodeActionsJson.ActionToJson(TDocumentUris.FromPath(cUnitA), mActions[0]);
   try
     mChanges := mJson.GetValue<TJSONObject>('edit.changes');
     Assert.AreEqual(1, Integer(mChanges.Count), 'nur die Formulardatei');

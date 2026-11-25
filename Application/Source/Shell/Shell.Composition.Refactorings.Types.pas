@@ -38,9 +38,9 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.TypeAlias,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.TypeAlias,
+  Atlas.Common.Editing.TypeAlias.Protocol,
   Atlas.Common.Lsp.EnumTables,
-  Atlas.Common.Lsp.Overloads,
+  Atlas.Common.Editing.Overloads.Protocol,
   Atlas.Common.Localization.Texts;
 
 type
@@ -60,11 +60,11 @@ const
 
 procedure TShellTypeRefactorings.Register(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspTypeAlias.cApplyCommand, TypeAlias);
-  ACommands.Register(TLspTypeAlias.cInlineApplyCommand, InlineTypeAlias);
+  ACommands.Register(TTypeAliasProtocol.cApplyCommand, TypeAlias);
+  ACommands.Register(TTypeAliasProtocol.cInlineApplyCommand, InlineTypeAlias);
   ACommands.Register(TLspEnumTables.cApplyCommand, EnumTable);
   ACommands.Register(TLspEnumTables.cSyncApplyCommand, EnumTablesSync);
-  ACommands.Register(TLspOverloads.cApplyCommand, CreateOverload);
+  ACommands.Register(TOverloadsProtocol.cApplyCommand, CreateOverload);
 end;
 
 function TShellTypeRefactorings.Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
@@ -98,8 +98,8 @@ begin
   try
     mResolver.PinTree(mShared.Tree, TDocumentUris.ToPath(AUri));
     try
-      Result := TLspTypeAlias.Actions(mShared.Tree, mDocument.Text, AUri, APosition, mScope,
-        TLspTypeAlias.Lookup(mResolver));
+      Result := TTypeAliasProtocol.Actions(mShared.Tree, mDocument.Text, AUri, APosition, mScope,
+        TTypeAliasProtocol.Lookup(mResolver));
     finally
       mResolver.UnpinTree;
     end;
@@ -129,7 +129,7 @@ begin
   mContext.Scope := Trim(AArguments.Items[3].Value);
   mResolver := NewResolver;
   try
-    mAnswer := TLspTypeAlias.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+    mAnswer := TTypeAliasProtocol.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;
@@ -158,7 +158,7 @@ begin
   mContext.ReadText := Reader;
   mResolver := NewResolver;
   try
-    mAnswer := TLspTypeAlias.ExecuteInline(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+    mAnswer := TTypeAliasProtocol.ExecuteInline(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;
@@ -252,7 +252,7 @@ begin
   Result := nil;
   if TryOpen(AUri, Settings(AUri).Overloads, ['.pas', '.dpr'], mDocument) then
   begin
-    Result := TLspOverloads.Actions(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text, AUri, APosition);
+    Result := TOverloadsProtocol.Actions(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text, AUri, APosition);
   end;
 end;
 
@@ -274,9 +274,9 @@ begin
   try
     mResolver.PinTree(mShared.Tree, mFileName);
     try
-      Result := TLspOverloads.Execute(mShared.Tree, mFileName, mDocument.Text,
+      Result := TOverloadsProtocol.Execute(mShared.Tree, mFileName, mDocument.Text,
         TLspPositions.ReadPosition(AArguments.Items[1]), Trim(AArguments.Items[2].Value),
-        TLspOverloads.DefaultFunc(mResolver, Index, mShared.Tree, mFileName, mDocument.Text));
+        TOverloadsProtocol.DefaultFunc(mResolver, Index, mShared.Tree, mFileName, mDocument.Text));
     finally
       mResolver.UnpinTree;
     end;

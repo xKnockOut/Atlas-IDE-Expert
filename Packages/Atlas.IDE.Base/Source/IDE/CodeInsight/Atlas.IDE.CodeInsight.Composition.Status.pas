@@ -3,6 +3,8 @@
 // Atlas-Statusfeld mit seinen Zeilen (#591), Fenster „Atlas-Server“ (#1356), Fehlerzähler (#509),
 // Benachrichtigungszentrale (#601) mit Plakette und Einträgen der Sicherung (#493) und die
 // Schnellschalter (#604) am Feld. Immer angemeldet, auch im abgesicherten Start (#722).
+// Meldet sich ein Modul ab, nimmt ReleaseModuleCallbacks alles mit Code seines
+// Packages aus Zentrale, Statuszeilen und Zusatzfeldern (Regel 3).
 
 interface
 
@@ -50,6 +52,12 @@ procedure ShowServerWindow;
 /// „Protokoll öffnen“ (atlas.log mit Stacktrace): Der Fehler soll auffallen und behoben werden, statt still eine
 /// Funktion zu kosten. Aus jedem Thread; die Aktionen laufen im Hauptthread.</summary>
 procedure GuardTripped(AFeature: TAtlasFeature; const AMessage: string);
+/// <summary>Schritt 4 der Abmeldung eines Moduls (TAtlasModuleHost.OnModuleReleased), solange sein Code geladen
+/// ist: Aktionen und Beobachter der Benachrichtigungen, Statuszeilen samt Beobachtern und Zusatzfelder, deren Code
+/// im Package AModule liegt, lösen. Sonst hielte Base sie bis zum eigenen Abbau und gäbe sie erst nach dem Entladen
+/// des Moduls frei (Zugriffsverletzung), und ein Klick auf eine Aktion liefe in nicht mehr geladenem Code.
+/// </summary>
+procedure ReleaseModuleCallbacks(AModule: NativeUInt);
 /// <summary>Atlas-Protokoll gestört, aus dem Thread des Schreibers: über OutputDebugString (DebugView
 /// zeigt es, auch wenn atlas.log nichts mehr annimmt) und als Benachrichtigung; '' = schreibt wieder.</summary>
 procedure LogError(const AMessage: string);
@@ -452,6 +460,41 @@ begin
     TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.FuseTrippedTitle, [TAtlasGuard.FeatureName(mFeature)]),
     AMessage,
     [mEnable, mLog]);
+end;
+
+/// <summary>Gehört der Code hinter AReference zum Package AModule? Eigene Routine: fängt nur AModule ein.</summary>
+function OwnedByModule(AModule: NativeUInt): TFunc<Pointer, Boolean>;
+begin
+  Result :=
+    function(AReference: Pointer): Boolean
+    begin
+      Result := (AReference <> nil) and (TAtlasMainThread.CodeModuleOf(AReference) = AModule);
+    end;
+end;
+
+procedure ReleaseModuleCallbacks(AModule: NativeUInt);
+const
+  cReleased = 'Atlas: released callbacks of module $%x: %d notifications, %d status lines, %d status fields';
+var
+  mOwned: TFunc<Pointer, Boolean>;
+  mNotifications, mLines, mFields: Integer;
+begin
+  if AModule = 0 then
+  begin
+    Exit;
+  end;
+  mOwned := OwnedByModule(AModule);
+  mNotifications := ReleaseOwnedNotifications(mOwned);
+  mLines := TAtlasStatusRegistry.ReleaseOwnedInDefault(mOwned);
+  mFields := 0;
+  if StatusFieldInstance <> nil then
+  begin
+    mFields := StatusFieldInstance.ReleaseOwned(mOwned);
+  end;
+  if mNotifications + mLines + mFields > 0 then
+  begin
+    TAtlasGuard.Log(Format(cReleased, [AModule, mNotifications, mLines, mFields]));
+  end;
 end;
 
 procedure LogError(const AMessage: string);

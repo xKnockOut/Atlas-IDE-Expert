@@ -32,7 +32,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.RaiseVisibility,
+  Atlas.Common.Editing.RaiseVisibility.Protocol,
   Atlas.Common.Localization.Texts;
 
 type
@@ -48,7 +48,7 @@ const
 
 procedure TShellVisibilityRefactorings.Register(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspRaiseVisibility.cCommand, MemberActions);
+  ACommands.Register(TRaiseVisibilityProtocol.cCommand, MemberActions);
 end;
 
 function TShellVisibilityRefactorings.Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
@@ -58,7 +58,7 @@ begin
   Result := nil;
   if TryOpen(AUri, Settings(AUri).RaiseVisibility, mDocument) then
   begin
-    Result := TLspRaiseVisibility.Actions(AUri, mDocument.Text, TSyntaxTreeCache.Get(mDocument, nil).Tree, ARange);
+    Result := TRaiseVisibilityProtocol.Actions(AUri, mDocument.Text, TSyntaxTreeCache.Get(mDocument, nil).Tree, ARange);
   end;
 end;
 
@@ -75,7 +75,7 @@ begin
   begin
     raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed, cTexts[TVisibilityRefactoringText.NotReadable].Text);
   end;
-  mAnswer := TLspRaiseVisibility.Execute(mUri, mText, TLspPositions.ReadPosition(AArguments.Items[1]), mName);
+  mAnswer := TRaiseVisibilityProtocol.Execute(mUri, mText, TLspPositions.ReadPosition(AArguments.Items[1]), mName);
   Log(Format('Mitglied-Aktionen: %d', [mAnswer.Count]));
   Result := mAnswer;
 end;

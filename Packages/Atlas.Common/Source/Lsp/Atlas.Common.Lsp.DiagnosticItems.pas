@@ -19,12 +19,13 @@ uses
   Atlas.Common.Pascal.InactiveRegions,
   Atlas.Common.Semantics.UsesActions,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Lsp.Contract;
+  Atlas.Common.Lsp.Contract,
+  Atlas.Common.CodeActions.Json;
 
 type
   TLspDiagnosticItems = class
   public const
-    cSource = 'Atlas';
+    cSource = TCodeActionsJson.cDiagnosticSource;
     cCompilerSource = 'dcc';
     /// <summary>DiagnosticTag.Unnecessary: Der Editor blendet ab.</summary>
     cTagUnnecessary = 1;

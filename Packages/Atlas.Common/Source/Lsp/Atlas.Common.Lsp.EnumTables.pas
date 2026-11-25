@@ -87,10 +87,10 @@ uses
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.CodeActions,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Lsp.References,
+  Atlas.Common.CodeActions.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -275,7 +275,7 @@ begin
   mAction := TJSONObject.Create;
   mAction.AddPair('title', mRepair.Title);
   mAction.AddPair('kind', cRepairKind);
-  mAction.AddPair('edit', TLspCodeActions.WorkspaceEditJson(AUri, mRepair.Edits));
+  mAction.AddPair('edit', TCodeActionsJson.WorkspaceEditJson(AUri, mRepair.Edits));
   Result := Result + [mAction];
 end;
 

@@ -25,6 +25,10 @@
 // - Statuszeilen, Panels, Zeichnen und das Statusfenster übernimmt
 //   IAtlasStatusFieldSurface: in der IDE der Adapter
 //   Atlas.IDE.Status.Adapters.FieldSurface, in den Tests eine Fälschung.
+// - ReleaseOwned beim Abmelden eines Moduls (Regel 3): entfernt die
+//   Zusatzfelder, deren Klick dem Modul gehört, auch wenn es sie nicht selbst
+//   geleert hat; sonst gäbe das Feld beim Freigeben Code eines entladenen
+//   Moduls frei.
 // Bis auf RequestRefresh nur im Hauptthread.
 
 interface
@@ -33,6 +37,7 @@ uses
   System.SysUtils,
   System.Types,
   Atlas.Core.Settings.Plugin,
+  Atlas.Plugin.Notifications.Listeners,
   Atlas.Plugin.Status.Contract;
 
 type
@@ -86,6 +91,9 @@ type
     /// <summary>Zusatzfeld AExtra.Id setzen (Text, Tooltip, Zustand, Links- und Rechtsklick mit der linken
     /// Oberkante des Panels); Text '' entfernt es.</summary>
     procedure SetExtra(const AExtra: TAtlasStatusExtra);
+    /// <summary>Zusatzfelder entfernen, deren Links- oder Rechtsklick AOwned gehört (ein Modul meldet sich ab);
+    /// Ergebnis: ihre Zahl.</summary>
+    function ReleaseOwned(const AOwned: TAtlasOwnedCode): Integer;
     /// <summary>Plakette der Benachrichtigungen (#601): Count ungelesene (im Feld 0 = keine Plakette, in der
     /// Atlas-Statusleiste zählt Shown), Farbe nach State, Hint im Tooltip; Linksklick auf die Plakette ruft
     /// OnClick mit der linken Oberkante des Felds. Unverändert: kein neues Zeichnen.</summary>
@@ -423,6 +431,32 @@ begin
     FExtras[High(FExtras)] := AExtra;
   end;
   RequestRefresh;
+end;
+
+/// <summary>Gehört ein Klick von AExtra AOwned?</summary>
+function ExtraOwned(const AExtra: TAtlasStatusExtra; const AOwned: TAtlasOwnedCode): Boolean;
+begin
+  Result := (Assigned(AExtra.OnClick) and AOwned(PPointer(@AExtra.OnClick)^)) or
+    (Assigned(AExtra.OnContext) and AOwned(PPointer(@AExtra.OnContext)^));
+end;
+
+function TAtlasStatusFieldFlow.ReleaseOwned(const AOwned: TAtlasOwnedCode): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := 0;
+  for mIndex := High(FExtras) downto 0 do
+  begin
+    if ExtraOwned(FExtras[mIndex], AOwned) then
+    begin
+      Delete(FExtras, mIndex, 1);
+      Inc(Result);
+    end;
+  end;
+  if Result > 0 then
+  begin
+    RequestRefresh;
+  end;
 end;
 
 procedure TAtlasStatusFieldFlow.SetBadge(const ABadge: TAtlasStatusBadge);
