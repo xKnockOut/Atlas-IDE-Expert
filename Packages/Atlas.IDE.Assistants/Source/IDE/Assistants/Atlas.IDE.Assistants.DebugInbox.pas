@@ -23,7 +23,7 @@ uses
   Atlas.Core.Assistants.InboxPace,
   Atlas.Core.Assistants.DebugInbox,
   Atlas.Core.Assistants.DebugGate,
-  Atlas.IDE.Contracts.DebugControl,
+  Atlas.IDE.Base.Foundation.DebugControl,
   Atlas.IDE.Assistants.FolderSignal;
 
 type

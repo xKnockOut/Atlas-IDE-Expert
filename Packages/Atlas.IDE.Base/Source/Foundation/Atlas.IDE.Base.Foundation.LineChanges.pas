@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Contracts.LineChanges;
+﻿unit Atlas.IDE.Base.Foundation.LineChanges;
 
 // Vertrag zwischen Modulen (#1905, Modulregeln 4 und 6): Änderungsmarken und Zeilenhistorie im Editor (#507).
 // Das Modul Versionsverwaltung zeichnet sie und meldet für die Zeit, in der sein Teil läuft, ein IAtlasLineChanges bei

@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.ElementHelp.Keys;
 
 // F1 zu Atlas-Elementen (#1886) für Base: fragt den laufenden Anbieter von IAtlasHelpProvider
-// (Atlas.IDE.Contracts.Help, Modul Hilfe) bei jedem Aufruf neu über die Registry (Regel 3: das Modul kann
+// (Atlas.IDE.Base.Foundation.Help, Modul Hilfe) bei jedem Aufruf neu über die Registry (Regel 3: das Modul kann
 // inzwischen fort sein). AddKey hängt an einen Frame (Atlas-Fenster, Optionsseite) eine Aktion mit F1: Sie ist
 // nur aktiv, solange ein Anbieter zur Kennung unter dem Fokus eine Seite kennt; sonst geht F1 wie vorher an die
 // IDE. Jedes Atlas-Dockfenster bekommt F1 über TAtlasIdeDockWindow.OnFrameCreated: Kennung ist das Fenster
@@ -12,7 +12,7 @@ interface
 
 uses
   System.Classes,
-  Atlas.IDE.Contracts.Help;
+  Atlas.IDE.Base.Foundation.Help;
 
 type
   /// <summary>Kennung des Elements unter dem Fokus; False ohne.</summary>

@@ -3,7 +3,7 @@
 // Daten der bekannten Fehler beim Exception-Halt (#2460) ohne VCL und Open
 // Tools API: der Halt, wie ihn der Debugger meldet, die Treffer und die
 // Antwort des Trackers. Die Interfaces zwischen den Modulen stehen in
-// Atlas.IDE.Contracts.KnownErrors; die Kern- und Oberflächen-Units beider
+// Atlas.IDE.Base.Foundation.KnownErrors; die Kern- und Oberflächen-Units beider
 // Module arbeiten nur mit diesen Records. Nur Typen, kein Code.
 
 interface

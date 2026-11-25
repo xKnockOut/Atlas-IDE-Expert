@@ -161,7 +161,7 @@ uses
   Atlas.VersionControl.Repository.Contract,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Context,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.UI.Tracker.Workflow.Strings;
 
 { TAtlasIdeCommentService }

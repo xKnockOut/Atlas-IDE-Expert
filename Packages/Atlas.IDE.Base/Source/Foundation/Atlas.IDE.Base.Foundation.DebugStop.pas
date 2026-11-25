@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Contracts.DebugStop;
+﻿unit Atlas.IDE.Base.Foundation.DebugStop;
 
 // Vertrag zwischen Modulen (#1873, Modulregel 6): Das Modul, das die
 // Debug-Sitzung kennt (der Debugger), stellt über seinen Scope eine

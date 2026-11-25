@@ -3,7 +3,7 @@
 // Haken des Testläufers, aus Atlas.IDE.Tests.Composition gelöst; die
 // Composition setzt sie in StartTests:
 // - OnBuild: vor den Tests bauen über IAtlasBuildJobs der Build-Pipeline
-//   (Atlas.IDE.Contracts.BuildPipeline, ohne Modul nicht),
+//   (Atlas.IDE.Base.Foundation.BuildPipeline, ohne Modul nicht),
 // - OnProblems: Fehlschläge ins Problemfenster von Base,
 // - OnFinished: Projekt-Zusammenfassung (TAtlasIdeProjectSummaries, #69) und
 //   jeder IAtlasTestsListener (Schnellaktionen der Willkommensseite),
@@ -61,8 +61,8 @@ uses
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.CodeInsight.Manager.Paths,
-  Atlas.IDE.Contracts.Tests,
-  Atlas.IDE.Contracts.BuildPipeline,
+  Atlas.IDE.Base.Foundation.Tests,
+  Atlas.IDE.Base.Foundation.BuildPipeline,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Tests.LeakSetup,
   Atlas.IDE.Projects.Summaries,

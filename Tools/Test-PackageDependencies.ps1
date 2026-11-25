@@ -138,7 +138,7 @@ try {
     Test-Passes 'Unveränderter Stand' {}
 
     Test-Passes 'Modul verwendet Base und einen Vertrag aus Base' {
-        Add-Assigned 'Atlas.IDE.Debugger' 'IDE/Debug' 'Atlas.IDE.Debug.Probe' @('Atlas.Core.Projects.VersionControl', 'Atlas.IDE.Contracts.Rules')
+        Add-Assigned 'Atlas.IDE.Debugger' 'IDE/Debug' 'Atlas.IDE.Debug.Probe' @('Atlas.Core.Projects.VersionControl', 'Atlas.IDE.Base.Foundation.Rules')
     }
 
     Test-Fails 'Base verwendet ein Modul' 'Base verwendet kein Modul (Atlas.IDE.Tracker)' {
@@ -146,7 +146,7 @@ try {
     }
 
     Test-Passes 'Base verwendet einen eigenen Vertrag' {
-        Add-Assigned 'Atlas.IDE.Base' 'IDE/Settings' 'Atlas.IDE.Settings.Probe' @('Atlas.IDE.Contracts.Rules')
+        Add-Assigned 'Atlas.IDE.Base' 'IDE/Settings' 'Atlas.IDE.Settings.Probe' @('Atlas.IDE.Base.Foundation.Rules')
     }
 
     Test-Fails 'Modul verwendet ein anderes Modul' 'Modul Atlas.IDE.Debugger verwendet kein anderes Modul (Atlas.IDE.Tracker)' {

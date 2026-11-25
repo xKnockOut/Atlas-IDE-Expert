@@ -14,7 +14,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.IDE.Contracts.Rules;
+  Atlas.IDE.Base.Foundation.Rules;
 
 type
   TAtlasRulesModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,

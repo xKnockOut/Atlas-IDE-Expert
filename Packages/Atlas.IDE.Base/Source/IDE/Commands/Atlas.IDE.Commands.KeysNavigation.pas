@@ -38,7 +38,7 @@ uses
   Atlas.IDE.Notifications.Service,
   Atlas.IDE.Outline.Breadcrumbs,
   Atlas.IDE.Outline.SectionEdit,
-  Atlas.IDE.Contracts.LineChanges;
+  Atlas.IDE.Base.Foundation.LineChanges;
 
 function Text(AId: TAtlasTextId): string;
 begin

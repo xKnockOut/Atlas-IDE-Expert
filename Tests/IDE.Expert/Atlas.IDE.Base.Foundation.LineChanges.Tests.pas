@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Contracts.LineChanges.Tests;
+﻿unit Atlas.IDE.Base.Foundation.LineChanges.Tests;
 
 // Vertrag der Änderungsmarken (#1905): Null-Objekt ohne Modul, angemeldete Marken, Haken des Trackers.
 
@@ -27,7 +27,7 @@ uses
   Winapi.Windows,
   System.SysUtils,
   Atlas.Core.Editor.LineChanges,
-  Atlas.IDE.Contracts.LineChanges;
+  Atlas.IDE.Base.Foundation.LineChanges;
 
 type
   TFakeMarks = class(TInterfacedObject, IAtlasLineChanges)

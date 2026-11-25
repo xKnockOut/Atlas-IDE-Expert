@@ -9,7 +9,7 @@ uses
   DUnitX.TestFramework,
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.IDE.Contracts.AiText,
+  Atlas.IDE.Base.Foundation.AiText,
   Atlas.Tests.AiTextFake,
   Atlas.Core.Assistants.Contract.IdeAi,
   Atlas.IDE.Assistants.IdeBridge;

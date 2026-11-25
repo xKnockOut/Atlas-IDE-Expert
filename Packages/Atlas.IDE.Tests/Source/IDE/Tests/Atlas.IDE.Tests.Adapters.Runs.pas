@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Tests.Adapters.Runs;
 
 // Läufe des Moduls Tests für Base und andere Module (#69, #1120, #763, #764, #1775): TAtlasTestsRuns erfüllt
-// IAtlasTestRunner (Auswirkungsanalyse von Base, Willkommensseite), IAtlasTestsSource (Atlas.IDE.Contracts.Tests,
+// IAtlasTestRunner (Auswirkungsanalyse von Base, Willkommensseite), IAtlasTestsSource (Atlas.IDE.Base.Foundation.Tests,
 // Karte Tests und Schnellaktionen der Willkommensseite), IAtlasBuildVerdictListener (Tests nach dem Build, nach
 // derselben Bewertung wie Zusammenfassung und Benachrichtigung, #530) und IAtlasFollowsSaves (Fenster „Atlas-Tests“
 // #1776 und betroffene Tests beim Speichern #1775). Läufer, Debugger-Teil und Tests beim Speichern leben nur,
@@ -14,7 +14,7 @@ uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Build.Contract,
-  Atlas.IDE.Contracts.Tests,
+  Atlas.IDE.Base.Foundation.Tests,
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.OnSave;

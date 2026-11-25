@@ -16,7 +16,7 @@ interface
 
 uses
   Atlas.IDE.Debug.Exceptions,
-  Atlas.IDE.Contracts.DebugStop;
+  Atlas.IDE.Base.Foundation.DebugStop;
 
 type
   TAtlasIdeDebugStopSource = class(TInterfacedObject, IAtlasDebugStopSource)

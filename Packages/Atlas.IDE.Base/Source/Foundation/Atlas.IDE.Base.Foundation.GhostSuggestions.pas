@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Contracts.GhostSuggestions;
+﻿unit Atlas.IDE.Base.Foundation.GhostSuggestions;
 
 // Vertrag für Anbieter von Schattentext-Vorschlägen nach Enter (#1890): Base
 // zeigt den Vorschlag (eine Zeile grauer Text an der Schreibmarke, Tab, Strg+→,

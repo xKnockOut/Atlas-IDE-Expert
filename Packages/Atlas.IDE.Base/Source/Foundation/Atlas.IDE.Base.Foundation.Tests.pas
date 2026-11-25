@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Contracts.Tests;
+﻿unit Atlas.IDE.Base.Foundation.Tests;
 
 // Vertrag zwischen Modulen (#1455, Modulregel 6): Das Modul Tests stellt
 // über seinen Scope eine IAtlasTestsSource bereit (Testprojekt ausführen,
@@ -12,7 +12,7 @@
 // (IAtlasTestValues): Befund-Hover (Base) und Kachel „Testergebnisse“ der
 // Willkommensseite fragen, ob es zu einem Test Werte gibt, und zeigen dann
 // „Vergleichen“. Ohne Modul fehlt der Eintrag.
-// Nur Interfaces, kein Code. Liegt in Base (Source/Contracts, #1456).
+// Nur Interfaces, kein Code. Liegt in Base (Source/Foundation, #1456).
 
 interface
 

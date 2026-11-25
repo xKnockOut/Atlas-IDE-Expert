@@ -143,7 +143,7 @@ uses
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Editor.SourceFiles,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.IDE.Base.Foundation.VersionControl;
 
 { TAtlasIdeProjectSummaries.TIdeNotifier }
 

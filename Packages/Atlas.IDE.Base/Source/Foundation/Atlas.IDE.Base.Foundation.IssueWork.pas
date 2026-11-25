@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Contracts.IssueWork;
+﻿unit Atlas.IDE.Base.Foundation.IssueWork;
 
 // Vertrag zwischen Modulen (#2052, Modulregeln 6 und 9): Arbeitsstand je Issue. Der Tracker kennt das aktive Issue
 // eines Projekts und den Zustand der Issues (offen, behoben) und stellt dafür über seinen Scope eine

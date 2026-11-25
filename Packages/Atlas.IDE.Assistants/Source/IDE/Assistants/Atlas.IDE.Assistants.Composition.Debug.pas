@@ -29,7 +29,7 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Assistants.DebugGate,
-  Atlas.IDE.Contracts.DebugControl,
+  Atlas.IDE.Base.Foundation.DebugControl,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.DebugInbox;
