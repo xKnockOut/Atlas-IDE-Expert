@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.AnonymousMethods.Tests;
+﻿unit Atlas.Common.Editing.AnonymousMethods.Protocol.Tests;
 
 // „Anonyme Methode und Methode umwandeln“ über das Protokoll (#680): Code-Aktion
 // mit Client-Befehl und Vorschlag, Antwort des Server-Befehls mit Vorschau,
@@ -14,7 +14,7 @@ uses
 
 type
   [TestFixture]
-  TLspAnonymousMethodsTests = class
+  TAnonymousMethodsProtocolTests = class
   private
     FIndex: ISymbolIndex;
   public
@@ -52,7 +52,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.AnonymousMethods,
-  Atlas.Common.Lsp.AnonymousMethods,
+  Atlas.Common.Editing.AnonymousMethods.Protocol,
   Atlas.Common.JsonRpc.TestSupport;
 
 const
@@ -108,15 +108,15 @@ begin
   end;
 end;
 
-{ TLspAnonymousMethodsTests }
+{ TAnonymousMethodsProtocolTests }
 
-procedure TLspAnonymousMethodsTests.Setup;
+procedure TAnonymousMethodsProtocolTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   FIndex.AddUnit(TIndexExtractor.ExtractText(cText, cFileName, nil));
 end;
 
-procedure TLspAnonymousMethodsTests.TearDown;
+procedure TAnonymousMethodsProtocolTests.TearDown;
 begin
   FIndex := nil;
 end;
@@ -129,7 +129,7 @@ begin
   Result.Text := cText;
   Result.Uri := TDocumentUris.FromPath(cFileName);
   Result.Position := TTextPosition.Create(ALine, ACharacter);
-  Result.Lookup := TLspAnonymousMethods.Lookup(AResolver, ATree, cFileName, ReadFile);
+  Result.Lookup := TAnonymousMethodsProtocol.Lookup(AResolver, ATree, cFileName, ReadFile);
   Result.Capture := TDeferredCapture.Forward;
   Result.Style := TFormatStyle.Default;
 end;
@@ -145,7 +145,7 @@ begin
   try
     mResolver.PinTree(mTree, cFileName);
     try
-      Result := TLspAnonymousMethods.Actions(RequestAt(mResolver, mTree, ALine, ACharacter));
+      Result := TAnonymousMethodsProtocol.Actions(RequestAt(mResolver, mTree, ALine, ACharacter));
     finally
       mResolver.UnpinTree;
     end;
@@ -166,7 +166,7 @@ begin
   try
     mResolver.PinTree(mTree, cFileName);
     try
-      Result := TLspAnonymousMethods.Execute(RequestAt(mResolver, mTree, ALine, ACharacter), AName);
+      Result := TAnonymousMethodsProtocol.Execute(RequestAt(mResolver, mTree, ALine, ACharacter), AName);
     finally
       mResolver.UnpinTree;
     end;
@@ -176,7 +176,7 @@ begin
   end;
 end;
 
-procedure TLspAnonymousMethodsTests.ActionCarriesClientCommand;
+procedure TAnonymousMethodsProtocolTests.ActionCarriesClientCommand;
 var
   mActions: TArray<TJSONObject>;
   mArguments: TJSONArray;
@@ -184,9 +184,9 @@ begin
   mActions := ActionsAt(FIndex, 25, 18);
   try
     Assert.AreEqual(1, Integer(Length(mActions)));
-    Assert.AreEqual(TLspAnonymousMethods.cKind, mActions[0].GetValue<string>('kind'));
+    Assert.AreEqual(TAnonymousMethodsProtocol.cKind, mActions[0].GetValue<string>('kind'));
     Assert.AreEqual('In Methode umwandeln (ProcessItem)', mActions[0].GetValue<string>('title'));
-    Assert.AreEqual(TLspAnonymousMethods.cClientCommand, mActions[0].GetValue<string>('command.command'));
+    Assert.AreEqual(TAnonymousMethodsProtocol.cClientCommand, mActions[0].GetValue<string>('command.command'));
     mArguments := mActions[0].GetValue<TJSONArray>('command.arguments');
     Assert.AreEqual(3, mArguments.Count);
     Assert.AreEqual(TDocumentUris.FromPath(cFileName), mArguments.Items[0].Value);
@@ -200,7 +200,7 @@ begin
   Assert.AreEqual(0, Integer(Length(mActions)));
 end;
 
-procedure TLspAnonymousMethodsTests.ExecuteAnswersEditAndPreview;
+procedure TAnonymousMethodsProtocolTests.ExecuteAnswersEditAndPreview;
 var
   mAnswer: TJSONObject;
 begin
@@ -217,7 +217,7 @@ begin
   end;
 end;
 
-procedure TLspAnonymousMethodsTests.ConflictIsAnError;
+procedure TAnonymousMethodsProtocolTests.ConflictIsAnError;
 begin
   Assert.WillRaise(
     procedure
@@ -231,7 +231,7 @@ begin
     end, EJsonRpcError);
 end;
 
-procedure TLspAnonymousMethodsTests.EmbedFollowsTargetType;
+procedure TAnonymousMethodsProtocolTests.EmbedFollowsTargetType;
 var
   mActions: TArray<TJSONObject>;
 begin
@@ -250,20 +250,20 @@ begin
   Assert.AreEqual(0, Integer(Length(mActions)));
 end;
 
-procedure TLspAnonymousMethodsTests.EmbedSkipsFormEvent;
+procedure TAnonymousMethodsProtocolTests.EmbedSkipsFormEvent;
 begin
   // Knopf steht in Haupt.dfm.
   Assert.AreEqual(0, Integer(Length(ActionsAt(FIndex, 35, 18))));
 end;
 
-procedure TLspAnonymousMethodsTests.CaptureSetting;
+procedure TAnonymousMethodsProtocolTests.CaptureSetting;
 begin
-  Assert.AreEqual(Ord(TDeferredCapture.Fields), Ord(TLspAnonymousMethods.CaptureOf('fields')));
-  Assert.AreEqual(Ord(TDeferredCapture.Forward), Ord(TLspAnonymousMethods.CaptureOf('forward')));
-  Assert.AreEqual(Ord(TDeferredCapture.Forward), Ord(TLspAnonymousMethods.CaptureOf('')));
+  Assert.AreEqual(Ord(TDeferredCapture.Fields), Ord(TAnonymousMethodsProtocol.CaptureOf('fields')));
+  Assert.AreEqual(Ord(TDeferredCapture.Forward), Ord(TAnonymousMethodsProtocol.CaptureOf('forward')));
+  Assert.AreEqual(Ord(TDeferredCapture.Forward), Ord(TAnonymousMethodsProtocol.CaptureOf('')));
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspAnonymousMethodsTests);
+  TDUnitX.RegisterTestFixture(TAnonymousMethodsProtocolTests);
 
 end.

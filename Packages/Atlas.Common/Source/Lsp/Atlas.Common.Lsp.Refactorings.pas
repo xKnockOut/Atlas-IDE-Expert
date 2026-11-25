@@ -140,9 +140,9 @@ uses
   Atlas.Common.Editing.Conditions,
   Atlas.Common.Semantics.ConditionalExpression,
   Atlas.Common.Editing.NestedRoutines,
-  Atlas.Common.Lsp.InlayHints,
   Atlas.Common.Lsp.Completion,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Semantics.InferredTypes;
 
 {$SCOPEDENUMS ON}
 
@@ -286,7 +286,7 @@ begin
   mTree := TSyntaxTreeCache.Parse(AText);
   mResolver := NewResolver(AContext);
   try
-    for mFound in TLspInlayHints.Inferred(mResolver, mTree, AContext.FileName, TTextRange.Create(ANamePos.Line, 0,
+    for mFound in TInferredTypes.Find(mResolver, mTree, AContext.FileName, TTextRange.Create(ANamePos.Line, 0,
       ANamePos.Line, MaxInt)) do
     begin
       if (mFound.NameStart.Line = ANamePos.Line) and (mFound.NameStart.Character = ANamePos.Character) then

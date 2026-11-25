@@ -48,9 +48,6 @@ type
     /// <summary>#453: for var X in …, Inline-Konstanten und generische Typen.</summary>
     [Test]
     procedure InferredTypesOfForInConstAndGenerics;
-    /// <summary>#453: „Typ ausschreiben“ mit uses-Eintrag für die Unit des Typs.</summary>
-    [Test]
-    procedure ExplicitTypeWritesTypeAndUses;
   end;
 
 implementation
@@ -68,7 +65,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.CodeActions.Contract;
+  Atlas.Common.Semantics.InferredTypes.TestSupport;
 
 const
   cHauptFile = 'C:\P\Haupt.pas';
@@ -164,72 +161,6 @@ const
     'end;'#10 +                                            // 10
     'end.';
 
-  cDatenFile = 'C:\P\Daten.pas';
-  cQuelleFile = 'C:\P\Quelle.pas';
-  cNutzerFile = 'C:\P\Nutzer.pas';
-
-  cUnitDaten =
-    'unit Daten;'#10 +
-    'interface'#10 +
-    'type'#10 +
-    '  TDaten = class'#10 +
-    '  end;'#10 +
-    '  TEnum<T> = class'#10 +
-    '    function GetCurrent: T;'#10 +
-    '    function MoveNext: Boolean;'#10 +
-    '    property Current: T read GetCurrent;'#10 +
-    '  end;'#10 +
-    '  TListe<T> = class'#10 +
-    '    function GetEnumerator: TEnum<T>;'#10 +
-    '  end;'#10 +
-    'implementation'#10 +
-    'function TEnum<T>.GetCurrent: T;'#10 +
-    'begin'#10 +
-    'end;'#10 +
-    'function TEnum<T>.MoveNext: Boolean;'#10 +
-    'begin'#10 +
-    'end;'#10 +
-    'function TListe<T>.GetEnumerator: TEnum<T>;'#10 +
-    'begin'#10 +
-    'end;'#10 +
-    'end.';
-
-  cUnitQuelle =
-    'unit Quelle;'#10 +
-    'interface'#10 +
-    'uses Daten;'#10 +
-    'var'#10 +
-    '  Kunden: TListe<TDaten>;'#10 +
-    'function Lade: TDaten;'#10 +
-    'implementation'#10 +
-    'function Lade: TDaten;'#10 +
-    'begin'#10 +
-    'end;'#10 +
-    'end.';
-
-  cUnitNutzer =
-    'unit Nutzer;'#10 +                              // 0
-    'interface'#10 +                                 // 1
-    'uses Quelle;'#10 +                              // 2
-    'implementation'#10 +                            // 3
-    'procedure P;'#10 +                              // 4
-    'var'#10 +                                       // 5
-    '  Zahlen: TArray<Integer>;'#10 +                // 6
-    '  Text: string;'#10 +                           // 7
-    'begin'#10 +                                     // 8
-    '  var X := Lade;'#10 +                          // 9
-    '  for var Z in Zahlen do'#10 +                  // 10
-    '    ;'#10 +                                     // 11
-    '  for var K in Kunden do'#10 +                  // 12
-    '    ;'#10 +                                     // 13
-    '  for var C in Text do'#10 +                    // 14
-    '    ;'#10 +                                     // 15
-    '  const N = 5;'#10 +                            // 16
-    '  for var T: Integer in Zahlen do'#10 +         // 17
-    '    ;'#10 +                                     // 18
-    'end;'#10 +                                      // 19
-    'end.';
-
 function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   AText := cUnitWerkzeug;
@@ -252,6 +183,14 @@ begin
     Result := Result + Format('%d:%d %s @%d:%d|', [mHint.Position.Line, mHint.Position.Character, mHint.Text,
       mHint.BlockStart.Line, mHint.BlockStart.Character]);
   end;
+end;
+
+/// <summary>Steht für die Anmeldung aus Editing: eine Marke am Ende von Zeile 11 (Kopf von TRechner.Doppelt).
+/// </summary>
+function MarkerAt11(AResolver: TNameResolver; ATree: TSyntaxTree; const ATreeText, AFileName: string;
+  const ARange: TTextRange; const AReadText: TDocumentReadText): TArray<TTextPosition>;
+begin
+  Result := TArray<TTextPosition>.Create(TTextPosition.Create(11, 47));
 end;
 
 { TLspInlayHintsTests }
@@ -367,6 +306,7 @@ var
   mTree: TSyntaxTree;
   mSettings: TInlayHintSettings;
   mJson: TJSONArray;
+  mSource: TInlayHintSource;
 begin
   mTree := TPascalParser.Parse(cSource);
   try
@@ -377,12 +317,15 @@ begin
     mSettings.ControlChars := False;
     // Vorgabe ist an (refactoring.methodKindMarker); hier erst ohne.
     mSettings.MethodWithoutSelf := False;
+    mSource := TInlayHintSource.Create(FResolver, FIndex, mTree, cSource, 'R.pas', nil);
+    mSource.MethodMarkers := MarkerAt11;
+    Assert.AreEqual('', Describe(TLspInlayHints.Collect(mSource, WholeFile, mSettings)));
+    mSettings.MethodWithoutSelf := True;
+    Assert.AreEqual('11:47 Self unused|', Describe(TLspInlayHints.Collect(mSource, WholeFile, mSettings)));
+    // Ohne Anmeldung aus Editing keine Marken.
     Assert.AreEqual('', Describe(TLspInlayHints.Collect(TInlayHintSource.Create(FResolver, FIndex, mTree, cSource,
       'R.pas', nil), WholeFile, mSettings)));
-    mSettings.MethodWithoutSelf := True;
-    Assert.AreEqual('11:47 Self unused|', Describe(TLspInlayHints.Collect(TInlayHintSource.Create(FResolver, FIndex,
-      mTree, cSource, 'R.pas', nil), WholeFile, mSettings)));
-    mJson := TLspInlayHints.ToJson(TLspInlayHints.MethodMarkers(FResolver, mTree, cSource, 'R.pas', WholeFile, nil));
+    mJson := TLspInlayHints.ToJson(TLspInlayHints.MethodMarkerHints(mSource, WholeFile));
     try
       Assert.AreEqual(1, Integer(mJson.Count));
       Assert.IsTrue(mJson.Items[0].GetValue<Boolean>('data.methodWithoutSelf'));
@@ -526,39 +469,6 @@ begin
     // Zeile 17 hat schon einen Typ.
     Assert.AreEqual('9:7 : TDaten|10:11 : Integer|12:11 : TDaten|14:11 : Char|16:9 : Integer|',
       Describe(TLspInlayHints.InferredTypes(FResolver, mTree, cNutzerFile, WholeFile)));
-  finally
-    mTree.Free;
-  end;
-end;
-
-procedure TLspInlayHintsTests.ExplicitTypeWritesTypeAndUses;
-var
-  mTree: TSyntaxTree;
-  mAction: TCodeAction;
-begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitDaten, cDatenFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitQuelle, cQuelleFile, nil));
-  mTree := TPascalParser.Parse(cUnitNutzer);
-  try
-    // Auf dem Namen X: ": TDaten" und uses Daten, weil Nutzer nur Quelle einbindet.
-    Assert.IsTrue(TLspInlayHints.ExplicitTypeAction(FResolver, mTree, cNutzerFile, TTextPosition.Create(9, 6), #10,
-      mAction));
-    Assert.AreEqual('Typ ausschreiben', mAction.Title);
-    Assert.AreEqual(2, Integer(Length(mAction.Edits)));
-    Assert.AreEqual(': TDaten', mAction.Edits[0].NewText);
-    Assert.AreEqual(9, mAction.Edits[0].Range.StartPos.Line);
-    Assert.AreEqual(7, mAction.Edits[0].Range.StartPos.Character);
-    Assert.IsTrue(mAction.Edits[1].NewText.Contains('Daten'), mAction.Edits[1].NewText);
-    // Integer braucht keine Unit.
-    Assert.IsTrue(TLspInlayHints.ExplicitTypeAction(FResolver, mTree, cNutzerFile, TTextPosition.Create(10, 10), #10,
-      mAction));
-    Assert.AreEqual(1, Integer(Length(mAction.Edits)));
-    Assert.AreEqual(': Integer', mAction.Edits[0].NewText);
-    // Mit Typ bzw. neben dem Namen nichts.
-    Assert.IsFalse(TLspInlayHints.ExplicitTypeAction(FResolver, mTree, cNutzerFile, TTextPosition.Create(17, 10), #10,
-      mAction));
-    Assert.IsFalse(TLspInlayHints.ExplicitTypeAction(FResolver, mTree, cNutzerFile, TTextPosition.Create(9, 12), #10,
-      mAction));
   finally
     mTree.Free;
   end;

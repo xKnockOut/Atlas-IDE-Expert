@@ -50,9 +50,6 @@ uses
 
 type
   TMethodWithoutSelf = class
-  public const
-    /// <summary>Text der Marke für Clients; das Plugin beschriftet sie selbst in der Sprache der IDE.</summary>
-    cMarkerText = 'Self unused';
   public
     class function ClassMethodTitle: string; static;
     class function ClassMethodCallsTitle: string; static;

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.MethodWithoutSelf;
+﻿unit Atlas.Common.Editing.MethodWithoutSelf.Protocol;
 
 // „Methode ohne Self umwandeln“ über das Protokoll (#686):
 //   - Code-Aktionen auf dem Kopf einer Methode ohne Self, nur mit
@@ -41,7 +41,7 @@ type
     Style: TFormatStyle;
   end;
 
-  TLspMethodWithoutSelf = class
+  TMethodWithoutSelfProtocol = class
   public const
     cClientCommand = 'atlas.methodKind';
     cApplyCommand = 'atlas.server.methodKind';
@@ -61,6 +61,10 @@ type
     /// <summary>Stellen der Marken in ARange: Ende des Kopfs je Methode ohne Self.</summary>
     class function Markers(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;
       const ALookup: TMethodLookup): TArray<TTextPosition>; static;
+    /// <summary>Wie Markers, Mitglieder, Interfaces und Formular über AResolver und AReadText; passt zu
+    /// TInlayMethodMarkers der Inlay Hints (#686).</summary>
+    class function MarkerPositions(AResolver: TNameResolver; ATree: TSyntaxTree; const ATreeText, AFileName: string;
+      const ARange: TTextRange; const AReadText: TDocumentReadText): TArray<TTextPosition>; static;
   end;
 
 implementation
@@ -73,9 +77,8 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.FormMentions,
+  Atlas.Common.Editing.FormMentions,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 
@@ -83,11 +86,11 @@ uses
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TLspMethodWithoutSelfText = (ConversionNotPossible, ConversionNotPossibleIsIn, ConversionNotPossibleCannotBe,
+  TMethodWithoutSelfProtocolText = (ConversionNotPossible, ConversionNotPossibleIsIn, ConversionNotPossibleCannotBe,
     CallsInFiles, UnknownConversion);
 
 const
-  cTexts: array[TLspMethodWithoutSelfText] of TAtlasText = (
+  cTexts: array[TMethodWithoutSelfProtocolText] of TAtlasText = (
     (De: 'Umwandeln geht nicht: '; En: 'Conversion not possible: '),
     (De: 'Umwandeln geht nicht: %s steht in %s'; En: 'Conversion not possible: %s is in %s'),
     (De: 'Umwandeln geht nicht: %s lässt sich nicht lesen'; En: 'Conversion not possible: %s cannot be read'),
@@ -96,16 +99,16 @@ const
 
 {$SCOPEDENUMS OFF}
 
-{ TLspMethodWithoutSelf }
+{ TMethodWithoutSelfProtocol }
 
-class function TLspMethodWithoutSelf.Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+class function TMethodWithoutSelfProtocol.Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const AReadText: TReferenceReadText): TMethodLookup;
 begin
   Result := TMethodLookup.FromResolver(AResolver, ATree, AFileName);
-  Result.InForm := TLspFormMentions.Lookup(AFileName, AReadText);
+  Result.InForm := TFormMentions.Lookup(AFileName, AReadText);
 end;
 
-class function TLspMethodWithoutSelf.Actions(ATree: TSyntaxTree; const AText, AUri: string;
+class function TMethodWithoutSelfProtocol.Actions(ATree: TSyntaxTree; const AText, AUri: string;
   const APosition: TTextPosition; const ALookup: TMethodLookup): TArray<TJSONObject>;
 var
   mTarget: TMethodTarget;
@@ -140,7 +143,7 @@ end;
 
 function Fail(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, AMessage);
+  Result := EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, AMessage);
 end;
 
 function EditsJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;
@@ -158,7 +161,7 @@ begin
     mItem := TJSONObject.Create;
     mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
     mItem.AddPair('newText', mEdit.NewText);
-    mItem.AddPair('annotationId', TLspMethodWithoutSelf.cAnnotationId);
+    mItem.AddPair('annotationId', TMethodWithoutSelfProtocol.cAnnotationId);
     mItems.AddElement(mItem);
   end;
   Result := TJSONObject.Create;
@@ -256,7 +259,7 @@ var
 begin
   if MatchText(ExtractFileExt(ALocation.FileName), ['.dfm', '.fmx']) then
   begin
-    raise Fail(cTexts[TLspMethodWithoutSelfText.ConversionNotPossibleIsIn].Fmt([FTarget.Name,
+    raise Fail(cTexts[TMethodWithoutSelfProtocolText.ConversionNotPossibleIsIn].Fmt([FTarget.Name,
       ExtractFileName(ALocation.FileName)]));
   end;
   if SameText(ALocation.FileName, FFileName) then
@@ -278,7 +281,7 @@ begin
   end
   else
   begin
-    raise Fail(cTexts[TLspMethodWithoutSelfText.ConversionNotPossibleCannotBe].Fmt([
+    raise Fail(cTexts[TMethodWithoutSelfProtocolText.ConversionNotPossibleCannotBe].Fmt([
       ExtractFileName(ALocation.FileName)]));
   end;
 end;
@@ -290,14 +293,14 @@ var
 begin
   FResolver.PinTree(FTree, FFileName);
   try
-    FLookup := TLspMethodWithoutSelf.Lookup(FResolver, FTree, FFileName, FContext.ReadText);
+    FLookup := TMethodWithoutSelfProtocol.Lookup(FResolver, FTree, FFileName, FContext.ReadText);
     mFound := TMethodWithoutSelf.Target(FText, FTree, APosition, FLookup, FTarget, mReason);
   finally
     FResolver.UnpinTree;
   end;
   if not mFound then
   begin
-    raise Fail(cTexts[TLspMethodWithoutSelfText.ConversionNotPossible].Text + mReason);
+    raise Fail(cTexts[TMethodWithoutSelfProtocolText.ConversionNotPossible].Text + mReason);
   end;
 end;
 
@@ -335,7 +338,7 @@ begin
   end;
   if not mDone then
   begin
-    raise Fail(cTexts[TLspMethodWithoutSelfText.ConversionNotPossible].Text + mReason);
+    raise Fail(cTexts[TMethodWithoutSelfProtocolText.ConversionNotPossible].Text + mReason);
   end;
 end;
 
@@ -358,10 +361,10 @@ begin
   mAnnotation := TJSONObject.Create;
   mAnnotation.AddPair('label', ATitle);
   mAnnotation.AddPair('needsConfirmation', TJSONBool.Create(True));
-  mAnnotation.AddPair('description', cTexts[TLspMethodWithoutSelfText.CallsInFiles].Fmt([AName, AConverted.Calls,
+  mAnnotation.AddPair('description', cTexts[TMethodWithoutSelfProtocolText.CallsInFiles].Fmt([AName, AConverted.Calls,
     Length(AConverted.Files)]));
   mAnnotations := TJSONObject.Create;
-  mAnnotations.AddPair(TLspMethodWithoutSelf.cAnnotationId, mAnnotation);
+  mAnnotations.AddPair(TMethodWithoutSelfProtocol.cAnnotationId, mAnnotation);
   mEdit := TJSONObject.Create;
   mEdit.AddPair('documentChanges', mChanges);
   mEdit.AddPair('changeAnnotations', mAnnotations);
@@ -379,7 +382,7 @@ begin
   Result.AddPair('preview', AConverted.Preview);
 end;
 
-class function TLspMethodWithoutSelf.Execute(AResolver: TNameResolver; ATree: TSyntaxTree;
+class function TMethodWithoutSelfProtocol.Execute(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName, AText: string; const APosition: TTextPosition; const AContext: TMethodKindContext): TJSONObject;
 var
   mConversion: TMethodConversion;
@@ -389,7 +392,7 @@ begin
   if not TMethodWithoutSelf.ConversionOf(AContext.Conversion, mConversion) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TLspMethodWithoutSelfText.UnknownConversion].Fmt([AContext.Conversion]));
+      cTexts[TMethodWithoutSelfProtocolText.UnknownConversion].Fmt([AContext.Conversion]));
   end;
   mRun := TMethodKindRun.Create(AResolver, ATree, AFileName, AText, AContext);
   try
@@ -402,7 +405,7 @@ begin
   end;
 end;
 
-class function TLspMethodWithoutSelf.Markers(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;
+class function TMethodWithoutSelfProtocol.Markers(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;
   const ALookup: TMethodLookup): TArray<TTextPosition>;
 var
   mTarget: TMethodTarget;
@@ -417,7 +420,18 @@ begin
   end;
 end;
 
+class function TMethodWithoutSelfProtocol.MarkerPositions(AResolver: TNameResolver; ATree: TSyntaxTree;
+  const ATreeText, AFileName: string; const ARange: TTextRange; const AReadText: TDocumentReadText): TArray<TTextPosition>;
+begin
+  AResolver.PinTree(ATree, AFileName);
+  try
+    Result := Markers(ATree, ATreeText, ARange, Lookup(AResolver, ATree, AFileName, AReadText));
+  finally
+    AResolver.UnpinTree;
+  end;
+end;
+
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.MethodWithoutSelf', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.MethodWithoutSelf.Protocol', cTexts);
 
 end.

@@ -39,9 +39,9 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.InvertBoolean,
-  Atlas.Common.Lsp.PromoteVariable,
-  Atlas.Common.Lsp.AnonymousMethods,
-  Atlas.Common.Lsp.MethodWithoutSelf,
+  Atlas.Common.Editing.PromoteVariable.Protocol,
+  Atlas.Common.Editing.AnonymousMethods.Protocol,
+  Atlas.Common.Editing.MethodWithoutSelf.Protocol,
   Atlas.Common.Localization.Texts;
 
 type
@@ -69,9 +69,9 @@ end;
 procedure TShellConversionRefactorings.Register(ACommands: TLspCommands);
 begin
   ACommands.Register(TLspInvertBoolean.cApplyCommand, InvertBoolean);
-  ACommands.Register(TLspPromoteVariable.cApplyCommand, PromoteVariable);
-  ACommands.Register(TLspAnonymousMethods.cApplyCommand, AnonymousMethod);
-  ACommands.Register(TLspMethodWithoutSelf.cApplyCommand, MethodKind);
+  ACommands.Register(TPromoteVariableProtocol.cApplyCommand, PromoteVariable);
+  ACommands.Register(TAnonymousMethodsProtocol.cApplyCommand, AnonymousMethod);
+  ACommands.Register(TMethodWithoutSelfProtocol.cApplyCommand, MethodKind);
 end;
 
 function TShellConversionRefactorings.Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
@@ -159,8 +159,8 @@ begin
   try
     mResolver.PinTree(mShared.Tree, mFileName);
     try
-      Result := TLspPromoteVariable.Actions(mShared.Tree, mDocument.Text, AUri, APosition,
-        TLspPromoteVariable.Lookup(mResolver, mShared.Tree, mFileName, Reader));
+      Result := TPromoteVariableProtocol.Actions(mShared.Tree, mDocument.Text, AUri, APosition,
+        TPromoteVariableProtocol.Lookup(mResolver, mShared.Tree, mFileName, Reader));
     finally
       mResolver.UnpinTree;
     end;
@@ -189,10 +189,10 @@ begin
   try
     mResolver.PinTree(mShared.Tree, mFileName);
     try
-      mContext.Lookup := TLspPromoteVariable.Lookup(mResolver, mShared.Tree, mFileName, Reader);
+      mContext.Lookup := TPromoteVariableProtocol.Lookup(mResolver, mShared.Tree, mFileName, Reader);
       mContext.Style := FormatStyle(mUri);
       mContext.NewName := Trim(AArguments.Items[2].Value);
-      mAnswer := TLspPromoteVariable.Execute(mShared.Tree, mDocument.Text, mUri,
+      mAnswer := TPromoteVariableProtocol.Execute(mShared.Tree, mDocument.Text, mUri,
         TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
     finally
       mResolver.UnpinTree;
@@ -231,10 +231,10 @@ begin
       mRequest.Text := mDocument.Text;
       mRequest.Uri := AUri;
       mRequest.Position := APosition;
-      mRequest.Lookup := TLspAnonymousMethods.Lookup(mResolver, mShared.Tree, mFileName, Reader);
-      mRequest.Capture := TLspAnonymousMethods.CaptureOf(mSettings.AnonymousMethodDeferredCapture);
+      mRequest.Lookup := TAnonymousMethodsProtocol.Lookup(mResolver, mShared.Tree, mFileName, Reader);
+      mRequest.Capture := TAnonymousMethodsProtocol.CaptureOf(mSettings.AnonymousMethodDeferredCapture);
       mRequest.Style := FormatStyle(AUri);
-      Result := TLspAnonymousMethods.Actions(mRequest);
+      Result := TAnonymousMethodsProtocol.Actions(mRequest);
     finally
       mResolver.UnpinTree;
     end;
@@ -269,10 +269,10 @@ begin
       mRequest.Text := mDocument.Text;
       mRequest.Uri := mUri;
       mRequest.Position := TLspPositions.ReadPosition(AArguments.Items[1]);
-      mRequest.Lookup := TLspAnonymousMethods.Lookup(mResolver, mShared.Tree, mFileName, Reader);
-      mRequest.Capture := TLspAnonymousMethods.CaptureOf(mSettings.AnonymousMethodDeferredCapture);
+      mRequest.Lookup := TAnonymousMethodsProtocol.Lookup(mResolver, mShared.Tree, mFileName, Reader);
+      mRequest.Capture := TAnonymousMethodsProtocol.CaptureOf(mSettings.AnonymousMethodDeferredCapture);
       mRequest.Style := FormatStyle(mUri);
-      mAnswer := TLspAnonymousMethods.Execute(mRequest, Trim(AArguments.Items[2].Value));
+      mAnswer := TAnonymousMethodsProtocol.Execute(mRequest, Trim(AArguments.Items[2].Value));
     finally
       mResolver.UnpinTree;
     end;
@@ -303,8 +303,8 @@ begin
   try
     mResolver.PinTree(mShared.Tree, mFileName);
     try
-      Result := TLspMethodWithoutSelf.Actions(mShared.Tree, mDocument.Text, AUri, APosition,
-        TLspMethodWithoutSelf.Lookup(mResolver, mShared.Tree, mFileName, Reader));
+      Result := TMethodWithoutSelfProtocol.Actions(mShared.Tree, mDocument.Text, AUri, APosition,
+        TMethodWithoutSelfProtocol.Lookup(mResolver, mShared.Tree, mFileName, Reader));
     finally
       mResolver.UnpinTree;
     end;
@@ -337,7 +337,7 @@ begin
   mContext.Style := FormatStyle(mUri);
   mResolver := NewResolver;
   try
-    mAnswer := TLspMethodWithoutSelf.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+    mAnswer := TMethodWithoutSelfProtocol.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;

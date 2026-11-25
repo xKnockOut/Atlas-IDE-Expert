@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.MethodWithoutSelf.Tests;
+﻿unit Atlas.Common.Editing.MethodWithoutSelf.Protocol.Tests;
 
 // „Methode ohne Self umwandeln“ über das Protokoll (#686): Code-Aktionen mit
 // Client-Befehl, keine Aktion bei implizitem Zugriff auf ein Feld (über die
@@ -14,7 +14,7 @@ uses
 
 type
   [TestFixture]
-  TLspMethodWithoutSelfTests = class
+  TMethodWithoutSelfProtocolTests = class
   private
     FIndex: ISymbolIndex;
   public
@@ -34,6 +34,9 @@ type
     procedure ErrorsCarryReason;
     [Test]
     procedure MarkersAtHeaderEnd;
+    /// <summary>MarkerPositions hält den Baum selbst fest und liefert dieselben Stellen.</summary>
+    [Test]
+    procedure MarkerPositionsPinTheTree;
   end;
 
 implementation
@@ -52,7 +55,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.MethodWithoutSelf,
-  Atlas.Common.Lsp.MethodWithoutSelf,
+  Atlas.Common.Editing.MethodWithoutSelf.Protocol,
   Atlas.Common.JsonRpc.TestSupport;
 
 const
@@ -120,16 +123,16 @@ begin
   end;
 end;
 
-{ TLspMethodWithoutSelfTests }
+{ TMethodWithoutSelfProtocolTests }
 
-procedure TLspMethodWithoutSelfTests.Setup;
+procedure TMethodWithoutSelfProtocolTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   FIndex.AddUnit(TIndexExtractor.ExtractText(cKunden, cKundenFile, nil));
   FIndex.AddUnit(TIndexExtractor.ExtractText(cAufrufer, cAufruferFile, nil));
 end;
 
-procedure TLspMethodWithoutSelfTests.TearDown;
+procedure TMethodWithoutSelfProtocolTests.TearDown;
 begin
   FIndex := nil;
 end;
@@ -144,8 +147,8 @@ begin
   try
     mResolver.PinTree(mTree, cKundenFile);
     try
-      Result := TLspMethodWithoutSelf.Actions(mTree, cKunden, TDocumentUris.FromPath(cKundenFile),
-        TTextPosition.Create(ALine, ACharacter), TLspMethodWithoutSelf.Lookup(mResolver, mTree, cKundenFile, ReadFile));
+      Result := TMethodWithoutSelfProtocol.Actions(mTree, cKunden, TDocumentUris.FromPath(cKundenFile),
+        TTextPosition.Create(ALine, ACharacter), TMethodWithoutSelfProtocol.Lookup(mResolver, mTree, cKundenFile, ReadFile));
     finally
       mResolver.UnpinTree;
     end;
@@ -171,7 +174,7 @@ begin
   mTree := TPascalParser.Parse(cKunden);
   mResolver := TNameResolver.Create(AIndex);
   try
-    Result := TLspMethodWithoutSelf.Execute(mResolver, mTree, cKundenFile, cKunden, TTextPosition.Create(ALine,
+    Result := TMethodWithoutSelfProtocol.Execute(mResolver, mTree, cKundenFile, cKunden, TTextPosition.Create(ALine,
       ACharacter), mContext);
   finally
     mResolver.Free;
@@ -179,7 +182,7 @@ begin
   end;
 end;
 
-procedure TLspMethodWithoutSelfTests.ActionsCarryClientCommand;
+procedure TMethodWithoutSelfProtocolTests.ActionsCarryClientCommand;
 var
   mActions: TArray<TJSONObject>;
   mArguments: TJSONArray;
@@ -191,8 +194,8 @@ begin
     Assert.AreEqual('In class-Methode umwandeln, Aufrufe über TKunde', mActions[1].GetValue<string>('title'));
     Assert.AreEqual(TMethodWithoutSelf.RoutineTitle, mActions[2].GetValue<string>('title'));
     Assert.AreEqual('In Record-Helper für string verschieben', mActions[3].GetValue<string>('title'));
-    Assert.AreEqual(TLspMethodWithoutSelf.cKind, mActions[0].GetValue<string>('kind'));
-    Assert.AreEqual(TLspMethodWithoutSelf.cClientCommand, mActions[2].GetValue<string>('command.command'));
+    Assert.AreEqual(TMethodWithoutSelfProtocol.cKind, mActions[0].GetValue<string>('kind'));
+    Assert.AreEqual(TMethodWithoutSelfProtocol.cClientCommand, mActions[2].GetValue<string>('command.command'));
     mArguments := mActions[2].GetValue<TJSONArray>('command.arguments');
     Assert.AreEqual(3, mArguments.Count);
     Assert.AreEqual(TDocumentUris.FromPath(cKundenFile), mArguments.Items[0].Value);
@@ -203,7 +206,7 @@ begin
   end;
 end;
 
-procedure TLspMethodWithoutSelfTests.ImplicitFieldAndFormEventGiveNoAction;
+procedure TMethodWithoutSelfProtocolTests.ImplicitFieldAndFormEventGiveNoAction;
 begin
   // Zeige liest FName ohne Self.
   Assert.AreEqual(0, Integer(Length(ActionsAt(FIndex, 13, 20))));
@@ -211,7 +214,7 @@ begin
   Assert.AreEqual(0, Integer(Length(ActionsAt(FIndex, 22, 20))));
 end;
 
-procedure TLspMethodWithoutSelfTests.ExecuteChangesBothUnits;
+procedure TMethodWithoutSelfProtocolTests.ExecuteChangesBothUnits;
 var
   mAnswer: TJSONObject;
   mJson: string;
@@ -241,7 +244,7 @@ begin
   end;
 end;
 
-procedure TLspMethodWithoutSelfTests.HelperWarnsAboutRtlHelper;
+procedure TMethodWithoutSelfProtocolTests.HelperWarnsAboutRtlHelper;
 var
   mAnswer: TJSONObject;
 begin
@@ -256,7 +259,7 @@ begin
   end;
 end;
 
-procedure TLspMethodWithoutSelfTests.ErrorsCarryReason;
+procedure TMethodWithoutSelfProtocolTests.ErrorsCarryReason;
 begin
   Assert.WillRaise(
     procedure
@@ -270,7 +273,7 @@ begin
     end, EJsonRpcError);
 end;
 
-procedure TLspMethodWithoutSelfTests.MarkersAtHeaderEnd;
+procedure TMethodWithoutSelfProtocolTests.MarkersAtHeaderEnd;
 var
   mTree: TSyntaxTree;
   mResolver: TNameResolver;
@@ -281,13 +284,13 @@ begin
   try
     mResolver.PinTree(mTree, cKundenFile);
     try
-      mFound := TLspMethodWithoutSelf.Markers(mTree, cKunden, TTextRange.Create(TTextPosition.Create(0, 0),
-        TTextPosition.Create(30, 0)), TLspMethodWithoutSelf.Lookup(mResolver, mTree, cKundenFile, ReadFile));
+      mFound := TMethodWithoutSelfProtocol.Markers(mTree, cKunden, TTextRange.Create(TTextPosition.Create(0, 0),
+        TTextPosition.Create(30, 0)), TMethodWithoutSelfProtocol.Lookup(mResolver, mTree, cKundenFile, ReadFile));
       Assert.AreEqual(1, Integer(Length(mFound)));
       Assert.AreEqual(18, mFound[0].Line);
       Assert.AreEqual(66, mFound[0].Character);
-      mFound := TLspMethodWithoutSelf.Markers(mTree, cKunden, TTextRange.Create(TTextPosition.Create(0, 0),
-        TTextPosition.Create(10, 0)), TLspMethodWithoutSelf.Lookup(mResolver, mTree, cKundenFile, ReadFile));
+      mFound := TMethodWithoutSelfProtocol.Markers(mTree, cKunden, TTextRange.Create(TTextPosition.Create(0, 0),
+        TTextPosition.Create(10, 0)), TMethodWithoutSelfProtocol.Lookup(mResolver, mTree, cKundenFile, ReadFile));
       Assert.AreEqual(0, Integer(Length(mFound)));
     finally
       mResolver.UnpinTree;
@@ -298,7 +301,27 @@ begin
   end;
 end;
 
+procedure TMethodWithoutSelfProtocolTests.MarkerPositionsPinTheTree;
+var
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mFound: TArray<TTextPosition>;
+begin
+  mTree := TPascalParser.Parse(cKunden);
+  mResolver := TNameResolver.Create(FIndex);
+  try
+    mFound := TMethodWithoutSelfProtocol.MarkerPositions(mResolver, mTree, cKunden, cKundenFile,
+      TTextRange.Create(TTextPosition.Create(0, 0), TTextPosition.Create(30, 0)), ReadFile);
+    Assert.AreEqual(1, Integer(Length(mFound)));
+    Assert.AreEqual(18, mFound[0].Line);
+    Assert.AreEqual(66, mFound[0].Character);
+  finally
+    mResolver.Free;
+    mTree.Free;
+  end;
+end;
+
 initialization
-  TDUnitX.RegisterTestFixture(TLspMethodWithoutSelfTests);
+  TDUnitX.RegisterTestFixture(TMethodWithoutSelfProtocolTests);
 
 end.

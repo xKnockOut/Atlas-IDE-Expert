@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.FormMentions.Tests;
+﻿unit Atlas.Common.Editing.FormMentions.Tests;
 
 interface
 
@@ -7,7 +7,7 @@ uses
 
 type
   [TestFixture]
-  TLspFormMentionsTests = class
+  TFormMentionsTests = class
   public
     [Test]
     procedure MentionsWholeWords;
@@ -22,17 +22,17 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Editing.PromoteVariable,
-  Atlas.Common.Lsp.FormMentions,
+  Atlas.Common.Editing.FormMentions,
   Atlas.Common.Semantics.References;
 
-{ TLspFormMentionsTests }
+{ TFormMentionsTests }
 
-procedure TLspFormMentionsTests.MentionsWholeWords;
+procedure TFormMentionsTests.MentionsWholeWords;
 begin
-  Assert.IsTrue(TLspFormMentions.MentionsWord('object FLabel: TLabel', 'flabel'));
-  Assert.IsTrue(TLspFormMentions.MentionsWord('FLabel', 'FLabel'));
-  Assert.IsFalse(TLspFormMentions.MentionsWord('object FLabel2: TLabel', 'FLabel'));
-  Assert.IsFalse(TLspFormMentions.MentionsWord('object XFLabel: TLabel', 'FLabel'));
+  Assert.IsTrue(TFormMentions.MentionsWord('object FLabel: TLabel', 'flabel'));
+  Assert.IsTrue(TFormMentions.MentionsWord('FLabel', 'FLabel'));
+  Assert.IsFalse(TFormMentions.MentionsWord('object FLabel2: TLabel', 'FLabel'));
+  Assert.IsFalse(TFormMentions.MentionsWord('object XFLabel: TLabel', 'FLabel'));
 end;
 
 function FormReader: TReferenceReadText;
@@ -48,25 +48,25 @@ begin
     end;
 end;
 
-procedure TLspFormMentionsTests.LookupReadsDfmAndFmx;
+procedure TFormMentionsTests.LookupReadsDfmAndFmx;
 var
   mInForm: TPromoteInFormFunc;
 begin
-  mInForm := TLspFormMentions.Lookup('Haupt.pas', FormReader());
+  mInForm := TFormMentions.Lookup('Haupt.pas', FormReader());
   Assert.IsTrue(mInForm('Button1'));
   Assert.IsTrue(mInForm('Button1Click'));
   Assert.IsFalse(mInForm('Button2'));
 end;
 
-procedure TLspFormMentionsTests.LookupWithoutReaderIsFalse;
+procedure TFormMentionsTests.LookupWithoutReaderIsFalse;
 var
   mInForm: TPromoteInFormFunc;
 begin
-  mInForm := TLspFormMentions.Lookup('Haupt.pas', nil);
+  mInForm := TFormMentions.Lookup('Haupt.pas', nil);
   Assert.IsFalse(mInForm('Button1'));
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspFormMentionsTests);
+  TDUnitX.RegisterTestFixture(TFormMentionsTests);
 
 end.
