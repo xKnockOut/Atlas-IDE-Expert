@@ -12,6 +12,7 @@ uses
   System.JSON,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Localization.Texts,
+  Atlas.Common.Mcp.Contract.RuleDocs,
   Atlas.Common.Mcp.DocsIndex;
 
 type
@@ -28,6 +29,8 @@ type
     ProjectText: string;
     /// <summary>Inhalt der globalen settings.json; '' ohne Datei oder abgeschaltet.</summary>
     GlobalText: string;
+    /// <summary>Regelkatalog; nil = ohne Regeln.</summary>
+    RuleDocs: IMcpRuleDocs;
   end;
 
   TMcpDocsTools = class
@@ -49,11 +52,7 @@ uses
   // Inline-Funktionen von TJSONArray und TJSONObject (H2443).
   System.Generics.Collections,
   Atlas.Text.Json,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.Catalog.Data,
-  Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Profiles,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.DocsIndexData;
 
@@ -72,15 +71,6 @@ type
     Origin: TDocsText;
   end;
 
-  /// <summary>Wirksamer Schweregrad einer Regel im Projekt und woher er kommt.</summary>
-  TRuleState = record
-    Severity: TRuleSeverity;
-    /// <summary>OriginRules, OriginGroup, OriginMetrics oder OriginProfile.</summary>
-    Origin: TDocsText;
-    /// <summary>Schlüssel der Gruppe bzw. Name des Profils.</summary>
-    Detail: string;
-  end;
-
   /// <summary>Was eine Antwort braucht: Anfrage, Index und die Abschnitte, die Schlüssel erwähnen.</summary>
   TDocsAnswer = record
     Request: TMcpDocsRequest;
@@ -93,8 +83,9 @@ const
   cFeaturePages = 'docs/features/%s/%s#%s';
   cSeverityNames: array[TRuleSeverity] of string = ('default', 'off', 'hint', 'information', 'warning', 'error');
   // Herkunft in der JSON-Ausgabe, unabhängig von der Sprache.
-  cOriginCodes: array[TDocsText.OriginRules..TDocsText.OriginProfile] of string = ('rules', 'group', 'metrics',
-    'profile');
+  cOriginCodes: array[TFindingRuleOrigin] of string = ('rules', 'group', 'metrics', 'profile');
+  cOriginTexts: array[TFindingRuleOrigin] of TDocsText = (TDocsText.OriginRules, TDocsText.OriginGroup,
+    TDocsText.OriginMetrics, TDocsText.OriginProfile);
   cValueOriginCodes: array[TDocsText.OriginProjectFile..TDocsText.OriginDefault] of string = ('project', 'global',
     'default');
 
@@ -236,44 +227,9 @@ end;
 
 { Regeln }
 
-function RuleStateOf(const ASettings: TServerSettings; const ARule: TRuleCatalogEntry): TRuleState;
+function OptionsText(const ARule: TFindingRuleInfo): string;
 var
-  mEnabled: Boolean;
-begin
-  Result.Severity := TRuleEngine.EffectiveSeverity(TRuleDescriptor.Create(ARule.Id, ARule.DefaultSeverity,
-    ARule.Description), ASettings, '', mEnabled);
-  if not mEnabled and TRuleProfiles.IsExperimental(ARule.Id) then
-  begin
-    Result.Severity := TRuleSeverity.Off;
-  end;
-  Result.Detail := '';
-  if ASettings.RuleSeverity(ARule.Id, TRuleSeverity.Default) <> TRuleSeverity.Default then
-  begin
-    Result.Origin := TDocsText.OriginRules;
-  end
-  else if TRuleEngine.GroupOff(ARule.Id, ASettings) then
-  begin
-    Result.Origin := TDocsText.OriginGroup;
-    Result.Detail := TRuleCatalog.GroupKey(ARule.Group);
-  end
-  else if not ASettings.Metrics and StartsText('metric-', ARule.Id) then
-  begin
-    Result.Origin := TDocsText.OriginMetrics;
-  end
-  else
-  begin
-    Result.Origin := TDocsText.OriginProfile;
-    Result.Detail := ASettings.Profile;
-    if Result.Detail = '' then
-    begin
-      Result.Detail := 'standard';
-    end;
-  end;
-end;
-
-function OptionsText(const ARule: TRuleCatalogEntry): string;
-var
-  mOption: TRuleOption;
+  mOption: TFindingRuleOption;
   mItems: TArray<string>;
 begin
   mItems := nil;
@@ -284,10 +240,10 @@ begin
   Result := string.Join(', ', mItems);
 end;
 
-function RuleHeading(const AAnswer: TDocsAnswer; const ARule: TRuleCatalogEntry): string;
+function RuleHeading(const AAnswer: TDocsAnswer; const ARule: TFindingRuleInfo): string;
 begin
   Result := Format('%s `%s` · %s · %s · %s', [Tx(AAnswer, TDocsText.KindRule), ARule.Id, ARule.Name,
-    TRuleCatalog.CategoryName(ARule.Category), cSeverityNames[ARule.DefaultSeverity]]);
+    ARule.Category, cSeverityNames[ARule.DefaultSeverity]]);
   if ARule.Experimental then
   begin
     Result := Result + ' · ' + Tx(AAnswer, TDocsText.Experimental);
@@ -296,15 +252,14 @@ end;
 
 procedure AddRuleText(ALines: TStringBuilder; const AAnswer: TDocsAnswer; const AHit: TDocsHit);
 var
-  mRule: TRuleCatalogEntry;
-  mState: TRuleState;
-  mOptions: string;
+  mRule: TFindingRuleInfo;
+  mState: TFindingRuleState;
 begin
   mRule := AHit.Entry.Rule;
   ALines.AppendLine(RuleHeading(AAnswer, mRule));
-  mState := RuleStateOf(AAnswer.Request.Settings, mRule);
+  mState := AAnswer.Request.RuleDocs.State(mRule.Id, AAnswer.Request.Settings);
   ALines.AppendLine('   ' + Fx(AAnswer, TDocsText.InProject, [cSeverityNames[mState.Severity],
-    Fx(AAnswer, mState.Origin, [mState.Detail])]));
+    Fx(AAnswer, cOriginTexts[mState.Origin], [mState.Detail])]));
   if not AHit.Exact then
   begin
     ALines.AppendLine('   ' + Excerpt(mRule.Description, cExcerptLength));
@@ -315,10 +270,9 @@ begin
   begin
     ALines.AppendLine('   ' + Fx(AAnswer, TDocsText.Options, [OptionsText(mRule)]));
   end;
-  mOptions := TRuleEngine.RuleOptions(mRule.Id, AAnswer.Request.Settings);
-  if mOptions <> '' then
+  if mState.ProjectOptions <> '' then
   begin
-    ALines.AppendLine('   ' + Fx(AAnswer, TDocsText.OptionsInProject, [mOptions]));
+    ALines.AppendLine('   ' + Fx(AAnswer, TDocsText.OptionsInProject, [mState.ProjectOptions]));
   end;
   if mRule.Bad <> '' then
   begin
@@ -327,22 +281,22 @@ begin
     ALines.AppendLine('   ' + Tx(AAnswer, TDocsText.ExampleGood));
     ALines.AppendLine('```pascal').AppendLine(mRule.Good).AppendLine('```');
   end;
-  ALines.AppendLine('   ' + Fx(AAnswer, TDocsText.Docs, [TRuleCatalog.HelpUri(mRule.Id)]));
+  ALines.AppendLine('   ' + Fx(AAnswer, TDocsText.Docs, [mRule.HelpUri]));
 end;
 
 function RuleJson(const AAnswer: TDocsAnswer; const AHit: TDocsHit): TJSONObject;
 var
-  mRule: TRuleCatalogEntry;
-  mState: TRuleState;
-  mOption: TRuleOption;
+  mRule: TFindingRuleInfo;
+  mState: TFindingRuleState;
+  mOption: TFindingRuleOption;
   mOptions: TJSONObject;
 begin
   mRule := AHit.Entry.Rule;
-  mState := RuleStateOf(AAnswer.Request.Settings, mRule);
+  mState := AAnswer.Request.RuleDocs.State(mRule.Id, AAnswer.Request.Settings);
   Result := TJSONObject.Create;
   Result.AddPair('name', mRule.Name);
-  Result.AddPair('category', TRuleCatalog.CategoryName(mRule.Category));
-  Result.AddPair('group', TRuleCatalog.GroupName(mRule.Group));
+  Result.AddPair('category', mRule.Category);
+  Result.AddPair('group', mRule.Group);
   Result.AddPair('defaultSeverity', cSeverityNames[mRule.DefaultSeverity]);
   Result.AddPair('experimental', TJSONBool.Create(mRule.Experimental));
   Result.AddPair('severity', cSeverityNames[mState.Severity]);
@@ -358,10 +312,10 @@ begin
   begin
     mOptions.AddPair(mOption.Name, mOption.DefaultJson);
   end;
-  Result.AddPair('projectOptions', TRuleEngine.RuleOptions(mRule.Id, AAnswer.Request.Settings));
+  Result.AddPair('projectOptions', mState.ProjectOptions);
   Result.AddPair('bad', mRule.Bad);
   Result.AddPair('good', mRule.Good);
-  Result.AddPair('docs', TRuleCatalog.HelpUri(mRule.Id));
+  Result.AddPair('docs', mRule.HelpUri);
 end;
 
 { Einstellungen und Befehle }
@@ -672,36 +626,38 @@ end;
 
 class function TMcpDocsTools.Search(const ARequest: TMcpDocsRequest): string;
 var
-  mGerman: TRuleCatalog;
   mAnswer: TDocsAnswer;
   mHits: TArray<TDocsHit>;
+  mRules, mOther: TArray<TFindingRuleInfo>;
 begin
-  mGerman := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson('de'));
-  try
-    mAnswer.Request := ARequest;
+  mRules := nil;
+  mOther := nil;
+  if ARequest.RuleDocs <> nil then
+  begin
+    mRules := ARequest.RuleDocs.Rules(TAtlasLocale.Code(ARequest.Language));
     if ARequest.Language = TTextLanguage.German then
     begin
-      mAnswer.Index := TDocsIndex.Create(AtlasDocsIndexJson, ARequest.Language, mGerman, TRuleCatalog.Shared);
+      mOther := ARequest.RuleDocs.Rules(TAtlasLocale.Code(TTextLanguage.English));
     end
     else
     begin
-      mAnswer.Index := TDocsIndex.Create(AtlasDocsIndexJson, ARequest.Language, TRuleCatalog.Shared, mGerman);
+      mOther := ARequest.RuleDocs.Rules(TAtlasLocale.Code(TTextLanguage.German));
     end;
-    try
-      mHits := mAnswer.Index.Search(ARequest.Query, ARequest.Kind, ARequest.Limit);
-      if ARequest.Json then
-      begin
-        Result := JsonAnswer(mAnswer, mHits);
-      end
-      else
-      begin
-        Result := TextAnswer(mAnswer, mHits);
-      end;
-    finally
-      mAnswer.Index.Free;
+  end;
+  mAnswer.Request := ARequest;
+  mAnswer.Index := TDocsIndex.Create(AtlasDocsIndexJson, ARequest.Language, mRules, mOther);
+  try
+    mHits := mAnswer.Index.Search(ARequest.Query, ARequest.Kind, ARequest.Limit);
+    if ARequest.Json then
+    begin
+      Result := JsonAnswer(mAnswer, mHits);
+    end
+    else
+    begin
+      Result := TextAnswer(mAnswer, mHits);
     end;
   finally
-    mGerman.Free;
+    mAnswer.Index.Free;
   end;
 end;
 

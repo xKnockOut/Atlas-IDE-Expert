@@ -286,6 +286,7 @@ Atlas.Common.Editing.Providers.CompilerFixes.Tests
 Adapters.Mcp.CompilerFixes.Tests
 Adapters.Mcp.BulkFix.Tests
 Adapters.Mcp.TextChecks.Tests
+Adapters.Mcp.RuleDocs.Tests
 Adapters.Mcp.DeadCode.Tests
 Adapters.Mcp.Conventions.Tests
 Atlas.Common.Compiler.MessageTexts.Tests
@@ -475,6 +476,7 @@ Atlas.Common.Rules.Engine.Tests
 Atlas.Common.Rules.Providers.InheritanceDepths.Tests
 Atlas.Common.Rules.Providers.BulkFix.Tests
 Atlas.Common.Rules.Providers.TextChecks.Tests
+Atlas.Common.Rules.Providers.RuleDocs.Tests
 Atlas.Common.Rules.Providers.DeadCode.Tests
 Atlas.Common.Rules.Providers.Conventions.Tests
 Atlas.Common.Rules.Providers.FindingPrompts.Tests
@@ -488,8 +490,8 @@ Atlas.Common.Editing.FormatOutput.Tests
 Atlas.Common.Rules.LibrarySources.Tests
 Atlas.Common.Compiler.MessageCatalog.Tests
 Atlas.Common.Compiler.Releases.Tests
-Atlas.Common.Rules.CompilerPitfalls.Tests
-Atlas.Common.Rules.CompilerPitfallFixes.Tests
+Atlas.Common.Compiler.Pitfalls.Tests
+Atlas.Common.Compiler.PitfallFixes.Tests
 Atlas.Common.Rules.Options.Tests
 Atlas.Common.Rules.Output.Tests
 Atlas.Common.Rules.Prompt.Tests

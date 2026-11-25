@@ -15,6 +15,7 @@ uses
   Atlas.Common.Mcp.Contract.DeadCode,
   Atlas.Common.Mcp.Contract.Extract,
   Atlas.Common.Mcp.Contract.Formatting,
+  Atlas.Common.Mcp.Contract.RuleDocs,
   Atlas.Common.Mcp.Contract.TextChecks;
 
 type
@@ -43,6 +44,8 @@ type
     class function Conventions: IMcpConventions; static;
     /// <summary>Auftrag zu einem Befund aus Rules.</summary>
     class function FindingPrompts: IMcpFindingPrompts; static;
+    /// <summary>Regelkatalog zum Nachschlagen aus Rules.</summary>
+    class function RuleDocs: IMcpRuleDocs; static;
   end;
 
 implementation
@@ -54,6 +57,7 @@ uses
   Atlas.Common.Rules.Providers.Conventions,
   Atlas.Common.Rules.Providers.DeadCode,
   Atlas.Common.Rules.Providers.FindingPrompts,
+  Atlas.Common.Rules.Providers.RuleDocs,
   Atlas.Common.Rules.Providers.TextChecks,
   Atlas.Common.Editing.Composition,
   Adapters.Mcp.BulkFix,
@@ -62,6 +66,7 @@ uses
   Adapters.Mcp.DeadCode,
   Adapters.Mcp.Extract,
   Adapters.Mcp.Formatting,
+  Adapters.Mcp.RuleDocs,
   Adapters.Mcp.TextChecks;
 
 { TMcpComposition }
@@ -128,6 +133,14 @@ var
 begin
   mPrompts := TRuleFindingPromptsProvider.Create;
   Result := TMcpFindingPromptsAdapter.Create(mPrompts);
+end;
+
+class function TMcpComposition.RuleDocs: IMcpRuleDocs;
+var
+  mDocs: IRuleDocs;
+begin
+  mDocs := TRuleDocsProvider.Create;
+  Result := TMcpRuleDocsAdapter.Create(mDocs);
 end;
 
 end.

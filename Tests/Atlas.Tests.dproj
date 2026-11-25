@@ -591,6 +591,7 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.InheritanceDepths.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.BulkFix.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.TextChecks.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.RuleDocs.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.DeadCode.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.Conventions.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.FindingPrompts.Tests.pas"/>
@@ -615,8 +616,8 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Catalog.Tests.pas"/>
         <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.MessageCatalog.Tests.pas"/>
         <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.Releases.Tests.pas"/>
-        <DCCReference Include="Common\Rules\Atlas.Common.Rules.CompilerPitfalls.Tests.pas"/>
-        <DCCReference Include="Common\Rules\Atlas.Common.Rules.CompilerPitfallFixes.Tests.pas"/>
+        <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.Pitfalls.Tests.pas"/>
+        <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.PitfallFixes.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.BulkFix.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unicode.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CodeActions.Tests.pas"/>
@@ -1083,6 +1084,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.KeyScan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Commands\Atlas.UI.Commands.KeyMap.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Commands.KeyMap.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.CustomKeys.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Commands.CustomKeys.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Commands\Atlas.UI.Commands.KeyAssign.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Commands.KeyAssign.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.Usage.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.ShortcutTips.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.ShortcutTips.Tests.pas"/>
@@ -2697,9 +2702,11 @@
         <DCCReference Include="Application\Adapters\Adapters.Mcp.CompilerFixes.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.BulkFix.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.TextChecks.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.RuleDocs.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.DeadCode.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Mcp.BulkFix.Tests.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Mcp.TextChecks.Tests.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Mcp.RuleDocs.Tests.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Mcp.DeadCode.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.Conventions.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Mcp.Conventions.Tests.pas"/>

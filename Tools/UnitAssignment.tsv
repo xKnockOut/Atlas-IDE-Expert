@@ -111,6 +111,7 @@ Atlas.IDE.Base	Atlas.Core.Build.Target	Core/Build/Atlas.Core.Build.Target.pas	Ko
 Atlas.IDE.Base	Atlas.Core.Build.Verdict	Core/Build/Atlas.Core.Build.Verdict.pas	Bewertung als Typen und `IAtlasBuildVerdictListener`; Benachrichtigungszentrale (Base) und Module lesen sie, #1455
 Atlas.IDE.Base	Atlas.Core.CodeInsight.Plan	Core/CodeInsight/Atlas.Core.CodeInsight.Plan.pas	Ordner `Core/CodeInsight`; Entscheidungen des Code Insight-Managers (Zeichen, Dateien, Start, Projekte), #1967
 Atlas.IDE.Base	Atlas.Core.Commands.Contract	Core/Commands/Atlas.Core.Commands.Contract.pas	Contract des Features Commands, Verträge zu Modulen, #1443
+Atlas.IDE.Base	Atlas.Core.Commands.CustomKeys	Core/Commands/Atlas.Core.Commands.CustomKeys.pas	Ordner `Core/Commands`
 Atlas.IDE.Base	Atlas.Core.Commands.KeyConflicts	Core/Commands/Atlas.Core.Commands.KeyConflicts.pas	Ordner `Core/Commands`
 Atlas.IDE.Base	Atlas.Core.Commands.KeyFallback	Core/Commands/Atlas.Core.Commands.KeyFallback.pas	Ordner `Core/Commands`
 Atlas.IDE.Base	Atlas.Core.Commands.KeyMap	Core/Commands/Atlas.Core.Commands.KeyMap.pas	Ordner `Core/Commands`
@@ -639,6 +640,7 @@ Atlas.IDE.Base	Atlas.IDE.Undo.Changes	IDE/Undo/Atlas.IDE.Undo.Changes.pas	Ordner
 Atlas.IDE.Base	Atlas.IDE.Updates.Check	IDE/Updates/Atlas.IDE.Updates.Check.pas	Ordner `IDE/Updates`
 Atlas.IDE.Base	Atlas.IDE.Updates.Install	IDE/Updates/Atlas.IDE.Updates.Install.pas	Ordner `IDE/Updates`
 Atlas.IDE.Base	Atlas.UI.CodeInsight.Strings	UI/CodeInsight/Atlas.UI.CodeInsight.Strings.pas	Ordner `UI/CodeInsight`
+Atlas.IDE.Base	Atlas.UI.Commands.KeyAssign	UI/Commands/Atlas.UI.Commands.KeyAssign.pas	Ordner `UI/Commands`
 Atlas.IDE.Base	Atlas.UI.Commands.KeyMap	UI/Commands/Atlas.UI.Commands.KeyMap.pas	Ordner `UI/Commands`
 Atlas.IDE.Base	Atlas.UI.Commands.Palette	UI/Commands/Atlas.UI.Commands.Palette.pas	Ordner `UI/Commands`
 Atlas.IDE.Base	Atlas.UI.Commands.ShortcutTip	UI/Commands/Atlas.UI.Commands.ShortcutTip.pas	Ordner `UI/Commands`
