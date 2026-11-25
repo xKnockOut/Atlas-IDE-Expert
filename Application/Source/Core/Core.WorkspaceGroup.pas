@@ -23,12 +23,13 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Processes,
   Atlas.Common.Projects.Contract.Group,
-  Atlas.Common.Rules.Contract.Refactorings,
+  Atlas.Common.Checks.Contract.Refactorings,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Query.Contract,
   Core.Workspace.Setup,
-  Core.Workspace;
+  Core.Workspace,
+  Atlas.Common.Checks.Contract;
 
 type
   /// <summary>Gemerkte Projekte der Gruppe für projektweite Regeln (#1102); Valid bis Invalidate.</summary>
@@ -61,7 +62,7 @@ type
     FOthers: TObjectList<TCoreWorkspace>;
     FProcessIdentity: TIndexProcessInfo;
     FCacheRoot: string;
-    FRefactorings: TRuleRefactorings;
+    FRefactorings: TCheckRefactorings;
     FIndexWait: TCoreIndexWait;
     FLock: TObject;
     /// <summary>Projekte der Gruppe für projektweite Regeln (#1102), bis Invalidate; unter FLock.</summary>
@@ -124,7 +125,7 @@ type
     /// <summary>Vor Load setzen (#1112): Ordner der Index-Caches.</summary>
     property CacheRoot: string read FCacheRoot write FCacheRoot;
     /// <summary>Vor Load setzen: Refactorings für die Korrekturen der Prüfregeln; je Eintrag nil = keine.</summary>
-    property Refactorings: TRuleRefactorings read FRefactorings write FRefactorings;
+    property Refactorings: TCheckRefactorings read FRefactorings write FRefactorings;
     /// <summary>Vor Load setzen (#1480): Index eines Arbeitsbereichs fertig, True beim Hauptarbeitsbereich; läuft
     /// im Thread des Indexaufbaus, auch nach einem erneuten Aufbau.</summary>
     property OnIndexFinished: TProc<Boolean> read FIndexWait.OnFinished write FIndexWait.OnFinished;
@@ -507,7 +508,7 @@ begin
     end;
   end;
   Result := TCoreRuleProjects.RuleProjectOf(mProjects, AFileName, FReadText);
-  Result.Services := mWorkspace.RuleServices;
+  Result.Services := mWorkspace.CheckServices;
   // Nachladen über alle Projekte der Gruppe und projektweite Regeln (#1102) wie im Server.
   Result.Services.EnsureUnit := UnitLoader();
   Result.Services.ProjectFiles := RuleProjectFiles;

@@ -1,7 +1,7 @@
-﻿unit Atlas.Common.Rules.Contract.Refactorings;
+﻿unit Atlas.Common.Checks.Contract.Refactorings;
 
 // Was Prüfregeln von Refactorings brauchen, um eine Korrektur anzubieten (SPI des Features Rules). Rules kennt
-// die Refactorings nicht; der Host gibt sie über Adapter in TRuleServices.Refactorings. Ein nil-Eintrag heißt:
+// die Refactorings nicht; der Host gibt sie über Adapter in TCheckServices.Refactorings. Ein nil-Eintrag heißt:
 // keine solche Korrektur anbieten, der Befund bleibt.
 
 interface
@@ -17,7 +17,7 @@ uses
 type
   /// <summary>Klassen-Aktionen als Korrektur: Methode überschreiben, Interface implementieren, Feld oder
   /// Zugriffsmethode einer Eigenschaft anlegen. Jede liefert False, wenn es dort nichts zu tun gibt.</summary>
-  IRuleClassRefactorings = interface
+  ICheckClassRefactorings = interface
     ['{B7324D9A-6165-4B5F-871F-C9883D6E647B}']
     function OverrideMethod(const ARequest: TClassEditRequest; const AName: string;
       out AAction: TCodeAction): Boolean;
@@ -28,14 +28,14 @@ type
   end;
 
   /// <summary>„Konstante extrahieren“ für viele Literale desselben Textes.</summary>
-  IRuleConstantExtraction = interface
+  ICheckConstantExtraction = interface
     ['{413771C5-D0DB-4B00-AA72-7A50F25B7310}']
     /// <summary>Konstante für das Literal in ARange; False, wenn dort keins steht.</summary>
     function Run(const ARange: TTextRange; out AAction: TCodeAction): Boolean;
   end;
 
   /// <summary>Extrahieren als Korrektur: Bedingung in Funktion auslagern, Konstante einführen.</summary>
-  IRuleExtractRefactorings = interface
+  ICheckExtractRefactorings = interface
     ['{70350A32-331D-4BB4-85DC-954DCCABFBE2}']
     /// <summary>„Bedingung in Funktion auslagern“ für die ganze Bedingung in ARange; False, wenn es nicht geht.
     /// </summary>
@@ -44,11 +44,11 @@ type
     /// <summary>„Konstante extrahieren“ für AText mit dem Baum ATree der Regel; neue Namen mit den Präfixen ANames.
     /// Gilt, solange der Baum hinter ATree lebt; nil ohne Baum.</summary>
     function ConstantExtraction(const AText: string; const ATree: IPascalSyntaxTree;
-      const ANames: TPascalNamePrefixes): IRuleConstantExtraction;
+      const ANames: TPascalNamePrefixes): ICheckConstantExtraction;
   end;
 
   /// <summary>Was die Suche nach Methoden ohne Self über eine Unit wissen muss.</summary>
-  TRuleMethodScan = record
+  TCheckMethodScan = record
     /// <summary>Dateiname für die Namensauflösung (TRuleContext.ResolverFileName).</summary>
     FileName: string;
     Text: string;
@@ -65,7 +65,7 @@ type
   end;
 
   /// <summary>Eine Methode, die Self nicht braucht.</summary>
-  TRuleMethodWithoutSelf = record
+  TCheckMethodWithoutSelf = record
     ClassName: string;
     Name: string;
     /// <summary>Name im Kopf der Implementierung.</summary>
@@ -76,13 +76,13 @@ type
   end;
 
   /// <summary>Methoden ohne Self samt Korrektur „In class-Methode umwandeln“.</summary>
-  IRuleMethodRefactorings = interface
+  ICheckMethodRefactorings = interface
     ['{49CD21CC-66DB-477C-9138-3E794F2B58A8}']
-    function WithoutSelf(const AScan: TRuleMethodScan): TArray<TRuleMethodWithoutSelf>;
+    function WithoutSelf(const AScan: TCheckMethodScan): TArray<TCheckMethodWithoutSelf>;
   end;
 
   /// <summary>Wie die Methodenrümpfe geordnet sein sollen (Regel method-order).</summary>
-  TRuleMethodOrderRequest = record
+  TCheckMethodOrderRequest = record
     /// <summary>off, declaration, alphabetical, grouped; '' = grouped, Unbekanntes = declaration.</summary>
     Placement: string;
     /// <summary>Lebenszyklus auch bei declaration und alphabetical zuerst.</summary>
@@ -97,7 +97,7 @@ type
   end;
 
   /// <summary>Stand eines Typs: Ordnung der Rümpfe und Typkommentar samt Korrekturen.</summary>
-  TRuleMethodTypeReview = record
+  TCheckMethodTypeReview = record
     TypeName: string;
     /// <summary>Typname im Kopf des ersten Rumpfs.</summary>
     NameRange: TTextRange;
@@ -110,23 +110,23 @@ type
   end;
 
   /// <summary>Ergebnis der Prüfung einer Unit.</summary>
-  TRuleMethodOrderReview = record
+  TCheckMethodOrderReview = record
     /// <summary>Die verstandene Ordnung: off, declaration, alphabetical oder grouped.</summary>
     Placement: string;
     /// <summary>Je Typ mit Rümpfen in der Reihenfolge des ersten Rumpfs; leer bei off.</summary>
-    Types: TArray<TRuleMethodTypeReview>;
+    Types: TArray<TCheckMethodTypeReview>;
   end;
 
   /// <summary>Methodenordnung je Typ samt Korrekturen „Rümpfe ordnen“ und „Typkommentar einfügen“.</summary>
-  IRuleMethodOrderRefactorings = interface
+  ICheckMethodOrderRefactorings = interface
     ['{2414CF06-ECF0-4E37-B679-E9806D2A3B1A}']
     /// <summary>ATree ist der Baum der Regel zu AText.</summary>
     function Review(const AText: string; const ATree: IPascalSyntaxTree;
-      const ARequest: TRuleMethodOrderRequest): TRuleMethodOrderReview;
+      const ARequest: TCheckMethodOrderRequest): TCheckMethodOrderReview;
   end;
 
   /// <summary>Methode ohne Gegenstück: deklariert ohne Rumpf oder Rumpf ohne Deklaration.</summary>
-  TRuleUnmatchedMethod = record
+  TCheckUnmatchedMethod = record
     /// <summary>Typ, ggf. mit umgebendem Typ (TAussen.TInnen).</summary>
     TypeName: string;
     Symbol: TIndexSymbol;
@@ -137,7 +137,7 @@ type
   end;
 
   /// <summary>Ein Parameter eines Methodenkopfs.</summary>
-  TRuleShapeParameter = record
+  TCheckShapeParameter = record
     /// <summary>const, var, out, constref oder '' (Kleinbuchstaben).</summary>
     Modifier: string;
     Name: string;
@@ -146,10 +146,10 @@ type
   end;
 
   /// <summary>Zerlegter Kopf einer Methode.</summary>
-  TRuleSignatureShape = record
+  TCheckSignatureShape = record
     /// <summary>procedure, function, constructor, destructor oder operator.</summary>
     Kind: string;
-    Parameters: TArray<TRuleShapeParameter>;
+    Parameters: TArray<TCheckShapeParameter>;
     /// <summary>Ergebnistyp wie geschrieben; '' ohne.</summary>
     ResultType: string;
     /// <summary>Aufrufkonvention in Kleinbuchstaben (stdcall, cdecl …); '' ohne Angabe.</summary>
@@ -160,72 +160,72 @@ type
   end;
 
   /// <summary>Deklaration und Rumpf gleichen Namens, deren Köpfe voneinander abweichen.</summary>
-  TRuleSignaturePair = record
-    Declaration: TRuleUnmatchedMethod;
-    Body: TRuleUnmatchedMethod;
-    DeclarationShape: TRuleSignatureShape;
-    BodyShape: TRuleSignatureShape;
+  TCheckSignaturePair = record
+    Declaration: TCheckUnmatchedMethod;
+    Body: TCheckUnmatchedMethod;
+    DeclarationShape: TCheckSignatureShape;
+    BodyShape: TCheckSignatureShape;
   end;
 
   /// <summary>Zuordnung von Deklarationen und Rümpfen einer Unit samt Korrekturen; gilt, solange der Baum der
   /// Regel lebt.</summary>
-  IRuleClassCompletionScan = interface
+  ICheckClassCompletionScan = interface
     ['{C6B1F526-0F6F-4DF6-8C8C-77173F34C13F}']
     /// <summary>Deklarierte Methoden ohne Rumpf und Rümpfe ohne Deklaration.</summary>
-    function Unmatched: TArray<TRuleUnmatchedMethod>;
+    function Unmatched: TArray<TCheckUnmatchedMethod>;
     /// <summary>Deklaration und Rumpf gleichen Namens mit abweichendem Kopf.</summary>
-    function Pairs: TArray<TRuleSignaturePair>;
+    function Pairs: TArray<TCheckSignaturePair>;
     /// <summary>Gehört AMethod zu einem der Paare?</summary>
-    function InPair(const AMethod: TRuleUnmatchedMethod): Boolean;
+    function InPair(const AMethod: TCheckUnmatchedMethod): Boolean;
     /// <summary>Zerlegter Kopf der Methode ASymbol; False, wenn er sich nicht lesen lässt.</summary>
-    function Shape(const ASymbol: TIndexSymbol; out AShape: TRuleSignatureShape): Boolean;
+    function Shape(const ASymbol: TIndexSymbol; out AShape: TCheckSignatureShape): Boolean;
     /// <summary>Leere Rümpfe für die fehlenden Methoden an APosition.</summary>
     function MissingBodies(const APosition: TTextPosition; out AAction: TCodeAction): Boolean;
     /// <summary>Fehlende Deklaration für den Rumpf AMethod.</summary>
-    function AddDeclaration(const AMethod: TRuleUnmatchedMethod; out AEdit: TTextEdit): Boolean;
+    function AddDeclaration(const AMethod: TCheckUnmatchedMethod; out AEdit: TTextEdit): Boolean;
     /// <summary>Rumpf und Deklaration von APair in beide Richtungen angleichen.</summary>
-    function PairFixes(const APair: TRuleSignaturePair; out AFixes: TArray<TCodeAction>): Boolean;
+    function PairFixes(const APair: TCheckSignaturePair; out AFixes: TArray<TCodeAction>): Boolean;
   end;
 
   /// <summary>Klassenvervollständigung für die Regeln zu Deklarationen.</summary>
-  IRuleClassCompletionRefactorings = interface
+  ICheckClassCompletionRefactorings = interface
     ['{7EA15822-8169-488E-ADEB-CE6B0DF8E596}']
     /// <summary>Zuordnung für AText mit dem Baum ATree der Regel und seinem Index AUnit; neue Rümpfe nach
     /// ASettings und AStyle. Ohne Baum nil.</summary>
     function Scan(const AText: string; const ATree: IPascalSyntaxTree; const AUnit: TUnitIndex;
-      const ASettings: TClassCompletionSettings; const AStyle: TFormatStyle): IRuleClassCompletionScan;
+      const ASettings: TClassCompletionSettings; const AStyle: TFormatStyle): ICheckClassCompletionScan;
   end;
 
   /// <summary>Befehlszeile "/name", die stehen bleibt, samt Grund.</summary>
-  TRuleSlashProblem = record
+  TCheckSlashProblem = record
     Range: TTextRange;
     Message: string;
   end;
 
   /// <summary>Schnellbefehle von Editing: welche Befehlszeilen nicht ausgeführt würden (Regel slash-command).
   /// </summary>
-  IRuleSlashCommands = interface
+  ICheckSlashCommands = interface
     ['{A724AD51-3173-4798-A78E-5E96B33CD2C5}']
     /// <summary>Befehlszeilen in AText, die stehen blieben, samt Grund. AIndex darf nil sein.</summary>
     function Problems(const AText: string; const AIndex: ISymbolIndex;
-      const ADelphiVersion: string): TArray<TRuleSlashProblem>;
+      const ADelphiVersion: string): TArray<TCheckSlashProblem>;
     /// <summary>Hinweis zu "/ignore ARuleId", wenn die Regel in der Zeile darunter nichts meldet.</summary>
     function IgnoreWithoutHit(const ARuleId: string): string;
   end;
 
   /// <summary>Alle Refactorings, die Prüfregeln als Korrektur nutzen; je Eintrag nil = nicht verfügbar.</summary>
-  TRuleRefactorings = record
-    Classes: IRuleClassRefactorings;
-    Extract: IRuleExtractRefactorings;
+  TCheckRefactorings = record
+    Classes: ICheckClassRefactorings;
+    Extract: ICheckExtractRefactorings;
     /// <summary>Ohne Eintrag schweigt method-without-self: Erkennung und Korrektur gehören zusammen.</summary>
-    Methods: IRuleMethodRefactorings;
+    Methods: ICheckMethodRefactorings;
     /// <summary>Ohne Eintrag schweigt method-order.</summary>
-    Order: IRuleMethodOrderRefactorings;
+    Order: ICheckMethodOrderRefactorings;
     /// <summary>Ohne Eintrag schweigen declared-not-implemented, implemented-not-declared und signature-mismatch.
     /// </summary>
-    Completion: IRuleClassCompletionRefactorings;
+    Completion: ICheckClassCompletionRefactorings;
     /// <summary>Ohne Eintrag schweigt slash-command.</summary>
-    Commands: IRuleSlashCommands;
+    Commands: ICheckSlashCommands;
   end;
 
 implementation

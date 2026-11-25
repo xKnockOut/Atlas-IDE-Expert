@@ -13,7 +13,8 @@ uses
   Atlas.Common.Diagnostics.CheckMemory,
   Core.CommandLine,
   Core.WorkspaceGroup,
-  Core.Linter.Host;
+  Core.Linter.Host,
+  Atlas.Common.Checks.Contract;
 
 type
   TLinterIndex = class

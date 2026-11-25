@@ -3,7 +3,7 @@
 // Klassenvervollständigung (#42, #124, #996), die Editing anderen Features anbietet (API): Deklarationen und
 // Rümpfe einer Unit einander zuordnen, Paare mit abweichendem Kopf, fehlende Rümpfe anlegen, fehlende
 // Deklarationen ergänzen, Köpfe angleichen. Abnehmer sind die Prüfregeln zu Deklarationen über den Host-Adapter
-// Adapters.Rules.Refactorings; erzeugt in Atlas.Common.Editing.Composition.
+// Adapters.Checks.Refactorings; erzeugt in Atlas.Common.Editing.Composition.
 
 interface
 

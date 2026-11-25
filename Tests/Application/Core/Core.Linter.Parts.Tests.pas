@@ -93,7 +93,8 @@ uses
   Core.Linter.AffectedTests,
   Core.Linter.Fix,
   Atlas.Tests.TempFolder,
-  Shell.Linter;
+  Shell.Linter,
+  Atlas.Common.Checks.Contract;
 
 { TLinterPartsTests }
 
