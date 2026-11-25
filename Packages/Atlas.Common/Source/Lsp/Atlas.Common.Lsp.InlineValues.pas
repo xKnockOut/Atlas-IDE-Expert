@@ -29,7 +29,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Internals.Feature;
+  Atlas.Common.Semantics.Feature;
 
 type
   {$SCOPEDENUMS ON}
@@ -46,7 +46,7 @@ type
     TypeName: string;
   end;
 
-  TLspInlineValues = class(TLspIndexFeature)
+  TLspInlineValues = class(TIndexFeature)
   public const
     cMethod = 'textDocument/inlineValue';
     cMaxValues = 500;
@@ -72,8 +72,8 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Internals.Namespaces,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.Namespaces,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
@@ -198,12 +198,12 @@ end;
 
 function TLspInlineValues.GetNamespaces: TArray<string>;
 begin
-  Result := TLspNamespaces.Read(FNamespaces);
+  Result := TSharedNamespaces.Read(FNamespaces);
 end;
 
 procedure TLspInlineValues.SetNamespaces(const AValue: TArray<string>);
 begin
-  TLspNamespaces.Write(FNamespaces, AValue);
+  TSharedNamespaces.Write(FNamespaces, AValue);
 end;
 
 function TLspInlineValues.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;

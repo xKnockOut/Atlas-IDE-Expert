@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.SymbolPath.Graph.Tests;
+﻿unit Atlas.Common.Semantics.SymbolPath.Graph.Tests;
 
 // Tests der Kanten aus dem Index für die Pfadsuche (#1117): Vorfahr und
 // Interface, Umsetzung in Gegenrichtung (erschlossen bei mehreren), Feldtyp,
@@ -9,8 +9,8 @@ interface
 uses
   DUnitX.TestFramework,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.SymbolPath.Nodes,
-  Atlas.Common.Lsp.SymbolPath.Graph;
+  Atlas.Common.Semantics.SymbolPath.Nodes,
+  Atlas.Common.Semantics.SymbolPath.Graph;
 
 type
   [TestFixture]

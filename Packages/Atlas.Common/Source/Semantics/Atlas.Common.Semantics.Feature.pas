@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Internals.Feature;
+﻿unit Atlas.Common.Semantics.Feature;
 
 // Gemeinsame Grundlage der LSP-Dienste, die über Dokumentspeicher und
 // Symbolindex arbeiten (Definition, Hervorhebung, semantische Token …), und
@@ -14,11 +14,11 @@ uses
 
 type
   /// <summary>Projektdateien, die nach Verweisen durchsucht werden.</summary>
-  TLspFilesProvider = reference to function: TArray<string>;
+  TProjectFilesProvider = reference to function: TArray<string>;
 
   /// <summary>Dienst mit Dokumentspeicher, Symbolindex und optionalem Nachladen von Units (AEnsureUnit = nil:
   /// nur der Index).</summary>
-  TLspIndexFeature = class
+  TIndexFeature = class
   protected
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -27,14 +27,14 @@ type
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc);
   end;
 
-  /// <summary>Wie TLspIndexFeature, dazu Lesen nicht geöffneter Dateien und die Projektdateien.</summary>
-  TLspProjectFeature = class(TLspIndexFeature)
+  /// <summary>Wie TIndexFeature, dazu Lesen nicht geöffneter Dateien und die Projektdateien.</summary>
+  TProjectFeature = class(TIndexFeature)
   protected
     FReadText: TDocumentReadText;
-    FFiles: TLspFilesProvider;
+    FFiles: TProjectFilesProvider;
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: TDocumentReadText;
-      const AFiles: TLspFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
+      const AFiles: TProjectFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
   end;
 
 /// <summary>Unit der Datei AFileName: ACurrent (Stand aus dem Editor), wenn sie es ist, sonst aus AIndex.</summary>
@@ -57,9 +57,9 @@ begin
   Result := AIndex.FindFile(AFileName, AUnit);
 end;
 
-{ TLspIndexFeature }
+{ TIndexFeature }
 
-constructor TLspIndexFeature.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+constructor TIndexFeature.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc);
 begin
   inherited Create;
@@ -68,10 +68,10 @@ begin
   FEnsureUnit := AEnsureUnit;
 end;
 
-{ TLspProjectFeature }
+{ TProjectFeature }
 
-constructor TLspProjectFeature.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-  const AReadText: TDocumentReadText; const AFiles: TLspFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
+constructor TProjectFeature.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AReadText: TDocumentReadText; const AFiles: TProjectFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
 begin
   inherited Create(AStore, AIndex, AEnsureUnit);
   FReadText := AReadText;

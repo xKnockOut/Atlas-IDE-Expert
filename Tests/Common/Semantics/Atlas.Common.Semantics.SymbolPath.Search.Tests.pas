@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.SymbolPath.Search.Tests;
+﻿unit Atlas.Common.Semantics.SymbolPath.Search.Tests;
 
 // Tests der Pfadsuche zwischen Symbolen (#1117): jede Kantenart einzeln,
 // gemischter Weg über Ereignishandler, Service, Interface und Umsetzung,
@@ -14,7 +14,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesLocator,
-  Atlas.Common.Lsp.SymbolPath.Search;
+  Atlas.Common.Semantics.SymbolPath.Search;
 
 type
   [TestFixture]

@@ -69,7 +69,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.CodeLens,
-  Atlas.Common.Lsp.Internals.Feature,
+  Atlas.Common.Semantics.Feature,
   Atlas.Common.Semantics.Implementations;
 
 const

@@ -19,17 +19,17 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Internals.Feature;
+  Atlas.Common.Semantics.Feature;
 
 type
-  TLspImplementations = class(TLspIndexFeature)
+  TLspImplementations = class(TIndexFeature)
   public const
     cMethod = 'textDocument/implementation';
   private
     FNamespaces: TArray<string>;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
+    /// <summary>Unter TSharedNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -46,12 +46,12 @@ implementation
 
 uses
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Lsp.Internals.Namespaces,
+  Atlas.Common.Semantics.Namespaces,
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Lsp.Definition,
   Atlas.Common.Semantics.Implementations;
@@ -83,12 +83,12 @@ end;
 
 function TLspImplementations.GetNamespaces: TArray<string>;
 begin
-  Result := TLspNamespaces.Read(FNamespaces);
+  Result := TSharedNamespaces.Read(FNamespaces);
 end;
 
 procedure TLspImplementations.SetNamespaces(const AValue: TArray<string>);
 begin
-  TLspNamespaces.Write(FNamespaces, AValue);
+  TSharedNamespaces.Write(FNamespaces, AValue);
 end;
 
 function TLspImplementations.Handle(const AParams: TJSONValue;

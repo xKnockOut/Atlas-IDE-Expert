@@ -99,7 +99,7 @@ type
     FMethodMarkers: TInlayMethodMarkers;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
+    /// <summary>Unter TSharedNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -145,7 +145,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.Internals.Namespaces,
+  Atlas.Common.Semantics.Namespaces,
   System.StrUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
@@ -155,7 +155,7 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.SignatureHelp,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Text.Chars,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Names,
@@ -442,12 +442,12 @@ end;
 
 function TLspInlayHints.GetNamespaces: TArray<string>;
 begin
-  Result := TLspNamespaces.Read(FNamespaces);
+  Result := TSharedNamespaces.Read(FNamespaces);
 end;
 
 procedure TLspInlayHints.SetNamespaces(const AValue: TArray<string>);
 begin
-  TLspNamespaces.Write(FNamespaces, AValue);
+  TSharedNamespaces.Write(FNamespaces, AValue);
 end;
 
 class function TLspInlayHints.DefinesPrefix: string;

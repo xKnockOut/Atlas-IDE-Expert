@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.QualifiedNames.Tests;
+﻿unit Atlas.Common.Semantics.QualifiedNames.Tests;
 
 // Tests für den qualifizierten Namen des Symbols unter dem Cursor (#128), je Formatfall einer.
 
@@ -49,7 +49,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.QualifiedNames,
+  Atlas.Common.Semantics.QualifiedNames,
   Atlas.Tests.SourceText;
 
 const

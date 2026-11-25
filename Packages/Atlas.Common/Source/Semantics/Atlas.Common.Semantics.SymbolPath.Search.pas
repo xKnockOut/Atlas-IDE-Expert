@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.SymbolPath.Search;
+﻿unit Atlas.Common.Semantics.SymbolPath.Search;
 
 // Kürzester Weg zwischen zwei Symbolen oder Units (#1117): MCP-Werkzeug
 // find_path, Anfrage atlas/symbolPath und IDE-Befehl „Weg zwischen
@@ -13,7 +13,7 @@
 //     hasField    Typ → Typ eines Felds/einer Property, Feld/Property → Typ
 //     parameter   Routine → Typ eines Parameters
 //     result      Routine → Ergebnistyp
-//     calls       Routine → aufgerufene Routine (TLspHierarchies wie
+//     calls       Routine → aufgerufene Routine (THierarchies wie
 //                 get_call_hierarchy)
 //     contains    Unit → Deklaration, Typ → Mitglied
 // - Zweistufig: Erst eine bidirektionale Breitensuche über die Kanten, die der
@@ -47,19 +47,19 @@ uses
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesLocator,
   Atlas.Common.Architecture.UsesService,
-  Atlas.Common.Lsp.SymbolPath.Nodes,
-  Atlas.Common.Lsp.SymbolPath.Graph,
-  Atlas.Common.Lsp.SymbolPath.Calls;
+  Atlas.Common.Semantics.SymbolPath.Nodes,
+  Atlas.Common.Semantics.SymbolPath.Graph,
+  Atlas.Common.Semantics.SymbolPath.Calls;
 
 type
   /// <summary>Kantenarten in ihrer Rangfolge bei gleich langen Wegen.</summary>
-  TSymbolPathEdgeKind = Atlas.Common.Lsp.SymbolPath.Nodes.TSymbolPathEdgeKind;
-  TSymbolPathEdgeKinds = Atlas.Common.Lsp.SymbolPath.Nodes.TSymbolPathEdgeKinds;
-  TSymbolPathNode = Atlas.Common.Lsp.SymbolPath.Nodes.TSymbolPathNode;
-  TSymbolPathStep = Atlas.Common.Lsp.SymbolPath.Nodes.TSymbolPathStep;
-  TSymbolPathRoute = Atlas.Common.Lsp.SymbolPath.Nodes.TSymbolPathRoute;
-  TSymbolPathReadText = Atlas.Common.Lsp.SymbolPath.Nodes.TSymbolPathReadText;
-  TSymbolPathCancelled = Atlas.Common.Lsp.SymbolPath.Nodes.TSymbolPathCancelled;
+  TSymbolPathEdgeKind = Atlas.Common.Semantics.SymbolPath.Nodes.TSymbolPathEdgeKind;
+  TSymbolPathEdgeKinds = Atlas.Common.Semantics.SymbolPath.Nodes.TSymbolPathEdgeKinds;
+  TSymbolPathNode = Atlas.Common.Semantics.SymbolPath.Nodes.TSymbolPathNode;
+  TSymbolPathStep = Atlas.Common.Semantics.SymbolPath.Nodes.TSymbolPathStep;
+  TSymbolPathRoute = Atlas.Common.Semantics.SymbolPath.Nodes.TSymbolPathRoute;
+  TSymbolPathReadText = Atlas.Common.Semantics.SymbolPath.Nodes.TSymbolPathReadText;
+  TSymbolPathCancelled = Atlas.Common.Semantics.SymbolPath.Nodes.TSymbolPathCancelled;
 
   TSymbolPathStatus = (Found, NoPath, Aborted, Ambiguous, NotFound);
 
@@ -1232,6 +1232,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.SymbolPath.Search', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.SymbolPath.Search', cTexts);
 
 end.

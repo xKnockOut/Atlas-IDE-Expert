@@ -21,7 +21,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Internals.Feature;
+  Atlas.Common.Semantics.Feature;
 
 type
   {$SCOPEDENUMS ON}
@@ -37,7 +37,7 @@ type
   /// <summary>Einstellungen zur Schlüsselworthervorhebung (#307) für eine Datei-URI.</summary>
   THighlightSettingsProvider = reference to function(const AUri: string): THighlightSettings;
 
-  TLspDocumentHighlights = class(TLspIndexFeature)
+  TLspDocumentHighlights = class(TIndexFeature)
   public const
     cMethod = 'textDocument/documentHighlight';
   private
@@ -48,7 +48,7 @@ type
     function IdentifierHighlights(ATree: TSyntaxTree; const AUri: string; const APosition: TTextPosition;
       const ACancellation: IJsonRpcCancellationToken): TArray<TDocumentHighlight>;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
+    /// <summary>Unter TSharedNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -73,14 +73,14 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.Internals.Namespaces,
+  Atlas.Common.Semantics.Namespaces,
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Semantics.Definitions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.Lsp.KeywordHighlights,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
@@ -165,12 +165,12 @@ end;
 
 function TLspDocumentHighlights.GetNamespaces: TArray<string>;
 begin
-  Result := TLspNamespaces.Read(FNamespaces);
+  Result := TSharedNamespaces.Read(FNamespaces);
 end;
 
 procedure TLspDocumentHighlights.SetNamespaces(const AValue: TArray<string>);
 begin
-  TLspNamespaces.Write(FNamespaces, AValue);
+  TSharedNamespaces.Write(FNamespaces, AValue);
 end;
 
 function TLspDocumentHighlights.HandleHighlight(const AParams: TJSONValue;

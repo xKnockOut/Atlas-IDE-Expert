@@ -13,7 +13,7 @@ uses
   System.Classes,
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.Rationale;
+  Atlas.Common.Semantics.Rationale;
 
 type
   TMcpReadText = reference to function(const AFileName: string; out AText: string): Boolean;
@@ -383,7 +383,7 @@ begin
   Result := nil;
   if AIndex.FindUnit(ALocation.UnitName, mUnit) then
   begin
-    Result := TLspRationale.OfSymbol(mUnit, ALocation.Symbol);
+    Result := TRationaleSelection.OfSymbol(mUnit, ALocation.Symbol);
   end;
 end;
 
@@ -409,7 +409,7 @@ begin
     end;
   end;
   // Begründungen (#1123): über der Deklaration und im Rumpf der Implementierung.
-  mEntries := TLspRationale.Select(EntriesOf(FIndex, ALocation), AOptions);
+  mEntries := TRationaleSelection.Select(EntriesOf(FIndex, ALocation), AOptions);
   if Length(mEntries) > 0 then
   begin
     ALines.Add(cTexts[TIndexToolsText.Rationales].Text);
@@ -429,7 +429,7 @@ begin
     mCount := 0;
     for mLocation in Matches(AName) do
     begin
-      mEntries := TLspRationale.ByMarkers(EntriesOf(FIndex, mLocation), AOptions);
+      mEntries := TRationaleSelection.ByMarkers(EntriesOf(FIndex, mLocation), AOptions);
       if Length(mEntries) = 0 then
       begin
         Continue;
@@ -503,7 +503,7 @@ var
   mLocation: TSymbolLocation;
 begin
   Result := 0;
-  mEntries := TLspRationale.ByMarkers(TRationale.DecodeAll(AUnit.Rationale), AOptions);
+  mEntries := TRationaleSelection.ByMarkers(TRationale.DecodeAll(AUnit.Rationale), AOptions);
   if Length(mEntries) > 0 then
   begin
     ALines.Add('Unit:');
@@ -512,7 +512,7 @@ begin
   end;
   for mSymbol in AUnit.Symbols do
   begin
-    mEntries := TLspRationale.ByMarkers(TRationale.DecodeAll(mSymbol.Rationale), AOptions);
+    mEntries := TRationaleSelection.ByMarkers(TRationale.DecodeAll(mSymbol.Rationale), AOptions);
     if Length(mEntries) > 0 then
     begin
       mLocation.UnitName := AUnit.UnitName;

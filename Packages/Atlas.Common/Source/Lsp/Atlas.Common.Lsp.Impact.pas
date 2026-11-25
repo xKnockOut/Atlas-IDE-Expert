@@ -53,10 +53,9 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.ReferenceConfidence,
-  Atlas.Common.Lsp.References,
-  Atlas.Common.Lsp.Hierarchies,
+  Atlas.Common.Semantics.Hierarchies,
   Atlas.Common.Lsp.Impact.Forms,
-  Atlas.Common.Lsp.Internals.Feature,
+  Atlas.Common.Semantics.Feature,
   Atlas.Common.Semantics.References;
 
 type
@@ -153,7 +152,7 @@ type
   /// <summary>Optionen der Analyse für die Datei AUri (Tiefe, Einstufung, Testunits, Zeitlimit).</summary>
   TImpactOptionsProvider = reference to function(const AUri: string): TImpactOptions;
 
-  TImpactAnalysis = class(TLspProjectFeature)
+  TImpactAnalysis = class(TProjectFeature)
   public const
     cMethod = 'atlas/impact';
     cMinDepth = 1;
@@ -174,7 +173,7 @@ type
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
       const AFiles: TReferenceFilesProvider); overload;
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
-    /// <summary>Auswirkungen des Symbols AStart (aus TLspHierarchies.SymbolItemAt). AFiles: Projektdateien.
+    /// <summary>Auswirkungen des Symbols AStart (aus THierarchies.SymbolItemAt). AFiles: Projektdateien.
     /// </summary>
     class function Analyze(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AStart: THierarchyItem;
       const ASources: TImpactSources; const AOptions: TImpactOptions;
@@ -210,8 +209,8 @@ uses
   System.Diagnostics,
   System.Generics.Collections,
   Atlas.Common.JsonRpc.CustomCancellation,
-  Atlas.Common.Lsp.Internals.Namespaces,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.Namespaces,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.Contract,
@@ -633,7 +632,7 @@ var
   mTest: TImpactTest;
 begin
   Result := -1;
-  if not TLspHierarchies.IsRoutine(AItem) or (AItem.Container = '') then
+  if not THierarchies.IsRoutine(AItem) or (AItem.Container = '') then
   begin
     Exit;
   end;
@@ -774,7 +773,7 @@ begin
   end;
   if mFound then
   begin
-    AItem := TLspHierarchies.ItemOf(mExtracted.UnitName, AFileName, mBest);
+    AItem := THierarchies.ItemOf(mExtracted.UnitName, AFileName, mBest);
     Exit(True);
   end;
   // Unit-Ebene (initialization, finalization, Rumpf des Programms): die Unit selbst.
@@ -807,7 +806,7 @@ begin
   begin
     if (mIndexed.Symbols[mIndex].Kind in cMethodKinds) and SameText(mIndexed.Symbols[mIndex].Container, ATypeName) then
     begin
-      AItem := TLspHierarchies.ItemOf(mIndexed.UnitName, mIndexed.SymbolFile(mIndexed.Symbols[mIndex]),
+      AItem := THierarchies.ItemOf(mIndexed.UnitName, mIndexed.SymbolFile(mIndexed.Symbols[mIndex]),
         mIndexed.Symbols[mIndex]);
       Exit(True);
     end;
@@ -853,7 +852,7 @@ begin
   begin
     Exit(False);
   end;
-  if TLspHierarchies.CallerAt(mTree, ALocation.FileName, ALocation.Range.StartPos, APlace) then
+  if THierarchies.CallerAt(mTree, ALocation.FileName, ALocation.Range.StartPos, APlace) then
   begin
     Exit(True);
   end;
@@ -884,7 +883,7 @@ begin
     AItem.SelectionRange.StartPos, False, TImpactAnalysis.CandidateFiles(FIndex, FSources.Files, AItem.Name),
     FSources.ReadText), FOptions.References, FToken);
   mEdge := TImpactEdge.Reference;
-  if TLspHierarchies.IsRoutine(AItem) then
+  if THierarchies.IsRoutine(AItem) then
   begin
     mEdge := TImpactEdge.Call;
   end;
@@ -978,7 +977,7 @@ begin
     if SameText(mTypeUnit.Symbols[mIndex].Container, ALocation.Symbol.Name) and
       mTypeUnit.Symbols[mIndex].HasDirective('override') then
     begin
-      AddSure(TLspHierarchies.ItemOf(mTypeUnit.UnitName, mTypeUnit.SymbolFile(mTypeUnit.Symbols[mIndex]),
+      AddSure(THierarchies.ItemOf(mTypeUnit.UnitName, mTypeUnit.SymbolFile(mTypeUnit.Symbols[mIndex]),
         mTypeUnit.Symbols[mIndex]), AStep, TImpactEdge.Override_);
       Exit;
     end;
@@ -1196,12 +1195,12 @@ end;
 
 function TImpactAnalysis.GetNamespaces: TArray<string>;
 begin
-  Result := TLspNamespaces.Read(FNamespaces);
+  Result := TSharedNamespaces.Read(FNamespaces);
 end;
 
 procedure TImpactAnalysis.SetNamespaces(const AValue: TArray<string>);
 begin
-  TLspNamespaces.Write(FNamespaces, AValue);
+  TSharedNamespaces.Write(FNamespaces, AValue);
 end;
 
 function TImpactAnalysis.OptionsFrom(AParams: TJSONObject; const AUri: string): TImpactOptions;
@@ -1358,7 +1357,7 @@ begin
   Result.AddPair('level', TJSONNumber.Create(APlace.Level));
   Result.AddPair('edge', TImpactAnalysis.EdgeName(APlace.Edge));
   Result.AddPair('cause', TJSONNumber.Create(APlace.Cause));
-  Result.AddPair('item', TLspHierarchies.ItemToJson(APlace.Item));
+  Result.AddPair('item', THierarchies.ItemToJson(APlace.Item));
   Result.AddPair('ranges', TLspPositions.RangesToJson(APlace.Ranges));
   Result.AddPair('atlasConfidence', APlace.Confidence.ToJson);
   Result.AddPair('forms', FormsToJson(APlace.Forms));
@@ -1415,7 +1414,7 @@ var
   mTest: TImpactTest;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('symbol', TLspHierarchies.ItemToJson(AResult.Symbol));
+  Result.AddPair('symbol', THierarchies.ItemToJson(AResult.Symbol));
   Result.AddPair('symbolForms', FormsToJson(AResult.SymbolForms));
   Result.AddPair('depth', TJSONNumber.Create(AResult.Depth));
   mPlaces := TJSONArray.Create;
@@ -1472,7 +1471,7 @@ begin
   try
     mResolver.Namespaces := Namespaces;
     try
-      mFound := TLspHierarchies.SymbolItemAt(mResolver, mTree, TDocumentUris.ToPath(mUri),
+      mFound := THierarchies.SymbolItemAt(mResolver, mTree, TDocumentUris.ToPath(mUri),
         TLspPositions.ReadPosition(mPositionValue), mStart);
     finally
       mOwnTree.Free;

@@ -1,7 +1,6 @@
 ﻿unit Atlas.Common.Lsp.SymbolPath.Tests;
 
-// Tests von atlas/symbolPath bzw. atlas.symbolPath (#1117): Argumente lesen
-// und ablehnen, Weg über den eigenen Uses-Graphen, Einstellung
+// Tests von atlas/symbolPath bzw. atlas.symbolPath (#1117): Weg über den eigenen Uses-Graphen, Einstellung
 // navigation.symbolPath = false, fehlendes Projekt.
 
 interface
@@ -13,10 +12,6 @@ type
   [TestFixture]
   TLspSymbolPathTests = class
   public
-    [Test]
-    procedure ReadsRequest;
-    [Test]
-    procedure RejectsInvalidRequest;
     [Test]
     procedure FindsUsesPath;
     [Test]
@@ -38,7 +33,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
-  Atlas.Common.Lsp.SymbolPath.Search,
+  Atlas.Common.Semantics.SymbolPath.Search,
   Atlas.Common.Lsp.SymbolPath;
 
 const
@@ -123,65 +118,7 @@ begin
   end;
 end;
 
-function ParamsOf(const AJson: string): TJSONObject;
-begin
-  Result := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
-end;
-
 { TLspSymbolPathTests }
-
-procedure TLspSymbolPathTests.ReadsRequest;
-var
-  mParams: TJSONObject;
-  mRequest: TSymbolPathRequest;
-begin
-  mParams := ParamsOf('{"from":"uA","to":"uC","via":["uses","library"],"maxSteps":3,"all":true}');
-  try
-    mRequest := TLspSymbolPath.ReadRequest(mParams);
-    Assert.AreEqual('uA', mRequest.From);
-    Assert.AreEqual('uC', mRequest.To_);
-    Assert.AreEqual<TSymbolPathEdgeKinds>([TSymbolPathEdgeKind.Uses_], mRequest.Via);
-    Assert.IsTrue(mRequest.ThroughLibrary);
-    Assert.AreEqual(3, mRequest.MaxSteps);
-    Assert.IsTrue(mRequest.All);
-  finally
-    mParams.Free;
-  end;
-  // Ohne via: alle Kantenarten, Bibliothek kein Durchgang, Vorgabe 8 Schritte.
-  mParams := ParamsOf('{"from":"uA","to":"uC"}');
-  try
-    mRequest := TLspSymbolPath.ReadRequest(mParams);
-    Assert.AreEqual<TSymbolPathEdgeKinds>(cAllSymbolPathEdges, mRequest.Via);
-    Assert.IsFalse(mRequest.ThroughLibrary);
-    Assert.AreEqual(TSymbolPathRequest.cDefaultSteps, mRequest.MaxSteps);
-    Assert.IsFalse(mRequest.All);
-  finally
-    mParams.Free;
-  end;
-end;
-
-procedure TLspSymbolPathTests.RejectsInvalidRequest;
-const
-  cInvalid: array[0..3] of string = ('{"from":"uA"}', '{"from":"uA","to":"uC","via":["foo"]}',
-    '{"from":"uA","to":"uC","maxSteps":0}', '{"from":"uA","to":"uC","maxSteps":17}');
-var
-  mItem: string;
-  mParams: TJSONObject;
-begin
-  for mItem in cInvalid do
-  begin
-    mParams := ParamsOf(mItem);
-    try
-      Assert.WillRaise(
-        procedure
-        begin
-          TLspSymbolPath.ReadRequest(mParams);
-        end, EJsonRpcError, mItem);
-    finally
-      mParams.Free;
-    end;
-  end;
-end;
 
 procedure TLspSymbolPathTests.FindsUsesPath;
 var

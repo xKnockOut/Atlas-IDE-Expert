@@ -6,7 +6,7 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Hierarchies,
+  Atlas.Common.Semantics.Hierarchies,
   Atlas.Common.Lsp.Impact;
 
 type
@@ -291,7 +291,7 @@ var
 begin
   mTree := TSyntaxTreeCache.Parse(TextOf(AFileName));
   try
-    Assert.IsTrue(TLspHierarchies.SymbolItemAt(FResolver, mTree, AFileName,
+    Assert.IsTrue(THierarchies.SymbolItemAt(FResolver, mTree, AFileName,
       PositionOf(TextOf(AFileName), AMarker, AName), Result), AMarker);
   finally
     mTree.Free;
@@ -796,7 +796,7 @@ begin
   try
     mTree := TSyntaxTreeCache.Parse(mTexts[0]);
     try
-      Assert.IsTrue(TLspHierarchies.SymbolItemAt(mResolver, mTree, mFiles[0], PositionOf(mTexts[0], 'procedure Lauf0;',
+      Assert.IsTrue(THierarchies.SymbolItemAt(mResolver, mTree, mFiles[0], PositionOf(mTexts[0], 'procedure Lauf0;',
         'Lauf0'), mStart));
     finally
       mTree.Free;
