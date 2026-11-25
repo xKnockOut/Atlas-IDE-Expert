@@ -13,7 +13,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 type
   TLspUnitRename = class

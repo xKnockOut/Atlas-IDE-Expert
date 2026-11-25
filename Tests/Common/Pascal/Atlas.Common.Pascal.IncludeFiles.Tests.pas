@@ -52,12 +52,12 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.DocumentLinks,
-  Atlas.Common.Lsp.InactiveRegions,
+  Atlas.Common.Pascal.InactiveRegions,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Definition,
+  Atlas.Common.Semantics.Definitions,
   Atlas.Common.Lsp.Completion;
 
 const
@@ -165,7 +165,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mUnitIndex.Includes)));
   Assert.AreEqual('C:\Lib\Defines.inc', mUnitIndex.Includes[0]);
   // Abblenden: nur der $ELSE-Zweig (Zeile 6) ist inaktiv.
-  mRanges := TLspInactiveRegions.Ranges(cText, nil, cMainFile, Resolver(['C:\Lib']), mIssues);
+  mRanges := TInactiveRegions.Ranges(cText, nil, cMainFile, Resolver(['C:\Lib']), mIssues);
   Assert.AreEqual(1, Integer(Length(mRanges)));
   Assert.IsTrue((mRanges[0].StartPos.Line <= 6) and (mRanges[0].EndPos.Line >= 6) and (mRanges[0].StartPos.Line >= 5));
   Assert.AreEqual(0, Integer(Length(mIssues)));
@@ -180,7 +180,7 @@ var
   mIssues: TArray<TPreprocessorIssue>;
 begin
   Files.Clear;
-  TLspInactiveRegions.Ranges('unit Main;'#10'{$I Fehlt.inc}'#10'end.', nil, cMainFile, Resolver(nil), mIssues);
+  TInactiveRegions.Ranges('unit Main;'#10'{$I Fehlt.inc}'#10'end.', nil, cMainFile, Resolver(nil), mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
   Assert.AreEqual(Ord(TPreprocessorIssueKind.IncludeMissing), Ord(mIssues[0].Kind));
   Assert.AreEqual(1, mIssues[0].Range.StartPos.Line);
@@ -193,7 +193,7 @@ begin
   Files.Clear;
   Put('C:\P\A.inc', '{$I B.inc}');
   Put('C:\P\B.inc', '{$I A.inc}');
-  TLspInactiveRegions.Ranges('unit Main;'#10'{$I A.inc}'#10'end.', nil, cMainFile, Resolver(nil), mIssues);
+  TInactiveRegions.Ranges('unit Main;'#10'{$I A.inc}'#10'end.', nil, cMainFile, Resolver(nil), mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
   Assert.AreEqual(Ord(TPreprocessorIssueKind.IncludeCycle), Ord(mIssues[0].Kind));
   // Gemeldet an der $I-Direktive der Datei selbst, mit Ort in der .inc.
@@ -205,7 +205,7 @@ procedure TIncludeFilesTests.WithoutResolverNoIssues;
 var
   mIssues: TArray<TPreprocessorIssue>;
 begin
-  TLspInactiveRegions.Ranges('unit Main;'#10'{$I Fehlt.inc}'#10'end.', nil, cMainFile, nil, mIssues);
+  TInactiveRegions.Ranges('unit Main;'#10'{$I Fehlt.inc}'#10'end.', nil, cMainFile, nil, mIssues);
   Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
 
@@ -320,7 +320,7 @@ begin
     // Strg+Klick auf TKunde in einer dritten Unit springt in Typen.inc.
     mTree := TPascalParser.Parse(cDritteText);
     try
-      mTargets := TLspDefinition.Targets(mResolver_, mIndex, mTree, 'C:\P\Dritte.pas', TTextPosition.Create(3, 8), False);
+      mTargets := TDefinitions.Targets(mResolver_, mIndex, mTree, 'C:\P\Dritte.pas', TTextPosition.Create(3, 8), False);
     finally
       mTree.Free;
     end;

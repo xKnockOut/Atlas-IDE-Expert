@@ -32,7 +32,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 type
   TMoveMemberContext = record
@@ -969,7 +969,7 @@ begin
     begin
       Continue;
     end;
-    for mLocation in TLspReferences.Find(FResolver, FContext.Index, FTree, TReferenceSearch.Create(FFileName,
+    for mLocation in TReferences.Find(FResolver, FContext.Index, FTree, TReferenceSearch.Create(FFileName,
       NamePosition(FTree, FSource.Members[mId].Node, FSource.Members[mId].Name), False, FContext.Files,
       FContext.ReadText)) do
     begin

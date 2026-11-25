@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.ReferenceConfidence;
+﻿unit Atlas.Common.Semantics.ReferenceConfidence;
 
 // Treffersicherheit der Verwendungen (#1119). Eine Stelle, deren Name passt,
 // ist
@@ -37,8 +37,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.Definition,
-  Atlas.Common.Lsp.InactiveRegions;
+  Atlas.Common.Semantics.Definitions,
+  Atlas.Common.Pascal.InactiveRegions;
 
 type
 {$SCOPEDENUMS ON}
@@ -116,7 +116,7 @@ type
     /// <summary>Einstufung des Bezeichners ATokenIndex, dessen Name schon passt (auch als Attributname). False:
     /// kein Treffer. AInactive: inaktive Bereiche der Datei (leer ohne references.inferred).</summary>
     function Classify(ATree: TSyntaxTree; const AFileName: string; ATokenIndex: Integer;
-      const AInactive: TArray<TLspInactiveRegion>; out AConfidence: TReferenceConfidence): Boolean;
+      const AInactive: TArray<TInactiveRegion>; out AConfidence: TReferenceConfidence): Boolean;
     /// <summary>String-Literal, das genau den Namen enthält (nur mit references.inferred und textMatches).</summary>
     function TextMatch(const AToken: TPascalToken; out AConfidence: TReferenceConfidence): Boolean;
     /// <summary>Deklaration hinter AWanted aus der eigenen Datei (ATree) oder dem Index.</summary>
@@ -124,10 +124,10 @@ type
       const AFileName: string; const AWanted: TDefinitionTarget; out ASymbol: TIndexSymbol): Boolean; static;
     /// <summary>Inaktive Bereiche von AText mit den Symbolen ADefines wie im Editor-Baum (#845); leer ohne
     /// bedingte Zweige.</summary>
-    class function InactiveOf(const AText: string; const ADefines: TArray<string>): TArray<TLspInactiveRegion>;
+    class function InactiveOf(const AText: string; const ADefines: TArray<string>): TArray<TInactiveRegion>;
       static;
     /// <summary>Liegt APosition in einem der Bereiche? ACondition: Bedingung des Zweigs.</summary>
-    class function RegionAt(const AInactive: TArray<TLspInactiveRegion>; const APosition: TTextPosition;
+    class function RegionAt(const AInactive: TArray<TInactiveRegion>; const APosition: TTextPosition;
       out ACondition: string): Boolean; static;
     property Settings: TReferenceSettings read FSettings;
     property Resolver: TNameResolver read FResolver;
@@ -138,11 +138,11 @@ implementation
 uses
   Atlas.Common.Index.Files,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Lsp.Implementations,
-  Atlas.Common.Lsp.ParameterHeaders,
+  Atlas.Common.Semantics.ParameterHeaders,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  Atlas.Common.Semantics.Implementations;
 
 {$SCOPEDENUMS ON}
 
@@ -309,13 +309,13 @@ begin
   begin
     Exit;
   end;
-  Result := TLspImplementations.AllDescendantsOf(FIndex, ATypeName);
+  Result := TImplementations.AllDescendantsOf(FIndex, ATypeName);
   FDescendants.Add(UpperCase(ATypeName), Result);
 end;
 
 function TReferenceClassifier.ContainerIsInterface(const AContainer: string): Boolean;
 begin
-  Result := TLspImplementations.IsInterfaceType(FIndex, AContainer);
+  Result := TImplementations.IsInterfaceType(FIndex, AContainer);
 end;
 
 function TReferenceClassifier.SameMemberElsewhere(const AResolved: TResolvedSymbol): Boolean;
@@ -384,7 +384,7 @@ begin
   Result := TReferenceConfidence.Inferred(TReferenceReason.Virtual,
     cTexts[TReferenceConfidenceText.CallOfOverridesIt].Fmt([AResolved.Container, AResolved.Name, FSymbol.Container,
     FSymbol.Name]), False);
-  Result.Implementations := TLspImplementations.ImplementationCount(FIndex, AResolved.Container, AResolved.Name,
+  Result.Implementations := TImplementations.ImplementationCount(FIndex, AResolved.Container, AResolved.Name,
     False);
 end;
 
@@ -446,7 +446,7 @@ begin
   end;
   for mCandidate in mAll do
   begin
-    mTargets := TLspDefinition.TargetsOf(FResolver, FIndex, TDefinitionQuery.Create(ATree, AFileName, APosition, True),
+    mTargets := TDefinitions.TargetsOf(FResolver, FIndex, TDefinitionQuery.Create(ATree, AFileName, APosition, True),
       mCandidate);
     if (Length(mTargets) > 0) and SameTarget(mTargets[0], FWanted) then
     begin
@@ -458,7 +458,7 @@ begin
 end;
 
 function TReferenceClassifier.Classify(ATree: TSyntaxTree; const AFileName: string; ATokenIndex: Integer;
-  const AInactive: TArray<TLspInactiveRegion>; out AConfidence: TReferenceConfidence): Boolean;
+  const AInactive: TArray<TInactiveRegion>; out AConfidence: TReferenceConfidence): Boolean;
 var
   mPosition: TTextPosition;
   mResolved: TResolvedSymbol;
@@ -469,7 +469,7 @@ begin
   mPosition := ATree.Tokens[ATokenIndex].StartPos;
   mInactive := FSettings.Inferred and RegionAt(AInactive, mPosition, mCondition);
   mResolved := FResolver.Resolve(ATree, AFileName, mPosition);
-  mTargets := TLspDefinition.TargetsOf(FResolver, FIndex, TDefinitionQuery.Create(ATree, AFileName, mPosition, True),
+  mTargets := TDefinitions.TargetsOf(FResolver, FIndex, TDefinitionQuery.Create(ATree, AFileName, mPosition, True),
     mResolved);
   if (Length(mTargets) > 0) and SameTarget(mTargets[0], FWanted) then
   begin
@@ -544,7 +544,7 @@ begin
 end;
 
 class function TReferenceClassifier.InactiveOf(const AText: string;
-  const ADefines: TArray<string>): TArray<TLspInactiveRegion>;
+  const ADefines: TArray<string>): TArray<TInactiveRegion>;
 var
   mIssues: TArray<TPreprocessorIssue>;
 begin
@@ -554,14 +554,14 @@ begin
     Exit;
   end;
   // Dieselben Optionen wie der Baum des Editors, damit „inaktiv“ hier dasselbe heißt wie beim Abblenden.
-  Result := TLspInactiveRegions.Regions(TPascalPreprocessor.Process(AText,
+  Result := TInactiveRegions.Regions(TPascalPreprocessor.Process(AText,
     TPascalPreprocessor.EditorOptions(ADefines)), False, mIssues);
 end;
 
-class function TReferenceClassifier.RegionAt(const AInactive: TArray<TLspInactiveRegion>;
+class function TReferenceClassifier.RegionAt(const AInactive: TArray<TInactiveRegion>;
   const APosition: TTextPosition; out ACondition: string): Boolean;
 var
-  mRegion: TLspInactiveRegion;
+  mRegion: TInactiveRegion;
 begin
   ACondition := '';
   for mRegion in AInactive do
@@ -576,6 +576,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.ReferenceConfidence', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.ReferenceConfidence', cTexts);
 
 end.

@@ -39,7 +39,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Lsp.InactiveRegions,
+  Atlas.Common.Pascal.InactiveRegions,
   Atlas.Common.Semantics.UsesActions,
   Atlas.Common.Lsp.DiagnosticItems;
 
@@ -126,7 +126,7 @@ procedure TLspDiagnosticItemsTests.InactiveRegionCarriesConditionAndTarget;
 var
   mItem: TJSONObject;
 begin
-  mItem := TLspDiagnosticItems.InactiveToJson(TLspInactiveRegion.Create(TTextRange.Create(1, 0, 3, 0), 'WIN64'),
+  mItem := TLspDiagnosticItems.InactiveToJson(TInactiveRegion.Create(TTextRange.Create(1, 0, 3, 0), 'WIN64'),
     'Win32', 'Debug');
   try
     Assert.AreEqual('Inaktiv: Bedingung WIN64 nicht erfüllt (Zielplattform Win32 · Debug)',

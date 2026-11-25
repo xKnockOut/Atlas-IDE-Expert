@@ -22,7 +22,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.PromoteVariable,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 type
   /// <summary>Was atlas.server.promoteVariable braucht außer Baum, Text und Stelle.</summary>

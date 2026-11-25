@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.ReferenceConfidence.Tests;
+﻿unit Atlas.Common.Semantics.ReferenceConfidence.Tests;
 
 // Tests für die Treffersicherheit der Verwendungen (#1119): sichere und
 // erschlossene Treffer je Grund, Einstellungen references.*, Ausgabe im LSP
@@ -11,7 +11,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 type
   [TestFixture]
@@ -100,13 +100,14 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.ReferenceConfidence,
+  Atlas.Common.Semantics.ReferenceConfidence,
   Atlas.Common.Lsp.Hierarchies,
   Atlas.Common.Lsp.Rename,
   Atlas.Common.Mcp.CodeTools,
   Atlas.Common.Mcp.Confirm,
   Atlas.Common.Mcp.EditTools,
-  Atlas.Tests.SourceText;
+  Atlas.Tests.SourceText,
+  Atlas.Common.Lsp.References;
 
 const
   cKundenFile = 'C:\P\Kunden.pas';
@@ -207,7 +208,7 @@ var
 begin
   mTree := TPascalParser.Parse(cUnitKunden);
   try
-    Result := TLspReferences.Find(FResolver, FIndex, mTree, TReferenceSearch.Create(cKundenFile, TTestSource.PositionOf(cUnitKunden,
+    Result := TReferences.Find(FResolver, FIndex, mTree, TReferenceSearch.Create(cKundenFile, TTestSource.PositionOf(cUnitKunden,
       'Speichern; override'), True, [cKundenFile, cHauptFile], ReadText), ASettings, nil);
   finally
     mTree.Free;
@@ -329,7 +330,7 @@ var
 begin
   mTree := TPascalParser.Parse(cUnitWerte);
   try
-    Result := TLspReferences.Find(AResolver, AIndex, mTree, TReferenceSearch.Create(cWerteFile, TTestSource.PositionOf(cUnitWerte,
+    Result := TReferences.Find(AResolver, AIndex, mTree, TReferenceSearch.Create(cWerteFile, TTestSource.PositionOf(cUnitWerte,
       AMarker), False, TArray<string>.Create(cWerteFile), AReadText), ASettings, nil);
   finally
     mTree.Free;
@@ -367,13 +368,13 @@ begin
   // Wie im Editor: Der Parser überspringt den Zweig NIE, die Token-Liste enthält ihn.
   mTree := TPascalParser.ParseActive(cUnitHaupt, nil);
   try
-    mFound := TLspReferences.Find(FResolver, FIndex, mTree, TReferenceSearch.Create(cHauptFile, TTestSource.PositionOf(cUnitHaupt,
+    mFound := TReferences.Find(FResolver, FIndex, mTree, TReferenceSearch.Create(cHauptFile, TTestSource.PositionOf(cUnitHaupt,
       'Speichern;'), False, [cKundenFile, cHauptFile], ReadText), Settings(True, False), nil);
     Assert.IsTrue(HitAt(mFound, cHauptFile, 11, mLocation), 'Stelle in NIE fehlt: ' + Describe(mFound));
     Assert.AreEqual('inactiveBranch', mLocation.Confidence.ReasonName);
     Assert.IsTrue(mLocation.Confidence.Renameable);
     // Ohne Einstufung wie vor #1119: sicher.
-    mFound := TLspReferences.Find(FResolver, FIndex, mTree, TReferenceSearch.Create(cHauptFile, TTestSource.PositionOf(cUnitHaupt,
+    mFound := TReferences.Find(FResolver, FIndex, mTree, TReferenceSearch.Create(cHauptFile, TTestSource.PositionOf(cUnitHaupt,
       'Speichern;'), False, [cKundenFile, cHauptFile], ReadText), Settings(False, False), nil);
     Assert.IsTrue(HitAt(mFound, cHauptFile, 11, mLocation), Describe(mFound));
     Assert.IsTrue(mLocation.Confidence.IsSure);
@@ -730,12 +731,12 @@ begin
     for mRound := 1 to cRounds do
     begin
       mWatch := TStopwatch.StartNew;
-      Assert.AreEqual(cCount + 1, Integer(Length(TLspReferences.Find(FResolver, FIndex, mTree,
+      Assert.AreEqual(cCount + 1, Integer(Length(TReferences.Find(FResolver, FIndex, mTree,
         TReferenceSearch.Create(cKundenFile, TTestSource.PositionOf(cUnitKunden, 'Speichern; override'), False, [cKundenFile,
         cHauptFile], mRead), Settings(False, False), nil))));
       Inc(mSure, mWatch.ElapsedMilliseconds);
       mWatch := TStopwatch.StartNew;
-      Assert.AreEqual(cCount + 1, Integer(Length(TLspReferences.Find(FResolver, FIndex, mTree,
+      Assert.AreEqual(cCount + 1, Integer(Length(TReferences.Find(FResolver, FIndex, mTree,
         TReferenceSearch.Create(cKundenFile, TTestSource.PositionOf(cUnitKunden, 'Speichern; override'), False, [cKundenFile,
         cHauptFile], mRead), Settings(True, True), nil))));
       Inc(mInferred, mWatch.ElapsedMilliseconds);

@@ -77,7 +77,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.Definition,
+  Atlas.Common.Semantics.Definitions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Internals.Cancellation,
@@ -257,7 +257,7 @@ begin
   // Den Baum einmal auswerten statt je Vorkommen.
   AResolver.PinTree(ATree, AFileName);
   try
-    mWanted := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
+    mWanted := TDefinitions.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
     if Length(mWanted) = 0 then
     begin
       Exit;
@@ -274,7 +274,7 @@ begin
       begin
         ACancellation.ThrowIfCancellationRequested;
       end;
-      mCandidate := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, mTokens[mIndex].StartPos, True);
+      mCandidate := TDefinitions.Targets(AResolver, AIndex, ATree, AFileName, mTokens[mIndex].StartPos, True);
       if (Length(mCandidate) = 0) or not SameTarget(mCandidate[0], mWanted[0]) then
       begin
         Continue;

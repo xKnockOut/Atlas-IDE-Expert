@@ -13,9 +13,9 @@ uses
   System.Classes,
   System.JSON,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Impact,
-  Atlas.Common.Index.ImplementationSites;
+  Atlas.Common.Index.ImplementationSites,
+  Atlas.Common.Semantics.References;
 
 type
   TMcpImplementationTools = class
@@ -55,10 +55,10 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Implementations,
   Atlas.Common.Mcp.IndexTools,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Semantics.Implementations;
 
 {$SCOPEDENUMS ON}
 
@@ -236,7 +236,7 @@ var
   mSite: TImplementationSite;
 begin
   Result := nil;
-  for mDescendant in TLspImplementations.AllDescendantsOf(FIndex, ALocation.Symbol.QualifiedName) do
+  for mDescendant in TImplementations.AllDescendantsOf(FIndex, ALocation.Symbol.QualifiedName) do
   begin
     mSite := Default(TImplementationSite);
     mSite.TypeName := mDescendant.Symbol.QualifiedName;
@@ -257,7 +257,7 @@ end;
 function TMcpImplementationTools.MethodSites(const ALocation: TSymbolLocation;
   out AInterface: Boolean): TArray<TImplementationSite>;
 begin
-  AInterface := TLspImplementations.IsInterfaceType(FIndex, ALocation.Symbol.Container);
+  AInterface := TImplementations.IsInterfaceType(FIndex, ALocation.Symbol.Container);
   Result := TImplementationSites.Find(FIndex, nil, ALocation.Symbol.Container, ALocation.Symbol.Name,
     ALocation.FileName, AInterface);
 end;

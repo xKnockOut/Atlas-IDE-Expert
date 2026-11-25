@@ -39,12 +39,12 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.Contract,
   Shell.Composition.Mcp,
   Atlas.Common.Mcp.CodeTools,
-  Atlas.Common.Mcp.CheckTools;
+  Atlas.Common.Mcp.CheckTools,
+  Atlas.Common.Semantics.References;
 
 const
   cWorkerFile = 'C:\P\Worker.pas';

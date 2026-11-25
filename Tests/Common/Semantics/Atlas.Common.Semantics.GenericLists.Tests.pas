@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.GenericLists.Tests;
+﻿unit Atlas.Common.Semantics.GenericLists.Tests;
 
 // Tests für die Umwandlung ungenerischer Listen (#1105, #1106): Beispiel aus dem
 // Issue, Casts, Schleifen, Properties, uses-Klauseln, andere Units, Stapel und
@@ -107,7 +107,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Semantics.LegacyListKinds,
-  Atlas.Common.Editing.GenericLists;
+  Atlas.Common.Semantics.GenericLists;
 
 const
   cMainFile = 'C:\P\Haupt.pas';

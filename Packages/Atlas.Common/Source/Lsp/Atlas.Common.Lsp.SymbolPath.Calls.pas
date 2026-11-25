@@ -58,7 +58,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Hierarchies;
 
 { TSymbolPathCalls }

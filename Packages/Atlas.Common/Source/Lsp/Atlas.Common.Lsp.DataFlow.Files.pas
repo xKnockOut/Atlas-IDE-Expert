@@ -9,8 +9,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Lsp.References,
-  Atlas.Common.Lsp.DataFlow.Types;
+  Atlas.Common.Lsp.DataFlow.Types,
+  Atlas.Common.Semantics.References;
 
 type
   TDataFlowFiles = class

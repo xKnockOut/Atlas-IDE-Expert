@@ -7,7 +7,7 @@
 // TList, unbekannte Typen) und Einstellungen (Standard aus, off, exclude).
 // Schnellkorrektur (#1105): Umwandlung samt Ergebnis, Grund im Befund-Hover,
 // Deklaration und Verwendungen in anderen Units der Projektgruppe. Die
-// einzelnen Gründe ohne Korrektur prüft Atlas.Common.Editing.GenericLists.Tests.
+// einzelnen Gründe ohne Korrektur prüft Atlas.Common.Semantics.GenericLists.Tests.
 //
 // Tests der Regel legacy-stack-queue (#1106): TStack, TQueue, TObjectStack
 // und TObjectQueue aus Contnrs mit Cast über Pop, Peek und as, Meldung je

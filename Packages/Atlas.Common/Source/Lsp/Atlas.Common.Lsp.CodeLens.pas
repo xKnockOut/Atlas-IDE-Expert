@@ -26,7 +26,8 @@ uses
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.References,
-  Atlas.Common.Lsp.Internals.Feature;
+  Atlas.Common.Lsp.Internals.Feature,
+  Atlas.Common.Semantics.References;
 
 type
   TCodeLensKind = (References, Overrides, Descendants, Messages, Metrics);
@@ -548,7 +549,7 @@ begin
   Result.Targets := nil;
   mHeaders := HeaderNames(ASource.Tree);
   try
-    for mFound in TLspReferences.Find(ASource.Resolver, ASource.Index, ASource.Tree,
+    for mFound in TReferences.Find(ASource.Resolver, ASource.Index, ASource.Tree,
       TReferenceSearch.Create(ASource.FileName, AEntry.Range.StartPos, False, AFiles, ASource.ReadText),
       ACancellation) do
     begin

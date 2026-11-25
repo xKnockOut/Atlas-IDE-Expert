@@ -61,7 +61,6 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.References,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.ChangeSignature,
   Atlas.Common.Editing.Contract,
@@ -72,7 +71,8 @@ uses
   Atlas.Common.Lsp.PropertyFromAccessors,
   Atlas.Common.Lsp.InlineAccessor,
   Atlas.Common.Lsp.SafeDelete,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Semantics.References;
 
 type
 {$SCOPEDENUMS ON}

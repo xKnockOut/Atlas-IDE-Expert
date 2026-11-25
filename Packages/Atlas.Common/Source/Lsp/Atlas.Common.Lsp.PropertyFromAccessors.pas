@@ -29,7 +29,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.PropertyFromAccessors,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 type
   TPropertyFromAccessorsContext = record
@@ -76,7 +76,8 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Lsp.References;
 
 {$SCOPEDENUMS ON}
 
@@ -628,7 +629,7 @@ var
 begin
   for mMethod in AMethods do
   begin
-    for mLocation in TLspReferences.Find(FResolver, FContext.Index, FTree, TReferenceSearch.Create(FFileName,
+    for mLocation in TReferences.Find(FResolver, FContext.Index, FTree, TReferenceSearch.Create(FFileName,
       mMethod.NamePos, False, FContext.Files, FContext.ReadText)) do
     begin
       AddReference(AItem, mMethod, mLocation);

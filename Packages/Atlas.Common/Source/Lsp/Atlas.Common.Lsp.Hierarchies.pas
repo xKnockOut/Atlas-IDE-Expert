@@ -25,9 +25,10 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.ReferenceConfidence,
+  Atlas.Common.Semantics.ReferenceConfidence,
   Atlas.Common.Lsp.References,
-  Atlas.Common.Lsp.Internals.Feature;
+  Atlas.Common.Lsp.Internals.Feature,
+  Atlas.Common.Semantics.References;
 
 type
   THierarchyItem = record
@@ -166,10 +167,10 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.Implementations,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  Atlas.Common.Semantics.Implementations;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -835,7 +836,7 @@ begin
     begin
       Exit;
     end;
-    for mLocation in TLspReferences.Find(ASource.Resolver, ASource.Index, mTree,
+    for mLocation in TReferences.Find(ASource.Resolver, ASource.Index, mTree,
       TReferenceSearch.Create(AItem.FileName, AItem.SelectionRange.StartPos, False, AFiles, ASource.ReadText),
       ASettings, ASource.Cancellation) do
     begin
@@ -950,7 +951,7 @@ begin
   begin
     Exit;
   end;
-  if TLspImplementations.IsInterfaceType(AIndex, AResolved.Container) then
+  if TImplementations.IsInterfaceType(AIndex, AResolved.Container) then
   begin
     Result := TReferenceReason.Interface_;
   end
@@ -962,7 +963,7 @@ begin
   begin
     Exit;
   end;
-  AImplementations := TLspImplementations.ImplementationCount(AIndex, AResolved.Container, AResolved.Name,
+  AImplementations := TImplementations.ImplementationCount(AIndex, AResolved.Container, AResolved.Name,
     Result = TReferenceReason.Interface_);
 end;
 

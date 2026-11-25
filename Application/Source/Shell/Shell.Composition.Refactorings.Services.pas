@@ -18,10 +18,10 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.CodeActions,
-  Atlas.Common.Lsp.Refactorings;
+  Atlas.Common.Lsp.Refactorings,
+  Atlas.Common.Semantics.References;
 
 type
   /// <summary>Liste von Namen, z. B. Dateien des Projekts oder Namensräume.</summary>

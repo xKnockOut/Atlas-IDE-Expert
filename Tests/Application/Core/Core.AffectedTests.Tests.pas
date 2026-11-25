@@ -32,11 +32,11 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Lsp.AffectedTests.Types,
   Core.AffectedTests,
-  Core.VersionControlChanges;
+  Core.VersionControlChanges,
+  Atlas.Common.Semantics.References;
 
 const
   cTestProgram =

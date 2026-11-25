@@ -35,7 +35,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.DataFlow.Types,
-  Atlas.Common.Lsp.Internals.Feature;
+  Atlas.Common.Lsp.Internals.Feature,
+  Atlas.Common.Semantics.References;
 
 type
   TDataFlowDirection = Atlas.Common.Lsp.DataFlow.Types.TDataFlowDirection;

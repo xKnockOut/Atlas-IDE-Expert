@@ -33,9 +33,9 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Hierarchies,
-  Atlas.Common.Lsp.Impact;
+  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Semantics.References;
 
 type
   /// <summary>Ein Test, der eine Methode erreicht.</summary>
