@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Build.Pipeline.Tests;
+﻿unit Atlas.IDE.Base.Core.BuildPipeline.Tests;
 
 // Tests zu TAtlasBuildPipeline (#1455): Hörer der Compilermeldungen und
 // Bewertung kommen und gehen mit dem Modul der Build-Pipeline; die Bewertung
@@ -27,13 +27,14 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
   Atlas.Core.Build.Verdict,
-  Atlas.Core.Build.Pipeline,
-  Atlas.Plugin.Build.Contract;
+  Atlas.IDE.Base.Core.BuildPipeline,
+  Atlas.Plugin.Build.Contract,
+  Atlas.Plugin.Registration.Contract;
 
 type
   TFakeModule = class(TInterfacedObject, IAtlasModule)

@@ -42,9 +42,9 @@ implementation
 uses
   System.SysUtils,
   Atlas.Text.Product.Version,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Diagnostics.ModuleHost,
-  Atlas.Core.Modules.FeatureParts,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.ModuleHost,
+  Atlas.IDE.Base.Core.Modules.FeatureParts,
   Atlas.UI.Settings.Contract,
   Atlas.IDE.Base.Foundation.Rules,
   Atlas.IDE.Rules.Baseline,

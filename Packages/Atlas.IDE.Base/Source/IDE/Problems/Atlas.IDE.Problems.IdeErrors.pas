@@ -27,10 +27,10 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Base.Core.Modules.Contributions,
   Atlas.Core.Problems.IdeErrors,
   Atlas.IDE.Base.Foundation.Rules;
 

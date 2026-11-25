@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Modules.Answer.Tests;
+﻿unit Atlas.IDE.Base.Core.Modules.Answer.Tests;
 
 // Tests zu TAtlasModuleAnswer (#1455, Regel 3): Eine späte Antwort erreicht
 // das Modul höchstens einmal und nach seinem Abmelden gar nicht; der
@@ -27,9 +27,9 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Answer;
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Answer;
 
 type
   TFakeModule = class(TInterfacedObject, IAtlasModule)

@@ -11,10 +11,10 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Modules.Contract,
   Atlas.UI.Settings.Contract,
   Atlas.UI.Welcome.SettingsSection,
-  Atlas.IDE.Welcome.Adapters.SettingsSection;
+  Atlas.IDE.Welcome.Adapters.SettingsSection,
+  Atlas.Plugin.Registration.Contract;
 
 type
   [TestFixture]
@@ -56,7 +56,7 @@ uses
   Vcl.Forms,
   Vcl.ComCtrls,
   Vcl.Menus,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.QuickActions,

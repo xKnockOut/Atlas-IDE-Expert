@@ -46,8 +46,8 @@ uses
   Vcl.Menus,
   Atlas.ToolsApi.Windows.DockWindow,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions;
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Contributions;
 
 type
   /// <summary>Hält Aktion und Rückruf; gehört dem Frame.</summary>

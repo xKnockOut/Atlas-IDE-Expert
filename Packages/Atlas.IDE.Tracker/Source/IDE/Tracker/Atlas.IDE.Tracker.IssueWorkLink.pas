@@ -46,7 +46,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.MyIssues;
 

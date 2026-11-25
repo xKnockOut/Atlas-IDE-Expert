@@ -9,9 +9,9 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Modules.Contract,
   Atlas.UI.Settings.Contract,
-  Atlas.UI.Tracker.SettingsSection;
+  Atlas.UI.Tracker.SettingsSection,
+  Atlas.Plugin.Registration.Contract;
 
 type
   [TestFixture]
@@ -59,7 +59,7 @@ uses
   Vcl.ComCtrls,
   Vcl.StdCtrls,
   Vcl.Menus,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,

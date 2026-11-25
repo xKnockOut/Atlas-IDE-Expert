@@ -11,7 +11,7 @@
 interface
 
 uses
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.IDE.Tests.Output,
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.Debug,

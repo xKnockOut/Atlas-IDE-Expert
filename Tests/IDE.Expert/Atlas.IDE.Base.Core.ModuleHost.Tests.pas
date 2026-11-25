@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.ModuleHost.Tests;
+﻿unit Atlas.IDE.Base.Core.ModuleHost.Tests;
 
 // Tests zu TAtlasModuleHost (#1455): Beschreibung eines Moduls, Zulassung und die
 // gemeinsame Abmeldung mit ihrer Reihenfolge (stoppen und Anmeldungen lösen,
@@ -41,10 +41,10 @@ uses
   System.SyncObjs,
   Atlas.Plugin.Diagnostics.UnloadSafety,
   Atlas.Plugin.Diagnostics.WorkerSlot,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Handshake,
-  Atlas.Core.Diagnostics.ModuleHost,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Handshake,
+  Atlas.IDE.Base.Core.ModuleHost,
   Atlas.Tests.Lists;
 
 type

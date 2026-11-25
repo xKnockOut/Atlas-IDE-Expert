@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Modules.Registration.Tests;
+﻿unit Atlas.Plugin.Registration.Tests;
 
 // Gemeinsame Anmeldung von Base (#1455, Regel 4): Revoke löst genau einmal,
 // Detach markiert als gelöst, ohne die Ablage zu rufen.
@@ -24,8 +24,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registration;
+  Atlas.Plugin.Registration,
+  Atlas.Plugin.Registration.Contract;
 
 type
   /// <summary>Zählt die Aufrufe von DoRevoke; Fail wirft dabei.</summary>

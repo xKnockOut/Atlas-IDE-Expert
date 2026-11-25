@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Modules.Answer;
+﻿unit Atlas.IDE.Base.Core.Modules.Answer;
 
 // Antwort an ein Modul, die erst später kommt (#1455, Regel 3): Base hält
 // den Rückruf des Moduls nur, solange dessen Scope offen ist. Open
@@ -14,8 +14,9 @@ interface
 uses
   System.SysUtils,
   System.SyncObjs,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registration;
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.Plugin.Registration,
+  Atlas.Plugin.Registration.Contract;
 
 type
   /// <summary>Ausstehende Antwort; nur innerhalb von Base.</summary>

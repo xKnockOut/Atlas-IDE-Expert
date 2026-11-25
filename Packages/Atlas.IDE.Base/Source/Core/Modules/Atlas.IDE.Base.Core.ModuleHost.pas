@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.ModuleHost;
+﻿unit Atlas.IDE.Base.Core.ModuleHost;
 
 // Gemeinsame Kleinteile der Kompositions-Units der Module (#1455): die
 // Beschreibung des Moduls (Info), die Zulassung vor dem Anmelden (Admit) und
@@ -32,8 +32,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Handshake;
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.Handshake;
 
 type
   TAtlasModuleHost = class
@@ -76,7 +76,7 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.TimeLimit,
   Atlas.Plugin.Diagnostics.WorkerSlot,
-  Atlas.Core.Modules.Registry;
+  Atlas.IDE.Base.Core.Modules.Registry;
 
 const
   cLogContractMismatch = 'Module %s: contract version of Base does not match, not registered';

@@ -18,11 +18,12 @@ uses
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Watch,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.Watch,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Frame,
-  Atlas.IDE.Base.Foundation.WelcomeTiles;
+  Atlas.IDE.Base.Foundation.WelcomeTiles,
+  Atlas.Plugin.Registration.Contract;
 
 type
   TAtlasIdeWelcomeTiles = class;

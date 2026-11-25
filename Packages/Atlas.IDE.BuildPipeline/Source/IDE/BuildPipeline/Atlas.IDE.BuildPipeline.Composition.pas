@@ -10,7 +10,7 @@
 //   Prüfung an den Compile-Ereignissen),
 // - den Befehl „Release-Build prüfen“ (Palette),
 // - für Base die Hörer der gelesenen Compilermeldungen und die Bewertung
-//   eines Builds des Benutzers (Atlas.Core.Build.Pipeline); die Folgen gehen
+//   eines Builds des Benutzers (Atlas.IDE.Base.Core.BuildPipeline); die Folgen gehen
 //   über TAtlasBuildPipeline.Announce an jeden IAtlasBuildVerdictListener,
 // - für andere Module und die Willkommensseite die Builds auf Auftrag
 //   (IAtlasBuildJobs, Atlas.IDE.Base.Foundation.BuildPipeline), für das Modul KI-Assistenten
@@ -30,9 +30,9 @@ uses
   System.SysUtils,
   Atlas.UI.BuildPipeline.SettingsSection,
   Atlas.Text.Product.Version,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Diagnostics.ModuleHost,
-  Atlas.Core.Modules.FeatureParts,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.ModuleHost,
+  Atlas.IDE.Base.Core.Modules.FeatureParts,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
   Atlas.Plugin.Build.Contract,

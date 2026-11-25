@@ -28,7 +28,7 @@ interface
 uses
   System.SysUtils,
   Vcl.ExtCtrls,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Text.Profile,
   Atlas.Core.Debug.Profiler,
   Atlas.UI.Debug.ProfileFrame;
