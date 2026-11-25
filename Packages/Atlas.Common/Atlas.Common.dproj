@@ -206,8 +206,8 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.MessageCatalog.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Releases.pas"/>
-        <DCCReference Include="Source\Rules\Atlas.Common.Rules.CompilerPitfalls.pas"/>
-        <DCCReference Include="Source\Rules\Atlas.Common.Rules.CompilerPitfallFixes.pas"/>
+        <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Pitfalls.pas"/>
+        <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.PitfallFixes.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.En.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.En.Architecture.pas"/>

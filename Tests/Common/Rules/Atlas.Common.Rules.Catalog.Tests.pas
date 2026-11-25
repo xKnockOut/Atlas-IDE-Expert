@@ -72,6 +72,9 @@ type
     procedure ReadsProfiles;
     [Test]
     procedure RejectsInvalidProfiles;
+    /// <summary>#2621: Jede Regel, die der Fallenkatalog der Compilermeldungen nennt, steht im Katalog.</summary>
+    [Test]
+    procedure PitfallRulesExist;
   end;
 
 implementation
@@ -87,6 +90,7 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Localization.Texts,
+  Atlas.Common.Compiler.Pitfalls,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Catalog.Data;
 
@@ -602,6 +606,22 @@ begin
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","profiles":["standard"]}]}');
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","profiles":["strict","fast"]}]}');
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","profiles":[1]}]}');
+end;
+
+procedure TRuleCatalogTests.PitfallRulesExist;
+var
+  mPitfall: TCompilerPitfall;
+  mInfo: TCompilerPitfallInfo;
+  mEntry: TRuleCatalogEntry;
+begin
+  for mPitfall := Low(TCompilerPitfall) to High(TCompilerPitfall) do
+  begin
+    mInfo := TCompilerPitfalls.Info(mPitfall, TTextLanguage.German);
+    if mInfo.Rule <> '' then
+    begin
+      Assert.IsTrue(TRuleCatalog.Shared.TryFind(mInfo.Rule, mEntry), mInfo.Id + ': ' + mInfo.Rule);
+    end;
+  end;
 end;
 
 initialization

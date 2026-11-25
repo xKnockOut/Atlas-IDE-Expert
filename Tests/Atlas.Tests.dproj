@@ -614,8 +614,8 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Catalog.Tests.pas"/>
         <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.MessageCatalog.Tests.pas"/>
         <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.Releases.Tests.pas"/>
-        <DCCReference Include="Common\Rules\Atlas.Common.Rules.CompilerPitfalls.Tests.pas"/>
-        <DCCReference Include="Common\Rules\Atlas.Common.Rules.CompilerPitfallFixes.Tests.pas"/>
+        <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.Pitfalls.Tests.pas"/>
+        <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.PitfallFixes.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.BulkFix.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unicode.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CodeActions.Tests.pas"/>

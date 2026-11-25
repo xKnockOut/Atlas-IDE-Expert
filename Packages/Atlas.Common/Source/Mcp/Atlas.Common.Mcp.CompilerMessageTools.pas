@@ -66,8 +66,8 @@ uses
   Atlas.Common.Compiler.MessageTexts,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.CompilerPitfalls,
-  Atlas.Common.Rules.CompilerPitfallFixes,
+  Atlas.Common.Compiler.Pitfalls,
+  Atlas.Common.Compiler.PitfallFixes,
   Atlas.Common.Compiler.MessageCatalog,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Mcp.Server;

@@ -487,8 +487,8 @@ Atlas.Common.Editing.FormatOutput.Tests
 Atlas.Common.Rules.LibrarySources.Tests
 Atlas.Common.Compiler.MessageCatalog.Tests
 Atlas.Common.Compiler.Releases.Tests
-Atlas.Common.Rules.CompilerPitfalls.Tests
-Atlas.Common.Rules.CompilerPitfallFixes.Tests
+Atlas.Common.Compiler.Pitfalls.Tests
+Atlas.Common.Compiler.PitfallFixes.Tests
 Atlas.Common.Rules.Options.Tests
 Atlas.Common.Rules.Output.Tests
 Atlas.Common.Rules.Prompt.Tests
