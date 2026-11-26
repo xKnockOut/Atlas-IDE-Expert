@@ -742,6 +742,7 @@
         <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.SafeMode.pas"/>
         <DCCReference Include="..\Atlas.Plugin\Source\Diagnostics\Atlas.Plugin.Diagnostics.Edition.pas"/>
         <DCCReference Include="Source\UI\Diagnostics\Atlas.UI.Diagnostics.Strings.pas"/>
+        <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.AddressSpace.pas"/>
         <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.Edition.pas"/>
         <DCCReference Include="..\Atlas.Plugin\Source\Diagnostics\Atlas.Plugin.Diagnostics.Timing.pas"/>
         <DCCReference Include="..\Atlas.Plugin\Source\Diagnostics\Atlas.Plugin.Diagnostics.PluginTimings.pas"/>
