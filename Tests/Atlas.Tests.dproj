@@ -425,6 +425,8 @@
         <DCCReference Include="Application\Features\Rules\Builtin\Rules.Builtin.Database.Statements.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Builtin\Rules.Builtin.DllExports.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Builtin\Rules.Builtin.Files.Tests.pas"/>
+        <DCCReference Include="Application\Features\Rules\Builtin\Rules.Builtin.Texts.Shared.Tests.pas"/>
+        <DCCReference Include="Application\Features\Rules\Builtin\Rules.Builtin.Texts.Concat.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Builtin\Rules.Builtin.Directives.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Builtin\Rules.Builtin.Units.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Builtin\Rules.Builtin.Properties.Tests.pas"/>
@@ -634,7 +636,8 @@
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Filter.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Rules.Checker.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Rules.Prompt.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.FormatOutput.Tests.pas"/>
+        <DCCReference Include="Common\Formatting\Atlas.Common.Formatting.Outcome.Tests.pas"/>
+        <DCCReference Include="Common\Formatting\Atlas.Common.Formatting.Output.Tests.pas"/>
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Baseline.Tests.pas"/>
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Scopes.Tests.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.RuleOptions.Tests.pas"/>
@@ -2679,6 +2682,8 @@
         <DCCReference Include="..\Application\Source\Features\Rules\Builtin\Rules.Builtin.FormFields.pas"/>
         <DCCReference Include="..\Application\Source\Features\Rules\Builtin\Rules.Builtin.FormReferences.pas"/>
         <DCCReference Include="..\Application\Source\Features\Rules\Builtin\Rules.Builtin.FormatArgs.pas"/>
+        <DCCReference Include="..\Application\Source\Features\Rules\Builtin\Rules.Builtin.Texts.Shared.pas"/>
+        <DCCReference Include="..\Application\Source\Features\Rules\Builtin\Rules.Builtin.Texts.Concat.pas"/>
         <DCCReference Include="..\Application\Source\Features\Rules\Builtin\Rules.Builtin.Forms.pas"/>
         <DCCReference Include="..\Application\Source\Features\Rules\Builtin\Rules.Builtin.ForwardDeclarations.pas"/>
         <DCCReference Include="..\Application\Source\Features\Rules\Builtin\Rules.Builtin.FreeFields.pas"/>
@@ -2959,7 +2964,7 @@
         <DCCReference Include="..\Application\Source\Features\Mcp\Tools\Mcp.Tools.Conventions.pas"/>
         <DCCReference Include="Application\Features\Mcp\Tools\Mcp.Tools.Conventions.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Diagnostics.pas"/>
-        <DCCReference Include="..\Application\Source\Core\Core.SlashHost.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Editing.SlashHost.pas"/>
         <DCCReference Include="..\Application\Source\Core\Core.Bootstrap.pas"/>
         <DCCReference Include="Application\Features\Mcp\Mcp.Freshness.Tests.pas"/>
         <DCCReference Include="Application\Features\Mcp\Mcp.EditTools.Tests.pas"/>
@@ -2999,7 +3004,7 @@
         <DCCReference Include="Application\Shell\Shell.Mcp.RefactorHost.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.RefactorSources.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Diagnostics.Tests.pas"/>
-        <DCCReference Include="Application\Core\Core.SlashHost.Tests.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Editing.SlashHost.Tests.pas"/>
         <DCCReference Include="Application\Core\Core.Workspace.Tests.pas"/>
         <DCCReference Include="Application\Core\Core.Workspace.Parts.Tests.pas"/>
         <DCCReference Include="Application\Core\Core.Workspace.Indexing.Tests.pas"/>

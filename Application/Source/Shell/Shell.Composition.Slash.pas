@@ -1,6 +1,6 @@
 ﻿unit Shell.Composition.Slash;
 
-// Internals-Rolle Shell: der Host der Schnellbefehle (#297). Legt TCoreSlashHost an und beantwortet dessen
+// Internals-Rolle Shell: der Host der Schnellbefehle (#297). Legt TSlashHostAdapter an und beantwortet dessen
 // Fragen: Kopfvorlage (#56), Einstellungen slashCommands.* (#299, #304), Testunit für /test (#295),
 // Regeltreffer einer Zeile für /ignore, /fix und /explain (#297, #300). Die Komposition reicht Ordner,
 // Quelltext, Einstellungen, Prüfkontext und uses-Umfeld als Dienste herein.
@@ -17,7 +17,7 @@ uses
   Rules.CheckContext,
   Atlas.Common.Editing.TestUnits.Protocol,
   Atlas.Common.Lsp.ResourceStringCommands,
-  Core.SlashHost;
+  Adapters.Editing.SlashHost;
 
 type
   TShellSlashSettingsFunc = reference to function(const AUri: string): TServerSettings;
@@ -100,7 +100,7 @@ begin
   Result :=
     procedure(const AFileName, ANewText: string; const AEdit: TTextEdit)
     begin
-      (AHost as TCoreSlashHost).EditFile(TDocumentUris.FromPath(AFileName), AFileName, ANewText, AEdit);
+      (AHost as TSlashHostAdapter).EditFile(TDocumentUris.FromPath(AFileName), AFileName, ANewText, AEdit);
     end;
 end;
 
@@ -197,11 +197,11 @@ end;
 
 constructor TShellSlash.Create(const AServices: TShellSlashServices);
 var
-  mHost: TCoreSlashHost;
+  mHost: TSlashHostAdapter;
 begin
   inherited Create;
   FServices := AServices;
-  mHost := TCoreSlashHost.Create(TCoreSlashSources.New(FServices.WorkspaceOf, FServices.ReadText,
+  mHost := TSlashHostAdapter.Create(TSlashHostSources.New(FServices.WorkspaceOf, FServices.ReadText,
     HeaderTemplateOf), FServices.Transport, FServices.Logger, FServices.Dispatcher, FServices.ClientAppliesEdits);
   // Die Schnittstelle hält den Host am Leben.
   FHost := mHost;

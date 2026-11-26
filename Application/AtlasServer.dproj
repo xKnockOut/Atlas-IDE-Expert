@@ -134,6 +134,8 @@
         <DCCReference Include="Source\Features\Rules\Builtin\Rules.Builtin.FormFields.pas"/>
         <DCCReference Include="Source\Features\Rules\Builtin\Rules.Builtin.FormReferences.pas"/>
         <DCCReference Include="Source\Features\Rules\Builtin\Rules.Builtin.FormatArgs.pas"/>
+        <DCCReference Include="Source\Features\Rules\Builtin\Rules.Builtin.Texts.Shared.pas"/>
+        <DCCReference Include="Source\Features\Rules\Builtin\Rules.Builtin.Texts.Concat.pas"/>
         <DCCReference Include="Source\Features\Rules\Builtin\Rules.Builtin.Forms.pas"/>
         <DCCReference Include="Source\Features\Rules\Builtin\Rules.Builtin.ForwardDeclarations.pas"/>
         <DCCReference Include="Source\Features\Rules\Builtin\Rules.Builtin.FreeFields.pas"/>
@@ -459,7 +461,7 @@
         <DCCReference Include="Source\Core\Core.Linter.Fix.pas"/>
         <DCCReference Include="Source\Core\Core.Linter.Check.pas"/>
         <DCCReference Include="Source\Core\Core.Linter.Reports.pas"/>
-        <DCCReference Include="Source\Core\Core.SlashHost.pas"/>
+        <DCCReference Include="Source\Adapters\Adapters.Editing.SlashHost.pas"/>
         <DCCReference Include="Source\Core\Core.VersionControlChanges.pas"/>
         <DCCReference Include="Source\Core\Core.AffectedTests.pas"/>
         <DCCReference Include="Source\Core\Core.Hotspots.pas"/>

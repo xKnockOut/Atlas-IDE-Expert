@@ -418,6 +418,8 @@ Rules.Builtin.CompilerTraps.Rtl.Tests
 Rules.Builtin.CompilerTraps.Scopes.Tests
 Rules.Builtin.CompilerTraps.MethodRefs.Tests
 Rules.Builtin.LineBreaks.Tests
+Rules.Builtin.Texts.Concat.Tests
+Rules.Builtin.Texts.Shared.Tests
 Rules.Builtin.Components.Tests
 Rules.Builtin.Components.Model.Tests
 Rules.Builtin.Concurrency.Syntax.Tests
@@ -534,7 +536,8 @@ Rules.Providers.DocumentActions.Tests
 Rules.Providers.CatalogInfo.Tests
 Rules.SettingsCatalog.Tests
 Rules.CheckContext.Tests
-Atlas.Common.Editing.FormatOutput.Tests
+Atlas.Common.Formatting.Outcome.Tests
+Atlas.Common.Formatting.Output.Tests
 Rules.LibrarySources.Tests
 Atlas.Common.Compiler.MessageCatalog.Tests
 Atlas.Common.Compiler.Releases.Tests
