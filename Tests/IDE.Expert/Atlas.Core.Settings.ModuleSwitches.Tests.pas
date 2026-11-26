@@ -25,6 +25,8 @@ type
     [Test]
     procedure IsOnOffModulesAndModuleOf;
     [Test]
+    procedure IsOnAmongReadsOnlyTheList;
+    [Test]
     procedure RealCatalogKnowsAllModules;
   end;
 
@@ -172,6 +174,20 @@ begin
   Assert.AreEqual('debug', TAtlasModuleSwitches.ModuleOf(mSwitches, 'DebugEnabled'), 'der Schalter selbst');
   Assert.AreEqual('buildTools', TAtlasModuleSwitches.ModuleOf(mSwitches, 'BuildGate'));
   Assert.AreEqual('', TAtlasModuleSwitches.ModuleOf(mSwitches, 'highlight.pairColors'), 'Kern');
+end;
+
+procedure TAtlasModuleSwitchesTests.IsOnAmongReadsOnlyTheList;
+var
+  mOff: TArray<string>;
+begin
+  // Die Feature-Tabelle fragt je Teil und Modulanmeldung: nur die vorher gebildete Liste, keine Einstellungen.
+  mOff := TAtlasModuleSwitches.OffModules(Settings(False), Switches);
+  Assert.IsFalse(TAtlasModuleSwitches.IsOnAmong(mOff, 'debug'));
+  Assert.IsFalse(TAtlasModuleSwitches.IsOnAmong(mOff, 'Debug'), 'ohne Groß-/Kleinschreibung');
+  Assert.IsTrue(TAtlasModuleSwitches.IsOnAmong(mOff, 'buildTools'));
+  Assert.IsTrue(TAtlasModuleSwitches.IsOnAmong(mOff, 'unbekannt'), 'unbekannt = an');
+  Assert.IsTrue(TAtlasModuleSwitches.IsOnAmong(nil, 'debug'), 'ohne ausgeschaltete Module');
+  mOff := nil;
 end;
 
 procedure TAtlasModuleSwitchesTests.RealCatalogKnowsAllModules;
