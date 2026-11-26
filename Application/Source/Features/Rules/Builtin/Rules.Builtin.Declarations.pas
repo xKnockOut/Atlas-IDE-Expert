@@ -80,14 +80,14 @@ uses
   Atlas.Common.Pascal.Contract,
   Rules.Contract,
   Rules.Registry,
-  Atlas.Common.Checks.Contract.Refactorings,
   Atlas.Common.Semantics.TypeIdentity,
   Rules.Builtin.Declarations.Overloads,
   Rules.Builtin.Declarations.Duplicates,
   Rules.Builtin.Declarations.TypeSizes,
   Rules.Builtin.Declarations.VariantRecords,
   Rules.Builtin.Declarations.Defaults,
-  Rules.Builtin.Declarations.FieldOrder;
+  Rules.Builtin.Declarations.FieldOrder,
+  Atlas.Common.Semantics.Contract;
 
 type
   /// <summary>Vergleicht den Typ ADeclType der Deklaration mit dem Typ ABodyType des Rumpfs (#1324).</summary>
@@ -120,10 +120,10 @@ type
     /// <summary>Abweichungen des Rumpfs ABody von der Deklaration ADeclaration, z. B. "Betrag ohne const",
     /// "Datum TDateTime statt TDate"; leer, wenn die Köpfe gleich sind. Typen vergleicht TTypeIdentity.Same.
     /// </summary>
-    class function Differences(const ADeclaration, ABody: TCheckSignatureShape): TArray<string>; overload; static;
+    class function Differences(const ADeclaration, ABody: TSignatureShape): TArray<string>; overload; static;
     /// <summary>Wie oben; Typen vergleicht AMatch (#1324). Nur sicher verschiedene Typen zählen als Abweichung.
     /// </summary>
-    class function Differences(const ADeclaration, ABody: TCheckSignatureShape;
+    class function Differences(const ADeclaration, ABody: TSignatureShape;
       const AMatch: TSignatureTypeMatch): TArray<string>; overload; static;
   end;
 
@@ -165,6 +165,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.ClassActions.Contract,
+  Atlas.Common.Checks.Contract.Refactorings,
   Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.MethodText,
@@ -280,7 +281,7 @@ begin
   end;
 end;
 
-function IsConditional(const ALines: TArray<Boolean>; const AMethod: TCheckUnmatchedMethod): Boolean;
+function IsConditional(const ALines: TArray<Boolean>; const AMethod: TUnmatchedMethod): Boolean;
 var
   mLine: Integer;
 begin
@@ -355,7 +356,7 @@ var
   mLines: TArray<Boolean>;
   mCache: IRuleDerivedCache;
   mScan: ICheckClassCompletionScan;
-  mMethod: TCheckUnmatchedMethod;
+  mMethod: TUnmatchedMethod;
   mAction: TCodeAction;
   mFixes: TArray<TRuleFix>;
   mLevel: TRuleConfidence;
@@ -408,7 +409,7 @@ var
   mLines: TArray<Boolean>;
   mCache: IRuleDerivedCache;
   mScan: ICheckClassCompletionScan;
-  mMethod: TCheckUnmatchedMethod;
+  mMethod: TUnmatchedMethod;
   mEdit: TTextEdit;
   mFixes: TArray<TRuleFix>;
   mLevel: TRuleConfidence;
@@ -795,7 +796,7 @@ type
     constructor Create(const AContext: TRuleContext);
     destructor Destroy; override;
     /// <summary>Vergleich für die Typen von APair.</summary>
-    function Matcher(const APair: TCheckSignaturePair): TSignatureTypeMatch;
+    function Matcher(const APair: TSignaturePair): TSignatureTypeMatch;
   end;
 
 /// <summary>Vergleich ohne Namensauflösung: verschiedene Namen sind verschiedene Typen.</summary>
@@ -869,7 +870,7 @@ begin
     end;
 end;
 
-function TSignatureTypes.Matcher(const APair: TCheckSignaturePair): TSignatureTypeMatch;
+function TSignatureTypes.Matcher(const APair: TSignaturePair): TSignatureTypeMatch;
 var
   mSelf: TSignatureTypes;
   mDeclaration, mBody: TTypeChainResolver;
@@ -908,14 +909,14 @@ type
     procedure AddSymbols(const AUnit: TUnitIndex);
     function SymbolOf(ARoutine: TSyntaxNode; out ASymbol: TIndexSymbol): Boolean;
     function IsPairCandidate(ADecl: TSyntaxNode): Boolean;
-    function PairOf(ADecl, ABody: TSyntaxNode; out APair: TCheckSignaturePair): Boolean;
+    function PairOf(ADecl, ABody: TSyntaxNode; out APair: TSignaturePair): Boolean;
   public
     constructor Create(const AScan: ICheckClassCompletionScan);
     destructor Destroy; override;
     /// <summary>Paare der Datei aus AContext; leer ohne beide Teile oder mit Include-Dateien (dort kann ein weiterer
     /// Rumpf stehen).</summary>
     class function Collect(const AContext: TRuleContext; const AScan: ICheckClassCompletionScan;
-      const AUnit: TUnitIndex): TArray<TCheckSignaturePair>; static;
+      const AUnit: TUnitIndex): TArray<TSignaturePair>; static;
   end;
 
 { TRoutinePairs }
@@ -1016,9 +1017,9 @@ end;
 
 /// <summary>Paar aus Deklaration ADecl und Rumpf ABody mit Symbolen und Köpfen; False, wenn eines fehlt oder der
 /// Rumpf die Kurzform ohne Parameter und Ergebnis hat.</summary>
-function TRoutinePairs.PairOf(ADecl, ABody: TSyntaxNode; out APair: TCheckSignaturePair): Boolean;
+function TRoutinePairs.PairOf(ADecl, ABody: TSyntaxNode; out APair: TSignaturePair): Boolean;
 begin
-  APair := Default(TCheckSignaturePair);
+  APair := Default(TSignaturePair);
   Result := SymbolOf(ADecl, APair.Declaration.Symbol) and SymbolOf(ABody, APair.Body.Symbol);
   Result := Result and FScan.Shape(APair.Declaration.Symbol, APair.DeclarationShape) and
     FScan.Shape(APair.Body.Symbol, APair.BodyShape);
@@ -1027,7 +1028,7 @@ begin
 end;
 
 class function TRoutinePairs.Collect(const AContext: TRuleContext; const AScan: ICheckClassCompletionScan;
-  const AUnit: TUnitIndex): TArray<TCheckSignaturePair>;
+  const AUnit: TUnitIndex): TArray<TSignaturePair>;
 var
   mInterface, mImplementation, mDecl: TSyntaxNode;
   mBodies: TList<TSyntaxNode>;
@@ -1077,7 +1078,7 @@ end;
 procedure TSignatureMismatchRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mLines: TArray<Boolean>;
-  mPair: TCheckSignaturePair;
+  mPair: TSignaturePair;
   mChanges: TArray<string>;
   mActions: TArray<TCodeAction>;
   mFixes: TArray<TRuleFix>;
@@ -1132,7 +1133,7 @@ begin
 end;
 
 /// <summary>Abweichung der Modifizierer (const, var …) eines Parameters, z. B. "Betrag ohne const".</summary>
-function ModifierDifference(const ADecl, ABody: TCheckShapeParameter): string;
+function ModifierDifference(const ADecl, ABody: TShapeParameter): string;
 begin
   if ABody.Modifier = '' then
   begin
@@ -1149,7 +1150,7 @@ begin
 end;
 
 /// <summary>Abweichung des Typs eines Parameters, z. B. "Datum TDateTime statt TDate".</summary>
-function TypeDifference(const ADecl, ABody: TCheckShapeParameter): string;
+function TypeDifference(const ADecl, ABody: TShapeParameter): string;
 begin
   if ABody.TypeName = '' then
   begin
@@ -1166,7 +1167,7 @@ begin
 end;
 
 /// <summary>Aufrufkonvention von AShape, register ohne Angabe.</summary>
-function ConventionOf(const AShape: TCheckSignatureShape): string;
+function ConventionOf(const AShape: TSignatureShape): string;
 begin
   Result := AShape.Convention;
   if Result = '' then
@@ -1175,7 +1176,7 @@ begin
   end;
 end;
 
-class function TSignatureMismatchRule.Differences(const ADeclaration, ABody: TCheckSignatureShape): TArray<string>;
+class function TSignatureMismatchRule.Differences(const ADeclaration, ABody: TSignatureShape): TArray<string>;
 var
   mMatch: TSignatureTypeMatch;
 begin
@@ -1184,7 +1185,7 @@ begin
   Result := Differences(ADeclaration, ABody, mMatch);
 end;
 
-class function TSignatureMismatchRule.Differences(const ADeclaration, ABody: TCheckSignatureShape;
+class function TSignatureMismatchRule.Differences(const ADeclaration, ABody: TSignatureShape;
   const AMatch: TSignatureTypeMatch): TArray<string>;
 
   function Differs(const ADeclType, ABodyType: string): Boolean;
@@ -1203,7 +1204,7 @@ class function TSignatureMismatchRule.Differences(const ADeclaration, ABody: TCh
   function ParameterDifferences: TArray<string>;
   var
     mIndex: Integer;
-    mDecl, mBody: TCheckShapeParameter;
+    mDecl, mBody: TShapeParameter;
   begin
     Result := nil;
     for mIndex := 0 to High(ABody.Parameters) do

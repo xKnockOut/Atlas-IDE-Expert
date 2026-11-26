@@ -36,7 +36,8 @@ uses
   Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Editing.Contract.ClassCompletion,
   Atlas.Common.Editing.Composition,
-  Atlas.Tests.TextEdits;
+  Atlas.Tests.TextEdits,
+  Atlas.Common.Semantics.Contract;
 
 const
   // TFoo: A ohne Rumpf, B mit abweichendem Kopf, C nur als Rumpf.
@@ -65,7 +66,7 @@ type
     class function Open: TScanFixture; static;
     procedure Close;
     /// <summary>Methode ohne Gegenstück namens AName.</summary>
-    function Unmatched(const AName: string): TEditingUnmatchedMethod;
+    function Unmatched(const AName: string): TUnmatchedMethod;
   end;
 
 class function TScanFixture.Open: TScanFixture;
@@ -82,11 +83,11 @@ begin
   Tree := nil;
 end;
 
-function TScanFixture.Unmatched(const AName: string): TEditingUnmatchedMethod;
+function TScanFixture.Unmatched(const AName: string): TUnmatchedMethod;
 var
-  mMethod: TEditingUnmatchedMethod;
+  mMethod: TUnmatchedMethod;
 begin
-  Result := Default(TEditingUnmatchedMethod);
+  Result := Default(TUnmatchedMethod);
   for mMethod in Scan.Unmatched do
   begin
     if SameText(mMethod.Symbol.Name, AName) then
@@ -102,7 +103,7 @@ end;
 procedure TEditingClassCompletionProviderTests.MissingBodyIsCreated;
 var
   mFixture: TScanFixture;
-  mMethod: TEditingUnmatchedMethod;
+  mMethod: TUnmatchedMethod;
   mAction: TCodeAction;
 begin
   mFixture := TScanFixture.Open;
@@ -120,7 +121,7 @@ end;
 procedure TEditingClassCompletionProviderTests.MissingDeclarationIsAdded;
 var
   mFixture: TScanFixture;
-  mMethod: TEditingUnmatchedMethod;
+  mMethod: TUnmatchedMethod;
   mEdit: TTextEdit;
 begin
   mFixture := TScanFixture.Open;
@@ -137,7 +138,7 @@ end;
 procedure TEditingClassCompletionProviderTests.DifferingHeadsArePairedAndAligned;
 var
   mFixture: TScanFixture;
-  mPairs: TArray<TEditingSignaturePair>;
+  mPairs: TArray<TSignaturePair>;
   mFixes: TArray<TCodeAction>;
 begin
   mFixture := TScanFixture.Open;

@@ -48,7 +48,8 @@ uses
   Atlas.Common.Checks.Contract.Refactorings,
   Atlas.Common.Editing.Composition,
   Atlas.Tests.TextEdits,
-  Adapters.Checks.Refactorings;
+  Adapters.Checks.Refactorings,
+  Atlas.Common.Semantics.Contract;
 
 const
   // Zeile 8: Kopf von TKind, Zeile 10: Eigenschaft ohne Feld.
@@ -246,11 +247,11 @@ const
 var
   mTree: TSyntaxTree;
   mScan: ICheckClassCompletionScan;
-  mPairs: TArray<TCheckSignaturePair>;
+  mPairs: TArray<TSignaturePair>;
   mFixes: TArray<TCodeAction>;
-  mMissing: TArray<TCheckUnmatchedMethod>;
-  mMethod: TCheckUnmatchedMethod;
-  mShape: TCheckSignatureShape;
+  mMissing: TArray<TUnmatchedMethod>;
+  mMethod: TUnmatchedMethod;
+  mShape: TSignatureShape;
   mAction: TCodeAction;
 begin
   Assert.IsNull(TCheckRefactoringsAdapters.Create(Default(TCheckRefactoringSources)).Completion);

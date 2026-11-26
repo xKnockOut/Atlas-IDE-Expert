@@ -86,8 +86,7 @@ uses
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Pascal.InterfaceStubs,
-  Atlas.Common.Editing.ClassBodies,
-  Atlas.Common.Editing.ClassCompletion,
+  Atlas.Common.Semantics.ClassCompletion,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 
@@ -478,7 +477,7 @@ class function TClassActions.MissingBodies(const AText: string; ATree: TSyntaxTr
   const AContext: TClassActionContext; out AAction: TCodeAction): Boolean;
 begin
   Result := TClassCompletion.MissingBodies(ATree, AText, APosition,
-    TClassBodyOptions.FromHost(AContext.Host, AContext.Uri, AContext.Style), AAction);
+    Atlas.Common.Editing.ClassCommands.ClassBodyOptionsOf(AContext.Host, AContext.Uri, AContext.Style), AAction);
 end;
 
 class function TClassActions.OverrideCandidates(const AText: string; ALine: Integer;

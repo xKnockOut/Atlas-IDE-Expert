@@ -150,8 +150,8 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.ClassBodies,
-  Atlas.Common.Editing.ClassCompletion,
+  Atlas.Common.Semantics.ClassBodies,
+  Atlas.Common.Semantics.ClassCompletion,
   Atlas.Common.Pascal.BodySpacing;
 
 type

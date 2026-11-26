@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ClassBodies;
+﻿unit Atlas.Common.Semantics.ClassBodies;
 
 // Rümpfe der Klassenvervollständigung (#1834), gemeinsam für TClassCompletion
 // und TMethodOrder:
@@ -20,7 +20,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Pascal.TypeComments;
 
 type
@@ -38,9 +37,6 @@ type
     /// <summary>brace, vorbefüllt, Lebenszyklus zuerst, Leerzeilen angleichen, zwei Leerzeichen.</summary>
     class function Default: TClassBodyOptions; static;
     class function FromSettings(const ASettings: TClassCompletionSettings;
-      const AStyle: TFormatStyle): TClassBodyOptions; static;
-    /// <summary>Aus den Einstellungen der Schnellbefehle (TSlashSettings); AHost nil: Default mit AStyle.</summary>
-    class function FromHost(const AHost: ISlashHost; const AUri: string;
       const AStyle: TFormatStyle): TClassBodyOptions; static;
   end;
 
@@ -191,22 +187,6 @@ begin
   Result.BlankLines := mSettings.BlankLines;
   Result.LineLength := AStyle.MaxLineLength;
   Result.Indent := TRoutineBody.IndentUnit(AStyle);
-end;
-
-class function TClassBodyOptions.FromHost(const AHost: ISlashHost; const AUri: string;
-  const AStyle: TFormatStyle): TClassBodyOptions;
-var
-  mSettings: TClassCompletionSettings;
-begin
-  mSettings := TClassCompletionSettings.Default;
-  if AHost <> nil then
-  begin
-    mSettings.TypeComment := AHost.Setting(AUri, TSlashSettings.cTypeComment);
-    mSettings.BodyStubs := not SameText(AHost.Setting(AUri, TSlashSettings.cBodyStubs), 'false');
-    mSettings.LifecycleFirst := not SameText(AHost.Setting(AUri, TSlashSettings.cLifecycleFirst), 'false');
-    mSettings.BlankLines := not SameText(AHost.Setting(AUri, TSlashSettings.cBlankLines), 'false');
-  end;
-  Result := FromSettings(mSettings, AStyle);
 end;
 
 { TTypeShape }

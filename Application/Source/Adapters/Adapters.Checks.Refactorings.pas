@@ -108,7 +108,8 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.Contract;
+  Atlas.Common.Editing.Contract,
+  Atlas.Common.Semantics.Contract;
 
 { TCheckClassRefactoringsAdapter }
 
@@ -258,64 +259,6 @@ begin
   end;
 end;
 
-/// <summary>Methode ohne Gegenstück von Editing für Rules.</summary>
-function RuleMethodOf(const AMethod: TEditingUnmatchedMethod): TCheckUnmatchedMethod;
-begin
-  Result.TypeName := AMethod.TypeName;
-  Result.Symbol := AMethod.Symbol;
-  Result.Declared := AMethod.Declared;
-  Result.Header := AMethod.Header;
-end;
-
-/// <summary>Methode ohne Gegenstück von Rules für Editing.</summary>
-function EditingMethodOf(const AMethod: TCheckUnmatchedMethod): TEditingUnmatchedMethod;
-begin
-  Result.TypeName := AMethod.TypeName;
-  Result.Symbol := AMethod.Symbol;
-  Result.Declared := AMethod.Declared;
-  Result.Header := AMethod.Header;
-end;
-
-/// <summary>Kopf von Editing für Rules.</summary>
-function RuleShapeOf(const AShape: TEditingSignatureShape): TCheckSignatureShape;
-var
-  mIndex: Integer;
-begin
-  Result := Default(TCheckSignatureShape);
-  Result.Kind := AShape.Kind;
-  SetLength(Result.Parameters, Length(AShape.Parameters));
-  for mIndex := 0 to High(AShape.Parameters) do
-  begin
-    Result.Parameters[mIndex].Modifier := AShape.Parameters[mIndex].Modifier;
-    Result.Parameters[mIndex].Name := AShape.Parameters[mIndex].Name;
-    Result.Parameters[mIndex].TypeName := AShape.Parameters[mIndex].TypeName;
-  end;
-  Result.ResultType := AShape.ResultType;
-  Result.Convention := AShape.Convention;
-  Result.ConventionRange := AShape.ConventionRange;
-  Result.Conditional := AShape.Conditional;
-end;
-
-/// <summary>Kopf von Rules für Editing.</summary>
-function EditingShapeOf(const AShape: TCheckSignatureShape): TEditingSignatureShape;
-var
-  mIndex: Integer;
-begin
-  Result := Default(TEditingSignatureShape);
-  Result.Kind := AShape.Kind;
-  SetLength(Result.Parameters, Length(AShape.Parameters));
-  for mIndex := 0 to High(AShape.Parameters) do
-  begin
-    Result.Parameters[mIndex].Modifier := AShape.Parameters[mIndex].Modifier;
-    Result.Parameters[mIndex].Name := AShape.Parameters[mIndex].Name;
-    Result.Parameters[mIndex].TypeName := AShape.Parameters[mIndex].TypeName;
-  end;
-  Result.ResultType := AShape.ResultType;
-  Result.Convention := AShape.Convention;
-  Result.ConventionRange := AShape.ConventionRange;
-  Result.Conditional := AShape.Conditional;
-end;
-
 type
   /// <summary>ICheckClassCompletionScan über die Zuordnung von Editing.</summary>
   TCheckClassCompletionScanAdapter = class(TInterfacedObject, ICheckClassCompletionScan)
@@ -323,13 +266,13 @@ type
     FScan: IEditingClassCompletionScan;
   public
     constructor Create(const AScan: IEditingClassCompletionScan);
-    function Unmatched: TArray<TCheckUnmatchedMethod>;
-    function Pairs: TArray<TCheckSignaturePair>;
-    function InPair(const AMethod: TCheckUnmatchedMethod): Boolean;
-    function Shape(const ASymbol: TIndexSymbol; out AShape: TCheckSignatureShape): Boolean;
+    function Unmatched: TArray<TUnmatchedMethod>;
+    function Pairs: TArray<TSignaturePair>;
+    function InPair(const AMethod: TUnmatchedMethod): Boolean;
+    function Shape(const ASymbol: TIndexSymbol; out AShape: TSignatureShape): Boolean;
     function MissingBodies(const APosition: TTextPosition; out AAction: TCodeAction): Boolean;
-    function AddDeclaration(const AMethod: TCheckUnmatchedMethod; out AEdit: TTextEdit): Boolean;
-    function PairFixes(const APair: TCheckSignaturePair; out AFixes: TArray<TCodeAction>): Boolean;
+    function AddDeclaration(const AMethod: TUnmatchedMethod; out AEdit: TTextEdit): Boolean;
+    function PairFixes(const APair: TSignaturePair; out AFixes: TArray<TCodeAction>): Boolean;
   end;
 
 { TCheckClassCompletionScanAdapter }
@@ -340,48 +283,24 @@ begin
   FScan := AScan;
 end;
 
-function TCheckClassCompletionScanAdapter.Unmatched: TArray<TCheckUnmatchedMethod>;
-var
-  mFound: TArray<TEditingUnmatchedMethod>;
-  mIndex: Integer;
+function TCheckClassCompletionScanAdapter.Unmatched: TArray<TUnmatchedMethod>;
 begin
-  mFound := FScan.Unmatched;
-  Result := nil;
-  SetLength(Result, Length(mFound));
-  for mIndex := 0 to High(mFound) do
-  begin
-    Result[mIndex] := RuleMethodOf(mFound[mIndex]);
-  end;
+  Result := FScan.Unmatched;
 end;
 
-function TCheckClassCompletionScanAdapter.Pairs: TArray<TCheckSignaturePair>;
-var
-  mFound: TArray<TEditingSignaturePair>;
-  mIndex: Integer;
+function TCheckClassCompletionScanAdapter.Pairs: TArray<TSignaturePair>;
 begin
-  mFound := FScan.Pairs;
-  Result := nil;
-  SetLength(Result, Length(mFound));
-  for mIndex := 0 to High(mFound) do
-  begin
-    Result[mIndex].Declaration := RuleMethodOf(mFound[mIndex].Declaration);
-    Result[mIndex].Body := RuleMethodOf(mFound[mIndex].Body);
-    Result[mIndex].DeclarationShape := RuleShapeOf(mFound[mIndex].DeclarationShape);
-    Result[mIndex].BodyShape := RuleShapeOf(mFound[mIndex].BodyShape);
-  end;
+  Result := FScan.Pairs;
 end;
 
-function TCheckClassCompletionScanAdapter.InPair(const AMethod: TCheckUnmatchedMethod): Boolean;
+function TCheckClassCompletionScanAdapter.InPair(const AMethod: TUnmatchedMethod): Boolean;
 begin
-  Result := FScan.InPair(EditingMethodOf(AMethod));
+  Result := FScan.InPair(AMethod);
 end;
 
-function TCheckClassCompletionScanAdapter.Shape(const ASymbol: TIndexSymbol; out AShape: TCheckSignatureShape): Boolean;
-var
-  mShape: TEditingSignatureShape;
+function TCheckClassCompletionScanAdapter.Shape(const ASymbol: TIndexSymbol; out AShape: TSignatureShape): Boolean;
 begin
-  Result := FScan.Shape(ASymbol, mShape);
-  AShape := RuleShapeOf(mShape);
+  Result := FScan.Shape(ASymbol, AShape);
 end;
 
 function TCheckClassCompletionScanAdapter.MissingBodies(const APosition: TTextPosition;
@@ -390,22 +309,16 @@ begin
   Result := FScan.MissingBodies(APosition, AAction);
 end;
 
-function TCheckClassCompletionScanAdapter.AddDeclaration(const AMethod: TCheckUnmatchedMethod;
+function TCheckClassCompletionScanAdapter.AddDeclaration(const AMethod: TUnmatchedMethod;
   out AEdit: TTextEdit): Boolean;
 begin
-  Result := FScan.AddDeclaration(EditingMethodOf(AMethod), AEdit);
+  Result := FScan.AddDeclaration(AMethod, AEdit);
 end;
 
-function TCheckClassCompletionScanAdapter.PairFixes(const APair: TCheckSignaturePair;
+function TCheckClassCompletionScanAdapter.PairFixes(const APair: TSignaturePair;
   out AFixes: TArray<TCodeAction>): Boolean;
-var
-  mPair: TEditingSignaturePair;
 begin
-  mPair.Declaration := EditingMethodOf(APair.Declaration);
-  mPair.Body := EditingMethodOf(APair.Body);
-  mPair.DeclarationShape := EditingShapeOf(APair.DeclarationShape);
-  mPair.BodyShape := EditingShapeOf(APair.BodyShape);
-  Result := FScan.PairFixes(mPair, AFixes);
+  Result := FScan.PairFixes(APair, AFixes);
 end;
 
 { TCheckClassCompletionRefactoringsAdapter }

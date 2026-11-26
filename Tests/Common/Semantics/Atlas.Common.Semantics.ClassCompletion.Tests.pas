@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ClassCompletion.Tests;
+﻿unit Atlas.Common.Semantics.ClassCompletion.Tests;
 
 interface
 
@@ -9,7 +9,7 @@ interface
 uses
   DUnitX.TestFramework,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.ClassBodies;
+  Atlas.Common.Semantics.ClassBodies;
 
 type
   [TestFixture]
@@ -57,7 +57,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.TypeComments,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Editing.ClassCompletion;
+  Atlas.Common.Semantics.ClassCompletion;
 
 const
   cLeer =

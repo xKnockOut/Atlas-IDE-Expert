@@ -46,7 +46,7 @@ uses
   System.RegularExpressions,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.ClassCompletion,
+  Atlas.Common.Semantics.ClassCompletion,
   Atlas.Common.Pascal.InterfaceStubs,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.Completion.TypeConversions,
@@ -54,7 +54,8 @@ uses
   Atlas.Common.Semantics.RtlMethodReferences,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Lines,
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  Atlas.Common.Semantics.Contract;
 
 type
   /// <summary>Texte der Methoden-Vervollständigung in beiden Sprachen (#1458).</summary>

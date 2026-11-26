@@ -86,9 +86,9 @@ Atlas.Common.Semantics.AssignFields.Tests
 Atlas.Common.Pascal.CaseCompletion.Tests
 Atlas.Common.Pascal.SignatureChanges.Tests
 Atlas.Common.Pascal.CommandLines.Tests
-Atlas.Common.Editing.ClassBodies.Tests
+Atlas.Common.Semantics.ClassBodies.Tests
 Atlas.Common.Pascal.BodySpacing.Tests
-Atlas.Common.Editing.ClassCompletion.Tests
+Atlas.Common.Semantics.ClassCompletion.Tests
 Atlas.Common.Pascal.ClassLayout.Tests
 Atlas.Common.Pascal.Destructors.Tests
 Atlas.Common.Editing.CodeActions.Tests
@@ -135,7 +135,7 @@ Atlas.Common.Pascal.InterfaceStubs.Tests
 Atlas.Common.Editing.InvertBoolean.Tests
 Atlas.Common.Editing.MemberOrder.Tests
 Atlas.Common.Pascal.MemberTransfer.Tests
-Atlas.Common.Editing.MethodMatching.Tests
+Atlas.Common.Semantics.MethodMatching.Tests
 Atlas.Common.Pascal.MethodText.Tests
 Atlas.Common.Editing.MethodOrder.Tests
 Atlas.Common.Editing.MethodWithoutSelf.Lookup.Tests

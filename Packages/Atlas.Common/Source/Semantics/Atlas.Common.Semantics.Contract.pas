@@ -12,6 +12,8 @@
 //   die die uses-Aktionen von Editing auswerten.
 // - TCodeActionSite ist die Stelle einer Anfrage nach Code-Aktionen, die der
 //   Sprachserver an die Aktionen aus Editing gibt (#42).
+// - TUnmatchedMethod, TSignatureShape und TSignaturePair beschreiben Methoden ohne
+//   Gegenstück und ihre Köpfe (#124, #996) für Atlas.Common.Semantics.ClassCompletion.
 
 interface
 
@@ -131,6 +133,49 @@ type
     WantsEditing: Boolean;
     /// <summary>Der Client fragt ausdrücklich source.removeUnusedImports an (#284).</summary>
     WantsRemoveUnused: Boolean;
+  end;
+
+  /// <summary>Methode ohne Gegenstück (#124).</summary>
+  TUnmatchedMethod = record
+    /// <summary>Typ, ggf. mit umgebendem Typ (TAussen.TInnen).</summary>
+    TypeName: string;
+    Symbol: TIndexSymbol;
+    /// <summary>True: deklariert, aber ohne Rumpf; False: Rumpf ohne Deklaration.</summary>
+    Declared: Boolean;
+    /// <summary>Kopf ohne ";", z. B. "procedure TFoo.Bar(A: Integer)" beim Rumpf.</summary>
+    Header: string;
+  end;
+
+  /// <summary>Ein Parameter eines Methodenkopfs (#996).</summary>
+  TShapeParameter = record
+    /// <summary>const, var, out, constref oder '' (Kleinbuchstaben).</summary>
+    Modifier: string;
+    Name: string;
+    /// <summary>Typ wie geschrieben; '' bei untypisierten Parametern.</summary>
+    TypeName: string;
+  end;
+
+  /// <summary>Zerlegter Kopf einer Methode (#996).</summary>
+  TSignatureShape = record
+    /// <summary>procedure, function, constructor, destructor oder operator.</summary>
+    Kind: string;
+    Parameters: TArray<TShapeParameter>;
+    /// <summary>Ergebnistyp wie geschrieben; '' ohne.</summary>
+    ResultType: string;
+    /// <summary>Aufrufkonvention in Kleinbuchstaben (stdcall, cdecl …); '' ohne Angabe.</summary>
+    Convention: string;
+    ConventionRange: TTextRange;
+    /// <summary>Im Kopf steht bedingte Übersetzung ({$IFDEF} …); welche Parameter gelten, ist offen (#1324).
+    /// </summary>
+    Conditional: Boolean;
+  end;
+
+  /// <summary>Deklaration und Rumpf gleichen Namens, deren Köpfe voneinander abweichen (#996).</summary>
+  TSignaturePair = record
+    Declaration: TUnmatchedMethod;
+    Body: TUnmatchedMethod;
+    DeclarationShape: TSignatureShape;
+    BodyShape: TSignatureShape;
   end;
 
 implementation

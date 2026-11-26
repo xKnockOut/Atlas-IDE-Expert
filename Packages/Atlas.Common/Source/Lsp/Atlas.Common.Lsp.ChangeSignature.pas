@@ -158,7 +158,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Editing.ClassCompletion,
+  Atlas.Common.Semantics.ClassCompletion,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
