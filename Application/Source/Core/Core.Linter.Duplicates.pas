@@ -44,7 +44,7 @@ uses
   Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Findings.Output,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Lsp.ServerActivity,
+  Atlas.Common.Diagnostics.ServerActivity,
   Atlas.Text.Json,
   Core.Linter.Output,
   Core.Linter.Settings,

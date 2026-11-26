@@ -1,7 +1,7 @@
-﻿unit Atlas.Common.Lsp.Query.Tests;
+﻿unit Atlas.Common.Query.Requests.Tests;
 
 // atlas/query, atlas/queryCatalog und Befehl atlas.query (#1351) sowie Aufrufer
-// und Aufgerufene über die Aufrufhierarchie (TLspQuery.Calls).
+// und Aufgerufene über die Aufrufhierarchie (TQueryRequests.Calls).
 
 interface
 
@@ -10,7 +10,7 @@ uses
 
 type
   [TestFixture]
-  TLspQueryTests = class
+  TQueryRequestsTests = class
   public
     [Test]
     procedure RequestAnswersJsonRows;
@@ -44,7 +44,7 @@ uses
   Atlas.Common.Query.Service,
   Atlas.Common.Query.Engine,
   Atlas.Common.Query.Engine.Tests,
-  Atlas.Common.Lsp.Query;
+  Atlas.Common.Query.Requests;
 
 const
   cHauptFile = 'C:\W\Haupt.pas';
@@ -82,13 +82,13 @@ const
     'end;'#10 +
     'end.';
 
-function NewQuery(const ASettingsJson: string): TLspQuery;
+function NewQuery(const ASettingsJson: string): TQueryRequests;
 var
   mIssues: TArray<TConfigurationIssue>;
   mSettings: TServerSettings;
 begin
   mSettings := TConfigurationParser.Parse(ASettingsJson, mIssues);
-  Result := TLspQuery.Create(
+  Result := TQueryRequests.Create(
     TCodeQueryService.Create(
       function(out ASource: TQuerySource): Boolean
       begin
@@ -108,7 +108,7 @@ begin
   Result := TJSONObject.ParseJSONValue(AJson);
 end;
 
-function Ask(AQuery: TLspQuery; const AJson: string): TJSONObject;
+function Ask(AQuery: TQueryRequests; const AJson: string): TJSONObject;
 var
   mParams: TJSONValue;
 begin
@@ -120,11 +120,11 @@ begin
   end;
 end;
 
-{ TLspQueryTests }
+{ TQueryRequestsTests }
 
-procedure TLspQueryTests.RequestAnswersJsonRows;
+procedure TQueryRequestsTests.RequestAnswersJsonRows;
 var
-  mQuery: TLspQuery;
+  mQuery: TQueryRequests;
   mAnswer: TJSONObject;
   mRows: TJSONArray;
 begin
@@ -148,9 +148,9 @@ begin
   end;
 end;
 
-procedure TLspQueryTests.RequestReportsErrorWithColumn;
+procedure TQueryRequestsTests.RequestReportsErrorWithColumn;
 var
-  mQuery: TLspQuery;
+  mQuery: TQueryRequests;
   mAnswer: TJSONObject;
 begin
   mQuery := NewQuery('{}');
@@ -167,9 +167,9 @@ begin
   end;
 end;
 
-procedure TLspQueryTests.DisabledAnswersEnabledFalse;
+procedure TQueryRequestsTests.DisabledAnswersEnabledFalse;
 var
-  mQuery: TLspQuery;
+  mQuery: TQueryRequests;
   mAnswer: TJSONObject;
   mValue: TJSONValue;
 begin
@@ -194,9 +194,9 @@ begin
   end;
 end;
 
-procedure TLspQueryTests.TextFormatsAndInvalidFormat;
+procedure TQueryRequestsTests.TextFormatsAndInvalidFormat;
 var
-  mQuery: TLspQuery;
+  mQuery: TQueryRequests;
   mAnswer: TJSONObject;
   mRaised: Boolean;
 begin
@@ -223,9 +223,9 @@ begin
   end;
 end;
 
-procedure TLspQueryTests.CatalogListsEntitiesAndSavedQueries;
+procedure TQueryRequestsTests.CatalogListsEntitiesAndSavedQueries;
 var
-  mQuery: TLspQuery;
+  mQuery: TQueryRequests;
   mValue: TJSONValue;
   mCatalog: TJSONObject;
   mEntities, mQueries: TJSONArray;
@@ -252,9 +252,9 @@ begin
   end;
 end;
 
-procedure TLspQueryTests.CommandTakesUriAndOptions;
+procedure TQueryRequestsTests.CommandTakesUriAndOptions;
 var
-  mQuery: TLspQuery;
+  mQuery: TQueryRequests;
   mArguments: TJSONValue;
   mAnswer: TJSONValue;
 begin
@@ -294,7 +294,7 @@ begin
   end;
 end;
 
-procedure TLspQueryTests.CallsFromCallHierarchy;
+procedure TQueryRequestsTests.CallsFromCallHierarchy;
 var
   mSource: TQuerySource;
   mResult: TQueryResult;
@@ -309,7 +309,7 @@ begin
     begin
       Result := ReadWorkFile(AFileName, AText);
     end;
-  mSource.Calls := TLspQuery.Calls(mSource.Index, nil, nil, TArray<string>.Create(cHauptFile, cWerkzeugFile),
+  mSource.Calls := TQueryRequests.Calls(mSource.Index, nil, nil, TArray<string>.Create(cHauptFile, cWerkzeugFile),
     ReadWorkFile, TReferenceSettings.Default);
   // Rechne wird von TFoo.Bar und TFoo.Baz aufgerufen; TFoo.Bar ruft Rechne und Baz.
   mResult := TCodeQueryEngine.Run(mSource, TQueryRequest.Create('routines where callers = 2', 0), nil);
@@ -323,6 +323,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspQueryTests);
+  TDUnitX.RegisterTestFixture(TQueryRequestsTests);
 
 end.

@@ -36,7 +36,7 @@ implementation
 uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.AffectedTests.Types,
+  Atlas.Common.Testing.AffectedTests.Types,
   Atlas.Common.Localization.Texts;
 
 type

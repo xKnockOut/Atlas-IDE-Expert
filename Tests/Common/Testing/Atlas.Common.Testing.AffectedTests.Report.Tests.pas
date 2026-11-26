@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.AffectedTests.Report.Tests;
+﻿unit Atlas.Common.Testing.AffectedTests.Report.Tests;
 
 // Ausgabe der betroffenen Tests ohne Bestimmung: Format lesen, Bericht, JSON hin und zurück, --run-Argument;
 // dazu Namen und Gründe der Typen.
@@ -29,8 +29,8 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Lsp.AffectedTests.Types,
-  Atlas.Common.Lsp.AffectedTests.Report;
+  Atlas.Common.Testing.AffectedTests.Types,
+  Atlas.Common.Testing.AffectedTests.Report;
 
 function Sample: TAffectedResult;
 var

@@ -17,7 +17,7 @@ uses
   Atlas.Common.Index.Scheduler,
   Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Projects.Selection,
-  Atlas.Common.Lsp.IdeProject,
+  Atlas.Common.Index.IdeProject,
   Atlas.Common.Lsp.WorkspaceFolders,
   Core.Workspace,
   Shell.Composition.Workspaces,
@@ -27,7 +27,7 @@ uses
 
 type
   TShellFoldersIndexFunc = reference to function: ISymbolIndex;
-  TShellFoldersIdeProjectFunc = reference to function: TLspIdeProject;
+  TShellFoldersIdeProjectFunc = reference to function: TIdeProjects;
   /// <summary>Typen der laufenden IDE (atlas/ideTypes); nil ohne Plugin.</summary>
   TShellFoldersIdeTypesFunc = reference to function: ICheckIdeTypes;
   TShellFoldersSelectionFunc = reference to function: TProjectSelection;

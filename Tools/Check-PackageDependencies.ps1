@@ -351,7 +351,7 @@ $AllowedLocal = @{
     'Atlas.Core.Completion.Snippets:TAtlasSnippets.IndentOf'           = 'öffentliche Weiterleitung an TTextLines.IndentOf'
     'Atlas.Core.Editor.MultiCursor:TAtlasMultiCursor.LineBreakOf'      = 'öffentliche Weiterleitung an TTextLines.LineBreakOf'
     'Atlas.Core.Outline.Overloads:Collapse'                            = 'TTextLines.CollapseSpace und dazu kein Leerraum innen an Klammern'
-    'Atlas.Common.Lsp.AffectedTests:TAffectedTests.Collapse'           = 'fasst Tests zusammen, kein Leerraum'
+    'Atlas.Common.Testing.AffectedTests:TAffectedTests.Collapse'       = 'fasst Tests zusammen, kein Leerraum'
 }
 
 # Kopien-Sperre für JSON-Lesehelfer (#1969): Namen mit (TJSONObject/TJSONValue; const …: string) als Parametern.
@@ -629,7 +629,7 @@ $PluginLock = @(
             'Atlas.ToolsApi.Files.Service:TAtlasIdeFiles.ActiveProjectFile'             = 'die eine Fassung'
             'Atlas.IDE.Foundation.StartOptions:TAtlasIdeStartOptions.ActiveProject'   = 'nur .dproj (Startoptionen)'
             'Atlas.IDE.Debug.MethodBreakpoints:TAtlasIdeMethodBreakpoints.ActiveProject' = 'Projekt der Projektgruppe zur aktiven Datei'
-            'Atlas.Common.Lsp.IdeProject:TLspIdeProject.ActiveProject'                = 'Server: gemeldetes Projekt der IDE, kein ToolsAPI'
+            'Atlas.Common.Index.IdeProject:TIdeProjects.ActiveProject'             = 'Server: gemeldetes Projekt der IDE, kein ToolsAPI'
         }
     }
     [pscustomobject]@{

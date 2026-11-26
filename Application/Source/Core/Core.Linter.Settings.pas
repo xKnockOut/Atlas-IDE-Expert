@@ -54,7 +54,7 @@ uses
   System.IOUtils,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,
-  Atlas.Common.Lsp.ServerActivity,
+  Atlas.Common.Diagnostics.ServerActivity,
   Atlas.Common.Query.Language,
   Atlas.Common.Findings.Output,
   Core.Bootstrap,

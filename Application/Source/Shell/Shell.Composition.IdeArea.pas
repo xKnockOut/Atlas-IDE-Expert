@@ -80,7 +80,7 @@ uses
   Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Lsp.IdeProject,
+  Atlas.Common.Index.IdeProject,
   Rules.Engine,
   Atlas.Common.Configuration.RuleOptions,
   Rules.Builtin.FormatArgs,

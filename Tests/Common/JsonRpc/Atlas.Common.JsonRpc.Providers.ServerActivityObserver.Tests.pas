@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Adapters.ServerActivityObserver.Tests;
+﻿unit Atlas.Common.JsonRpc.Providers.ServerActivityObserver.Tests;
 
 // Tests für den Beobachter am Verteiler (#1901): meldet Anfragen an die Aktivität und reicht sie weiter.
 
@@ -6,7 +6,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Common.Lsp.ServerActivity;
+  Atlas.Common.Diagnostics.ServerActivity;
 
 type
   [TestFixture]
@@ -29,7 +29,7 @@ uses
   System.Classes,
   System.JSON,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Lsp.Adapters.ServerActivityObserver;
+  Atlas.Common.JsonRpc.Providers.ServerActivityObserver;
 
 type
   /// <summary>Zählt die Meldungen, die der Beobachter weiterreicht.</summary>

@@ -42,7 +42,7 @@ uses
   System.JSON,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.Architecture,
-  Atlas.Common.Lsp.Query,
+  Atlas.Common.Query.Requests,
   Atlas.Common.Lsp.Hotspots,
   Atlas.Common.Lsp.UnitRelations,
   Atlas.Common.Lsp.SymbolPath,
@@ -95,7 +95,7 @@ begin
     finally
       mCapability.Free;
     end;
-    for mName in TArray<string>.Create(TLspArchitecture.cCommand, TLspArchitecture.cSaveCommand, TLspQuery.cCommand,
+    for mName in TArray<string>.Create(TLspArchitecture.cCommand, TLspArchitecture.cSaveCommand, TQueryRequests.cCommand,
       TLspHotspots.cCommand, TLspHotspots.cSaveCommand, TLspUnitRelations.cCommand, TLspUnitRelations.cMoveCommand,
       TLspUnitRelations.cRemoveCommand, TLspUnitRelations.cCostCommand, TLspUnitRelations.cUseUnitCommand,
       TLspSymbolPath.cCommand, TLspDebugDisplay.cCommand, TLspEventHandlers.cCommand, TLspDataAccessSites.cCommand,
@@ -122,7 +122,7 @@ begin
     mCommands := TLspCommands.Create;
     mOverviews.RegisterReportCommands(mCommands);
     mOverviews.RegisterUnitCommands(mCommands);
-    for mName in TArray<string>.Create(TLspArchitecture.cCommand, TLspQuery.cCommand, TLspHotspots.cCommand,
+    for mName in TArray<string>.Create(TLspArchitecture.cCommand, TQueryRequests.cCommand, TLspHotspots.cCommand,
       TLspHotspots.cSaveCommand, TLspUnitRelations.cCommand, TLspUnitRelations.cCostCommand,
       TLspUnitRelations.cUseUnitCommand, TLspSymbolPath.cCommand, TLspRecursion.cCommand) do
     begin

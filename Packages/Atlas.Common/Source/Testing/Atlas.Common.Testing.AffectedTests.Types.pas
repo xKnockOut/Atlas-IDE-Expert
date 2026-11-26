@@ -1,7 +1,7 @@
-﻿unit Atlas.Common.Lsp.AffectedTests.Types;
+﻿unit Atlas.Common.Testing.AffectedTests.Types;
 
 // Typen der betroffenen Tests (#1353): geänderte Stelle, übersprungene Datei, Grund, Test, Eingabe, Anfrage und
-// Ergebnis. Die Bestimmung (Atlas.Common.Lsp.AffectedTests) und die Ausgabe (Atlas.Common.Lsp.AffectedTests.Report)
+// Ergebnis. Die Bestimmung (Atlas.Common.Testing.AffectedTests) und die Ausgabe (Atlas.Common.Testing.AffectedTests.Report)
 // nutzen sie.
 
 interface
@@ -179,6 +179,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.AffectedTests.Types', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Testing.AffectedTests.Types', cTexts);
 
 end.

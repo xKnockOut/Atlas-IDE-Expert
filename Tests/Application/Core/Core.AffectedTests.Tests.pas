@@ -2,7 +2,7 @@
 
 // Tests für die Host-Rolle der betroffenen Tests (#1353): Testprogramme unter den Projektdateien, Testunits aus
 // Muster und uses, Abschalten über tests.affected. Die Zuordnung und Verfolgung testet
-// Atlas.Common.Lsp.AffectedTests.Tests, das Holen des Unterschieds Core.VersionControlChanges.Tests.
+// Atlas.Common.Testing.AffectedTests.Tests, das Holen des Unterschieds Core.VersionControlChanges.Tests.
 
 interface
 
@@ -33,7 +33,7 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.Impact,
-  Atlas.Common.Lsp.AffectedTests.Types,
+  Atlas.Common.Testing.AffectedTests.Types,
   Core.AffectedTests,
   Core.VersionControlChanges,
   Atlas.Common.Semantics.References;

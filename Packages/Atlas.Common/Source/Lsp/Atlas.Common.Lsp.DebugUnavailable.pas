@@ -88,7 +88,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.ApplyEdit,
+  Atlas.Common.JsonRpc.ApplyEdit,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Text.Lines,
@@ -682,11 +682,11 @@ begin
   mFixes := TJSONObject.Create;
   if Length(AFacts.RoutineFix) > 0 then
   begin
-    mFixes.AddPair('routineOptimization', TLspApplyEdit.TextEdits(AFileName, AFacts.RoutineFix));
+    mFixes.AddPair('routineOptimization', TApplyEdit.TextEdits(AFileName, AFacts.RoutineFix));
   end;
   if Length(AFacts.UnitFix) > 0 then
   begin
-    mFixes.AddPair('unitOptimization', TLspApplyEdit.TextEdits(AFileName, AFacts.UnitFix));
+    mFixes.AddPair('unitOptimization', TApplyEdit.TextEdits(AFileName, AFacts.UnitFix));
   end;
   Result.AddPair('fixes', mFixes);
 end;

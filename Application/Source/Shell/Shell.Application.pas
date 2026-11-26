@@ -21,7 +21,7 @@ uses
   System.SysUtils,
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Common.Index.PublishedMembers,
-  Atlas.Common.Lsp.ServerActivity,
+  Atlas.Common.Diagnostics.ServerActivity,
   Atlas.Common.Diagnostics.StatusFile,
   Atlas.Common.Lsp.StatusHeartbeat,
   Atlas.Common.Index.CacheDirectory,

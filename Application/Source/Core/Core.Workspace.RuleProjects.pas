@@ -9,7 +9,7 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Projects.Contract.Group,
-  Atlas.Common.Lsp.IdeProject,
+  Atlas.Common.Index.IdeProject,
   Core.Workspace.Setup,
   Core.Workspace.State,
   Atlas.Common.Checks.Contract;

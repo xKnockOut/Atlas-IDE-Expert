@@ -41,7 +41,7 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.Query,
+  Atlas.Common.Query.Requests,
   Atlas.Common.Query.Output,
   Atlas.Common.Query.Service,
   Atlas.Common.Pascal.Contract,
@@ -100,9 +100,9 @@ begin
 end;
 
 /// <summary>Eingaben der Abfrage-Datenquelle für --check: ohne Namensräume und Nachladen von Units.</summary>
-function QueryInput(const AIndex: ISymbolIndex; const ARoot: string; const AFiles: TArray<string>): TLspQueryInput;
+function QueryInput(const AIndex: ISymbolIndex; const ARoot: string; const AFiles: TArray<string>): TQueryRequestInput;
 begin
-  Result := Default(TLspQueryInput);
+  Result := Default(TQueryRequestInput);
   Result.Index := AIndex;
   Result.Root := ARoot;
   Result.Files := AFiles;
@@ -117,7 +117,7 @@ begin
   Result := TCodeQueryService.Create(
     function(out AQuerySource: TQuerySource): Boolean
     begin
-      AQuerySource := TLspQuery.Source(QueryInput(AIndex, ARoot, AFiles), AReferences);
+      AQuerySource := TQueryRequests.Source(QueryInput(AIndex, ARoot, AFiles), AReferences);
       Result := True;
     end);
 end;

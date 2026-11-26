@@ -277,8 +277,8 @@ procedure TArchitectureMatrixTests.ClassifiesRoleAfterThing;
 var
   U: TArchitectureUnit;
 begin
-  U := Classify('Atlas.Common.Lsp.AffectedTests.Contract');
-  Assert.AreEqual('Lsp', U.Feature);
+  U := Classify('Atlas.Common.Testing.AffectedTests.Contract');
+  Assert.AreEqual('Testing', U.Feature);
   Assert.AreEqual(Ord(TArchitectureRole.Contract), Ord(U.Role));
   Assert.IsTrue(U.IsContract);
   U := Classify('Atlas.UI.Tracker.IssueFrame.Contract');

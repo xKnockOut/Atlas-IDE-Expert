@@ -15,7 +15,7 @@ uses
   Atlas.Common.Compiler.Backend,
   Atlas.Common.Compiler.Edition,
   Atlas.Common.Compiler.Results,
-  Atlas.Common.Lsp.WorkDoneProgress,
+  Atlas.Common.Index.WorkDoneProgress,
   Atlas.Common.JsonRpc.ServerStatus,
   Core.Compiler;
 
@@ -32,7 +32,7 @@ type
     /// <summary>Für window/showMessage; nil ohne Editor.</summary>
     Transport: IJsonRpcTransport;
     Process: ICompilerProcess;
-    Progress: TLspWorkDoneProgress;
+    Progress: TWorkDoneProgress;
     Editions: TCoreCompilerEditions;
     JobFor: TShellCompileJobFunc;
     Publish: TShellCompilePublish;

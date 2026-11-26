@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.AffectedTests.Report;
+﻿unit Atlas.Common.Testing.AffectedTests.Report;
 
 // Ausgabe der betroffenen Tests (#1353): Bericht für Menschen, JSON für atlas/affectedTests und
 // get_affected_tests (auch zurückgelesen im Plugin) und das Argument --run:… für die Test-exe.
@@ -7,7 +7,7 @@ interface
 
 uses
   System.JSON,
-  Atlas.Common.Lsp.AffectedTests.Types;
+  Atlas.Common.Testing.AffectedTests.Types;
 
 type
   TAffectedReport = class
@@ -388,6 +388,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.AffectedTests.Report', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Testing.AffectedTests.Report', cTexts);
 
 end.

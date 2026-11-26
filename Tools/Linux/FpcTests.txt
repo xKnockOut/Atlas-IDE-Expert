@@ -222,8 +222,8 @@ Atlas.Common.Logging.EntryText.Tests
 Atlas.Common.Logging.Providers.Logger.Tests
 Atlas.Common.Logging.Providers.StreamSink.Tests
 Atlas.Common.Lsp.Adapters.LogMessageSink.Tests
-Atlas.Common.Lsp.AffectedTests.Report.Tests
-Atlas.Common.Lsp.ApplyEdit.Tests
+Atlas.Common.Testing.AffectedTests.Report.Tests
+Atlas.Common.JsonRpc.ApplyEdit.Tests
 Atlas.Common.Lsp.Baseline.Tests
 Rules.InstructionFiles.Tests
 Rules.Instructions.Tests
@@ -285,8 +285,8 @@ Atlas.Common.Lsp.RoutineParameters.Tests
 Atlas.Common.Lsp.SettingsCommands.Tests
 Atlas.Common.Editing.SmartIndent.Protocol.Tests
 Atlas.Common.Editing.SmartPaste.Protocol.Tests
-Atlas.Common.Lsp.ServerActivity.Tests
-Atlas.Common.Lsp.Adapters.ServerActivityObserver.Tests
+Atlas.Common.Diagnostics.ServerActivity.Tests
+Atlas.Common.JsonRpc.Providers.ServerActivityObserver.Tests
 Atlas.Common.Diagnostics.StatusFile.Tests
 Atlas.Common.Lsp.StatusHeartbeat.Tests
 Atlas.Common.Lsp.StringLiteralCommands.Tests
@@ -314,7 +314,7 @@ Adapters.Mcp.Formatting.Tests
 Adapters.Mcp.BoundaryCases.Tests
 Atlas.Common.Editing.Providers.BoundaryCases.Tests
 Atlas.Common.Editing.BoundaryCases.Report.Tests
-Atlas.Common.Editing.EditorConfig.Tests
+Atlas.Common.Projects.EditorConfig.Tests
 Atlas.Common.Editing.Providers.CompilerFixes.Tests
 Adapters.Mcp.CompilerFixes.Tests
 Adapters.Mcp.BulkFix.Tests

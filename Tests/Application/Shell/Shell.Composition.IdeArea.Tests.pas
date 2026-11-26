@@ -41,7 +41,7 @@ uses
   System.SysUtils,
   Atlas.Common.Index.Contract,
   System.JSON,
-  Atlas.Common.Lsp.IdeProject,
+  Atlas.Common.Index.IdeProject,
   Atlas.Common.Pascal.FormatRoutines,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
@@ -126,7 +126,7 @@ begin
   mMessage := TJSONObject.Create;
   try
     mMessage.AddPair('jsonrpc', '2.0');
-    mMessage.AddPair('method', TLspIdeProject.cMethod);
+    mMessage.AddPair('method', TIdeProjects.cMethod);
     mMessage.AddPair('params', mParams);
     mAnswer := FDispatcher.DispatchMessage(mMessage);
     mAnswer.Free;

@@ -13,7 +13,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.IdeProject,
+  Atlas.Common.Index.IdeProject,
   Atlas.Common.Checks.Contract.Refactorings,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.Contract.UnitLookup,
@@ -78,7 +78,7 @@ type
     FDeferred: Boolean;
     FActivated: Boolean;
     FLoopThreadId: TThreadID;
-    FIdeProjects: TLspIdeProject;
+    FIdeProjects: TIdeProjects;
     FIdeTypes: ICheckIdeTypes;
     FRefactorings: TCheckRefactorings;
     FOrigin: string;
@@ -112,7 +112,7 @@ type
     property LoopThreadId: TThreadID read FLoopThreadId write FLoopThreadId;
     /// <summary>Projektkontexte aus der IDE (#396): Was die IDE meldet, hat Vorrang vor der .dproj. nil ohne
     /// Plugin; gehört der Komposition.</summary>
-    property IdeProjects: TLspIdeProject read FIdeProjects write FIdeProjects;
+    property IdeProjects: TIdeProjects read FIdeProjects write FIdeProjects;
     /// <summary>Typen der laufenden IDE ohne Quelltext (atlas/ideTypes) für die Prüfregeln; nil ohne Plugin.
     /// </summary>
     property IdeTypes: ICheckIdeTypes read FIdeTypes write FIdeTypes;

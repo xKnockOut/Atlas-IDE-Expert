@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.EditorConfig;
+﻿unit Atlas.Common.Projects.EditorConfig;
 
 // .editorconfig für die Formatierung (#43): Vom Ordner der Datei aufwärts
 // werden alle .editorconfig gelesen, bis eine "root = true" enthält. Nähere

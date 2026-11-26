@@ -21,7 +21,7 @@ uses
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.Architecture,
-  Atlas.Common.Lsp.Query,
+  Atlas.Common.Query.Requests,
   Atlas.Common.Lsp.Hotspots,
   Atlas.Common.Lsp.UnitRelations,
   Atlas.Common.Lsp.SymbolPath,
@@ -41,7 +41,7 @@ type
     UsesContextFor: TUsesContextProvider;
     ArchitectureSourceFor: TLspArchitectureSourceFunc;
     QuerySource: TQuerySourceFunc;
-    QuerySettingsFor: TLspQuerySettingsFunc;
+    QuerySettingsFor: TQueryRequestSettingsFunc;
     HotspotSourceFor: TLspHotspotSourceFunc;
     UnitRelationsOptionsFor: TLspUnitRelationsOptionsFunc;
     SymbolPathSourceFor: TLspSymbolPathSourceFunc;
@@ -60,7 +60,7 @@ type
     /// <summary>Code-Abfragen (#1351): Dienst mit Zwischenspeicher je Index-Stand für atlas/query, das Fenster
     /// „Atlas-Abfrage“ und die Regeln query:&lt;name&gt;.</summary>
     FQueries: ICodeQueries;
-    FQuery: TLspQuery;
+    FQuery: TQueryRequests;
     /// <summary>Hotspots (#1354): Dienst mit Zwischenspeicher je Stand der Versionsverwaltung und Index-Generation,
     /// Anfrage atlas/hotspots und Befehle atlas.hotspots und atlas.hotspots.saveReport.</summary>
     FHotspotService: THotspotService;
@@ -143,7 +143,7 @@ begin
   FArchitecture := TLspArchitecture.Create(FArchitectureService, FServices.ArchitectureSourceFor);
   // Code-Abfragen (#1351): ein Dienst für Fenster, Befehl und die Regeln query:<name>.
   FQueries := TCodeQueryService.Create(FServices.QuerySource);
-  FQuery := TLspQuery.Create(FQueries, FServices.QuerySettingsFor);
+  FQuery := TQueryRequests.Create(FQueries, FServices.QuerySettingsFor);
   // Hotspots (#1354): Komplexität aus geöffneten Dokumenten bzw. der Platte.
   FHotspotService := THotspotService.Create(FServices.Index, ReadText);
   FHotspots := TLspHotspots.Create(FHotspotService, FServices.HotspotSourceFor);
@@ -194,7 +194,7 @@ begin
     begin
       Result := FArchitecture.SaveReport(AArguments);
     end);
-  ACommands.RegisterConcurrent(TLspQuery.cCommand,
+  ACommands.RegisterConcurrent(TQueryRequests.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FQuery.Execute(AArguments);

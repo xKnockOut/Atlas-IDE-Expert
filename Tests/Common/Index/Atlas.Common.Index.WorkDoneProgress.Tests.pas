@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.WorkDoneProgress.Tests;
+﻿unit Atlas.Common.Index.WorkDoneProgress.Tests;
 
 // Tests für die Fortschrittsanzeige über window/workDoneProgress/create und
 // $/progress (#415): Ablauf begin/report/end, Drosselung auf höchstens fünf
@@ -11,7 +11,7 @@ uses
 
 type
   [TestFixture]
-  TLspWorkDoneProgressTests = class
+  TWorkDoneProgressTests = class
   public
     [Test]
     procedure StartSendsCreateAndBegin;
@@ -36,7 +36,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.WorkDoneProgress;
+  Atlas.Common.Index.WorkDoneProgress;
 
 type
   /// <summary>Sammelt die geschriebenen Nachrichten als JSON-Text.</summary>
@@ -73,17 +73,17 @@ begin
   Messages.Add(AMessage.ToJSON);
 end;
 
-{ TLspWorkDoneProgressTests }
+{ TWorkDoneProgressTests }
 
-procedure TLspWorkDoneProgressTests.StartSendsCreateAndBegin;
+procedure TWorkDoneProgressTests.StartSendsCreateAndBegin;
 var
   mTransport: TRecordingTransport;
   mKeep: IJsonRpcTransport;
-  mProgress: TLspWorkDoneProgress;
+  mProgress: TWorkDoneProgress;
 begin
   mTransport := TRecordingTransport.Create;
   mKeep := mTransport;
-  mProgress := TLspWorkDoneProgress.Create(mKeep, 'index');
+  mProgress := TWorkDoneProgress.Create(mKeep, 'index');
   try
     Assert.IsFalse(mProgress.Active);
     mProgress.Start('Index aufbauen');
@@ -103,22 +103,22 @@ begin
   end;
 end;
 
-procedure TLspWorkDoneProgressTests.ReportIsThrottled;
+procedure TWorkDoneProgressTests.ReportIsThrottled;
 var
   mTransport: TRecordingTransport;
   mKeep: IJsonRpcTransport;
-  mProgress: TLspWorkDoneProgress;
+  mProgress: TWorkDoneProgress;
 begin
   mTransport := TRecordingTransport.Create;
   mKeep := mTransport;
-  mProgress := TLspWorkDoneProgress.Create(mKeep, 't');
+  mProgress := TWorkDoneProgress.Create(mKeep, 't');
   try
     mProgress.Start('Titel');
     // Direkt nach begin: gedrosselt, der Prozentwert gilt trotzdem (#647).
     mProgress.Report('A.pas', 10);
     Assert.AreEqual(2, Integer(mTransport.Messages.Count));
     Assert.AreEqual(10, mProgress.Percent);
-    Sleep(TLspWorkDoneProgress.cMinReportIntervalMs + 50);
+    Sleep(TWorkDoneProgress.cMinReportIntervalMs + 50);
     mProgress.Report('B.pas', 20);
     Assert.AreEqual(3, Integer(mTransport.Messages.Count));
     Assert.Contains(mTransport.Messages[2], '"kind":"report"');
@@ -133,19 +133,19 @@ begin
   end;
 end;
 
-procedure TLspWorkDoneProgressTests.ReportWithoutPercentage;
+procedure TWorkDoneProgressTests.ReportWithoutPercentage;
 var
   mTransport: TRecordingTransport;
   mKeep: IJsonRpcTransport;
-  mProgress: TLspWorkDoneProgress;
+  mProgress: TWorkDoneProgress;
 begin
   mTransport := TRecordingTransport.Create;
   mKeep := mTransport;
-  mProgress := TLspWorkDoneProgress.Create(mKeep, 't');
+  mProgress := TWorkDoneProgress.Create(mKeep, 't');
   try
     mProgress.Start('Titel');
     mProgress.Report('', 40);
-    Sleep(TLspWorkDoneProgress.cMinReportIntervalMs + 50);
+    Sleep(TWorkDoneProgress.cMinReportIntervalMs + 50);
     mProgress.Report('ohne Zahl', -1);
     Assert.AreEqual(3, Integer(mTransport.Messages.Count));
     Assert.IsFalse(Pos('percentage', mTransport.Messages[2]) > 0, mTransport.Messages[2]);
@@ -156,15 +156,15 @@ begin
   end;
 end;
 
-procedure TLspWorkDoneProgressTests.FinishSendsEndOnce;
+procedure TWorkDoneProgressTests.FinishSendsEndOnce;
 var
   mTransport: TRecordingTransport;
   mKeep: IJsonRpcTransport;
-  mProgress: TLspWorkDoneProgress;
+  mProgress: TWorkDoneProgress;
 begin
   mTransport := TRecordingTransport.Create;
   mKeep := mTransport;
-  mProgress := TLspWorkDoneProgress.Create(mKeep, 't');
+  mProgress := TWorkDoneProgress.Create(mKeep, 't');
   try
     mProgress.Start('Titel');
     mProgress.Finish('Fertig');
@@ -180,15 +180,15 @@ begin
   end;
 end;
 
-procedure TLspWorkDoneProgressTests.NothingBeforeStart;
+procedure TWorkDoneProgressTests.NothingBeforeStart;
 var
   mTransport: TRecordingTransport;
   mKeep: IJsonRpcTransport;
-  mProgress: TLspWorkDoneProgress;
+  mProgress: TWorkDoneProgress;
 begin
   mTransport := TRecordingTransport.Create;
   mKeep := mTransport;
-  mProgress := TLspWorkDoneProgress.Create(mKeep, 't');
+  mProgress := TWorkDoneProgress.Create(mKeep, 't');
   try
     mProgress.Report('A.pas', 50);
     mProgress.Finish('Ende');
@@ -199,21 +199,21 @@ begin
   end;
 end;
 
-procedure TLspWorkDoneProgressTests.IndexAdapterShowsFileNameOnly;
+procedure TWorkDoneProgressTests.IndexAdapterShowsFileNameOnly;
 var
   mTransport: TRecordingTransport;
   mKeep: IJsonRpcTransport;
-  mProgress: TLspWorkDoneProgress;
+  mProgress: TWorkDoneProgress;
   mEvent: TIndexProgressEvent;
 begin
   mTransport := TRecordingTransport.Create;
   mKeep := mTransport;
-  mProgress := TLspWorkDoneProgress.Create(mKeep, 't');
+  mProgress := TWorkDoneProgress.Create(mKeep, 't');
   try
     mEvent := mProgress.AsIndexProgress();
     mEvent(TIndexProgressKind.Started, 'Index', 0);
     Assert.IsTrue(mProgress.Active);
-    Sleep(TLspWorkDoneProgress.cMinReportIntervalMs + 50);
+    Sleep(TWorkDoneProgress.cMinReportIntervalMs + 50);
     mEvent(TIndexProgressKind.Report, 'C:\Projekt\Quellen\Haupt.pas', 25);
     Assert.AreEqual(3, Integer(mTransport.Messages.Count));
     Assert.Contains(mTransport.Messages[2], '"message":"Haupt.pas"');
@@ -227,6 +227,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspWorkDoneProgressTests);
+  TDUnitX.RegisterTestFixture(TWorkDoneProgressTests);
 
 end.

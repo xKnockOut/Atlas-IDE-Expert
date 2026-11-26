@@ -45,7 +45,7 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Semantics.Impact,
   Atlas.Common.Editing.TestUnits.Protocol,
-  Atlas.Common.Lsp.AffectedTests;
+  Atlas.Common.Testing.AffectedTests;
 
 const
   cTimeout = 10000;

@@ -85,7 +85,7 @@ uses
   System.IOUtils,
   System.Diagnostics,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Lsp.ServerActivity,
+  Atlas.Common.Diagnostics.ServerActivity,
   Core.Linter.Output,
   Core.Linter.Settings,
   Core.Linter.Files,

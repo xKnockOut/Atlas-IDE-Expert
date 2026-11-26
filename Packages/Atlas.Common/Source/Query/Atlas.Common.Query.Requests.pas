@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Query;
+﻿unit Atlas.Common.Query.Requests;
 
 // Code-Abfragen (#1351) im LSP-Server.
 //
@@ -12,7 +12,7 @@
 //   Schlüsselwörtern und gespeicherten Abfragen für die Vervollständigung im Fenster „Atlas-Abfrage“.
 // Befehl atlas.query: Argumente [uri, Optionen] mit denselben Optionen wie params, Antwort wie atlas/query.
 //
-// Aufrufer und Aufgerufene liefert TLspQuery.Calls über die Aufrufhierarchie (#1119, #1122), damit die Abfrage
+// Aufrufer und Aufgerufene liefert TQueryRequests.Calls über die Aufrufhierarchie (#1119, #1122), damit die Abfrage
 // dieselben Zahlen hat wie get_call_hierarchy; die Query-Schicht kennt das LSP nicht.
 
 interface
@@ -28,8 +28,8 @@ uses
   Atlas.Common.Semantics.References;
 
 type
-  /// <summary>Eingaben einer Abfrage-Datenquelle (TLspQuery.Source).</summary>
-  TLspQueryInput = record
+  /// <summary>Eingaben einer Abfrage-Datenquelle (TQueryRequests.Source).</summary>
+  TQueryRequestInput = record
     Index: ISymbolIndex;
     EnsureUnit: TEnsureUnitFunc;
     /// <summary>Projektordner für die Spalte "Datei".</summary>
@@ -41,20 +41,20 @@ type
 
   /// <summary>Einstellungen und Projektordner zum Arbeitsbereich von AFileName ('' = der einzige oder erste);
   /// False, wenn keiner passt.</summary>
-  TLspQuerySettingsFunc = reference to function(const AFileName: string; out ASettings: TServerSettings;
+  TQueryRequestSettingsFunc = reference to function(const AFileName: string; out ASettings: TServerSettings;
     out ARoot: string): Boolean;
 
-  TLspQuery = class
+  TQueryRequests = class
   public const
     cMethod = 'atlas/query';
     cCatalogMethod = 'atlas/queryCatalog';
     cCommand = 'atlas.query';
   private
     FQueries: ICodeQueries;
-    FSettingsFor: TLspQuerySettingsFunc;
+    FSettingsFor: TQueryRequestSettingsFunc;
     function Answer(const AParams: TJSONObject; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
-    constructor Create(const AQueries: ICodeQueries; const ASettingsFor: TLspQuerySettingsFunc);
+    constructor Create(const AQueries: ICodeQueries; const ASettingsFor: TQueryRequestSettingsFunc);
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>Antwort auf atlas/query; der Aufrufer übernimmt das Ergebnis.</summary>
     function Request(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -70,7 +70,7 @@ type
       const ASettings: TReferenceSettings): TQueryCallsFunc; static;
     /// <summary>Datenquelle einer Abfrage über AInput.Files mit Calls wie oben; ein Weg für LSP-Server, MCP und
     /// --check, damit alle dieselben Zahlen liefern.</summary>
-    class function Source(const AInput: TLspQueryInput; const AReferences: TReferenceSettings): TQuerySource;
+    class function Source(const AInput: TQueryRequestInput; const AReferences: TReferenceSettings): TQuerySource;
       static;
   end;
 
@@ -129,16 +129,16 @@ begin
     end;
 end;
 
-{ TLspQuery }
+{ TQueryRequests }
 
-constructor TLspQuery.Create(const AQueries: ICodeQueries; const ASettingsFor: TLspQuerySettingsFunc);
+constructor TQueryRequests.Create(const AQueries: ICodeQueries; const ASettingsFor: TQueryRequestSettingsFunc);
 begin
   inherited Create;
   FQueries := AQueries;
   FSettingsFor := ASettingsFor;
 end;
 
-procedure TLspQuery.Attach(ADispatcher: TJsonRpcDispatcher);
+procedure TQueryRequests.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   // Aufrufer über die Referenzsuche können Sekunden dauern: nebenläufig, abbrechbar.
   ADispatcher.RegisterConcurrentRequest(cMethod,
@@ -210,7 +210,7 @@ begin
   AAnswer.AddPair('data', mValue);
 end;
 
-function TLspQuery.Answer(const AParams: TJSONObject; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+function TQueryRequests.Answer(const AParams: TJSONObject; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
   mSettings: TServerSettings;
   mRoot, mFormatText: string;
@@ -247,12 +247,12 @@ begin
   end;
 end;
 
-function TLspQuery.Request(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+function TQueryRequests.Request(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 begin
   Result := Answer(ParamsOf(AParams), ACancellation);
 end;
 
-function TLspQuery.Catalog(const AParams: TJSONValue): TJSONValue;
+function TQueryRequests.Catalog(const AParams: TJSONValue): TJSONValue;
 var
   mSettings: TServerSettings;
   mRoot: string;
@@ -283,7 +283,7 @@ begin
   end;
 end;
 
-function TLspQuery.Execute(const AArguments: TJSONArray): TJSONValue;
+function TQueryRequests.Execute(const AArguments: TJSONArray): TJSONValue;
 var
   mParams: TJSONObject;
   mPair: TJSONPair;
@@ -310,7 +310,7 @@ begin
   end;
 end;
 
-class function TLspQuery.Calls(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc;
+class function TQueryRequests.Calls(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc;
   const ANamespaces, AFiles: TArray<string>; const AReadText: TReferenceReadText;
   const ASettings: TReferenceSettings): TQueryCallsFunc;
 begin
@@ -361,7 +361,7 @@ begin
     end;
 end;
 
-class function TLspQuery.Source(const AInput: TLspQueryInput; const AReferences: TReferenceSettings): TQuerySource;
+class function TQueryRequests.Source(const AInput: TQueryRequestInput; const AReferences: TReferenceSettings): TQuerySource;
 begin
   Result := Default(TQuerySource);
   Result.Index := AInput.Index;
@@ -374,6 +374,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.Query', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Query.Requests', cTexts);
 
 end.

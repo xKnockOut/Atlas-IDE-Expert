@@ -42,7 +42,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Semantics.Impact,
   Atlas.Common.Editing.TestUnits.Protocol,
-  Atlas.Common.Lsp.AffectedTests.Types,
+  Atlas.Common.Testing.AffectedTests.Types,
   Atlas.Common.Logging.Providers.Logger;
 
 const

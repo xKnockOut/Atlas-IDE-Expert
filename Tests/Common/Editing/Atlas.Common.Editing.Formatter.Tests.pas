@@ -61,7 +61,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.Formatter,
-  Atlas.Common.Editing.EditorConfig,
+  Atlas.Common.Projects.EditorConfig,
   Atlas.Common.Documents.Contract;
 
 { TFormatterTests }

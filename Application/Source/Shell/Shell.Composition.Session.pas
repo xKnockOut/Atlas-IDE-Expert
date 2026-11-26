@@ -83,8 +83,8 @@ implementation
 
 uses
   Atlas.Common.Diagnostics.ShutdownLeaks,
-  Atlas.Common.Lsp.Adapters.ServerActivityObserver,
-  Atlas.Common.Lsp.ServerActivity,
+  Atlas.Common.JsonRpc.Providers.ServerActivityObserver,
+  Atlas.Common.Diagnostics.ServerActivity,
   Atlas.Common.Product.Version,
   Atlas.Text.LogMarks;
 

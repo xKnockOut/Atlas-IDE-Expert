@@ -21,7 +21,7 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Editing.EditorConfig,
+  Atlas.Common.Projects.EditorConfig,
   Atlas.Common.Editing.FormatCheck;
 
 /// <summary>.editorconfig von der Platte; False, wenn es die Datei nicht gibt oder sie nicht lesbar ist.</summary>

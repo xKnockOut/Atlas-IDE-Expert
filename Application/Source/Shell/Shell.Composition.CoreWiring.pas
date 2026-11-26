@@ -39,9 +39,9 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Query.Contract,
-  Atlas.Common.Lsp.IdeProject,
+  Atlas.Common.Index.IdeProject,
   Atlas.Common.Lsp.WatchedFiles,
-  Atlas.Common.Lsp.ServerActivity,
+  Atlas.Common.Diagnostics.ServerActivity,
   Atlas.Common.Projects.Selection,
   Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Configuration.Contract,
@@ -192,7 +192,7 @@ begin
       Result := AParts.IdeArea.Ide.Project.ActiveProject;
     end;
   Result.IdeProject :=
-    function: TLspIdeProject
+    function: TIdeProjects
     begin
       Result := AParts.IdeArea.Ide.Project;
     end;

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.ServerActivity.Tests;
+﻿unit Atlas.Common.Diagnostics.ServerActivity.Tests;
 
 // Tests für die Aktivität des Servers (#1901): laufende Anfragen mit Dauer, Fehler, Zeitüberschreitungen,
 // Fortschritt und Zustand und ausführlicher Status über SetDetails.
@@ -7,7 +7,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Common.Lsp.ServerActivity;
+  Atlas.Common.Diagnostics.ServerActivity;
 
 type
   [TestFixture]
