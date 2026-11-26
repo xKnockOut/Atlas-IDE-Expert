@@ -48,6 +48,9 @@ type
     ['{F5430700-FD16-4D4D-B38C-F6CE4EC37F98}']
     /// <summary>Prüft auf Syntaxfehler, formatiert und beschreibt die Abweichungen.</summary>
     function Check(const ARequest: TEditingFormatRequest): TEditingFormatResult;
+    /// <summary>Formatregeln für AFileName ohne Optionen eines Editors: .editorconfig von der Platte über den
+    /// Vorgaben, darüber die in AConfigured ausdrücklich gesetzten Werte (#43).</summary>
+    function StyleOf(const AFileName: string; const AConfigured: TFormatStyle): TFormatStyle;
   end;
 
 implementation

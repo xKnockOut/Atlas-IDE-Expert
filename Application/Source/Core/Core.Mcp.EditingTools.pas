@@ -286,7 +286,7 @@ end;
 /// <summary>Formatregeln wie im Editor: format.* über .editorconfig über den Vorgaben.</summary>
 function StyleFor(const AContext: TMcpToolContext; const AFileName: string): TFormatStyle;
 begin
-  Result := FormatStyleOf(AContext.Workspace, AFileName);
+  Result := AContext.Edit.Formatting.StyleOf(AFileName, AContext.Workspace.SettingsOf(AFileName).Formatting);
 end;
 
 function ToolFormatCode(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;

@@ -466,6 +466,7 @@ begin
   Result.Conventions := TMcpComposition.Conventions;
   Result.FindingPrompts := TMcpComposition.FindingPrompts;
   Result.RuleDocs := TMcpComposition.RuleDocs;
+  Result.BoundaryCases := TMcpComposition.BoundaryCases;
 end;
 
 class function TMcpServices.GroupAdapters(AGroup: TCoreWorkspaceGroup): TMcpHostAdapters;

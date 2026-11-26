@@ -19,6 +19,7 @@ type
     constructor Create(const AFormatting: IEditingFormatting);
     function Format(const AText: string; const AStyle: TFormatStyle; const ALines: TMcpFormatLines;
       const ASource: TPascalSource): TMcpFormatOutcome;
+    function StyleOf(const AFileName: string; const AConfigured: TFormatStyle): TFormatStyle;
   end;
 
 implementation
@@ -59,6 +60,11 @@ begin
     Result.Deviations[mIndex].Line := mResult.Deviations[mIndex].Line;
     Result.Deviations[mIndex].Message := mResult.Deviations[mIndex].Message;
   end;
+end;
+
+function TMcpFormattingAdapter.StyleOf(const AFileName: string; const AConfigured: TFormatStyle): TFormatStyle;
+begin
+  Result := FFormatting.StyleOf(AFileName, AConfigured);
 end;
 
 end.

@@ -1,23 +1,39 @@
 ﻿unit Atlas.Common.Editing.Providers.Formatting;
 
-// IEditingFormatting über TFormatCheck.Run.
+// IEditingFormatting über TFormatCheck.Run und TFormatStyles.Resolve.
 
 interface
 
 uses
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.Contract.Formatting;
 
 type
   TEditingFormattingProvider = class(TInterfacedObject, IEditingFormatting)
   public
     function Check(const ARequest: TEditingFormatRequest): TEditingFormatResult;
+    function StyleOf(const AFileName: string; const AConfigured: TFormatStyle): TFormatStyle;
   end;
 
 implementation
 
 uses
+  System.SysUtils,
+  Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Pascal.Preprocessor,
+  Atlas.Common.Editing.EditorConfig,
   Atlas.Common.Editing.FormatCheck;
+
+/// <summary>.editorconfig von der Platte; False, wenn es die Datei nicht gibt oder sie nicht lesbar ist.</summary>
+function ReadConfigFile: TEditorConfigReadFile;
+begin
+  Result :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      AText := '';
+      Result := FileExists(AFileName) and TFileEncoding.TryLoadText(AFileName, AText);
+    end;
+end;
 
 function ScopeOf(const ARequest: TEditingFormatRequest): TFormatScope;
 begin
@@ -50,6 +66,11 @@ begin
     Result.Deviations[mIndex].Line := mOutcome.Deviations[mIndex].Line;
     Result.Deviations[mIndex].Message := mOutcome.Deviations[mIndex].Message;
   end;
+end;
+
+function TEditingFormattingProvider.StyleOf(const AFileName: string; const AConfigured: TFormatStyle): TFormatStyle;
+begin
+  Result := TFormatStyles.Resolve(nil, AFileName, AConfigured, ReadConfigFile());
 end;
 
 end.

@@ -473,6 +473,9 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Providers.Extract.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.Formatting.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Providers.Formatting.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Providers.BoundaryCases.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.BoundaryCases.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.BoundaryCases.Report.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.CompilerFixes.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Providers.CompilerFixes.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Composition.pas"/>
@@ -688,6 +691,7 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.Extract.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.Formatting.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.BoundaryCases.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.CompilerFixes.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.BulkFix.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.TextChecks.pas"/>

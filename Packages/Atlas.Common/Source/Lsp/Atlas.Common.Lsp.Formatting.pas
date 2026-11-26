@@ -81,9 +81,6 @@ type
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>documentOnTypeFormattingProvider: ausgelöst durch Enter und "/" (#88).</summary>
     class function OnTypeCapability: TJSONObject; static;
-    /// <summary>Einstellungen für AFileName aus Editor-Optionen, .editorconfig und AConfigured.</summary>
-    class function Resolve(const AOptions: TJSONValue; const AFileName: string; const AConfigured: TFormatStyle;
-      const AReadFile: TEditorConfigReadFile): TFormatStyle; static;
     /// <summary>Projekt und Editor für Schnellbefehle wie /define und /dfm (#301); nil ohne.</summary>
     property SlashHost: ISlashHost read FSlashHost write FSlashHost;
     /// <summary>Sortiert die uses beim Formatieren (format.sortUses); ohne Zuweisung nie.</summary>
@@ -153,7 +150,7 @@ begin
   begin
     mOptions := nil;
   end;
-  Result := Resolve(mOptions, TDocumentUris.ToPath(AUri), mConfigured, FReadFile);
+  Result := TFormatStyles.Resolve(mOptions, TDocumentUris.ToPath(AUri), mConfigured, FReadFile);
 end;
 
 function TLspFormatting.HandleOnType(const AParams: TJSONValue;
@@ -267,82 +264,6 @@ function TLspFormatting.HandleRangeFormatting(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 begin
   Result := Handle(AParams, True, ACancellation);
-end;
-
-/// <summary>Einstellungen aus den FormattingOptions des Editors (AOptions, nil = keine).</summary>
-function EditorStyle(const AOptions: TJSONValue): TFormatStyle;
-var
-  mSize: Integer;
-  mFlag: Boolean;
-begin
-  Result := TFormatStyle.Default;
-  if not (AOptions is TJSONObject) then
-  begin
-    Exit;
-  end;
-  if AOptions.TryGetValue<Integer>('tabSize', mSize) and (mSize >= 1) then
-  begin
-    Result.IndentSize := mSize;
-  end;
-  if AOptions.TryGetValue<Boolean>('insertSpaces', mFlag) then
-  begin
-    Result.UseTabs := not mFlag;
-  end;
-  if AOptions.TryGetValue<Boolean>('trimTrailingWhitespace', mFlag) then
-  begin
-    Result.TrimTrailingWhitespace := mFlag;
-  end;
-  if AOptions.TryGetValue<Boolean>('insertFinalNewline', mFlag) then
-  begin
-    Result.InsertFinalNewline := mFlag;
-  end;
-end;
-
-/// <summary>Übernimmt Einrückung, Schreibweise und Zeilenende-Leerraum, wenn AConfigured sie ausdrücklich setzt.
-/// </summary>
-procedure ApplyGivenLayout(var AStyle: TFormatStyle; const AConfigured: TFormatStyle);
-begin
-  if TFormatKey.IndentSize in AConfigured.Given then
-  begin
-    AStyle.IndentSize := AConfigured.IndentSize;
-  end;
-  if TFormatKey.UseTabs in AConfigured.Given then
-  begin
-    AStyle.UseTabs := AConfigured.UseTabs;
-  end;
-  if TFormatKey.KeywordCase in AConfigured.Given then
-  begin
-    AStyle.KeywordCase := AConfigured.KeywordCase;
-  end;
-  if TFormatKey.TrimTrailingWhitespace in AConfigured.Given then
-  begin
-    AStyle.TrimTrailingWhitespace := AConfigured.TrimTrailingWhitespace;
-  end;
-  if TFormatKey.InsertFinalNewline in AConfigured.Given then
-  begin
-    AStyle.InsertFinalNewline := AConfigured.InsertFinalNewline;
-  end;
-end;
-
-/// <summary>Übernimmt Abstände, Zeilenende und Zeilenlänge, wenn AConfigured sie ausdrücklich setzt.</summary>
-procedure ApplyGivenSpacing(var AStyle: TFormatStyle; const AConfigured: TFormatStyle);
-begin
-  if TFormatKey.SpaceAroundAssignment in AConfigured.Given then
-  begin
-    AStyle.SpaceAroundAssignment := AConfigured.SpaceAroundAssignment;
-  end;
-  if TFormatKey.SpaceAfterComma in AConfigured.Given then
-  begin
-    AStyle.SpaceAfterComma := AConfigured.SpaceAfterComma;
-  end;
-  if TFormatKey.EndOfLine in AConfigured.Given then
-  begin
-    AStyle.EndOfLine := AConfigured.EndOfLine;
-  end;
-  if TFormatKey.MaxLineLength in AConfigured.Given then
-  begin
-    AStyle.MaxLineLength := AConfigured.MaxLineLength;
-  end;
 end;
 
 procedure TLspFormatting.Attach(ADispatcher: TJsonRpcDispatcher);
@@ -476,27 +397,6 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('firstTriggerCharacter', #10);
   Result.AddPair('moreTriggerCharacter', TJSONArray.Create.Add('/'));
-end;
-
-class function TLspFormatting.Resolve(const AOptions: TJSONValue; const AFileName: string;
-  const AConfigured: TFormatStyle; const AReadFile: TEditorConfigReadFile): TFormatStyle;
-begin
-  Result := EditorStyle(AOptions);
-  if Assigned(AReadFile) and (AFileName <> '') then
-  begin
-    Result := TEditorConfig.ForFile(AFileName, AReadFile, Result);
-  end;
-  ApplyGivenLayout(Result, AConfigured);
-  ApplyGivenSpacing(Result, AConfigured);
-  // Diese Schalter kennt weder der Editor noch .editorconfig (#43).
-  Result.Reindent := AConfigured.Reindent;
-  Result.BeginPlacement := AConfigured.BeginPlacement;
-  Result.ElsePlacement := AConfigured.ElsePlacement;
-  Result.AlignAssignments := AConfigured.AlignAssignments;
-  Result.AlignDeclarations := AConfigured.AlignDeclarations;
-  Result.AlignComments := AConfigured.AlignComments;
-  Result.SortUses := AConfigured.SortUses;
-  Result.Given := AConfigured.Given;
 end;
 
 initialization

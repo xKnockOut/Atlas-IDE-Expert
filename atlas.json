@@ -116,8 +116,7 @@
         "Atlas.Common: Semantics < Mcp"
       ],
       "knownEdges": [
-        "Atlas.Common.Lsp.BoundaryCases -> Atlas.Common.Editing.BoundaryCases",
-        "Atlas.Common.Lsp.BoundaryCases -> Atlas.Common.Editing.DisableWarning",
+        "Atlas.Common.Lsp.BoundaryCases -> Atlas.Common.Editing.BoundaryCases.Report",
         "Atlas.Common.Lsp.BoundaryTests -> Atlas.Common.Editing.TestDrafts",
         "Atlas.Common.Lsp.ChangeSignature -> Atlas.Common.Editing.ClassCompletion",
         "Atlas.Common.Lsp.CodeActions -> Atlas.Common.Editing.AssignmentSwap",

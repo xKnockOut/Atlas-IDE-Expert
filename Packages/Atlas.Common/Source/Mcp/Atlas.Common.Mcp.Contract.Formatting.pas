@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Mcp.Contract.Formatting;
 
-// Was das Werkzeug format_code (#1358) vom Server braucht: einen Text formatieren und die Abweichungen nennen. Der
-// Host verbindet es mit Editing (Adapters.Mcp.Formatting); die MCP-Werkzeuge kennen nur diese Unit.
+// Was das Werkzeug format_code (#1358) vom Server braucht: die Formatregeln einer Datei, einen Text formatieren und
+// die Abweichungen nennen. Der Host verbindet es mit Editing (Adapters.Mcp.Formatting); die MCP-Werkzeuge kennen
+// nur diese Unit.
 
 interface
 
@@ -41,6 +42,9 @@ type
     /// <summary>Formatiert ALines von AText (Datei ASource) nach AStyle.</summary>
     function Format(const AText: string; const AStyle: TFormatStyle; const ALines: TMcpFormatLines;
       const ASource: TPascalSource): TMcpFormatOutcome;
+    /// <summary>Formatregeln für AFileName wie im Editor: die in AConfigured (format.* aus atlas.json) ausdrücklich
+    /// gesetzten Werte über .editorconfig über den Vorgaben.</summary>
+    function StyleOf(const AFileName: string; const AConfigured: TFormatStyle): TFormatStyle;
   end;
 
 implementation

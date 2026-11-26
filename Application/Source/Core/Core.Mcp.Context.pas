@@ -22,6 +22,7 @@ uses
   Atlas.Common.Mcp.Contract.Process,
   Atlas.Common.Mcp.Contract.Vcs,
   Atlas.Common.Mcp.Contract.AffectedTests,
+  Atlas.Common.Mcp.Contract.BoundaryCases,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Architecture.Report,
   Atlas.Common.Semantics.SymbolPath.Search,
@@ -30,7 +31,6 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Hotspots.Service,
   Atlas.Common.Semantics.Impact,
-  Atlas.Common.Configuration.Contract,
   Atlas.Common.Mcp.RefactorTools,
   Atlas.Common.Compiler.Contract;
 
@@ -77,6 +77,8 @@ type
     DeadCode: TMcpDeadCodeFunc;
     /// <summary>Regelkatalog zum Nachschlagen (search_atlas_docs, explain_compiler_message).</summary>
     RuleDocs: IMcpRuleDocs;
+    /// <summary>Grenzfälle einer Routine (suggest_test_cases).</summary>
+    BoundaryCases: IMcpBoundaryCases;
   end;
 
   /// <summary>Was die Werkzeuge des MCP-Modus brauchen; ToolNames füllt nur Server (die Werkzeuge greifen erst
@@ -123,8 +125,6 @@ function SchemaWith(const ASchema: string; const ADescriptions: array of string)
 function ReadSourceText(const AFileName: string; out AText: string): Boolean;
 /// <summary>Projektdatei ohne Ausnahme auswerten; False, wenn sie nicht lesbar ist.</summary>
 function LoadProject(const AFileName, AConfiguration, APlatform: string; out AInfo: TProjectInfo): Boolean;
-/// <summary>Formatregeln wie im Editor für AFileName: format.* über .editorconfig über den Vorgaben.</summary>
-function FormatStyleOf(const AWorkspace: IMcpWorkspace; const AFileName: string): TFormatStyle;
 /// <summary>DUnitX-Testprojekt: Die Hauptdatei verwendet DUnitX.TestFramework (#69).</summary>
 function IsTestProject(const AFileName: string): Boolean;
 /// <summary>Projektdateien unter ARoot ohne Sicherungsordner der IDE.</summary>
@@ -139,10 +139,10 @@ function CheckSourceOf(const AWorkspace: IMcpWorkspace): TPascalSourceFunc;
 implementation
 
 uses
+  Atlas.Common.Configuration.Contract,
   System.IOUtils,
   System.StrUtils,
   Atlas.Common.Projects.DprojReader,
-  Atlas.Common.Lsp.Formatting,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
   Atlas.Text.Json,
@@ -182,15 +182,6 @@ end;
 function ReadSourceText(const AFileName: string; out AText: string): Boolean;
 begin
   Result := TFileEncoding.TryLoadText(AFileName, AText);
-end;
-
-function FormatStyleOf(const AWorkspace: IMcpWorkspace; const AFileName: string): TFormatStyle;
-begin
-  Result := TLspFormatting.Resolve(nil, AFileName, AWorkspace.SettingsOf(AFileName).Formatting,
-    function(const AConfigFile: string; out AConfigText: string): Boolean
-    begin
-      Result := FileExists(AConfigFile) and ReadSourceText(AConfigFile, AConfigText);
-    end);
 end;
 
 /// <summary>Projektdatei ohne Ausnahme auswerten; False, wenn sie nicht lesbar ist.</summary>

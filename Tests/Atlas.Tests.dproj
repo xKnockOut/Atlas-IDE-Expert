@@ -2995,8 +2995,13 @@
         <DCCReference Include="Application\Adapters\Adapters.Mcp.Extract.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.Extract.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.Formatting.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.BoundaryCases.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Mcp.Formatting.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.Formatting.Tests.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Mcp.BoundaryCases.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.BoundaryCases.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.BoundaryCases.Report.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.EditorConfig.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.CompilerFixes.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Mcp.CompilerFixes.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.BulkFix.pas"/>

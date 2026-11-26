@@ -299,6 +299,10 @@ Atlas.Common.Editing.Providers.Extract.Tests
 Adapters.Mcp.Extract.Tests
 Atlas.Common.Editing.Providers.Formatting.Tests
 Adapters.Mcp.Formatting.Tests
+Adapters.Mcp.BoundaryCases.Tests
+Atlas.Common.Editing.Providers.BoundaryCases.Tests
+Atlas.Common.Editing.BoundaryCases.Report.Tests
+Atlas.Common.Editing.EditorConfig.Tests
 Atlas.Common.Editing.Providers.CompilerFixes.Tests
 Adapters.Mcp.CompilerFixes.Tests
 Adapters.Mcp.BulkFix.Tests
