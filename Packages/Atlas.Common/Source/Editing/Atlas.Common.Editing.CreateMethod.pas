@@ -11,7 +11,7 @@
 //   - Literaltypen: Gleitkomma Double, ganze Zahl Integer, String string.
 //   - Kopf, Deklaration in der Klasse und Rumpf bzw. freie Routine davor.
 // Typen der übrigen Argumente, Rückgabetyp und Zielklasse bringt
-// Atlas.Common.Lsp.Refactorings über die Namensauflösung mit.
+// Atlas.Common.Editing.Refactorings über die Namensauflösung mit.
 
 interface
 

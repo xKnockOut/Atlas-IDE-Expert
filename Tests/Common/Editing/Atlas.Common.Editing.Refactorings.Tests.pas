@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Refactorings.Tests;
+﻿unit Atlas.Common.Editing.Refactorings.Tests;
 
 // Tests für die Code-Aktionen aus #50 mit Namensauflösung: „case
 // vervollständigen“, „with auflösen“, Typabfrage und Schalter; dazu Einbetten
@@ -9,11 +9,11 @@ interface
 uses
   DUnitX.TestFramework,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.Refactorings;
+  Atlas.Common.Editing.Refactorings;
 
 type
   [TestFixture]
-  TLspRefactoringsTests = class
+  TEditingRefactoringsTests = class
   private
     FIndex: ISymbolIndex;
     function Context: TRefactoringContext;
@@ -247,9 +247,9 @@ begin
   end;
 end;
 
-{ TLspRefactoringsTests }
+{ TEditingRefactoringsTests }
 
-function TLspRefactoringsTests.Context: TRefactoringContext;
+function TEditingRefactoringsTests.Context: TRefactoringContext;
 begin
   Result := Default(TRefactoringContext);
   Result.Index := FIndex;
@@ -261,7 +261,7 @@ begin
   Result.Style := TFormatStyle.Default;
 end;
 
-function TLspRefactoringsTests.Titles(const AText: string; ALine, ACharacter: Integer;
+function TEditingRefactoringsTests.Titles(const AText: string; ALine, ACharacter: Integer;
   const AContext: TRefactoringContext): string;
 var
   mTree: TSyntaxTree;
@@ -270,7 +270,7 @@ begin
   Result := '';
   mTree := TPascalParser.Parse(AText);
   try
-    for mAction in TLspRefactorings.Actions(mTree, AText, TTextRange.Create(TTextPosition.Create(ALine, ACharacter),
+    for mAction in TEditingRefactorings.Actions(mTree, AText, TTextRange.Create(TTextPosition.Create(ALine, ACharacter),
       TTextPosition.Create(ALine, ACharacter)), AContext) do
     begin
       Result := Result + mAction.Title + '|';
@@ -280,7 +280,7 @@ begin
   end;
 end;
 
-function TLspRefactoringsTests.Applied(const AText, ATitle: string; ALine, ACharacter: Integer): string;
+function TEditingRefactoringsTests.Applied(const AText, ATitle: string; ALine, ACharacter: Integer): string;
 var
   mTree: TSyntaxTree;
   mAction: TCodeAction;
@@ -288,7 +288,7 @@ begin
   Result := '-';
   mTree := TPascalParser.Parse(AText);
   try
-    for mAction in TLspRefactorings.Actions(mTree, AText, TTextRange.Create(TTextPosition.Create(ALine, ACharacter),
+    for mAction in TEditingRefactorings.Actions(mTree, AText, TTextRange.Create(TTextPosition.Create(ALine, ACharacter),
       TTextPosition.Create(ALine, ACharacter)), Context) do
     begin
       if mAction.Title = ATitle then
@@ -306,18 +306,18 @@ begin
   end;
 end;
 
-procedure TLspRefactoringsTests.Setup;
+procedure TEditingRefactoringsTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
 end;
 
-procedure TLspRefactoringsTests.TearDown;
+procedure TEditingRefactoringsTests.TearDown;
 begin
   FIndex := nil;
 end;
 
-procedure TLspRefactoringsTests.CompletesCaseOfEnumeration;
+procedure TEditingRefactoringsTests.CompletesCaseOfEnumeration;
 var
   mExpected: string;
 begin
@@ -327,26 +327,26 @@ begin
   Assert.AreEqual(mExpected, Applied(cUnitHaupt, 'case vervollständigen (4 fehlende Werte)', 17, 4));
 end;
 
-procedure TLspRefactoringsTests.ResolvesWithOverTheIndex;
+procedure TEditingRefactoringsTests.ResolvesWithOverTheIndex;
 begin
   // Name gehört zu TKunde (K), Ort zu TAdresse (D).
   Assert.AreEqual(StringReplace(cUnitHaupt, '  with K, D do'#10'    Name := Ort;'#10, '  K.Name := D.Ort;'#10, []),
     Applied(cUnitHaupt, 'with auflösen', 25, 3));
 end;
 
-procedure TLspRefactoringsTests.NoWithActionForUnknownNames;
+procedure TEditingRefactoringsTests.NoWithActionForUnknownNames;
 begin
   // TFremd ist nirgends deklariert: ob Name dazugehört, ist offen, also rät Atlas nicht.
   Assert.AreEqual('-', Applied(cUnitHaupt, 'with auflösen', 30, 3));
 end;
 
-procedure TLspRefactoringsTests.ProbeFindsTypeAndKind;
+procedure TEditingRefactoringsTests.ProbeFindsTypeAndKind;
 var
   mProbe: TTypeProbe;
   mProbed: TProbedType;
   mText: string;
 begin
-  mProbe := TLspRefactorings.Probe(Context);
+  mProbe := TEditingRefactorings.Probe(Context);
   mText := StringReplace(cUnitHaupt, '  with K, D do'#10, '  var AtlasProbe := K;'#10'  with K, D do'#10, []);
   mProbed := mProbe(mText, TTextPosition.Create(25, 6));
   Assert.AreEqual('TKunde', mProbed.Name);
@@ -359,7 +359,7 @@ begin
   Assert.IsFalse(mProbed.IsReference);
 end;
 
-procedure TLspRefactoringsTests.SettingsSwitchActionsOff;
+procedure TEditingRefactoringsTests.SettingsSwitchActionsOff;
 var
   mOff: TRefactoringContext;
 begin
@@ -374,7 +374,7 @@ begin
   Assert.AreEqual('', Titles(cUnitHaupt, 25, 3, mOff));
 end;
 
-procedure TLspRefactoringsTests.ConvertsCaseAndIfChain;
+procedure TEditingRefactoringsTests.ConvertsCaseAndIfChain;
 var
   mChain: string;
 begin
@@ -386,7 +386,7 @@ begin
   Assert.AreEqual('-', Applied(mChain, 'In if-Kette umwandeln', 17, 4));
 end;
 
-procedure TLspRefactoringsTests.RewritesConditions;
+procedure TEditingRefactoringsTests.RewritesConditions;
 var
   mChain: string;
   mOff: TRefactoringContext;
@@ -402,7 +402,7 @@ begin
   Assert.AreEqual(0, Pos('Bedingung umkehren', Titles(mChain, 17, 4, mOff)));
 end;
 
-procedure TLspRefactoringsTests.ConvertsConditionalExpression;
+procedure TEditingRefactoringsTests.ConvertsConditionalExpression;
 const
   cCaseText = '  case A of'#10'    alNone: ;'#10'    alTop: ;'#10'    alBottom: ;'#10'  end;'#10;
 var
@@ -426,7 +426,7 @@ begin
   Assert.AreEqual(0, Pos('In if-Anweisung umwandeln', Titles(mExpression, 17, 9, mOld)));
 end;
 
-procedure TLspRefactoringsTests.ExtractsNestedRoutine;
+procedure TEditingRefactoringsTests.ExtractsNestedRoutine;
 const
   cText =
     'unit Haupt;'#10 +                            // 0
@@ -461,7 +461,7 @@ begin
   Assert.AreEqual(0, Pos(TNestedRoutines.ToUnitRoutineTitle, Titles(cText, 10, 4, mOff)));
 end;
 
-procedure TLspRefactoringsTests.CompletionOffersWithItem;
+procedure TEditingRefactoringsTests.CompletionOffersWithItem;
 var
   mStore: IDocumentStore;
   mCompletion: TLspCompletion;
@@ -532,7 +532,7 @@ begin
   AAction := Default(TCodeAction);
   mTree := TPascalParser.Parse(cUnitRechner);
   try
-    for mAction in TLspRefactorings.Actions(mTree, cUnitRechner, TTextRange.Create(TTextPosition.Create(ALine,
+    for mAction in TEditingRefactorings.Actions(mTree, cUnitRechner, TTextRange.Create(TTextPosition.Create(ALine,
       ACharacter), TTextPosition.Create(ALine, ACharacter)), AContext) do
     begin
       if mAction.Title = ATitle then
@@ -557,7 +557,7 @@ begin
   AIndex.AddUnit(mBib);
 end;
 
-procedure TLspRefactoringsTests.CreatesMethodFromCall;
+procedure TEditingRefactoringsTests.CreatesMethodFromCall;
 var
   mRechner: TRefactoringContext;
   mAction: TCodeAction;
@@ -597,7 +597,7 @@ begin
   Assert.IsFalse(RechnerAction(mRechner, 14, 13, 'Methode CalcDiscount anlegen', mAction));
 end;
 
-procedure TLspRefactoringsTests.CompletionOffersCreateAfterParen;
+procedure TEditingRefactoringsTests.CompletionOffersCreateAfterParen;
 var
   mStore: IDocumentStore;
   mCompletion: TLspCompletion;
@@ -653,7 +653,7 @@ begin
         Rechner.FileName := cRechnerFile;
         Rechner.Settings.CreateMethodCaretInBody := True;
         Rechner.CaretMarker := True;
-        Result := mEnabled and TLspRefactorings.CreateMethod(ARequest.Resolver, ARequest.Tree, ARequest.Text,
+        Result := mEnabled and TEditingRefactorings.CreateMethod(ARequest.Resolver, ARequest.Tree, ARequest.Text,
           ARequest.Position, Rechner, Created);
         ATitle := Created.Title;
         ADetail := Created.Detail;
@@ -678,7 +678,7 @@ begin
   end;
 end;
 
-procedure TLspRefactoringsTests.InlinesOverTheIndex;
+procedure TEditingRefactoringsTests.InlinesOverTheIndex;
 var
   mKasse: TRefactoringContext;
   mTree: TSyntaxTree;
@@ -691,7 +691,7 @@ var
   begin
     Result := '-';
     mTitles_ := '';
-    for mItem in TLspRefactorings.Actions(mTree, cUnitKasse, TTextRange.Create(TTextPosition.Create(ALine, ACharacter),
+    for mItem in TEditingRefactorings.Actions(mTree, cUnitKasse, TTextRange.Create(TTextPosition.Create(ALine, ACharacter),
       TTextPosition.Create(ALine, ACharacter)), mKasse) do
     begin
       mTitles_ := mTitles_ + mItem.Title + '|';
@@ -723,7 +723,7 @@ begin
     mResult_ := StringReplace(cUnitKasse, '  L.Zugang(X);'#10, '', []);
     mTree.Free;
     mTree := TPascalParser.Parse(mResult_);
-    for mAction in TLspRefactorings.Actions(mTree, mResult_, TTextRange.Create(TTextPosition.Create(9, 2),
+    for mAction in TEditingRefactorings.Actions(mTree, mResult_, TTextRange.Create(TTextPosition.Create(9, 2),
       TTextPosition.Create(9, 2)), mKasse) do
     begin
       if mAction.Title = 'Variable X einbetten' then
@@ -739,6 +739,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspRefactoringsTests);
+  TDUnitX.RegisterTestFixture(TEditingRefactoringsTests);
 
 end.

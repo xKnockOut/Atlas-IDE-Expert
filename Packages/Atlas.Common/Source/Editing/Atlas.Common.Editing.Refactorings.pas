@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Refactorings;
+﻿unit Atlas.Common.Editing.Refactorings;
 
 // Code-Aktionen aus #50 mit Namensauflösung: Extrahieren (Methode, Variable,
 // Konstante), „case vervollständigen“ und „with auflösen“. Die Logik liegt in
@@ -76,7 +76,7 @@ type
     FileEdits: TArray<TFileTextEdits>;
   end;
 
-  TLspRefactorings = class
+  TEditingRefactorings = class
   public
     /// <summary>Typabfrage für Probetexte der Datei AContext.FileName.</summary>
     class function Probe(const AContext: TRefactoringContext): TTypeProbe; static;
@@ -139,7 +139,6 @@ uses
   Atlas.Common.Editing.Conditions,
   Atlas.Common.Semantics.ConditionalExpression,
   Atlas.Common.Editing.NestedRoutines,
-  Atlas.Common.Lsp.Completion,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Semantics.InferredTypes,
   Atlas.Common.Pascal.TypeTexts;
@@ -166,7 +165,7 @@ begin
   Result := TExtractOptions.Default;
   Result.InlineVar := AContext.InlineVar;
   Result.Style := AContext.Style;
-  Result.Probe := TLspRefactorings.Probe(AContext);
+  Result.Probe := TEditingRefactorings.Probe(AContext);
   Result.Names := AContext.NewNames;
   Result.Duplicates := AContext.Settings.ExtractMethodDuplicates;
 end;
@@ -177,9 +176,9 @@ begin
   Result.Namespaces := AContext.Namespaces;
 end;
 
-{ TLspRefactorings }
+{ TEditingRefactorings }
 
-class function TLspRefactorings.WithLookup(AResolver: TNameResolver; ATree: TSyntaxTree;
+class function TEditingRefactorings.WithLookup(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName: string): TWithOwnerLookup;
 var
   mFileName: string;
@@ -309,7 +308,7 @@ begin
   end;
 end;
 
-class function TLspRefactorings.Probe(const AContext: TRefactoringContext): TTypeProbe;
+class function TEditingRefactorings.Probe(const AContext: TRefactoringContext): TTypeProbe;
 var
   mContext: TRefactoringContext;
 begin
@@ -321,7 +320,7 @@ begin
     end;
 end;
 
-class function TLspRefactorings.ExtractOptions(const AContext: TRefactoringContext): TExtractOptions;
+class function TEditingRefactorings.ExtractOptions(const AContext: TRefactoringContext): TExtractOptions;
 begin
   Result := OptionsOf(AContext);
 end;
@@ -338,7 +337,7 @@ begin
   Result.ReadText := AContext.ReadText;
 end;
 
-class function TLspRefactorings.CaseAction(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
+class function TEditingRefactorings.CaseAction(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; const AContext: TRefactoringContext; out AAction: TCodeAction): Boolean;
 var
   mCaseNode: TSyntaxNode;
@@ -371,7 +370,7 @@ begin
   Result := True;
 end;
 
-class function TLspRefactorings.WithAction(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
+class function TEditingRefactorings.WithAction(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; const AContext: TRefactoringContext; out AAction: TCodeAction): Boolean;
 var
   mWithNode: TSyntaxNode;
@@ -423,7 +422,7 @@ begin
   FText := AText;
   FContext := AContext;
   FTokens := ATree.Tokens;
-  FProbe := TLspRefactorings.Probe(AContext);
+  FProbe := TEditingRefactorings.Probe(AContext);
 end;
 
 function TCreateMethodRun.ProbeOf(const AExpression: string): TProbedType;
@@ -672,7 +671,7 @@ begin
   end;
 end;
 
-class function TLspRefactorings.CreateMethod(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
+class function TEditingRefactorings.CreateMethod(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; const AContext: TRefactoringContext; out ACreated: TCreatedMethod): Boolean;
 var
   mRun: TCreateMethodRun;
@@ -691,7 +690,7 @@ begin
   end;
 end;
 
-class function TLspRefactorings.InlineLookup(AResolver: TNameResolver): TInlineLookup;
+class function TEditingRefactorings.InlineLookup(AResolver: TNameResolver): TInlineLookup;
 begin
   Result :=
     function(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
@@ -809,7 +808,7 @@ begin
   end;
 end;
 
-class function TLspRefactorings.InlineActions(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
+class function TEditingRefactorings.InlineActions(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>;
 var
   mOptions: TInlineOptions;
@@ -858,7 +857,7 @@ begin
   end;
 end;
 
-class function TLspRefactorings.IfCaseActions(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
+class function TEditingRefactorings.IfCaseActions(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>;
 var
   mLookup: TIfCaseLookup;
@@ -890,7 +889,7 @@ begin
   end;
 end;
 
-class function TLspRefactorings.ConditionActions(ATree: TSyntaxTree; const AText: string;
+class function TEditingRefactorings.ConditionActions(ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>;
 var
   mRewrite: TStatementRewrite;
@@ -908,7 +907,7 @@ begin
   end;
 end;
 
-class function TLspRefactorings.ConditionalExpressionActions(AResolver: TNameResolver; ATree: TSyntaxTree;
+class function TEditingRefactorings.ConditionalExpressionActions(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AText: string; const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>;
 var
   mLookup: TConditionalLookup;
@@ -946,7 +945,7 @@ begin
   end;
 end;
 
-class function TLspRefactorings.NestedRoutineActions(AResolver: TNameResolver; ATree: TSyntaxTree;
+class function TEditingRefactorings.NestedRoutineActions(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AText: string; const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>;
 begin
   Result := TNestedRoutines.Actions(AText, ATree, APosition, TNestedRoutineLookup.FromResolver(AResolver, ATree,
@@ -981,17 +980,17 @@ var
   mCreated: TCreatedMethod;
 begin
   Result := nil;
-  if AContext.Settings.CompleteCase and TLspRefactorings.CaseAction(AResolver, ATree, AText, APosition, AContext,
+  if AContext.Settings.CompleteCase and TEditingRefactorings.CaseAction(AResolver, ATree, AText, APosition, AContext,
     mAction) then
   begin
     Result := Result + [mAction];
   end;
-  if AContext.Settings.ResolveWith and TLspRefactorings.WithAction(AResolver, ATree, AText, APosition, AContext,
+  if AContext.Settings.ResolveWith and TEditingRefactorings.WithAction(AResolver, ATree, AText, APosition, AContext,
     mAction) then
   begin
     Result := Result + [mAction];
   end;
-  if AContext.Settings.CreateMethod and TLspRefactorings.CreateMethod(AResolver, ATree, AText, APosition, AContext,
+  if AContext.Settings.CreateMethod and TEditingRefactorings.CreateMethod(AResolver, ATree, AText, APosition, AContext,
     mCreated) then
   begin
     Result := Result + [CreatedAction(mCreated)];
@@ -1005,23 +1004,23 @@ begin
   Result := nil;
   if AContext.Settings.InlineCode then
   begin
-    Result := Result + TLspRefactorings.InlineActions(AResolver, ATree, AText, APosition, AContext);
+    Result := Result + TEditingRefactorings.InlineActions(AResolver, ATree, AText, APosition, AContext);
   end;
   if AContext.Settings.IfCase then
   begin
-    Result := Result + TLspRefactorings.IfCaseActions(AResolver, ATree, AText, APosition, AContext);
+    Result := Result + TEditingRefactorings.IfCaseActions(AResolver, ATree, AText, APosition, AContext);
   end;
   if AContext.Settings.ConditionalExpression then
   begin
-    Result := Result + TLspRefactorings.ConditionalExpressionActions(AResolver, ATree, AText, APosition, AContext);
+    Result := Result + TEditingRefactorings.ConditionalExpressionActions(AResolver, ATree, AText, APosition, AContext);
   end;
   if AContext.Settings.NestedRoutine then
   begin
-    Result := Result + TLspRefactorings.NestedRoutineActions(AResolver, ATree, AText, APosition, AContext);
+    Result := Result + TEditingRefactorings.NestedRoutineActions(AResolver, ATree, AText, APosition, AContext);
   end;
 end;
 
-class function TLspRefactorings.Actions(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;
+class function TEditingRefactorings.Actions(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;
   const AContext: TRefactoringContext): TArray<TCodeAction>;
 var
   mResolver: TNameResolver;
@@ -1063,6 +1062,6 @@ end;
 
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.Refactorings', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.Refactorings', cTexts);
 
 end.

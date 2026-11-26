@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Unwrap.Tests;
+﻿unit Atlas.Common.Editing.Unwrap.Protocol.Tests;
 
 // Tests für den Befehl atlas.server.unwrap (#657): Form der Antwort,
 // Einrückung aus dem Formatierstil oder dem Argument und with ohne
@@ -11,7 +11,7 @@ uses
 
 type
   [TestFixture]
-  TLspUnwrapTests = class
+  TUnwrapProtocolTests = class
   public
     [Test]
     procedure AnswerShape;
@@ -30,8 +30,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Lsp.Refactorings,
-  Atlas.Common.Lsp.Unwrap;
+  Atlas.Common.Editing.Refactorings,
+  Atlas.Common.Editing.Unwrap.Protocol;
 
 const
   cSource = 'unit U;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10 +
@@ -47,7 +47,7 @@ begin
   mContext.Style.IndentSize := AStyleIndent;
   mTree := TPascalParser.Parse(cSource);
   try
-    Result := TLspUnwrap.Execute(nil, mTree, cSource, APosition, mContext, AIndent);
+    Result := TUnwrapProtocol.Execute(nil, mTree, cSource, APosition, mContext, AIndent);
   finally
     mTree.Free;
   end;
@@ -66,9 +66,9 @@ begin
   Result := ((mVariant0.GetValue('edits') as TJSONArray).Items[0] as TJSONObject).GetValue('newText').Value;
 end;
 
-{ TLspUnwrapTests }
+{ TUnwrapProtocolTests }
 
-procedure TLspUnwrapTests.AnswerShape;
+procedure TUnwrapProtocolTests.AnswerShape;
 var
   mAnswer, mItem, mVariant0: TJSONObject;
 begin
@@ -93,7 +93,7 @@ begin
   end;
 end;
 
-procedure TLspUnwrapTests.IndentFromStyleOrArgument;
+procedure TUnwrapProtocolTests.IndentFromStyleOrArgument;
 var
   mAnswer: TJSONObject;
 begin
@@ -111,7 +111,7 @@ begin
   end;
 end;
 
-procedure TLspUnwrapTests.WithWithoutResolver;
+procedure TUnwrapProtocolTests.WithWithoutResolver;
 var
   mAnswer: TJSONObject;
 begin
@@ -126,6 +126,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspUnwrapTests);
+  TDUnitX.RegisterTestFixture(TUnwrapProtocolTests);
 
 end.
