@@ -885,20 +885,6 @@ begin
   Result := Result + [NewCrumb(ANodes, ALines, AItem)];
 end;
 
-/// <summary>Lokale Routine: Routine im Rumpf einer Routine.</summary>
-function IsLocalRoutine(const ANodes: TAtlasOutlineNodes; ANode: Integer): Boolean;
-var
-  mParent: Integer;
-begin
-  Result := False;
-  if (ANode < 0) or (ANode > High(ANodes)) or not ANodes[ANode].InBody or not IsRoutine(ANodes[ANode]) then
-  begin
-    Exit;
-  end;
-  mParent := ANodes[ANode].Parent;
-  Result := (mParent >= 0) and IsRoutine(ANodes[mParent]);
-end;
-
 /// <summary>Je Knoten seine lokalen Routinen in Quelltextreihenfolge (in einem Lauf, auch für große Units).
 /// </summary>
 function LocalRoutines(const ANodes: TAtlasOutlineNodes): TArray<TArray<Integer>>;
@@ -909,7 +895,7 @@ begin
   SetLength(Result, Length(ANodes));
   for mIndex := 0 to High(ANodes) do
   begin
-    if IsLocalRoutine(ANodes, mIndex) then
+    if TAtlasOutline.IsLocalRoutine(ANodes, mIndex) then
     begin
       mParent := ANodes[mIndex].Parent;
       SetLength(Result[mParent], Length(Result[mParent]) + 1);
@@ -1195,7 +1181,7 @@ end;
 
 class function TAtlasBreadcrumbs.RoutineName(const ANodes: TAtlasOutlineNodes; ANode: Integer): string;
 begin
-  if IsLocalRoutine(ANodes, ANode) then
+  if TAtlasOutline.IsLocalRoutine(ANodes, ANode) then
   begin
     Result := RoutineName(ANodes, Target(ANodes, ANodes[ANode].Parent, False)) + ' › ' + ANodes[ANode].Name;
   end

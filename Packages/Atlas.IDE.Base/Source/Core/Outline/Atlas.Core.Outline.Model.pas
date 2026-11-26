@@ -97,16 +97,18 @@ type
     class function CategoryOf(AKind: Integer; AInType: Boolean): TAtlasOutlineCategory; static;
     /// <summary>Knoten aus der Antwort von documentSymbol; leer bei nil oder ohne Symbole.</summary>
     class function FromJson(const AResponse: TJSONValue): TAtlasOutlineNodes; static;
-    /// <summary>Sichtbare Zeilen in Baumreihenfolge.</summary>
+    /// <summary>Sichtbare Zeilen in Baumreihenfolge; lokale Routinen unter ihrer Methode bzw. Routine.</summary>
     class function Rows(const ANodes: TAtlasOutlineNodes; const AFilter: TAtlasOutlineFilter;
       ASort: TAtlasOutlineSort): TArray<TAtlasOutlineRow>; static;
-    /// <summary>Innerster sichtbarer Knoten an der Stelle (0-basiert); im Rumpf einer Methode deren
-    /// Deklaration; -1 außerhalb.</summary>
+    /// <summary>Innerster sichtbarer Knoten an der Stelle (0-basiert): lokale Routine, im Rumpf einer Methode
+    /// deren Deklaration; -1 außerhalb.</summary>
     class function NodeAt(const ANodes: TAtlasOutlineNodes; ALine, ACharacter: Integer): Integer; static;
     /// <summary>Zeichen vor dem Namen für die Sichtbarkeit (−, #, +, ◆); leer ohne.</summary>
     class function VisibilityMark(AVisibility: TAtlasOutlineVisibility): string; static;
     /// <summary>Abschnitt der Unit (interface, implementation) statt eines Elements?</summary>
     class function IsSection(const ANode: TAtlasOutlineNode): Boolean; static;
+    /// <summary>Lokale Routine: Routine im Rumpf einer Methode oder Routine (auch verschachtelt).</summary>
+    class function IsLocalRoutine(const ANodes: TAtlasOutlineNodes; ANode: Integer): Boolean; static;
   end;
 
 implementation
@@ -265,6 +267,25 @@ end;
 class function TAtlasOutline.IsSection(const ANode: TAtlasOutlineNode): Boolean;
 begin
   Result := (ANode.Kind = cKindNamespace) or (ANode.Category = TAtlasOutlineCategory.Section);
+end;
+
+/// <summary>Methode oder Routine?</summary>
+function IsRoutineNode(const ANode: TAtlasOutlineNode): Boolean;
+begin
+  Result := ANode.Category in [TAtlasOutlineCategory.Method, TAtlasOutlineCategory.Routine];
+end;
+
+class function TAtlasOutline.IsLocalRoutine(const ANodes: TAtlasOutlineNodes; ANode: Integer): Boolean;
+var
+  mParent: Integer;
+begin
+  Result := False;
+  if (ANode < 0) or (ANode > High(ANodes)) or not ANodes[ANode].InBody or not IsRoutineNode(ANodes[ANode]) then
+  begin
+    Exit;
+  end;
+  mParent := ANodes[ANode].Parent;
+  Result := (mParent >= 0) and IsRoutineNode(ANodes[mParent]);
 end;
 
 type
@@ -538,23 +559,40 @@ begin
   end;
 end;
 
-function Matches(const ANode: TAtlasOutlineNode; const AFilter: TAtlasOutlineFilter): Boolean;
+/// <summary>Eltern in der Liste: lokale Routinen eines verborgenen Rumpfs stehen unter dessen Deklaration.
+/// </summary>
+function ListParent(const ANodes: TAtlasOutlineNodes; ANode: Integer): Integer;
+begin
+  Result := ANodes[ANode].Parent;
+  if TAtlasOutline.IsLocalRoutine(ANodes, ANode) and ANodes[Result].Hidden and
+    (ANodes[Result].Declaration >= 0) then
+  begin
+    Result := ANodes[Result].Declaration;
+  end;
+end;
+
+function Matches(const ANodes: TAtlasOutlineNodes; AIndex: Integer; const AFilter: TAtlasOutlineFilter): Boolean;
+var
+  mNode: TAtlasOutlineNode;
 begin
   Result := False;
-  if ANode.Hidden or (ANode.Category = TAtlasOutlineCategory.Section) then
+  mNode := ANodes[AIndex];
+  // Verborgen bleiben Rümpfe und der übrige Inhalt von Rümpfen, nicht die lokalen Routinen.
+  if (mNode.Hidden and not TAtlasOutline.IsLocalRoutine(ANodes, AIndex)) or
+    (mNode.Category = TAtlasOutlineCategory.Section) then
   begin
     Exit;
   end;
-  if not (ANode.Category in AFilter.Categories) then
+  if not (mNode.Category in AFilter.Categories) then
   begin
     Exit;
   end;
   // Mit Sichtbarkeitsfilter zählen nur Mitglieder von Typen.
-  if not AFilter.AllVisibilities and not (SimpleVisibility(ANode.Visibility) in AFilter.Visibilities) then
+  if not AFilter.AllVisibilities and not (SimpleVisibility(mNode.Visibility) in AFilter.Visibilities) then
   begin
     Exit;
   end;
-  Result := (AFilter.Text = '') or (TAtlasCompletionMatcher.Score(AFilter.Text, ANode.Name) <>
+  Result := (AFilter.Text = '') or (TAtlasCompletionMatcher.Score(AFilter.Text, mNode.Name) <>
     TAtlasCompletionMatcher.cNoMatch);
 end;
 
@@ -562,17 +600,18 @@ end;
 procedure LinkChildren(const ANodes: TAtlasOutlineNodes; const AChildren: TArray<TList<Integer>>;
   ARoots: TList<Integer>);
 var
-  mIndex: Integer;
+  mIndex, mParent: Integer;
 begin
   for mIndex := 0 to High(ANodes) do
   begin
-    if ANodes[mIndex].Parent < 0 then
+    mParent := ListParent(ANodes, mIndex);
+    if mParent < 0 then
     begin
       ARoots.Add(mIndex);
     end
     else
     begin
-      AChildren[ANodes[mIndex].Parent].Add(mIndex);
+      AChildren[mParent].Add(mIndex);
     end;
   end;
 end;
@@ -585,7 +624,7 @@ var
 begin
   for mIndex := 0 to High(ANodes) do
   begin
-    if not Matches(ANodes[mIndex], AFilter) then
+    if not Matches(ANodes, mIndex, AFilter) then
     begin
       Continue;
     end;
@@ -594,7 +633,7 @@ begin
     while (mParent >= 0) and not AKeep[mParent] do
     begin
       AKeep[mParent] := True;
-      mParent := ANodes[mParent].Parent;
+      mParent := ListParent(ANodes, mParent);
     end;
   end;
 end;
@@ -695,12 +734,12 @@ begin
       mBest := mIndex;
     end;
   end;
-  // Lokale Routine oder Rumpf: zum äußersten Rumpf, von dort zur Deklaration.
-  while (mBest >= 0) and ANodes[mBest].InBody do
+  // Inhalt eines Rumpfs: zur innersten lokalen Routine bzw. zum äußersten Rumpf, von dort zur Deklaration.
+  while (mBest >= 0) and ANodes[mBest].InBody and not IsLocalRoutine(ANodes, mBest) do
   begin
     mBest := ANodes[mBest].Parent;
   end;
-  if (mBest >= 0) and ANodes[mBest].Hidden then
+  if (mBest >= 0) and ANodes[mBest].Hidden and not IsLocalRoutine(ANodes, mBest) then
   begin
     mBest := ANodes[mBest].Declaration;
   end;
