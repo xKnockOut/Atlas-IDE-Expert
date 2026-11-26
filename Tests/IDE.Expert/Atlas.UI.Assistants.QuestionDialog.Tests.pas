@@ -8,7 +8,6 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Assistants.Questions,
   Atlas.UI.Assistants.QuestionDialog;
 
 type
@@ -62,7 +61,8 @@ uses
   System.SysUtils,
   Atlas.Core.Assistants.Log,
   Atlas.UI.Assistants.Strings,
-  Atlas.UI.Assistants.LogFrame;
+  Atlas.UI.Assistants.LogFrame,
+  Atlas.Core.Assistants.Questions;
 
 function Sample(const AId: string; const AOptions: TArray<string>; AAllowText: Boolean): TAtlasQuestion;
 begin

@@ -438,7 +438,8 @@ begin
   mWorker := TThread.CreateAnonymousThread(
     procedure
     begin
-      FreeAndNil(mShared); // lsp-ignore: captured-loop-variable -- Absicht: der Thread gibt das Objekt später frei
+      // Absicht: Der Thread gibt das Objekt später frei.
+      FreeAndNil(mShared);
     end);
   mWorker.Start;
   mMonitor.PostTest;

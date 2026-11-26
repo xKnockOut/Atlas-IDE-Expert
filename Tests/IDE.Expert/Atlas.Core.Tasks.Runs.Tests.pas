@@ -34,11 +34,6 @@ uses
   Atlas.Core.Tasks.Matchers,
   Atlas.Core.Tasks.Runs;
 
-function Bytes(const AText: string): TBytes;
-begin
-  Result := TEncoding.UTF8.GetBytes(AText);
-end;
-
 function Run(const AName: string; AExitCode, AErrors, AWarnings: Integer): TAtlasTaskRun;
 var
   mIndex: Integer;

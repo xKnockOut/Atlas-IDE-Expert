@@ -114,7 +114,7 @@ var
 begin
   Assert.IsFalse(TAtlasExceptionRules.MessageMatches('(offen', True, '(offen'));
   Assert.IsFalse(TAtlasExceptionRules.ValidPattern('(offen', True, mError));
-  Assert.IsTrue(mError <> '', 'Grund genannt');
+  Assert.AreNotEqual('', mError, 'Grund genannt');
   Assert.IsTrue(TAtlasExceptionRules.ValidPattern('(offen', False, mError), 'ohne Ausdruck ist es Text');
   Assert.AreEqual('', mError);
   Assert.IsFalse(TAtlasExceptionRules.ValidPattern('  ', False, mError), 'leeres Muster');
@@ -296,8 +296,8 @@ begin
   mPlace.Location := 'Bericht.Druck.*';
   mRules := TAtlasExceptionRuleList.Create(mPlace);
   Assert.AreEqual(Ord(TAtlasExceptionRuleKind.Place), Ord(mPlace.Kind));
-  Assert.IsTrue(TAtlasExceptionRules.Kinds(True, True) = cAll);
-  Assert.IsTrue(TAtlasExceptionRules.Kinds(False, False) = []);
+  Assert.AreEqual<TAtlasExceptionRuleKinds>(cAll, TAtlasExceptionRules.Kinds(True, True));
+  Assert.AreEqual<TAtlasExceptionRuleKinds>([], TAtlasExceptionRules.Kinds(False, False));
   Assert.AreEqual(0, TAtlasExceptionRules.FirstMatch(mRules, TAtlasExceptionFacts.Create('EConvertError', 'x',
     'Bericht.Druck.TDruck.Zeile'), cAll));
   Assert.AreEqual(-1, TAtlasExceptionRules.FirstMatch(mRules, TAtlasExceptionFacts.Create('EConvertError', 'x',

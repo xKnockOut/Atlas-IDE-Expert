@@ -242,9 +242,10 @@ var
   mQuestion: TAtlasIssueSummaryQuestion;
   mStale: Boolean;
 begin
+  mLoaded := nil;
   mCache := TAtlasIssueSummaryCache.Create;
-  mLoaded := TAtlasIssueSummaryCache.Create;
   try
+    mLoaded := TAtlasIssueSummaryCache.Create;
     mSummary := Default(TAtlasIssueSummary);
     mSummary.Status := 'Stand äöü';
     mQuestion := Default(TAtlasIssueSummaryQuestion);

@@ -7,7 +7,6 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Debug.ReturnValues,
   Atlas.Core.Debug.ReturnFlow;
 
 type
@@ -45,7 +44,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Debug.ReturnValues;
 
 function Watch(const AName, AFileName: string; AEndLine: Integer): TAtlasReturnWatch;
 begin

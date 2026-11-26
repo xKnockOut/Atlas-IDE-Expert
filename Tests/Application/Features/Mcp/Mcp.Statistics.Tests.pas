@@ -187,9 +187,10 @@ var
   mArguments: TJSONObject;
   mSummary: TMcpCallSummary;
 begin
+  mStatistics := nil;
   mArguments := TJSONObject.Create;
-  mStatistics := TMcpStatistics.Create('C:\App', cNow);
   try
+    mStatistics := TMcpStatistics.Create('C:\App', cNow);
     mArguments.AddPair('file', 'C:\App\Run.pas');
     mArguments.AddPair('text', 'begin end.');
     mArguments.AddPair('line', TJSONNumber.Create(12));
@@ -259,10 +260,12 @@ var
   mStatistics: TMcpStatistics;
   mStats: TMcpSessionStatistics;
 begin
+  mServer := nil;
+  mDispatcher := nil;
   mStatistics := TMcpStatistics.Create('C:\App', cNow);
-  mServer := NewServer(mStatistics);
-  mDispatcher := TJsonRpcDispatcher.Create;
   try
+    mServer := NewServer(mStatistics);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mServer.Attach(mDispatcher);
     Send(mDispatcher, '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"echo","arguments":' +
       '{"text":"a"}}}');
@@ -289,10 +292,12 @@ var
   mStatistics: TMcpStatistics;
   mStats: TMcpSessionStatistics;
 begin
+  mServer := nil;
+  mDispatcher := nil;
   mStatistics := TMcpStatistics.Create('C:\App', cNow);
-  mServer := NewServer(mStatistics);
-  mDispatcher := TJsonRpcDispatcher.Create;
   try
+    mServer := NewServer(mStatistics);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mServer.Attach(mDispatcher);
     Send(mDispatcher, '{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"delphi://unit/A"}}');
     Send(mDispatcher, '{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"delphi://unit/B"}}');

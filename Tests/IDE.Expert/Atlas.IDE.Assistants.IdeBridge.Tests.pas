@@ -38,6 +38,8 @@ type
     FPosted: TList<TThreadProcedure>;
     FLimitReached: Boolean;
     FIds: Integer;
+    /// <summary>Anmeldung des Empfängers bei der Brücke.</summary>
+    FNotifier: Integer;
     FModels: TAtlasIdeAiModelsDone;
     procedure CreateBridge(AWithModels: Boolean);
     /// <summary>Alles ausführen, was die Brücke in den Hauptthread gereiht hat.</summary>
@@ -111,6 +113,10 @@ end;
 
 procedure TAtlasIdeAiBridgeTests.TearDown;
 begin
+  if FBridge <> nil then
+  begin
+    FBridge.RemoveNotifier(FNotifier);
+  end;
   FreeAndNil(FBridge);
   FTextRef := nil;
   FText := nil;
@@ -155,7 +161,7 @@ begin
       Inc(mSelf.FIds);
       Result := 'g' + IntToStr(mSelf.FIds);
     end);
-  FBridge.AddNotifier(TFakeAnswers.Create(FLog));
+  FNotifier := FBridge.AddNotifier(TFakeAnswers.Create(FLog));
 end;
 
 procedure TAtlasIdeAiBridgeTests.RunPosted;
@@ -179,7 +185,7 @@ begin
   CreateBridge(False);
   Assert.AreEqual('Atlas (lokal, llama3.1)', FBridge.Name);
   Assert.IsTrue(FBridge.Enabled);
-  Assert.IsTrue(FBridge.Features = [TAtlasIdeAiFeature.Chat, TAtlasIdeAiFeature.Instruction]);
+  Assert.AreEqual<TAtlasIdeAiFeatures>([TAtlasIdeAiFeature.Chat, TAtlasIdeAiFeature.Instruction], FBridge.Features);
   FreeAndNil(FBridge);
   CreateBridge(True);
   Assert.IsTrue(TAtlasIdeAiFeature.ListModels in FBridge.Features);
