@@ -38,7 +38,7 @@ Zurück zum [README](../../../README_DE.md)
 
 ### Editorleiste
 
-- mit Symbolen: Sprung zum interface- bzw. implementation-Teil (und zurück mit „↩ 214“), Methode suchen, Navigationsverlauf und beliebige Palettenbefehle
+- mit Symbolen: Sprung zum interface- bzw. implementation-Teil (und zurück mit „↩ 214“), Methode suchen (auch lokale Prozeduren und Funktionen in Methoden, als „TFoo.Bar › Lokal“ direkt hinter ihrer Methode), Navigationsverlauf und beliebige Palettenbefehle
 - „Zur uses-Klausel“ wechselt aus einer uses-Klausel zur anderen (interface ↔ implementation); fehlt sie, springt der Knopf zum Schlüsselwort `implementation` bzw. `interface`, ein weiterer Klick führt zurück. Der Tooltip nennt das Ziel, der Rücksprung führt zur Zeile vor dem ersten Klick
 - Überlaufmenü, frei belegbar, auch rechts in der Brotkrumenzeile
 

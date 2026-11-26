@@ -183,9 +183,17 @@ type
     /// <summary>Elemente der Unit-Ebene (Typen, Routinen, Konstanten, Variablen) in Quelltextreihenfolge; Rümpfe
     /// mit Deklaration nur einmal.</summary>
     class function UnitMembers(const ANodes: TAtlasOutlineNodes): TArray<Integer>; static;
-    /// <summary>Alle Methoden und Routinen der Unit in Quelltextreihenfolge, ohne lokale Routinen; Rümpfe mit
-    /// Deklaration nur einmal (als Deklaration). Für „Methode suchen“ der Editorleiste (#1101).</summary>
+    /// <summary>Alle Methoden und Routinen der Unit in Quelltextreihenfolge, lokale Routinen (auch verschachtelte)
+    /// direkt hinter ihrer Routine; Rümpfe mit Deklaration nur einmal (als Deklaration). Für „Methode suchen“ der
+    /// Editorleiste (#1101).</summary>
     class function Routines(const ANodes: TAtlasOutlineNodes): TArray<Integer>; static;
+    /// <summary>Name für „Methode suchen“: wie QualifiedName, lokale Routinen mit ihrer Routine davor
+    /// („TFoo.Bar › Lokal“).</summary>
+    class function RoutineName(const ANodes: TAtlasOutlineNodes; ANode: Integer): string; static;
+    /// <summary>Innerste der ARoutines (Reihenfolge wie Routines), deren Deklaration oder Rumpf die Zeile ALine
+    /// enthält; -1 ohne.</summary>
+    class function RoutineAt(const ANodes: TAtlasOutlineNodes; const ARoutines: TArray<Integer>;
+      ALine: Integer): Integer; static;
     /// <summary>Name mit Besitzer: Methoden einer Klasse als „TFoo.Bar“, sonst der Name.</summary>
     class function QualifiedName(const ANodes: TAtlasOutlineNodes; ANode: Integer): string; static;
     /// <summary>Kinder von ANode: Mitglieder eines Typs bzw. lokale Routinen im Rumpf einer Routine.</summary>
@@ -866,6 +874,63 @@ begin
   Result := Result + [NewCrumb(ANodes, ALines, AItem)];
 end;
 
+/// <summary>Lokale Routine: Routine im Rumpf einer Routine.</summary>
+function IsLocalRoutine(const ANodes: TAtlasOutlineNodes; ANode: Integer): Boolean;
+var
+  mParent: Integer;
+begin
+  Result := False;
+  if (ANode < 0) or (ANode > High(ANodes)) or not ANodes[ANode].InBody or not IsRoutine(ANodes[ANode]) then
+  begin
+    Exit;
+  end;
+  mParent := ANodes[ANode].Parent;
+  Result := (mParent >= 0) and IsRoutine(ANodes[mParent]);
+end;
+
+/// <summary>Je Knoten seine lokalen Routinen in Quelltextreihenfolge (in einem Lauf, auch für große Units).
+/// </summary>
+function LocalRoutines(const ANodes: TAtlasOutlineNodes): TArray<TArray<Integer>>;
+var
+  mIndex, mParent: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(ANodes));
+  for mIndex := 0 to High(ANodes) do
+  begin
+    if IsLocalRoutine(ANodes, mIndex) then
+    begin
+      mParent := ANodes[mIndex].Parent;
+      SetLength(Result[mParent], Length(Result[mParent]) + 1);
+      Result[mParent][High(Result[mParent])] := mIndex;
+    end;
+  end;
+end;
+
+/// <summary>Lokale Routinen von AOwner samt deren lokalen Routinen an AList ab ACount.</summary>
+procedure AddLocalRoutines(const ALocals: TArray<TArray<Integer>>; AOwner: Integer; var AList: TArray<Integer>;
+  var ACount: Integer);
+var
+  mLocal: Integer;
+begin
+  if (AOwner < 0) or (AOwner > High(ALocals)) then
+  begin
+    Exit;
+  end;
+  for mLocal in ALocals[AOwner] do
+  begin
+    AList[ACount] := mLocal;
+    Inc(ACount);
+    AddLocalRoutines(ALocals, mLocal, AList, ACount);
+  end;
+end;
+
+/// <summary>Liegt Zeile ALine zwischen Anfang und Ende von ANode?</summary>
+function SpansLine(const ANode: TAtlasOutlineNode; ALine: Integer): Boolean;
+begin
+  Result := (ALine >= ANode.StartLine) and (ALine <= ANode.EndLine);
+end;
+
 /// <summary>Glieder der Bedingungszweige um die Stelle (#1763), außen zuerst; Badge „if“.</summary>
 function ConditionalCrumbs(const ADirectives: TAtlasDirectives; ALine, ACharacter: Integer): TAtlasCrumbs;
 var
@@ -1096,22 +1161,57 @@ end;
 
 class function TAtlasBreadcrumbs.Routines(const ANodes: TAtlasOutlineNodes): TArray<Integer>;
 var
-  mIndex, mParent: Integer;
+  mIndex, mCount: Integer;
+  mLocals: TArray<TArray<Integer>>;
 begin
   Result := nil;
+  mLocals := LocalRoutines(ANodes);
+  SetLength(Result, Length(ANodes));
+  mCount := 0;
   for mIndex := 0 to High(ANodes) do
   begin
     if ANodes[mIndex].Hidden or ANodes[mIndex].InBody or not IsRoutine(ANodes[mIndex]) then
     begin
       Continue;
     end;
-    // Lokale Routinen (Eltern ist eine Routine) nicht.
-    mParent := ANodes[mIndex].Parent;
-    if (mParent >= 0) and IsRoutine(ANodes[mParent]) then
+    Result[mCount] := mIndex;
+    Inc(mCount);
+    // Lokale Routinen stehen im Rumpf, nicht an der Deklaration.
+    AddLocalRoutines(mLocals, Target(ANodes, mIndex, True), Result, mCount);
+  end;
+  SetLength(Result, mCount);
+end;
+
+class function TAtlasBreadcrumbs.RoutineName(const ANodes: TAtlasOutlineNodes; ANode: Integer): string;
+begin
+  if IsLocalRoutine(ANodes, ANode) then
+  begin
+    Result := RoutineName(ANodes, Target(ANodes, ANodes[ANode].Parent, False)) + ' › ' + ANodes[ANode].Name;
+  end
+  else
+  begin
+    Result := QualifiedName(ANodes, ANode);
+  end;
+end;
+
+class function TAtlasBreadcrumbs.RoutineAt(const ANodes: TAtlasOutlineNodes; const ARoutines: TArray<Integer>;
+  ALine: Integer): Integer;
+var
+  mRoutine, mBody: Integer;
+begin
+  Result := -1;
+  for mRoutine in ARoutines do
+  begin
+    if (mRoutine < 0) or (mRoutine > High(ANodes)) then
     begin
       Continue;
     end;
-    Result := Result + [mIndex];
+    mBody := Target(ANodes, mRoutine, True);
+    // Lokale Routinen folgen ihrer Routine: der letzte Treffer ist der innerste.
+    if SpansLine(ANodes[mRoutine], ALine) or SpansLine(ANodes[mBody], ALine) then
+    begin
+      Result := mRoutine;
+    end;
   end;
 end;
 
