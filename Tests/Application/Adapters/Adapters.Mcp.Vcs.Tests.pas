@@ -32,7 +32,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.History.Contract,
   Atlas.Common.Hotspots.Contract,
-  Atlas.Common.Mcp.Contract.Vcs,
+  Mcp.Contract.Vcs,
   Adapters.Mcp.Vcs,
   Core.VersionControlChanges,
   Atlas.Tests.TempFolder,

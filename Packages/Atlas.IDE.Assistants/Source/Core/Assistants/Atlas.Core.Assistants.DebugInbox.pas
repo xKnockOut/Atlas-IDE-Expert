@@ -11,7 +11,7 @@
 // gesetzte Haltepunkt (set_breakpoint), die Zahl der entfernten (remove_breakpoint) bzw. Wert und Typ
 // (debug_evaluate); Aufbau in docs/MCP.md. Zustände tragen nach einem Start "breakpointWarnings", wenn Haltepunkte
 // nicht greifen werden (#2895; die IDE zeigt dann keinen Dialog). Zeilen sind 1-basiert. Die Argumente hat der
-// MCP-Server schon geprüft (Atlas.Common.Mcp.IdeDebug); hier zählt nur, was das Plugin braucht. Gründe kommen in
+// MCP-Server schon geprüft (Mcp.IdeDebug); hier zählt nur, was das Plugin braucht. Gründe kommen in
 // der Sprache der Oberfläche als TAtlasDebugInboxTexts herein (Core kennt die Texttabellen nicht).
 
 interface

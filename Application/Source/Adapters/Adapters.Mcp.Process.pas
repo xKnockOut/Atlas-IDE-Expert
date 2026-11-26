@@ -8,7 +8,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Common.Mcp.Contract.Process;
+  Mcp.Contract.Process;
 
 type
   TMcpProcessAdapter = class(TInterfacedObject, IMcpProcessHost)

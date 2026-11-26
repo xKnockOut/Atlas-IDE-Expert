@@ -11,7 +11,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.History.Contract,
   Atlas.Common.Hotspots.Contract,
-  Atlas.Common.Mcp.Contract.Vcs,
+  Mcp.Contract.Vcs,
   Core.VersionControlChanges;
 
 type

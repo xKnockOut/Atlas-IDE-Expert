@@ -103,9 +103,9 @@ uses
   Atlas.Common.Semantics.ReferenceConfidence,
   Atlas.Common.Semantics.Hierarchies,
   Atlas.Common.Semantics.Renames,
-  Atlas.Common.Mcp.CodeTools,
-  Atlas.Common.Mcp.Confirm,
-  Atlas.Common.Mcp.EditTools,
+  Mcp.CodeTools,
+  Mcp.Confirm,
+  Mcp.EditTools,
   Atlas.Tests.SourceText,
   Atlas.Common.Lsp.References;
 

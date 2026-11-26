@@ -44,7 +44,7 @@
       und boolesch, keine Zyklen, x-node bekannt, ein Knoten nur auf einer
       x-page, kein Knoten ohne Einstellungen. Einstellungen.md bekommt den
       Abschnitt „Optionsseite: Unterpunkte und Hauptschalter“.
-    - Atlas.Common.Mcp.DocsIndexData (#2376): Suchindex für das MCP-Werkzeug
+    - Mcp.DocsIndexData (#2376): Suchindex für das MCP-Werkzeug
       search_atlas_docs aus beiden Schemata (Einstellungen, Tastenkürzel mit
       x-format shortcut) und den Abschnitten von docs/features/de|en. Wer eine
       Funktionsseite ändert, lässt das Skript ebenfalls laufen.
@@ -1229,7 +1229,7 @@ if (-not (Same-Unit $CurrentScope $ScopeText)) {
 # Einstellungen beider Schemata, Tastenkürzel (x-format shortcut) und die Abschnitte der Funktionsseiten
 # (docs/features/de|en, Überschriften ## und ###, Fenster an ihrem Anker window-…) als JSON, eine Zeile je Eintrag.
 # Eingebettet in den Server, damit das Werkzeug auch ohne Repository (Plugin-Installation) antwortet.
-$DocsUnitPath = Join-Path $Root 'Packages/Atlas.Common/Source/Mcp/Atlas.Common.Mcp.DocsIndexData.pas'
+$DocsUnitPath = Join-Path $Root 'Application/Source/Features/Mcp/Mcp.DocsIndexData.pas'
 $DocsKeyNames = @{
     0x08 = @('Rücktaste', 'Backspace'); 0x09 = @('Tab', 'Tab'); 0x0D = @('Eingabe', 'Enter'); 0x1B = @('Esc', 'Esc')
     0x20 = @('Leertaste', 'Space'); 0x21 = @('Bild auf', 'PgUp'); 0x22 = @('Bild ab', 'PgDn'); 0x23 = @('Ende', 'End')
@@ -1383,7 +1383,7 @@ foreach ($Lang in 'de', 'en') {
     }
 }
 $DocsSource = '[' + "`n" + ($DocsLines -join (",`n")) + "`n" + ']'
-Sync-Unit $DocsUnitPath (Text-Unit 'Atlas.Common.Mcp.DocsIndexData' @(
+Sync-Unit $DocsUnitPath (Text-Unit 'Mcp.DocsIndexData' @(
     '// Erzeugt von Tools/Update-ConfigDoc.ps1 aus schemas/atlas.schema.json, schemas/atlas-plugin.schema.json und',
     '// docs/features/de|en; nicht von Hand ändern. Suchindex für das MCP-Werkzeug search_atlas_docs (#2376).') `
     'Suchindex als JSON-Array (Einstellungen, Tastenkürzel, Abschnitte der Funktionsseiten).' 'AtlasDocsIndexJson' $DocsSource)

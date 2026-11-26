@@ -26,7 +26,7 @@ $Failures = [System.Collections.Generic.List[string]]::new()
 
 function New-Copy {
     $Target = Join-Path ([IO.Path]::GetTempPath()) ('atlas-experimental-' + [Guid]::NewGuid().ToString('N'))
-    foreach ($Folder in 'schemas', 'docs', 'Packages', 'Setup/Profile') {
+    foreach ($Folder in 'schemas', 'docs', 'Packages', 'Setup/Profile', 'Application/Source/Features/Mcp') {
         $Destination = Join-Path $Target $Folder
         New-Item -ItemType Directory -Force (Split-Path -Parent $Destination) | Out-Null
         Copy-Item -Recurse (Join-Path $Root $Folder) $Destination

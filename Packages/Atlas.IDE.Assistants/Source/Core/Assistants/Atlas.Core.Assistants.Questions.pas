@@ -6,7 +6,7 @@
 //   {"question": Text, "options": [Antworten], "allowText": true|false, "timeoutSeconds": n, "client": Name}
 // Das Plugin übernimmt ihn durch Umbenennen in <id>.taken (TAtlasFileInbox) und antwortet mit <id>.result.json:
 //   {"status": "answered", "answer": "…"}  bzw.  {"status": "declined"}  bzw.  {"status": "timeout"}
-// Gegenstück im MCP-Server: Atlas.Common.Mcp.IdeQuestions.
+// Gegenstück im MCP-Server: Mcp.IdeQuestions.
 // TAtlasQuestionQueue hält die offenen Fragen in der Reihenfolge ihres Eingangs: Das Fenster zeigt immer nur eine
 // (Current, die älteste nicht zurückgestellte), weitere warten. „Später“ stellt eine Frage zurück; sind nur noch
 // zurückgestellte offen, zeigt das Fenster keine, bis der Mensch sie über das Statusfeld wieder holt. Abgelaufene

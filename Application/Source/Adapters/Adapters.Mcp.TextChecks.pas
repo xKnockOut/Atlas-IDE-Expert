@@ -10,7 +10,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Mcp.Contract.TextChecks,
+  Mcp.Contract.TextChecks,
   Rules.Contract.Api;
 
 type

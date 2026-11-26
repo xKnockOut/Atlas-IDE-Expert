@@ -3,7 +3,7 @@
 // Aufrufstatistik einer MCP-Sitzung (#2611), gemeinsam für Server und Plugin: die Zahlen je Werkzeug, Ressource
 // und Prompt (Aufrufe, Fehler, Median und Höchstwert von Dauer und Antwortgröße, letzter fehlgeschlagener Aufruf),
 // ihre Form im Abschnitt mcp der Statusdatei (ToJson/FromJson) und die Zellen einer Tabelle ohne Sprachtexte
-// (Dauer, Größe, Fehler mit Quote). Der MCP-Server zählt (Atlas.Common.Mcp.Statistics); AtlasMonitor und das
+// (Dauer, Größe, Fehler mit Quote). Der MCP-Server zählt (Mcp.Statistics); AtlasMonitor und das
 // Fenster „Atlas-Server“ der IDE lesen die Statusdateien und zeigen die Zahlen mit denselben Zellen.
 // Argumente und Meldung fehlgeschlagener Aufrufe stehen gekennzeichnet (Atlas.Text.LogMarks); Anzeigen nehmen
 // TLogMarks.Plain.

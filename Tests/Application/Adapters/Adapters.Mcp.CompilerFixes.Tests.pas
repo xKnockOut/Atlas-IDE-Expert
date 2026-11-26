@@ -20,7 +20,7 @@ implementation
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Mcp.Contract.CompilerFixes,
+  Mcp.Contract.CompilerFixes,
   Atlas.Common.Editing.Contract.CompilerFixes,
   Adapters.Mcp.CompilerFixes;
 

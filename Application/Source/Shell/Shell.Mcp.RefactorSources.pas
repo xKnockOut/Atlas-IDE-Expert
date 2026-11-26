@@ -8,9 +8,9 @@ interface
 
 uses
   Atlas.Common.Logging.Contract,
-  Atlas.Common.Mcp.EditTools,
+  Mcp.EditTools,
   Core.WorkspaceGroup,
-  Core.Mcp.Context;
+  Mcp.Tools.Context;
 
 type
   TMcpRefactorSources = class
@@ -37,13 +37,13 @@ uses
   Rules.Contract,
   Rules.Engine,
   Rules.Builtin,
-  Atlas.Common.Mcp.Server,
+  Mcp.Server,
   Core.Workspace,
   Shell.Composition.Refactorings.Services,
   Shell.Mcp.RefactorHost,
-  Atlas.Common.Mcp.Contract.Formatting,
+  Mcp.Contract.Formatting,
   Shell.Composition.Mcp,
-  Atlas.Common.Mcp.RefactorTools;
+  Mcp.RefactorTools;
 
 /// <summary>Neue Datei aus refactor (#2150): UTF-8 mit BOM und CRLF wie neue Units der IDE, Ordner wird angelegt.
 /// </summary>

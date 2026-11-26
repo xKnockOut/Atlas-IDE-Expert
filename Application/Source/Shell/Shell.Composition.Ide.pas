@@ -92,7 +92,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.CacheDirectory,
-  Atlas.Common.Mcp.BuildTools,
+  Mcp.BuildTools,
   Atlas.Text.LogMarks;
 
 { TShellIde }

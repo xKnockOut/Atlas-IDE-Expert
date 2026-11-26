@@ -23,7 +23,7 @@ implementation
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Mcp.Contract.Formatting,
+  Mcp.Contract.Formatting,
   Atlas.Common.Editing.Contract.Formatting,
   Adapters.Mcp.Formatting;
 

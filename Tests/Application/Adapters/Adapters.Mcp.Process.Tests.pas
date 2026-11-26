@@ -23,7 +23,7 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Common.Mcp.Contract.Process,
+  Mcp.Contract.Process,
   Adapters.Mcp.Process,
   Platform.Server;
 

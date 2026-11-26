@@ -11,7 +11,7 @@
 // gewinnt, hat ihn; der MCP-Server löscht nach seinem Zeitlimit sonst die
 // .json und schreibt selbst), ändert den Puffer und antwortet mit
 //   <id>.result.json  {"applied": true|false, "reason": "...", "notOpen": true, "held": true}
-// Gegenstück im MCP-Server: Atlas.Common.Mcp.IdeEdits. Welche Dateien offen
+// Gegenstück im MCP-Server: Mcp.IdeEdits. Welche Dateien offen
 // sind, steht unter "open" in editor-dirty-<pid>.json (TAtlasDirtyExport).
 // Finden, Übernehmen und Antworten teilt er mit dem anderen Eingang
 // (TAtlasFileInbox in Atlas.Core.Assistants.Inbox).

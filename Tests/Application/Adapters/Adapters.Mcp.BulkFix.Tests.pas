@@ -22,7 +22,7 @@ implementation
 
 uses
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Mcp.Contract.BulkFix,
+  Mcp.Contract.BulkFix,
   Rules.Contract.Api,
   Adapters.Mcp.BulkFix;
 

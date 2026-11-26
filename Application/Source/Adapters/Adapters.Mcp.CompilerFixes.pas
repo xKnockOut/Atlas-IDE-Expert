@@ -6,7 +6,7 @@
 interface
 
 uses
-  Atlas.Common.Mcp.Contract.CompilerFixes,
+  Mcp.Contract.CompilerFixes,
   Atlas.Common.Editing.Contract.CompilerFixes;
 
 type

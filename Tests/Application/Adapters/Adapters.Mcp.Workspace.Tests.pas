@@ -36,7 +36,7 @@ uses
   Atlas.Common.Index.Processes,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Mcp.Contract.Workspace,
+  Mcp.Contract.Workspace,
   Adapters.Mcp.Workspace,
   Core.Bootstrap,
   Core.Workspace.Listings,

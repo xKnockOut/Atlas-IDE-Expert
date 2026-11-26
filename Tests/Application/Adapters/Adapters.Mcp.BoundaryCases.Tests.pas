@@ -19,7 +19,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Mcp.Contract.BoundaryCases,
+  Mcp.Contract.BoundaryCases,
   Atlas.Common.Editing.Contract.BoundaryCases,
   Adapters.Mcp.BoundaryCases;
 

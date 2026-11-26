@@ -11,7 +11,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Query.Contract,
-  Atlas.Common.Mcp.Contract.Workspace,
+  Mcp.Contract.Workspace,
   Core.WorkspaceGroup;
 
 type

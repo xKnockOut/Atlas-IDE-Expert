@@ -51,7 +51,8 @@ Die Regeln für die Packages prüft `Tools/Check-PackageDependencies.ps1` (uses-
 Nach der Rollenregel enthält ein Platform-Package nur technische Abstraktionen; der Fachcode des Servers
 (LSP-Methoden in `Lsp`, Prüfregeln in `Rules`, Refactoring- und Schnellbefehle in `Editing`,
 Namensauflösung in `Semantics`, MCP-Werkzeuge in `Mcp`) gehörte als Hosted-Features in die Anwendung.
-`Rules` ist umgezogen (`Application/Source/Features/Rules`, Units `Rules.*`); der übrige Fachcode liegt
+`Rules` und `Mcp` sind umgezogen (`Application/Source/Features/Rules` bzw. `.../Mcp`, Units `Rules.*` bzw. `Mcp.*`, die
+Werkzeuge des MCP-Modus als `Mcp.Tools.*`); der übrige Fachcode liegt
 bewusst weiter in `Atlas.Common`:
 
 - Die Verschiebung beträfe rund 300 Dateien mit Tests, jede `uses`-Klausel, alle Projektdateien und

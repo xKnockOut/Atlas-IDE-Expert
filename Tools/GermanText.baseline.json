@@ -6,7 +6,7 @@
   "Packages/Atlas.Common/Source/Editing/Atlas.Common.Editing.DocumentationCommands.pas": 1,
   "Packages/Atlas.Common/Source/Pascal/Atlas.Common.Pascal.ResourceStrings.pas": 7,
   "Packages/Atlas.Common/Source/JsonRpc/Atlas.Common.JsonRpc.Contract.pas": 1,
-  "Packages/Atlas.Common/Source/Mcp/Atlas.Common.Mcp.Prompts.pas": 84,
+  "Application/Source/Features/Mcp/Mcp.Prompts.pas": 84,
   "Application/Source/Features/Rules/Builtin/Rules.Builtin.Concurrency.Threads.pas": 1,
   "Application/Source/Features/Rules/Builtin/Rules.Builtin.Idioms.pas": 4,
   "Packages/Atlas.Common/Source/Semantics/Atlas.Common.Semantics.SystemIntrinsics.pas": 110,
