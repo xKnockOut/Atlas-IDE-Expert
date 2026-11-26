@@ -131,6 +131,7 @@ begin
   Assert.AreEqual(0, Count('  S := ''Siehe https://x.de/a'' + ''b bitte'';'), 'URL');
   Assert.AreEqual(0, Count('  S := ''Name ist Kunde_'' + ''Nummer hier'';'), 'Bezeichner mit _');
   Assert.AreEqual(0, Count('  S := ''<b>Fett'' + ''Text</b> hier'';'), 'Markup');
+  Assert.AreEqual(0, Count('  S := ''rerun Tests Unit.Tests.Finds,'' + ''Atlas.Core.Hover.Tests'';'), 'Namensliste');
   Assert.AreEqual(0, Count('  S := ''Fehler (%s).%s'' + ''Für diese Verbindung'';'), 'Format-Platzhalter');
   Assert.AreEqual(0, Count('  S := ''Wert %0:d'' + ''Teile da'';'), 'Platzhalter mit Index');
   Assert.AreEqual(0, Count('  S := ''1'' + ''2'';'), 'Zahlen');
@@ -199,6 +200,9 @@ begin
   Assert.IsTrue(TTextConcatWithoutSpaceRule.SeamIsTechnical('Mail an a', '@b.de'));
   Assert.IsFalse(TTextConcatWithoutSpaceRule.SeamIsTechnical('Ordner C:\Daten ist', 'Export'));
   Assert.IsFalse(TTextConcatWithoutSpaceRule.SeamIsTechnical('Bli Bla Blubb', 'Bla'));
+  Assert.IsTrue(TTextConcatWithoutSpaceRule.SeamIsTechnical('Siehe Unit1', '.pas'));
+  Assert.IsTrue(TTextConcatWithoutSpaceRule.SeamIsTechnical('Liste A.B,', 'C'));
+  Assert.IsFalse(TTextConcatWithoutSpaceRule.SeamIsTechnical('Ende.', ''));
 end;
 
 procedure TTextConcatRuleTests.SwitchedOff;

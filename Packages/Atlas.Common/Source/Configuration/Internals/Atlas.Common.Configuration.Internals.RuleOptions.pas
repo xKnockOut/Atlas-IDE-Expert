@@ -113,12 +113,12 @@ const
 
 const
   /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
-  cBooleanRuleOptions: array[0..28] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
+  cBooleanRuleOptions: array[0..29] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
     'includeRecords', 'includeFormVariables', 'checkUses', 'allowLazyInit', 'checkRound', 'includeFields',
     'allowSingleLineExit', 'allowSameLine', 'allowComments', 'onlyAfterRaisingCode', 'allowInProgram', 'unitLevel',
     'testsCountAsUse', 'stringLiteralsCountAsUse', 'allowShareMem', 'ignoreOverrides', 'requirePublic',
     'checkReturns', 'checkFree', 'allowFirstElement', 'implementation', 'managedFields', 'frameworkMembers',
-    'ignoreStrictPrivate', 'allowExceptionUse');
+    'ignoreStrictPrivate', 'allowExceptionUse', 'expressions');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
   cStringListRuleOptions: array[0..56] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
@@ -156,10 +156,11 @@ const
   /// <summary>max: Grenzwert der Metrik-Regeln (#66); minLines: commented-out-code (#942); min: string-if-chain
   /// (#1066) und prefer-case (#646); minRecordSize: managed-param-without-const (#975); maxSleepMs:
   /// blocking-call-in-main-thread (#959); maxLiteralLength: pos-arguments-swapped (#1045); ansiCodePage:
-  /// string-conversion (0 schaltet die Prüfung ab).</summary>
-  cLimitOptions: array[0..6] of TLimitOption = ((Key: 'max'; Min: 1), (Key: 'minLines'; Min: 1),
+  /// string-conversion (0 schaltet die Prüfung ab); wrapLength: text-concat-without-space (#3042, 0 schaltet die
+  /// Ausnahme ab).</summary>
+  cLimitOptions: array[0..7] of TLimitOption = ((Key: 'max'; Min: 1), (Key: 'minLines'; Min: 1),
     (Key: 'min'; Min: 2), (Key: 'minRecordSize'; Min: 1), (Key: 'maxSleepMs'; Min: 0),
-    (Key: 'maxLiteralLength'; Min: 1), (Key: 'ansiCodePage'; Min: 0));
+    (Key: 'maxLiteralLength'; Min: 1), (Key: 'ansiCodePage'; Min: 0), (Key: 'wrapLength'; Min: 0));
 
 /// <summary>Array aus Objekten, die alle Texte AKeys haben: "open" und "close" (pair-without-finally, #930),
 /// "start", "commit" und "rollback" (transaction-without-rollback, #965).</summary>

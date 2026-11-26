@@ -459,9 +459,10 @@ const
     '      "description": "Two string literals are joined with + and at the seam there is neither a space nor a separator: ''Bli Bla Blubb'' + ''Bla Bla Bla'' gives Bli Bla BlubbBla Bla Bla. Reported when a le' +
     'tter or digit meets a letter or digit, or , ; : ! ? meets a capital letter. Silent when the joined text does not look like text for people (identifiers, class names, at least three letters and a space' +
     ' are needed), when the word at the seam is a path, URL, mail address, identifier with _ or markup, when the left text ends with a format placeholder (%s can be the separator itself) and for long texts' +
-    ' wrapped by a tool (left literal with at least wrapLength characters, usually split in the middle of a word). A period counts as part of a name (''System.'' + ''SysUtils''). SQL is not exempt: ''SELECT a F' +
-    'ROM t'' + ''WHERE x'' is a real error. Medium confidence. Option expressions (off by default, low confidence) also reports a literal next to an expression (''Loading '' + Name is fine, ''Loading'' + Name is ' +
-    'not); separators such as sLineBreak, PathDelim or QuotedStr(…) stay silent. Quick fix: a space at the end of the left text (with an expression on the left at the start of the right text).",',
+    ' wrapped by a tool (left literal with at least wrapLength characters, usually split in the middle of a word). A period counts as part of a name: it is never a seam (''System.'' + ''SysUtils''), and a word' +
+    ' at the seam with a period inside (Unit.Class, Unit1.pas, 1.2) stays silent. SQL is not exempt: ''SELECT a FROM t'' + ''WHERE x'' is a real error. Medium confidence. Option expressions (off by default, lo' +
+    'w confidence) also reports a literal next to an expression (''Loading '' + Name is fine, ''Loading'' + Name is not); separators such as sLineBreak, PathDelim or QuotedStr(…) stay silent. Quick fix: a spac' +
+    'e at the end of the left text (with an expression on the left at the start of the right text).",',
     '      "bad": "ShowMessage(''Bli Bla Blubb'' + ''Bla Bla Bla'');",',
     '      "good": "ShowMessage(''Bli Bla Blubb '' + ''Bla Bla Bla'');",',
     '      "options": [',

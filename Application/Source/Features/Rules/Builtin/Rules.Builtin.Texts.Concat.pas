@@ -5,9 +5,10 @@
 //                              'Bli Bla Blubb' + 'Bla Bla Bla' ergibt „…BlubbBla…“. Gemeldet, wenn Buchstabe oder
 //                              Ziffer auf Buchstabe oder Ziffer trifft oder , ; : ! ? auf einen Großbuchstaben.
 //                              Still, wenn der zusammengesetzte Text nicht nach Text für Menschen aussieht
-//                              (Bezeichner, Klassennamen), wenn das Wort an der Naht ein Pfad, eine URL oder
-//                              Markup ist, wenn links ein Format-Platzhalter endet (er kann selbst der Trenner
-//                              sein) und bei maschinell umbrochenen langen Texten (linkes Literal ab "wrapLength"
+//                              (Bezeichner, Klassennamen), wenn das Wort an der Naht ein Pfad, eine URL,
+//                              Markup oder ein Name mit Punkt (Unit.Klasse) ist, wenn links ein
+//                              Format-Platzhalter endet (er kann selbst der Trenner sein) und bei maschinell
+//                              umbrochenen langen Texten (linkes Literal ab "wrapLength"
 //                              Zeichen). Mittlere Konfidenz. Option "expressions" (Standard aus, niedrige
 //                              Konfidenz): auch Literal + Ausdruck und Ausdruck + Literal ('Datei' + Name);
 //                              Trenner wie sLineBreak, PathDelim oder QuotedStr bleiben still.
@@ -33,7 +34,7 @@ type
     /// ein Format-Platzhalter am Ende von ALeft gilt als Trenner.</summary>
     class function MissingSpace(const ALeft, ARight: string): Boolean; static;
     /// <summary>Ist das Wort an der Naht (letztes Wort von ALeft und erstes von ARight) ein Pfad, eine URL, eine
-    /// Mailadresse, ein Bezeichner mit _ oder Markup?</summary>
+    /// Mailadresse, ein Bezeichner mit _, ein Name mit Punkt (A.B, Unit1.pas) oder Markup?</summary>
     class function SeamIsTechnical(const ALeft, ARight: string): Boolean; static;
   end;
 
@@ -148,11 +149,15 @@ class function TTextConcatWithoutSpaceRule.SeamIsTechnical(const ALeft, ARight: 
 var
   mWord: string;
   mChar: Char;
+  mIndex: Integer;
 begin
   mWord := TrailingWord(ALeft) + LeadingWord(ARight);
-  for mChar in mWord do
+  for mIndex := 1 to Length(mWord) do
   begin
-    if CharInSet(mChar, cTechnicalChars) then
+    mChar := mWord[mIndex];
+    // Punkt mitten im Wort: Unit- oder Klassenname, Dateiname, Versionsnummer (A.B, Unit1.pas, 1.2).
+    if CharInSet(mChar, cTechnicalChars) or ((mChar = '.') and (mIndex < Length(mWord)) and
+      mWord[mIndex + 1].IsLetterOrDigit) then
     begin
       Exit(True);
     end;
