@@ -93,6 +93,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.IDE.Foundation.EditorCover,
   Winapi.Messages,
   ToolsAPI,
   Atlas.ToolsApi.Editor.Buffer,
@@ -228,6 +229,11 @@ procedure TAtlasIdeCaretPopupHooks.PaintLine(const Rect: TRect; const Stage: TPa
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 begin
   if TAtlasGuard.Disabled(FFeature) then
+  begin
+    Exit;
+  end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
   begin
     Exit;
   end;

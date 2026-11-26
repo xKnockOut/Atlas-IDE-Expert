@@ -51,6 +51,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.IDE.Foundation.EditorCover,
   System.Math,
   Winapi.Windows,
   Vcl.Graphics,
@@ -186,6 +187,11 @@ var
 begin
   if TAtlasGuard.Disabled(TAtlasFeature.Debugger) or BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or
     not FActive then
+  begin
+    Exit;
+  end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
   begin
     Exit;
   end;

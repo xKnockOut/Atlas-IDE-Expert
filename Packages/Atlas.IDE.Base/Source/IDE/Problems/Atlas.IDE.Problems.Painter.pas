@@ -110,6 +110,7 @@ implementation
 
 uses
   Atlas.Plugin.Diagnostics.Guard,
+  Atlas.IDE.Foundation.EditorCover,
   Winapi.Windows,
   System.Math,
   Atlas.Plugin.Style.Color,
@@ -477,6 +478,11 @@ begin
   // Beim Debuggen ausgeblendet (#2962).
   if TAtlasGuard.Disabled(TAtlasFeature.Problems) or FHidden or BeforeEvent or (Stage <> plsEndPaint) or
     (Context = nil) then
+  begin
+    Exit;
+  end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
   begin
     Exit;
   end;

@@ -103,6 +103,7 @@ implementation
 
 uses
   Atlas.IDE.Debug.Session,
+  Atlas.IDE.Foundation.EditorCover,
   Atlas.Core.Debug.StopProgress,
   System.UITypes,
   Vcl.Dialogs,
@@ -428,6 +429,11 @@ var
   mTailKey, mText: string;
 begin
   if TAtlasGuard.Disabled(TAtlasFeature.Debugger) or BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
+  begin
+    Exit;
+  end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
   begin
     Exit;
   end;

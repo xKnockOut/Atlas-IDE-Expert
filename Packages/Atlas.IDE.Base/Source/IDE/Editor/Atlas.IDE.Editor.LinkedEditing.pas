@@ -121,6 +121,7 @@ implementation
 
 uses
   System.Math,
+  Atlas.IDE.Foundation.EditorCover,
   Vcl.Forms,
   Vcl.Graphics,
   Atlas.Text.Lines,
@@ -487,6 +488,11 @@ var
   mCaption: string;
 begin
   if not FSession.Active or TAtlasGuard.Disabled(TAtlasFeature.LinkedEditing) then
+  begin
+    Exit;
+  end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
   begin
     Exit;
   end;

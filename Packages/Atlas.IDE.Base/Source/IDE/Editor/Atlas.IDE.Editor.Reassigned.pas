@@ -115,6 +115,7 @@ implementation
 
 uses
   System.Math,
+  Atlas.IDE.Foundation.EditorCover,
   System.JSON,
   Atlas.Text.Lines,
   Atlas.Plugin.Style.Palette,
@@ -398,6 +399,11 @@ var
   mLine: Integer;
 begin
   if not FSet.HasUses or TAtlasGuard.Disabled(TAtlasFeature.Reassigned) then
+  begin
+    Exit;
+  end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
   begin
     Exit;
   end;

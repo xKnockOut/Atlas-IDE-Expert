@@ -109,6 +109,7 @@ implementation
 
 uses
   ToolsAPI,
+  Atlas.IDE.Foundation.EditorCover,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.ToolsApi.Editor.CloseRules,
   Atlas.Core.Editor.Elements,
@@ -300,6 +301,11 @@ var
   mMarks: TArray<TAtlasOwnershipMark>;
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
+  begin
+    Exit;
+  end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
   begin
     Exit;
   end;

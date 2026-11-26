@@ -101,6 +101,7 @@ implementation
 
 uses
   Atlas.IDE.Debug.Session,
+  Atlas.IDE.Foundation.EditorCover,
   System.IOUtils,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
@@ -392,6 +393,11 @@ var
   mX: Integer;
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or not CanPaint(Context) then
+  begin
+    Exit;
+  end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
   begin
     Exit;
   end;

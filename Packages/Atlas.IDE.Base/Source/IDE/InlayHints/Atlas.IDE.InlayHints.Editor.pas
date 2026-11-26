@@ -159,6 +159,7 @@ implementation
 
 uses
   System.Math,
+  Atlas.IDE.Foundation.EditorCover,
   Vcl.Forms,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Style.Color,
@@ -567,6 +568,11 @@ var
 begin
   // Durch die Sicherung abgeschaltet (#493).
   if TAtlasGuard.Disabled(TAtlasFeature.InlayHints) or BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
+  begin
+    Exit;
+  end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
   begin
     Exit;
   end;

@@ -60,6 +60,7 @@ implementation
 
 uses
   Atlas.Plugin.Diagnostics.Guard,
+  Atlas.IDE.Foundation.EditorCover,
   Winapi.Windows,
   Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Elements,
@@ -119,6 +120,11 @@ var
   mSaved, mTop, mTopRow: Integer;
   mSize: TSize;
 begin
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
+  begin
+    Exit;
+  end;
   try
     if BeforeEvent or (Stage <> plsEndPaint) or not ShowsIn(Context) then
     begin

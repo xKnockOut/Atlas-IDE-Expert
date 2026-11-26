@@ -100,6 +100,7 @@ implementation
 
 uses
   System.Math,
+  Atlas.IDE.Foundation.EditorCover,
   Atlas.Text.Lines,
   Atlas.Plugin.Style.Palette,
   Atlas.Plugin.Diagnostics.Guard,
@@ -428,6 +429,11 @@ var
   mBack: TAtlasColor;
 begin
   if (FState.Term = '') or TAtlasGuard.Disabled(TAtlasFeature.SelectionMatches) then
+  begin
+    Exit;
+  end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
   begin
     Exit;
   end;

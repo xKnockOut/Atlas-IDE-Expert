@@ -87,6 +87,7 @@ implementation
 
 uses
   Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.IDE.Foundation.EditorCover,
   Vcl.Graphics,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
@@ -278,6 +279,11 @@ var
   mBack: TAtlasColor;
 begin
   if not FShowing or not TAtlasLensPill.Ready(Stage, BeforeEvent, Context, FPoll.FetchedFile) then
+  begin
+    Exit;
+  end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
   begin
     Exit;
   end;

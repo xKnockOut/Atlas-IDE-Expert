@@ -221,6 +221,7 @@ uses
   Atlas.IDE.Foundation.Elements,
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Outline.StickyScroll,
+  Atlas.IDE.Foundation.EditorCover,
   Atlas.IDE.Problems.Controller,
   Atlas.Text.Columns;
 
@@ -290,12 +291,6 @@ end;
 function RowIndex(const ARect: TRect): Integer;
 begin
   Result := TAtlasGuideStroke.RowIndex(ARect.Top, ARect.Height);
-end;
-
-/// <summary>Zeile ARect liegt unter dem mitlaufenden Kopf von AFileName (TAtlasIdeStickyScroll).</summary>
-function UnderStickyHeader(const ARect: TRect; const AFileName: string): Boolean;
-begin
-  Result := TAtlasGuideStroke.UnderHeader(RowIndex(ARect), TAtlasIdeStickyScroll.CoveredRows(AFileName));
 end;
 
 /// <summary>Rechteck ARect zu AAlpha/255 mit AColor überblenden (#1788).</summary>
@@ -1112,7 +1107,7 @@ begin
   end;
   // Unter dem mitlaufenden Kopf zeichnet der Kopf die Linien selbst, jede erst unter ihrem Element.
   if (ALine < 0) or (ALine > High(FGuides)) or (Length(FGuides[ALine]) = 0) or
-    UnderStickyHeader(ARect, AContext.FileName) then
+    TAtlasIdeEditorCover.Covers(ARect, AContext) then
   begin
     Exit;
   end;
@@ -1139,7 +1134,7 @@ begin
   mPaint.Opacity := FPaint.Settings.PairGuideOpacity;
   mPaint.Width := TAtlasGuides.PenWidth(FPaint.Settings.PairGuideWidth, AContext.CellSize.cy,
     FBaseTextHeight);
-  mPaint.Covered := TAtlasIdeStickyScroll.CoveredRows(AContext.FileName);
+  mPaint.Covered := TAtlasIdeEditorCover.Rows(AContext);
   mPaint.Back := TAtlasColor(ColorToRGB(FBackdrop.Color));
   mPaint.HasBack := FBackdrop.Known;
   mPaint.Nesting := FNesting;
@@ -1184,7 +1179,7 @@ begin
   end;
   mLine := AContext.LogicalLineNum - 1;
   // Unter dem mitlaufenden Kopf nicht: der Kopf deckt die Zeile ab.
-  if (mLine < 0) or (mLine > High(FBandOf)) or (FBandOf[mLine] < 0) or UnderStickyHeader(ARect, AContext.FileName) or
+  if (mLine < 0) or (mLine > High(FBandOf)) or (FBandOf[mLine] < 0) or TAtlasIdeEditorCover.Covers(ARect, AContext) or
     not LineMatches(AContext, mLine, mCode) then
   begin
     Exit;

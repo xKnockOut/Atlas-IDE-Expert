@@ -72,6 +72,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.IDE.Foundation.EditorCover,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
@@ -270,6 +271,11 @@ var
   mText, mLine, mName: string;
   mOver: Boolean;
 begin
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
+  begin
+    Exit;
+  end;
   try
     Refresh;
     if not Showing or not TAtlasLensPill.Ready(Stage, BeforeEvent, Context, FFileName) then

@@ -58,6 +58,7 @@ implementation
 
 uses
   System.Math,
+  Atlas.IDE.Foundation.EditorCover,
   Atlas.Text.Lines,
   Atlas.Plugin.Style.Palette,
   Atlas.Plugin.Diagnostics.Guard,
@@ -159,6 +160,11 @@ var
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or (FByLine.Count = 0) or
     TAtlasGuard.Disabled(TAtlasFeature.Signature) then
+  begin
+    Exit;
+  end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
   begin
     Exit;
   end;

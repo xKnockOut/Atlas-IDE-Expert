@@ -101,6 +101,7 @@ implementation
 
 uses
   Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.IDE.Foundation.EditorCover,
   System.Math,
   Vcl.Graphics,
   Atlas.Plugin.Diagnostics.Guard,
@@ -635,6 +636,11 @@ var
   mSaved: Integer;
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or not PaintsLine(FSession, FFileName, Context) then
+  begin
+    Exit;
+  end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
   begin
     Exit;
   end;
