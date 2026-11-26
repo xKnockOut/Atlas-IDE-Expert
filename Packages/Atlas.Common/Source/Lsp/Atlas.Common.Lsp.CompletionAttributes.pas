@@ -54,7 +54,7 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.Attributes,
-  Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Common.Completion.FuzzyMatch,
   Atlas.Common.Lsp.CompletionGenerics;
 
 { TCompletionAttributes }

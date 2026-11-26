@@ -46,6 +46,8 @@ type
     FUnitIndex: TUnitIndex;
     FUnitIndexReady: Boolean;
     FIdeTypes: TArray<TIdeTypeEntry>;
+    FNamespaces: TArray<string>;
+    FSnippetSupport: Boolean;
     procedure SetTree(AValue: TSyntaxTree);
     procedure SetResolver(AValue: TNameResolver);
   public
@@ -84,6 +86,10 @@ type
     property Trigger: string read FTrigger write FTrigger;
     /// <summary>Typen aus den Packages der IDE (atlas/ideTypes), auch ohne Quelltext; nil ohne Plugin.</summary>
     property IdeTypes: TArray<TIdeTypeEntry> read FIdeTypes write FIdeTypes;
+    /// <summary>Namensräume des Projekts für Unit-Namen ohne Präfix; nil ohne Projekt.</summary>
+    property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    /// <summary>Der Client versteht Snippets (#51); sonst gehen Vorlagen als Klartext.</summary>
+    property SnippetSupport: Boolean read FSnippetSupport write FSnippetSupport;
   end;
 
 /// <summary>Zeilen von AText ohne Zeilenende (getrennt an LF, ein CR davor fällt weg).</summary>

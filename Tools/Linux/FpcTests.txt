@@ -250,7 +250,7 @@ Atlas.Common.Lsp.UpcomingConditions.Tests
 Atlas.Common.Lsp.ValueEdit.Tests
 Atlas.Common.Lsp.FoldingRanges.Tests
 Atlas.Common.Lsp.BlockFolds.Tests
-Atlas.Common.Lsp.FuzzyMatch.Tests
+Atlas.Common.Completion.FuzzyMatch.Tests
 Atlas.Common.Lsp.HoverValues.Tests
 Atlas.Common.Semantics.RequestCancellation.Tests
 Atlas.Common.Semantics.Feature.Tests

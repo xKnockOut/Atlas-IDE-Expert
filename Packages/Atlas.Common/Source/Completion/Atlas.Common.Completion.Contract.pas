@@ -299,7 +299,9 @@ type
   /// selbst führt der Sprachserver; eine Quelle nennt nur ihre Stelle.</summary>
   TCompletionSlot = (
     /// <summary>Methode aus Aufruf anlegen (#472): nach "(" allein, sonst oben in der Liste.</summary>
-    CreateMethod);
+    CreateMethod,
+    /// <summary>Kontextabhängige Code-Vorlagen am Zeilenanfang (#51): am Ende der Liste.</summary>
+    ContextSnippets);
 
 implementation
 

@@ -41,7 +41,6 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
@@ -56,7 +55,9 @@ uses
   Atlas.Common.Lsp.Completion,
   Atlas.Tests.TextEdits,
   Atlas.Tests.SourceText,
-  Atlas.Common.Completion.Contract;
+  Atlas.Common.Completion.Contract,
+  Atlas.Common.Completion.Request,
+  Atlas.Common.Editing.Completion.ContextSnippets;
 
 const
   cAnzeige =
@@ -269,6 +270,22 @@ begin
   Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
+/// <summary>Code-Vorlagen der Vervollständigung in ACode an APosition.</summary>
+function SnippetItems(const ACode: string; const APosition: TTextPosition; AMatching: TCompletionMatching;
+  ASnippetSupport: Boolean): TArray<TCompletionItem>;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := TCompletionRequest.Create(ACode, '', APosition);
+  try
+    mRequest.Matching := AMatching;
+    mRequest.SnippetSupport := ASnippetSupport;
+    Result := TEditingContextSnippetCompletion.Items(mRequest);
+  finally
+    mRequest.Free;
+  end;
+end;
+
 { TContextSnippetCompletionTests }
 
 procedure TContextSnippetCompletionTests.SnippetOnlyWithClientSupport;
@@ -282,7 +299,7 @@ begin
   mCode := Format(cSetter, ['ch|']);
   mContext := ContextAt(mCode, mCharacter);
   // Ohne snippetSupport: Klartext ohne "${", kein insertTextFormat.
-  mItems := TCompletionLists.ContextItems(nil, nil, mCode, TTextPosition.Create(mContext.Line, mCharacter),
+  mItems := SnippetItems(mCode, TTextPosition.Create(mContext.Line, mCharacter),
     TCompletionMatching.Fuzzy, False);
   Assert.AreEqual(1, Integer(Length(mItems)));
   Assert.IsFalse(mItems[0].Snippet);
@@ -299,7 +316,7 @@ begin
     mJson.Free;
   end;
   // Mit snippetSupport: Snippet mit Platzhalter.
-  mItems := TCompletionLists.ContextItems(nil, nil, mCode, TTextPosition.Create(mContext.Line, mCharacter),
+  mItems := SnippetItems(mCode, TTextPosition.Create(mContext.Line, mCharacter),
     TCompletionMatching.Fuzzy, True);
   Assert.AreEqual(1, Integer(Length(mItems)));
   Assert.IsTrue(mItems[0].Snippet);
@@ -313,7 +330,7 @@ begin
   // Passt das Wort nicht, kommt nichts.
   mCode := Format(cSetter, ['xyz|']);
   mContext := ContextAt(mCode, mCharacter);
-  Assert.AreEqual(0, Integer(Length(TCompletionLists.ContextItems(nil, nil, mCode, TTextPosition.Create(mContext.Line,
+  Assert.AreEqual(0, Integer(Length(SnippetItems(mCode, TTextPosition.Create(mContext.Line,
     mCharacter), TCompletionMatching.Prefix, True))));
 end;
 

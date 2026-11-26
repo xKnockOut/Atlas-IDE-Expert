@@ -30,7 +30,7 @@ uses
   System.StrUtils,
   Atlas.Common.Index.Contract,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Common.Completion.FuzzyMatch,
   Atlas.Common.Lsp.CompletionInherited;
 
 const

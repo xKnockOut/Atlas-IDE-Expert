@@ -43,7 +43,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Common.Completion.FuzzyMatch,
   Atlas.Common.Diagnostics.BugReport,
   Atlas.Plugin.Files.TextFile,
   Atlas.Plugin.Files.Format,

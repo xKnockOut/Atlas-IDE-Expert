@@ -70,7 +70,7 @@ uses
   System.Math,
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Common.Completion.FuzzyMatch,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

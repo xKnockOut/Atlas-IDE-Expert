@@ -35,14 +35,6 @@ type
     /// <summary>Wie oben mit AMatching = Fuzzy.</summary>
     class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const APosition: TTextPosition): TCompletionItems; overload; static;
-    /// <summary>Kontextabhängige Code-Vorlagen (#51) für die Zeile der Position von ARequest: prop, changed,
-    /// create, free. Mit ASnippetSupport als LSP-Snippet, sonst als Klartext ohne Platzhalter.</summary>
-    class function ContextItems(ARequest: TCompletionRequest; const ANamespaces: TArray<string>;
-      ASnippetSupport: Boolean): TArray<TCompletionItem>; overload; static;
-    /// <summary>Wie oben, mit Text, Position, Index und Matching einzeln.</summary>
-    class function ContextItems(const AIndex: ISymbolIndex; const ANamespaces: TArray<string>; const AText: string;
-      const APosition: TTextPosition; AMatching: TCompletionMatching;
-      ASnippetSupport: Boolean): TArray<TCompletionItem>; overload; static;
   end;
 
 implementation
@@ -51,10 +43,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Math,
-  Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.ContextSnippets,
   Atlas.Common.Diagnostics.RequestScope,
-  Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.CompletionUses,
   Atlas.Common.Lsp.CompletionGenerics,
@@ -148,42 +137,6 @@ begin
       Result := Result + [mName];
     end;
   end;
-end;
-
-/// <summary>Getipptes Wort vor dem Cursor in ALineText; AStart ist die Spalte davor.</summary>
-function WordBefore(const ALineText: string; ACharacter: Integer; out AStart: Integer): string;
-begin
-  AStart := Min(ACharacter, Length(ALineText));
-  while (AStart > 0) and CharInSet(ALineText[AStart], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
-  begin
-    Dec(AStart);
-  end;
-  Result := Copy(ALineText, AStart + 1, ACharacter - AStart);
-end;
-
-/// <summary>Eintrag für ASnippet; ersetzt ab AStart bis zum Cursor.</summary>
-function SnippetItem(ARequest: TCompletionRequest; const ASnippet: TContextSnippet; AStart: Integer;
-  ASnippetSupport: Boolean): TCompletionItem;
-var
-  mText: string;
-begin
-  Result := Default(TCompletionItem);
-  Result.Name := ASnippet.Name;
-  Result.Detail := ASnippet.Description;
-  Result.Kind := cKindSnippet;
-  Result.FilterText := ASnippet.Prefix;
-  Result.HasTextEdit := True;
-  Result.Snippet := ASnippetSupport;
-  mText := ASnippet.Text;
-  if not ASnippetSupport then
-  begin
-    mText := TContextSnippets.ToPlain(mText);
-  end;
-  Result.TextEdit := TTextEdit.Create(TTextRange.Create(ARequest.Position.Line, AStart, ARequest.Position.Line,
-    ARequest.Position.Character), mText);
-  Result.AdditionalEdits := ASnippet.AdditionalEdits;
-  // Atlas wertet die weiteren Änderungen dann nicht als uses-Ergänzung.
-  Result.Action := 'snippet';
 end;
 
 { TListBuilder }
@@ -502,50 +455,6 @@ class function TCompletionLists.Collect(AResolver: TNameResolver; const AIndex: 
   const AFileName: string; const APosition: TTextPosition): TCompletionItems;
 begin
   Result := Collect(AResolver, AIndex, ATree, AFileName, APosition, TCompletionMatching.Fuzzy);
-end;
-
-class function TCompletionLists.ContextItems(ARequest: TCompletionRequest; const ANamespaces: TArray<string>;
-  ASnippetSupport: Boolean): TArray<TCompletionItem>;
-var
-  mSlash: TSlashContext;
-  mSnippet: TContextSnippet;
-  mLineText, mWord: string;
-  mStart: Integer;
-begin
-  Result := nil;
-  mLineText := ARequest.LineText(ARequest.Position.Line);
-  // TContextSnippets prüft, dass sonst nichts in der Zeile steht.
-  mWord := WordBefore(mLineText, ARequest.Position.Character, mStart);
-  mSlash := Default(TSlashContext);
-  mSlash.Text := ARequest.Text;
-  mSlash.Line := ARequest.Position.Line;
-  mSlash.LineText := mLineText;
-  mSlash.Index := ARequest.Index;
-  mSlash.Namespaces := ANamespaces;
-  for mSnippet in TContextSnippets.At(mSlash, ARequest.Position.Character) do
-  begin
-    if (MatchScore(mSnippet.Prefix, mWord, ARequest.Matching) <> TFuzzyMatch.cNoMatch) or
-      (MatchScore(mSnippet.Name, mWord, ARequest.Matching) <> TFuzzyMatch.cNoMatch) then
-    begin
-      Result := Result + [SnippetItem(ARequest, mSnippet, mStart, ASnippetSupport)];
-    end;
-  end;
-end;
-
-class function TCompletionLists.ContextItems(const AIndex: ISymbolIndex; const ANamespaces: TArray<string>;
-  const AText: string; const APosition: TTextPosition; AMatching: TCompletionMatching;
-  ASnippetSupport: Boolean): TArray<TCompletionItem>;
-var
-  mRequest: TCompletionRequest;
-begin
-  mRequest := TCompletionRequest.Create(AText, '', APosition);
-  try
-    mRequest.Index := AIndex;
-    mRequest.Matching := AMatching;
-    Result := ContextItems(mRequest, ANamespaces, ASnippetSupport);
-  finally
-    mRequest.Free;
-  end;
 end;
 
 end.
