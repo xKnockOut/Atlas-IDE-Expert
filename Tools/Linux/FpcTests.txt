@@ -230,6 +230,8 @@ Rules.Instructions.Tests
 Atlas.Common.Lsp.FindingsPrompt.Tests
 Atlas.Common.Lsp.BreakpointCheck.Tests
 Atlas.Common.Lsp.DataAccessSites.Tests
+Atlas.Common.Lsp.DataFlow.Tests
+Atlas.Common.Lsp.DataFlow.Parts.Tests
 Atlas.Core.Debug.BreakpointCheck.Tests
 Atlas.Core.Debug.MethodBreakpoints.Tests
 Atlas.Core.Debug.RunTo.Tests

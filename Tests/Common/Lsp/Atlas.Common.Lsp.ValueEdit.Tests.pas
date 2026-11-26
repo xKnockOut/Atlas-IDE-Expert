@@ -33,6 +33,10 @@ type
     procedure EnumSetAndColor;
     [Test]
     procedure SetterAndReadOnly;
+    /// <summary>Neu deklarierte Property ohne Zugriffe (TButton: property Enabled;) hat den geerbten Setter.
+    /// </summary>
+    [Test]
+    procedure SetterOfRedeclaredProperty;
     [Test]
     procedure ExpressionNotInLine;
     [Test]
@@ -86,6 +90,21 @@ const
     '  N := B + W; D := 1.5; F := not F; C := ''x''; S := S + ''y'';' + cLB +   // 25
     '  M := mdHand; A := TArt.Bar; Mm := [mdAuto]; Farbe := 0; U := 1;' + cLB + // 26
     '  K.Betrag := K.Betrag + 1; K.Name := ''a''; N := K.Laenge;' + cLB +       // 27
+    'end;' + cLB +
+    'type' + cLB +
+    '  TBasis = class' + cLB +
+    '  protected' + cLB +
+    '    function GetAktiv: Boolean; virtual;' + cLB +
+    '    procedure SetAktiv(AValue: Boolean); virtual;' + cLB +
+    '    property Aktiv: Boolean read GetAktiv write SetAktiv;' + cLB +
+    '  end;' + cLB +
+    '  TKnopf = class(TBasis)' + cLB +
+    '  published' + cLB +
+    '    property Aktiv;' + cLB +
+    '  end;' + cLB +
+    'procedure Druecken(Kn: TKnopf);' + cLB +
+    'begin' + cLB +
+    '  Kn.Aktiv := not Kn.Aktiv;' + cLB +                                       // 42
     'end;' + cLB +
     'end.';
 
@@ -224,6 +243,20 @@ begin
   mReply := Run(27, 'K.Laenge');
   try
     Assert.IsTrue(TJsonRead.Flag(mReply, 'readOnly'));
+  finally
+    mReply.Free;
+  end;
+end;
+
+procedure TLspValueEditTests.SetterOfRedeclaredProperty;
+var
+  mReply: TJSONObject;
+begin
+  mReply := Run(42, 'Kn.Aktiv');
+  try
+    Assert.AreEqual('boolean', TJsonRead.Text(mReply, 'kind'));
+    Assert.AreEqual('SetAktiv', TJsonRead.Text(mReply, 'setter'));
+    Assert.IsFalse(TJsonRead.Flag(mReply, 'readOnly'), 'property Aktiv; erbt write SetAktiv');
   finally
     mReply.Free;
   end;
