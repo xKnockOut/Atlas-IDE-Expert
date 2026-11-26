@@ -53,6 +53,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Build.MessageView,
   Atlas.IDE.Build.LastMessages,
+  Atlas.IDE.Diagnostics.AddressSpace,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.CodeInsight.Adapters.BuildNotifications,
@@ -425,6 +426,9 @@ begin
     end;
   mEvents.OnLog := LogLine;
   mEvents.Add(TAtlasCompileLog.Create(mEvents, LogLine));
+  // Adressraum vor und nach jedem Gruppenlauf ins Protokoll: Läuft er in der 32-Bit-IDE voll, scheitert dcc mit
+  // internen Fehlern.
+  mEvents.Add(TAtlasAddressSpaceLog.Create);
   // Release-Build-Wächter (#533), Prüfung vor dem Kompilieren (#529) und Läufer der Builds auf Auftrag (#261)
   // meldet das Modul Build-Pipeline an und ab, die Projektaufgaben vor dem Build (#900) das Modul Build (#1455).
   // Compilermeldungen aus dem Reiter „Build“ an den Server (#528).
