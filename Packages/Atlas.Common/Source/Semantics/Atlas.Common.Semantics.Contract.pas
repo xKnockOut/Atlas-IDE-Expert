@@ -10,6 +10,8 @@
 // - TUsesUnitInfo, TUsesResolution und ihre Funktionstypen beschreiben die
 //   Nutzung der uses-Einträge aus der Namensauflösung (#1925, TUsesUsage),
 //   die die uses-Aktionen von Editing auswerten.
+// - TCodeActionSite ist die Stelle einer Anfrage nach Code-Aktionen, die der
+//   Sprachserver an die Aktionen aus Editing gibt (#42).
 
 interface
 
@@ -17,6 +19,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Configuration.Contract,
   // Genehmigte Ausnahme der Rollenmatrix (Architektur.md, "Genehmigte Ausnahmen"): wie in Rules.Contract ist
   // der Syntaxbaum die Datengrundlage und hängt selbst nur an Contracts.
   Atlas.Common.Pascal.SyntaxTree;
@@ -108,6 +111,26 @@ type
     GroupOf: TUsesGroupFunc;
     /// <summary>Resolve für AText, sonst eine Nutzung ohne Active.</summary>
     function Resolution(const AText: string; const AInactive: TArray<TTextRange>): TUsesResolution;
+  end;
+
+  /// <summary>Stelle einer Anfrage nach Code-Aktionen in einer Unit, gemeinsam für den Sprachserver (ILspSourceActions)
+  /// und Editing (IEditingCodeActions); der Baum geht nur als IPascalSyntaxTree über die Grenze.</summary>
+  TCodeActionSite = record
+    Uri: string;
+    Text: string;
+    /// <summary>Baum zu Text; der Aufrufer hält ihn am Leben, solange die Anfrage läuft.</summary>
+    Tree: IPascalSyntaxTree;
+    Range: TTextRange;
+    /// <summary>Index aus dem Umfeld der Prüfregeln; nil ohne.</summary>
+    Index: ISymbolIndex;
+    Style: TFormatStyle;
+    Refactoring: TRefactoringSettings;
+    /// <summary>Die Prüfregeln bieten in der Zeile von Range schon „Feld im Destruktor freigeben“ an.</summary>
+    RuleFreesField: Boolean;
+    /// <summary>Der Client fragt Schnellkorrekturen und Umbauten an (quickfix, refactor.*).</summary>
+    WantsEditing: Boolean;
+    /// <summary>Der Client fragt ausdrücklich source.removeUnusedImports an (#284).</summary>
+    WantsRemoveUnused: Boolean;
   end;
 
 implementation

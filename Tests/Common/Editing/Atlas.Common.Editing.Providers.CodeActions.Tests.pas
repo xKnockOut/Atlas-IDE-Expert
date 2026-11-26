@@ -72,9 +72,9 @@ begin
   end;
 end;
 
-function SiteAt(const AText: string; ATree: TSyntaxTree; ALine: Integer): TEditingCodeActionSite;
+function SiteAt(const AText: string; ATree: TSyntaxTree; ALine: Integer): TCodeActionSite;
 begin
-  Result := Default(TEditingCodeActionSite);
+  Result := Default(TCodeActionSite);
   Result.Uri := 'file:///C:/P/Haupt.pas';
   Result.Text := AText;
   Result.Tree := TSyntaxTreeHandles.Wrap(ATree);
@@ -90,7 +90,7 @@ procedure TEditingCodeActionsProviderTests.StructureFollowsClassActionsSwitch;
 var
   mActions: IEditingCodeActions;
   mTree: TSyntaxTree;
-  mSite: TEditingCodeActionSite;
+  mSite: TCodeActionSite;
 begin
   mActions := TEditingComposition.CodeActions(Default(TEditingCodeActionSettings));
   mTree := TSyntaxTreeCache.Parse(cClassText);
@@ -99,7 +99,7 @@ begin
     Assert.IsTrue(Pos('Getter, Setter und Feld für Name erzeugen|', Titles(mActions.Structure(mSite))) > 0);
     mSite.Refactoring.ClassActions := False;
     Assert.AreEqual(0, Pos('Getter, Setter', Titles(mActions.Structure(mSite))));
-    mSite := Default(TEditingCodeActionSite);
+    mSite := Default(TCodeActionSite);
   finally
     mTree.Free;
   end;
@@ -109,7 +109,7 @@ procedure TEditingCodeActionsProviderTests.UsesActionsNeedContext;
 var
   mSettings: TEditingCodeActionSettings;
   mTree: TSyntaxTree;
-  mSite: TEditingCodeActionSite;
+  mSite: TCodeActionSite;
 begin
   mTree := TSyntaxTreeCache.Parse(cUsesText);
   try
@@ -134,7 +134,7 @@ begin
       end;
     Assert.IsTrue(Pos('Vcl.Grids entfernen|', Titles(TEditingComposition.CodeActions(mSettings)
       .UsesActions(mSite))) > 0);
-    mSite := Default(TEditingCodeActionSite);
+    mSite := Default(TCodeActionSite);
   finally
     mTree.Free;
   end;
@@ -144,7 +144,7 @@ procedure TEditingCodeActionsProviderTests.OrganizeImportsRemovesDuplicates;
 var
   mActions: IEditingCodeActions;
   mTree: TSyntaxTree;
-  mSite: TEditingCodeActionSite;
+  mSite: TCodeActionSite;
   mAction: TCodeAction;
 begin
   mActions := TEditingComposition.CodeActions(Default(TEditingCodeActionSettings));
@@ -154,7 +154,7 @@ begin
     Assert.IsTrue(mActions.OrganizeImports(mSite, mAction));
     Assert.AreEqual(cOrganizeImportsKind, mAction.Kind);
     Assert.IsTrue(Length(mAction.Edits) > 0);
-    mSite := Default(TEditingCodeActionSite);
+    mSite := Default(TCodeActionSite);
     mAction := Default(TCodeAction);
   finally
     mTree.Free;

@@ -7,7 +7,8 @@ interface
 
 uses
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.Contract.CodeActions;
+  Atlas.Common.Editing.Contract.CodeActions,
+  Atlas.Common.Semantics.Contract;
 
 type
   TEditingCodeActionsProvider = class(TInterfacedObject, IEditingCodeActions)
@@ -15,12 +16,12 @@ type
     FSettings: TEditingCodeActionSettings;
   public
     constructor Create(const ASettings: TEditingCodeActionSettings);
-    function Structure(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
-    function MissingBodies(const ASite: TEditingCodeActionSite; out AAction: TCodeAction): Boolean;
-    function Statements(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
-    function UsesActions(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
-    function Declarations(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
-    function OrganizeImports(const ASite: TEditingCodeActionSite; out AAction: TCodeAction): Boolean;
+    function Structure(const ASite: TCodeActionSite): TArray<TCodeAction>;
+    function MissingBodies(const ASite: TCodeActionSite; out AAction: TCodeAction): Boolean;
+    function Statements(const ASite: TCodeActionSite): TArray<TCodeAction>;
+    function UsesActions(const ASite: TCodeActionSite): TArray<TCodeAction>;
+    function Declarations(const ASite: TCodeActionSite): TArray<TCodeAction>;
+    function OrganizeImports(const ASite: TCodeActionSite; out AAction: TCodeAction): Boolean;
   end;
 
 implementation
@@ -35,7 +36,6 @@ uses
   Atlas.Common.Pascal.InactiveRegions,
   Atlas.Common.Pascal.Destructors,
   Atlas.Common.Pascal.DocComments,
-  Atlas.Common.Semantics.Contract,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Editing.FreeFields,
   Atlas.Common.Editing.CodeActions,
@@ -64,7 +64,7 @@ begin
 end;
 
 /// <summary>Umgebung der Klassen-Aktionen an ASite; ohne Einstellung nur mit der Datei.</summary>
-function ClassContext(const ASettings: TEditingCodeActionSettings; const ASite: TEditingCodeActionSite): TClassActionContext;
+function ClassContext(const ASettings: TEditingCodeActionSettings; const ASite: TCodeActionSite): TClassActionContext;
 var
   mEnvironment: TEditingClassEnvironment;
 begin
@@ -81,7 +81,7 @@ begin
   Result.Style := ASite.Style;
 end;
 
-function TEditingCodeActionsProvider.Structure(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
+function TEditingCodeActionsProvider.Structure(const ASite: TCodeActionSite): TArray<TCodeAction>;
 var
   mTree: TSyntaxTree;
 begin
@@ -101,14 +101,14 @@ begin
   end;
 end;
 
-function TEditingCodeActionsProvider.MissingBodies(const ASite: TEditingCodeActionSite; out AAction: TCodeAction): Boolean;
+function TEditingCodeActionsProvider.MissingBodies(const ASite: TCodeActionSite; out AAction: TCodeAction): Boolean;
 begin
   // Fehlende Rümpfe mit classCompletion.* (#1834) über den Host der Klassen-Aktionen.
   Result := TClassActions.MissingBodies(ASite.Text, TSyntaxTreeHandles.TreeOf(ASite.Tree), ASite.Range.StartPos,
     ClassContext(FSettings, ASite), AAction);
 end;
 
-function TEditingCodeActionsProvider.Statements(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
+function TEditingCodeActionsProvider.Statements(const ASite: TCodeActionSite): TArray<TCodeAction>;
 var
   mAction: TCodeAction;
   mSettings: TStringLiteralSettings;
@@ -133,7 +133,7 @@ begin
     ASite.Range, mSettings, mMultiline);
 end;
 
-function TEditingCodeActionsProvider.UsesActions(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
+function TEditingCodeActionsProvider.UsesActions(const ASite: TCodeActionSite): TArray<TCodeAction>;
 var
   mUsesContext: TUsesContext;
   mDefines: TArray<string>;
@@ -153,7 +153,7 @@ begin
     ASite.WantsEditing, ASite.WantsRemoveUnused);
 end;
 
-function TEditingCodeActionsProvider.Declarations(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
+function TEditingCodeActionsProvider.Declarations(const ASite: TCodeActionSite): TArray<TCodeAction>;
 var
   mTree: TSyntaxTree;
   mSettings: TMemberOrderSettings;
@@ -186,7 +186,7 @@ begin
   end;
 end;
 
-function TEditingCodeActionsProvider.OrganizeImports(const ASite: TEditingCodeActionSite;
+function TEditingCodeActionsProvider.OrganizeImports(const ASite: TCodeActionSite;
   out AAction: TCodeAction): Boolean;
 var
   mOrder: TUsesRewrite;
