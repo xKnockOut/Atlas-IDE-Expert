@@ -9,7 +9,7 @@ interface
 uses
   System.JSON,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.Commands,
+  Lsp.Commands,
   Shell.Composition.Refactorings.Services;
 
 type

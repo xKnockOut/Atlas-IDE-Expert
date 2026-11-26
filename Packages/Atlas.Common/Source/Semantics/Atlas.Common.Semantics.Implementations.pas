@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Semantics.Implementations;
 
 // Ziele für Gehe zu Implementierung; die Anfrage textDocument/implementation
-// beantwortet Atlas.Common.Lsp.Implementations:
+// beantwortet Lsp.Implementations:
 //   - bei virtuellen, abstrakten und Interface-Methoden alle Rümpfe in den Nachfahren
 //     (bei Klassenmethoden mit Rumpf auch den eigenen), samt Methodenzuordnungen und
 //     Delegation über implements (TImplementationSites, #2635),

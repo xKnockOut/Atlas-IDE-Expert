@@ -14,7 +14,7 @@
 // hören über IAtlasBuildVerdictListener darauf (#1455).
 //
 // Welche Meldungen in der Basislinie stehen, weiß der Server
-// (atlas.classifyCompilerMessages, Atlas.Common.Lsp.CompilerBaseline). Run
+// (atlas.classifyCompilerMessages, Lsp.CompilerBaseline). Run
 // fragt ihn über AClassify und bewertet ohne Server oder bei Fehler mit allen
 // Meldungen. In die Basislinie übernimmt atlas.baselineCompilerMessages.
 

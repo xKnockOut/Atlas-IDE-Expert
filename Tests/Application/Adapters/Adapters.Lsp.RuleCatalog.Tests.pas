@@ -22,7 +22,7 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Lsp.Contract,
+  Lsp.Contract,
   Rules.Contract.Api,
   Rules.Providers.CatalogInfo,
   Adapters.Lsp.RuleCatalog;

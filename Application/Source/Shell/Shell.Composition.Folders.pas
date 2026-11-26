@@ -18,7 +18,7 @@ uses
   Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Projects.Selection,
   Atlas.Common.Index.IdeProject,
-  Atlas.Common.Lsp.WorkspaceFolders,
+  Lsp.WorkspaceFolders,
   Core.Workspace,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings,

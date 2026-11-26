@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Profiling.Contract;
 
-// Stichproben-Profiler (#2057), Vertrag des Probers: Der Server (Atlas.Common.Lsp.Profiler) startet und beendet
+// Stichproben-Profiler (#2057), Vertrag des Probers: Der Server (Lsp.Profiler) startet und beendet
 // einen Prober; der Prober hält die Threads des Zielprogramms reihum kurz an, liest ihre Aufrufstapel als rohe
 // Adressen und fasst gleiche Stapel zusammen (TAtlasRawStacks). Aufgelöst wird erst nach dem Lauf
 // (Atlas.Common.Profiling.Sampling). Umsetzung unter Windows: Atlas.Windows.Profiling.Sampler.

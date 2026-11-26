@@ -1,0 +1,574 @@
+﻿unit Lsp.CodeActions;
+
+// textDocument/codeAction (#42): Korrekturen und Unterdrückungen zu
+// Regeltreffern, try/finally um Create-Zuweisungen und fehlende
+// Methodenrümpfe. Die Aktionen an Klasse, Anweisung, uses und Deklarationen
+// steuert der Host über ILspSourceActions bei (aus Editing); hier nur Protokoll und Regelaufruf.
+//
+// Für editor.codeActionsOnSave (#182) gibt es source.organizeImports (uses
+// aufräumen, sortieren über "sortUses") und source.fixAll (alle als sicher
+// markierten Korrekturen). Beide kommen nur, wenn der Client sie über
+// context.only ausdrücklich anfragt. Ebenso source.removeUnusedImports (#284);
+// "fehlende Unit ergänzen" und "ins implementation verschieben" kommen mit den
+// übrigen Korrekturen, sobald SourceActions sie liefert. Weitere Aktionen
+// mit Dateioperationen (Testunit anlegen, #274) kommen über ExtraActions.
+// Die Aktionen schreibt Atlas.Common.CodeActions.Json.
+
+interface
+
+uses
+  System.SysUtils,
+  System.JSON,
+  Atlas.Common.JsonRpc.Contract,
+  Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Configuration.Contract,
+  Lsp.Contract;
+
+type
+  /// <summary>Aktionen in Formulardateien, z. B. binär gespeicherte in Text umwandeln (#122).</summary>
+  TFormActionsFunc = reference to function(const AUri, AText: string; const ARange: TTextRange): TArray<TCodeAction>;
+  /// <summary>Formatstil für AUri (#43), etwa für die Einrückung von try/finally (#42).</summary>
+  TCodeActionStyleProvider = reference to function(const AUri: string): TFormatStyle;
+  /// <summary>Einstellungen "refactoring" für AUri, etwa tryFinally und classActions (#42).</summary>
+  TCodeActionRefactoringProvider = reference to function(const AUri: string): TRefactoringSettings;
+
+  /// <summary>Weitere Aktionen als fertige LSP-CodeActions, etwa mit Dateioperationen (#274). Der
+  /// Aufrufer übernimmt die Objekte.</summary>
+  TExtraActionsFunc = reference to function(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
+
+  TLspCodeActions = class
+  public const
+    cMethod = 'textDocument/codeAction';
+    /// <summary>So lange wartet die Glühbirne auf einen laufenden Lauf der Prüfregeln am selben Text (#1761).
+    /// </summary>
+    cRuleWaitMs = 1500;
+  private
+    FStore: IDocumentStore;
+    FRules: ILspRuleActions;
+    FSourceActions: ILspSourceActions;
+    FFormActions: TFormActionsFunc;
+    FFormatStyleFor: TCodeActionStyleProvider;
+    FRefactoringFor: TCodeActionRefactoringProvider;
+    FExtraActions: TExtraActionsFunc;
+    function FormFileActions(const AUri, AText: string; const ARange: TTextRange): TJSONArray;
+    function HandleCodeAction(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+    function Collect(const AUri: string; const ARange: TTextRange; const AOnly: TArray<string>;
+      const ACancellation: IJsonRpcCancellationToken): TJSONArray;
+  public
+    /// <summary>ARules nil = ohne Prüfregeln: keine Treffer, keine Aktionen zu Treffern.</summary>
+    constructor Create(const AStore: IDocumentStore; const ARules: ILspRuleActions);
+    procedure Attach(ADispatcher: TJsonRpcDispatcher);
+    /// <summary>Capability für initialize. Der Aufrufer übernimmt das Objekt.</summary>
+    class function Capability: TJSONObject; static;
+    /// <summary>True, wenn AKind unter einer der angefragten Arten liegt (LSP "only"); leeres AOnly = alle.</summary>
+    class function KindRequested(const AKind: string; const AOnly: TArray<string>): Boolean; static;
+    /// <summary>Alle Code-Aktionen an ARange im geöffneten Dokument AUri wie textDocument/codeAction ohne "only",
+    /// ohne Abbruch (MCP-Werkzeug refactor, #2150); leer, wenn das Dokument nicht geöffnet ist. Der Aufrufer übernimmt
+    /// das Array.</summary>
+    function ActionsAt(const AUri: string; const ARange: TTextRange): TJSONArray;
+    /// <summary>Aktionen an Klasse, Anweisung, uses und Deklarationen; ohne Zuweisung nur die der Prüfregeln und
+    /// ExtraActions.</summary>
+    property SourceActions: ILspSourceActions read FSourceActions write FSourceActions;
+    /// <summary>Ohne Zuweisung gilt der Standard-Formatstil.</summary>
+    property FormatStyleFor: TCodeActionStyleProvider read FFormatStyleFor write FFormatStyleFor;
+    /// <summary>Ohne Zuweisung gelten die Vorgaben (try/finally und Klassen-Aktionen an).</summary>
+    property RefactoringFor: TCodeActionRefactoringProvider read FRefactoringFor write FRefactoringFor;
+    /// <summary>Aktionen in .dfm/.fmx; ohne Zuweisung keine.</summary>
+    property FormActions: TFormActionsFunc read FFormActions write FFormActions;
+    /// <summary>Weitere Aktionen in Units (Testunit anlegen und wechseln, #274/#189); ohne Zuweisung keine.</summary>
+    property ExtraActions: TExtraActionsFunc read FExtraActions write FExtraActions;
+  end;
+
+implementation
+
+uses
+  System.Generics.Collections,
+  System.Diagnostics,
+  System.StrUtils,
+  Atlas.Common.JsonRpc.PendingRequests,
+  Atlas.Common.JsonRpc.CurrentRequest,
+  Atlas.Common.JsonRpc.Positions,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Findings.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Dfm.Parser,
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json,
+  Atlas.Common.CodeActions.Json,
+  Atlas.Common.Pascal.TreeHandles,
+  Atlas.Common.Semantics.Contract;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspCodeActionsText = (FieldsTextDocumentUriAndRange, CopyFindingAsPrompt);
+
+const
+  cTexts: array[TLspCodeActionsText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri" und "range" fehlen in '; En: 'Fields "textDocument.uri" and "range" missing in '),
+    (De: 'Befund %s als Auftrag für KI-Assistenten kopieren'; En: 'Copy finding %s as task for an AI assistant'));
+
+{$SCOPEDENUMS OFF}
+
+{ TLspCodeActions }
+
+class function TLspCodeActions.KindRequested(const AKind: string; const AOnly: TArray<string>): Boolean;
+var
+  mOnly: string;
+begin
+  Result := AOnly = nil;
+  // "source" umfasst "source.fixAll", aber nicht "sourceX".
+  for mOnly in AOnly do
+  begin
+    if SameText(AKind, mOnly) or StartsText(mOnly + '.', AKind) then
+    begin
+      Result := True;
+    end;
+  end;
+end;
+
+constructor TLspCodeActions.Create(const AStore: IDocumentStore; const ARules: ILspRuleActions);
+begin
+  inherited Create;
+  FStore := AStore;
+  FRules := ARules;
+end;
+
+function TLspCodeActions.FormFileActions(const AUri, AText: string; const ARange: TTextRange): TJSONArray;
+var
+  mAction: TCodeAction;
+begin
+  Result := TJSONArray.Create;
+  if Assigned(FFormActions) then
+  begin
+    for mAction in FFormActions(AUri, AText, ARange) do
+    begin
+      Result.AddElement(TCodeActionsJson.ActionToJson(AUri, mAction));
+    end;
+  end;
+end;
+
+procedure TLspCodeActions.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  ADispatcher.RegisterConcurrentRequest(cMethod, HandleCodeAction);
+end;
+
+class function TLspCodeActions.Capability: TJSONObject;
+var
+  mKinds: TJSONArray;
+begin
+  mKinds := TJSONArray.Create;
+  mKinds.Add(cQuickFixKind);
+  mKinds.Add(cRewriteKind);
+  mKinds.Add(cExtractKind);
+  mKinds.Add(cOrganizeImportsKind);
+  mKinds.Add(cFixAllKind);
+  mKinds.Add(cRemoveUnusedKind);
+  Result := TJSONObject.Create;
+  Result.AddPair('codeActionKinds', mKinds);
+end;
+
+
+type
+  /// <summary>Sammelt die Aktionen einer Anfrage in einer Unit.</summary>
+  TCodeActionBuilder = class
+  private
+    FOwner: TLspCodeActions;
+    FUri: string;
+    FRange: TTextRange;
+    FDocument: ITextDocument;
+    FText: string;
+    FTree: TSyntaxTree;
+    /// <summary>Prüfregeln der Datei; nil ohne.</summary>
+    FRules: ILspDocumentRuleActions;
+    FFindings: TArray<TRuleFinding>;
+    FWantsEditing: Boolean;
+    FWantsOrganize: Boolean;
+    FWantsFixAll: Boolean;
+    FWantsRemoveUnused: Boolean;
+    FResult: TJSONArray;
+    /// <summary>Abbruchsignal der Anfrage; beendet nur das Warten auf einen laufenden Lauf.</summary>
+    FCancellation: IJsonRpcCancellationToken;
+    procedure ReadWanted(const AOnly: TArray<string>);
+    /// <summary>Treffer der Prüfregeln: aus dem Memo bei gleichem Text, sonst selbst gerechnet und abgelegt.
+    /// </summary>
+    function RuleFindings: TArray<TRuleFinding>;
+    procedure CollectFindings;
+    function Style: TFormatStyle;
+    function Refactoring: TRefactoringSettings;
+    procedure Add(const AAction: TCodeAction); overload;
+    procedure Add(const AActions: TArray<TCodeAction>); overload;
+    procedure AddRuleActions(const ARefactoring: TRefactoringSettings; const AStyle: TFormatStyle);
+    function RuleOffersFreeField: Boolean;
+    /// <summary>Index aus dem Umfeld der Prüfregeln; nil ohne.</summary>
+    function Index: ISymbolIndex;
+    /// <summary>Stelle der Anfrage für die Aktionen aus SourceActions.</summary>
+    function Site: TCodeActionSite;
+    procedure AddPromptActions;
+    procedure AddSourceActions;
+    procedure AddExtraActions;
+    /// <summary>Aktionen an der Stelle, die der Client bei jeder Cursorbewegung anfragt: Regeln, Klasse, Felder,
+    /// Prompt.</summary>
+    procedure AddEditingActions(const ASite: TCodeActionSite);
+  public
+    constructor Create(AOwner: TLspCodeActions; const AUri: string; const ARange: TTextRange;
+      const ADocument: ITextDocument; ATree: TSyntaxTree);
+    /// <summary>Alle Aktionen; ACancellation wird geprüft, bevor das Ergebnis entsteht. Der Aufrufer übernimmt es.
+    /// </summary>
+    function Build(const AOnly: TArray<string>; const ACancellation: IJsonRpcCancellationToken): TJSONArray;
+  end;
+
+{ TCodeActionBuilder }
+
+constructor TCodeActionBuilder.Create(AOwner: TLspCodeActions; const AUri: string; const ARange: TTextRange;
+  const ADocument: ITextDocument; ATree: TSyntaxTree);
+begin
+  inherited Create;
+  FOwner := AOwner;
+  FUri := AUri;
+  FRange := ARange;
+  FDocument := ADocument;
+  FText := ADocument.Text;
+  FTree := ATree;
+end;
+
+procedure TCodeActionBuilder.ReadWanted(const AOnly: TArray<string>);
+begin
+  FWantsEditing := TLspCodeActions.KindRequested(cQuickFixKind, AOnly) or TLspCodeActions.KindRequested(cRewriteKind, AOnly)
+    or TLspCodeActions.KindRequested(cExtractKind, AOnly);
+  // source.* nur auf ausdrückliche Anfrage, nicht bei jeder Cursorbewegung.
+  FWantsOrganize := (AOnly <> nil) and TLspCodeActions.KindRequested(cOrganizeImportsKind, AOnly);
+  FWantsFixAll := (AOnly <> nil) and TLspCodeActions.KindRequested(cFixAllKind, AOnly);
+  FWantsRemoveUnused := (AOnly <> nil) and TLspCodeActions.KindRequested(cRemoveUnusedKind, AOnly);
+end;
+
+/// <summary>Warten auf einen fremden Lauf endet nach RuleWaitMs oder mit dem Signal von ACancellation.</summary>
+function WaitCancelled(const ACancellation: IJsonRpcCancellationToken): TRuleCancelled;
+var
+  mClock: TStopwatch;
+begin
+  mClock := TStopwatch.StartNew;
+  Result :=
+    function: Boolean
+    begin
+      Result := (mClock.ElapsedMilliseconds >= TLspCodeActions.cRuleWaitMs) or
+        ((ACancellation <> nil) and ACancellation.IsCancellationRequested);
+    end;
+end;
+
+function TCodeActionBuilder.RuleFindings: TArray<TRuleFinding>;
+var
+  mPastTimeout: IJsonRpcCancellationToken;
+  mPrevious: Pointer;
+begin
+  // Die Treffer der Diagnose am selben Text wiederverwenden (2.0-stable): Die Glühbirne fragt bei jeder
+  // Cursorbewegung. Läuft die Diagnose gerade, wartet die Glühbirne höchstens RuleWaitMs auf sie (#1761); danach
+  // zeigt sie die übrigen Aktionen ohne die der Regeln, statt ins Zeitlimit zu laufen. Einen eigenen Lauf aller
+  // Regeln startet sie nicht (#2008): Er dauerte in großen Units Sekunden (27.000 Zeilen rund 9 s), und die Diagnose
+  // prüft nach jeder Änderung ohnehin und legt ab. Nur source.fixAll, ausdrücklich angefragt (Speichern), rechnet
+  // selbst; der Lauf läuft dann über das Zeitlimit hinaus zu Ende und legt ab, auch tiefe Aufrufe (EnsureUnit)
+  // brechen nicht ab.
+  mPastTimeout := TJsonRpcPastTimeout.Create(FCancellation);
+  mPrevious := TJsonRpcCurrentRequest.Enter(mPastTimeout);
+  try
+    try
+      if FWantsFixAll then
+      begin
+        Result := FRules.SharedRuleFindings(FDocument);
+      end
+      else if not FRules.CachedRuleFindings(FDocument, Result) then
+      begin
+        Result := nil;
+      end;
+    except
+      on ERuleCheckCancelled do
+      begin
+        if FCancellation <> nil then
+        begin
+          FCancellation.ThrowIfCancellationRequested;
+        end;
+        Result := nil;
+      end;
+    end;
+  finally
+    TJsonRpcCurrentRequest.Leave(mPrevious);
+  end;
+end;
+
+procedure TCodeActionBuilder.CollectFindings;
+begin
+  FFindings := nil;
+  if FOwner.FRules = nil then
+  begin
+    Exit;
+  end;
+  FRules := FOwner.FRules.ForDocument(FUri, WaitCancelled(FCancellation));
+  // Syntaxfehler mit der Korrektur des Parsers (#1022), auch ohne Umfeld der Prüfregeln; Schweregrad und Abschalten
+  // wie in den Diagnosen. Die Regeltreffer im selben Regelkontext wie in den Diagnosen (#1112).
+  FFindings := FRules.SyntaxFindings(FDocument) + RuleFindings;
+end;
+
+function TCodeActionBuilder.Style: TFormatStyle;
+begin
+  if Assigned(FOwner.FFormatStyleFor) then
+  begin
+    Result := FOwner.FFormatStyleFor(FUri);
+  end
+  else
+  begin
+    Result := TFormatStyle.Default;
+  end;
+end;
+
+function TCodeActionBuilder.Refactoring: TRefactoringSettings;
+begin
+  if Assigned(FOwner.FRefactoringFor) then
+  begin
+    Result := FOwner.FRefactoringFor(FUri);
+  end
+  else
+  begin
+    Result := TRefactoringSettings.Default;
+  end;
+end;
+
+procedure TCodeActionBuilder.Add(const AAction: TCodeAction);
+begin
+  FResult.AddElement(TCodeActionsJson.ActionToJson(FUri, AAction));
+end;
+
+procedure TCodeActionBuilder.Add(const AActions: TArray<TCodeAction>);
+var
+  mAction: TCodeAction;
+begin
+  for mAction in AActions do
+  begin
+    Add(mAction);
+  end;
+end;
+
+procedure TCodeActionBuilder.AddRuleActions(const ARefactoring: TRefactoringSettings; const AStyle: TFormatStyle);
+begin
+  if FRules <> nil then
+  begin
+    Add(FRules.Fixes(FFindings, FDocument, FRange, AStyle, ARefactoring.TryFinally));
+  end;
+end;
+
+function TCodeActionBuilder.RuleOffersFreeField: Boolean;
+var
+  mFinding: TRuleFinding;
+begin
+  Result := False;
+  for mFinding in FFindings do
+  begin
+    if (mFinding.RuleId = 'field-not-freed') and (mFinding.Range.StartPos.Line = FRange.StartPos.Line) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+function TCodeActionBuilder.Index: ISymbolIndex;
+begin
+  Result := nil;
+  if FRules <> nil then
+  begin
+    Result := FRules.Index;
+  end;
+end;
+
+function TCodeActionBuilder.Site: TCodeActionSite;
+begin
+  Result := Default(TCodeActionSite);
+  Result.Uri := FUri;
+  Result.Text := FText;
+  Result.Tree := TSyntaxTreeHandles.Wrap(FTree);
+  Result.Range := FRange;
+  // Ohne Prüfregeln ohne Index.
+  Result.Index := Index;
+  Result.Style := Style;
+  Result.Refactoring := Refactoring;
+  Result.RuleFreesField := RuleOffersFreeField;
+  Result.WantsEditing := FWantsEditing;
+  Result.WantsRemoveUnused := FWantsRemoveUnused;
+end;
+
+procedure TCodeActionBuilder.AddPromptActions;
+var
+  mFinding: TRuleFinding;
+  mAction: TCodeAction;
+begin
+  for mFinding in FFindings do
+  begin
+    if (mFinding.Range.StartPos.Line <= FRange.EndPos.Line) and
+      (mFinding.Range.EndPos.Line >= FRange.StartPos.Line) then
+    begin
+      mAction := Default(TCodeAction);
+      mAction.Title := cTexts[TLspCodeActionsText.CopyFindingAsPrompt].Fmt([mFinding.RuleId]);
+      mAction.Kind := cQuickFixKind;
+      mAction.Command := cCopyTextCommand;
+      mAction.CommandArguments := [FRules.Prompt(mFinding, TDocumentUris.ToPath(FUri), FText)];
+      Add(mAction);
+    end;
+  end;
+end;
+
+procedure TCodeActionBuilder.AddSourceActions;
+var
+  mAction: TCodeAction;
+begin
+  if FWantsOrganize and (FOwner.FSourceActions <> nil) and FOwner.FSourceActions.OrganizeImports(Site, mAction) then
+  begin
+    Add(mAction);
+  end;
+  if FWantsFixAll and (FRules <> nil) and FRules.FixAll(FFindings, mAction) then
+  begin
+    Add(mAction);
+  end;
+end;
+
+procedure TCodeActionBuilder.AddExtraActions;
+var
+  mExtra: TJSONObject;
+begin
+  if Assigned(FOwner.FExtraActions) then
+  begin
+    for mExtra in FOwner.FExtraActions(FUri, FRange) do
+    begin
+      FResult.AddElement(mExtra);
+    end;
+  end;
+end;
+
+procedure TCodeActionBuilder.AddEditingActions(const ASite: TCodeActionSite);
+begin
+  AddRuleActions(ASite.Refactoring, ASite.Style);
+  // Klassen-Aktionen (#42) und Felder im Destruktor freigeben (#666).
+  if FOwner.FSourceActions <> nil then
+  begin
+    Add(FOwner.FSourceActions.Structure(ASite));
+  end;
+  // Befund als Auftrag für KI-Assistenten kopieren (#158, #2570): den Text kopiert der Client (Befehl
+  // atlas.copyText); derselbe Text wie im Fenster „Atlas-Prüfung“ und in explain_finding.
+  AddPromptActions;
+end;
+
+function TCodeActionBuilder.Build(const AOnly: TArray<string>;
+  const ACancellation: IJsonRpcCancellationToken): TJSONArray;
+var
+  mSources: ILspSourceActions;
+  mSite: TCodeActionSite;
+  mCompletion: TCodeAction;
+  mHasCompletion: Boolean;
+  mUsesActions: TArray<TCodeAction>;
+begin
+  ReadWanted(AOnly);
+  FCancellation := ACancellation;
+  ACancellation.ThrowIfCancellationRequested;
+  CollectFindings;
+  mSources := FOwner.FSourceActions;
+  mSite := Site;
+  mHasCompletion := FWantsEditing and (mSources <> nil) and mSources.MissingBodies(mSite, mCompletion);
+  mUsesActions := nil;
+  if mSources <> nil then
+  begin
+    mUsesActions := mSources.UsesActions(mSite);
+  end;
+  ACancellation.ThrowIfCancellationRequested;
+  // Erst jetzt anlegen: Ein Abbruch oben soll kein Objekt zurücklassen.
+  FResult := TJSONArray.Create;
+  try
+    if FWantsEditing then
+    begin
+      AddEditingActions(mSite);
+    end;
+    if mHasCompletion then
+    begin
+      Add(mCompletion);
+    end;
+    // Zuweisung tauschen und String-Literale (#312).
+    if FWantsEditing and (mSources <> nil) then
+    begin
+      Add(mSources.Statements(mSite));
+    end;
+    Add(mUsesActions);
+    // Dokumentationskommentar erzeugen bzw. an die Signatur anpassen (#88) und Klassenmitglieder ordnen (#89).
+    if FWantsEditing and (mSources <> nil) then
+    begin
+      Add(mSources.Declarations(mSite));
+    end;
+    AddSourceActions;
+    if FWantsEditing then
+    begin
+      AddExtraActions;
+    end;
+  except
+    FreeAndNil(FResult);
+    raise;
+  end;
+  Result := FResult;
+end;
+
+function OnlyKinds(AParams: TJSONObject): TArray<string>;
+begin
+  Result := TJsonRead.Strings(TJsonRead.Obj(AParams, 'context'), 'only');
+end;
+
+function TLspCodeActions.HandleCodeAction(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mUri: string;
+  mRangeValue: TJSONValue;
+begin
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('range', mRangeValue)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TLspCodeActionsText.FieldsTextDocumentUriAndRange].Text + cMethod);
+  end;
+  Result := Collect(mUri, TLspPositions.ReadRange(mRangeValue), OnlyKinds(TJSONObject(AParams)), ACancellation);
+end;
+
+function TLspCodeActions.Collect(const AUri: string; const ARange: TTextRange; const AOnly: TArray<string>;
+  const ACancellation: IJsonRpcCancellationToken): TJSONArray;
+var
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mBuilder: TCodeActionBuilder;
+begin
+  if not FStore.TryGet(AUri, mDocument) then
+  begin
+    Exit(TJSONArray.Create);
+  end;
+  if TDfmParser.IsFormFile(TDocumentUris.ToPath(AUri)) then
+  begin
+    Exit(FormFileActions(AUri, mDocument.Text, ARange));
+  end;
+  mShared := TSyntaxTreeCache.Get(mDocument);
+  mBuilder := TCodeActionBuilder.Create(Self, AUri, ARange, mDocument, mShared.Tree);
+  try
+    Result := mBuilder.Build(AOnly, ACancellation);
+  finally
+    mBuilder.Free;
+  end;
+end;
+
+function TLspCodeActions.ActionsAt(const AUri: string; const ARange: TTextRange): TJSONArray;
+var
+  mNever: IJsonRpcCancellationToken;
+begin
+  // Ohne Anfrage gibt es kein Abbruchsignal; der Builder prüft trotzdem eins.
+  mNever := TJsonRpcCancellation.Create;
+  Result := Collect(AUri, ARange, nil, mNever);
+end;
+
+initialization
+  TAtlasTextTables.Add('Lsp.CodeActions', cTexts);
+
+end.

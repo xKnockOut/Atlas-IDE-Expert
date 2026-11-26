@@ -60,7 +60,7 @@ uses
   Atlas.Common.Logging.Providers.StreamSink,
   Atlas.Common.Logging.RotatingFileStream,
   Atlas.Common.JsonRpc.StreamTransport,
-  Atlas.Common.Lsp.Adapters.LogMessageSink,
+  Lsp.Adapters.LogMessageSink,
   Platform.Server,
   Shell.Composition.Platform,
   Shell.Diagnostics,

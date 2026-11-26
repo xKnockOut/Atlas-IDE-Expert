@@ -12,9 +12,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Compiler.Contract,
-  Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
-  Atlas.Common.Lsp.UnitSearch,
+  Lsp.Commands,
+  Lsp.SyntaxDiagnostics,
+  Lsp.UnitSearch,
   Shell.Composition.Contract,
   Atlas.Common.Semantics.Contract;
 

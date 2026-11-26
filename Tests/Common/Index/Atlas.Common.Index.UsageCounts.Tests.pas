@@ -51,7 +51,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Index.UsageCounts,
-  Atlas.Common.Lsp.Adapters.IdeIndex;
+  Lsp.Adapters.IdeIndex;
 
 function UnitText(const AName, ABody: string): string;
 begin

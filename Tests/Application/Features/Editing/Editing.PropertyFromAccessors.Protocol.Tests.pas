@@ -49,7 +49,7 @@ uses
   Editing.PropertyFromAccessors,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Text.Json,
-  Atlas.Common.Lsp.Edits.TestSupport,
+  Lsp.Edits.TestSupport,
   Atlas.Common.Semantics.TypeKinds,
   Editing.PropertyFromAccessors.Protocol;
 

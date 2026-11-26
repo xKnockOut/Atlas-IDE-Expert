@@ -40,7 +40,7 @@ uses
   System.JSON,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Lsp.DocumentSymbols,
+  Lsp.DocumentSymbols,
   Atlas.Core.Outline.Model,
   Atlas.Core.EditorToolbar.ReturnPoint;
 

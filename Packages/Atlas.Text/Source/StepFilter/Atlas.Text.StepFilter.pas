@@ -2,7 +2,7 @@
 
 // Schrittfilter beim Hineinspringen (#850), Teil für Server und Plugin:
 // - Arten eigener Routinen, die F7 überspringt: getters, setters, trivial,
-//   operators, emptyConstructors (Bedeutung in Atlas.Common.Lsp.StepFilter).
+//   operators, emptyConstructors (Bedeutung in Lsp.StepFilter).
 // - Muster Unit.Klasse.Methode mit * als Platzhalter für beliebig viele
 //   Zeichen (auch Punkte), ohne Groß-/Kleinschreibung. Ein Muster darf vorn
 //   Teile weglassen: TBasisForm.* passt auf Formulare.TBasisForm.Zeigen, *.Log*

@@ -17,18 +17,18 @@ uses
   Atlas.Common.Query.Contract,
   Atlas.Common.Query.Service,
   Atlas.Common.Hotspots.Service,
-  Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.Metrics,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
-  Atlas.Common.Lsp.Architecture,
+  Lsp.Commands,
+  Lsp.Metrics,
+  Lsp.SyntaxDiagnostics,
+  Lsp.Architecture,
   Atlas.Common.Query.Requests,
-  Atlas.Common.Lsp.Hotspots,
-  Atlas.Common.Lsp.UnitRelations,
-  Atlas.Common.Lsp.SymbolPath,
-  Atlas.Common.Lsp.DebugDisplay,
-  Atlas.Common.Lsp.EventHandlers,
-  Atlas.Common.Lsp.DataAccessSites,
-  Atlas.Common.Lsp.Recursion;
+  Lsp.Hotspots,
+  Lsp.UnitRelations,
+  Lsp.SymbolPath,
+  Lsp.DebugDisplay,
+  Lsp.EventHandlers,
+  Lsp.DataAccessSites,
+  Lsp.Recursion;
 
 type
   /// <summary>Was die Übersichten von der Komposition brauchen.</summary>

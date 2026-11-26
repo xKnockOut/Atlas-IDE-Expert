@@ -60,7 +60,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.JsonRpc.Statistics,
-  Atlas.Common.Lsp.Commands,
+  Lsp.Commands,
   Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Diagnostics.CheckProfile;
 

@@ -14,8 +14,8 @@ uses
   Atlas.Common.JsonRpc.Statistics,
   Atlas.Common.JsonRpc.RecentMessages,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Lifecycle,
+  Lsp.Contract,
+  Lsp.Lifecycle,
   Core.CrashCases;
 
 type

@@ -54,8 +54,8 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Logging.Providers.Logger,
-  Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.Metrics,
+  Lsp.Commands,
+  Lsp.Metrics,
   Shell.Composition.ServerCommands;
 
 function NoIndex: ISymbolIndex;

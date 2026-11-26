@@ -17,8 +17,8 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Compiler.IdeBuild,
   Atlas.Common.Index.IdeProject,
-  Atlas.Common.Lsp.Providers.IdeTypes,
-  Atlas.Common.Lsp.IdeUnits,
+  Lsp.Providers.IdeTypes,
+  Lsp.IdeUnits,
   Core.Workspace,
   Shell.Composition.Workspaces;
 

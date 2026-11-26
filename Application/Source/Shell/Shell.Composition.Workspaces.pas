@@ -108,7 +108,7 @@ uses
   Atlas.Common.Projects.GroupProjects,
   System.SysUtils,
   System.Math,
-  Atlas.Common.Lsp.WorkspaceFolders,
+  Lsp.WorkspaceFolders,
   Rules.LibrarySources,
   Atlas.Text.LogMarks,
   Core.Bootstrap;

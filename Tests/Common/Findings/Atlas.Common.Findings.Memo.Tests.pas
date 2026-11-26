@@ -67,9 +67,9 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Rules.Builtin,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Lsp.SyntaxDiagnostics,
   Rules.CheckContext,
-  Atlas.Common.Lsp.CodeActions,
+  Lsp.CodeActions,
   Atlas.Tests.LspRules,
   Atlas.Common.Findings.Memo,
   Atlas.Common.Findings.Contract;

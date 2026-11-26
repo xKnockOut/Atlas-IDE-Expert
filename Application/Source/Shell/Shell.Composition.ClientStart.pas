@@ -24,11 +24,11 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Lsp.WorkspaceFolders,
-  Atlas.Common.Lsp.ConfigurationProtocol,
-  Atlas.Common.Lsp.Hover,
-  Atlas.Common.Lsp.Completion,
-  Atlas.Common.Lsp.Completion.Details;
+  Lsp.WorkspaceFolders,
+  Lsp.ConfigurationProtocol,
+  Lsp.Hover,
+  Lsp.Completion,
+  Lsp.Completion.Details;
 
 { TShellClientStart }
 

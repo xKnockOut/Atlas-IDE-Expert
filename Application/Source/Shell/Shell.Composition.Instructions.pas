@@ -10,7 +10,7 @@ uses
   System.SysUtils,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.Commands,
+  Lsp.Commands,
   Rules.InstructionFiles,
   Shell.Composition.Workspaces;
 

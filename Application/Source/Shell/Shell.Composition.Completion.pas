@@ -12,12 +12,12 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Editing.Contract,
-  Atlas.Common.Lsp.Documentation,
-  Atlas.Common.Lsp.ConditionalSymbols,
+  Lsp.Documentation,
+  Lsp.ConditionalSymbols,
   Editing.Refactorings,
-  Atlas.Common.Lsp.Completion,
-  Atlas.Common.Lsp.Completion.Hooks,
-  Atlas.Common.Lsp.ExpressionCompletion,
+  Lsp.Completion,
+  Lsp.Completion.Hooks,
+  Lsp.ExpressionCompletion,
   Atlas.Common.Completion.Request;
 
 type

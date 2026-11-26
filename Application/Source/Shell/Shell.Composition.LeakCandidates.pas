@@ -3,12 +3,12 @@
 // Befehl atlas.server.leakCandidates (#1875) der Komposition: Projekt zur URI
 // aus den Arbeitsbereichen wie bei atlas.server.leakSetup, Dateien des
 // Projekts, geöffnete Dokumente vor der Platte. Logik in
-// Atlas.Common.Leaks.Candidates und Atlas.Common.Lsp.LeakCandidates.
+// Atlas.Common.Leaks.Candidates und Lsp.LeakCandidates.
 
 interface
 
 uses
-  Atlas.Common.Lsp.Commands,
+  Lsp.Commands,
   Shell.Composition.LeakSetup;
 
 type
@@ -26,8 +26,8 @@ uses
   System.JSON,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Lsp.LeakCandidates,
-  Atlas.Common.Lsp.Contract;
+  Lsp.LeakCandidates,
+  Lsp.Contract;
 
 {$SCOPEDENUMS ON}
 

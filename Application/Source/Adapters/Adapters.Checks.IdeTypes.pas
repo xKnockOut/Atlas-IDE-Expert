@@ -7,7 +7,7 @@
 interface
 
 uses
-  Atlas.Common.Lsp.Contract,
+  Lsp.Contract,
   Atlas.Common.Checks.Contract;
 
 type

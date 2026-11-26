@@ -4,14 +4,14 @@
 // den Arbeitsbereichen (Projektdatei, Hauptquelltext oder eine Datei des
 // Projekts), dazu die Konfiguration Debug aus der .dproj (Symbole,
 // Ausgabeordner), Such- und Bibliothekspfade des Arbeitsbereichs und PATH.
-// Logik in Atlas.Common.Leaks.Setup und Atlas.Common.Lsp.LeakSetup.
+// Logik in Atlas.Common.Leaks.Setup und Lsp.LeakSetup.
 
 interface
 
 uses
   System.JSON,
   Atlas.Common.Logging.Contract,
-  Atlas.Common.Lsp.Commands,
+  Lsp.Commands,
   Atlas.Common.Leaks.Setup,
   Shell.Composition.Workspaces;
 
@@ -54,7 +54,7 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.DprojReader,
   Atlas.Common.Leaks.Contract,
-  Atlas.Common.Lsp.LeakSetup,
+  Lsp.LeakSetup,
   Atlas.Common.Localization.Texts,
   Atlas.Text.LogMarks,
   Core.Workspace;

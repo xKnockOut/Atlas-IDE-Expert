@@ -47,7 +47,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.Recursion,
-  Atlas.Common.Lsp.Recursion;
+  Lsp.Recursion;
 
 const
   cHeader =

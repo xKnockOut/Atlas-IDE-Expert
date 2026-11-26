@@ -16,8 +16,8 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.WatchedFiles,
-  Atlas.Common.Lsp.IndexRefresh,
+  Lsp.WatchedFiles,
+  Lsp.IndexRefresh,
   Core.Workspace,
   Shell.Composition.Workspaces,
   Shell.Composition.Configuration;

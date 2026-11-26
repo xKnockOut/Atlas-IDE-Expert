@@ -4,7 +4,7 @@
 // (Atlas.Text.CrashReport) als eine Folge von Stapeln mit Stelle im Projekt. Stapelzeilen ohne
 // Debug-Informationen ergänzt die Map-Datei des Moduls (TReportSymbols), die Datei im Projekt liefert der
 // Aufrufer (TReportUnitFileFunc). Gemeinsame Grundlage der MCP-Werkzeuge (Mcp.ReportTools) und des
-// Befehls atlas.server.runtimeReport (Atlas.Common.Lsp.RuntimeReport).
+// Befehls atlas.server.runtimeReport (Lsp.RuntimeReport).
 
 interface
 

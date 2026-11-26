@@ -88,7 +88,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Rules.Checker,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Lsp.SyntaxDiagnostics,
   Atlas.Tests.LspRules,
   Atlas.Common.Findings.Contract;
 

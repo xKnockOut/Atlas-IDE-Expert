@@ -33,7 +33,7 @@ uses
   System.JSON,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Compiler.MessageCatalog,
-  Atlas.Common.Lsp.SettingsCommands;
+  Lsp.SettingsCommands;
 
 { TMessageCatalogTests }
 

@@ -44,7 +44,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Rules.Contract,
   Rules.Builtin,
-  Atlas.Common.Lsp.DfmPropertyRules,
+  Lsp.DfmPropertyRules,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Findings.Contract;
 

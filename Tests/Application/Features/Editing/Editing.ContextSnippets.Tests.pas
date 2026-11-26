@@ -52,7 +52,7 @@ uses
   Editing.Contract,
   Editing.ClassMembers,
   Editing.ContextSnippets,
-  Atlas.Common.Lsp.Completion,
+  Lsp.Completion,
   Atlas.Tests.TextEdits,
   Atlas.Tests.SourceText,
   Atlas.Common.Completion.Contract,

@@ -3,7 +3,7 @@
 // Regeln des Katalogs für die Einstellungsseite des IDE-Plugins (#227, Befehl atlas.server.settingsCatalog): Name,
 // Kategorie, Vorgabe, Gruppe, Beschreibung, Beispiele, Optionen und die Kennzeichen „experimentell“ (#909) und
 // „Sammelkorrektur“ (safeFix, #1352), dazu Pfad der globalen Datei und Version des Servers. Die Komposition ruft es
-// auf; die Erklärungen der Compilermeldungen ergänzt Atlas.Common.Lsp.SettingsCommands.
+// auf; die Erklärungen der Compilermeldungen ergänzt Lsp.SettingsCommands.
 
 interface
 

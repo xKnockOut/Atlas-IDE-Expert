@@ -2,7 +2,7 @@
 
 *Deutsche Fassung: [Schluesselwoerter.md](../Schluesselwoerter.md)*
 
-The hover explains rare language elements with a short text and links the DocWiki matching the Delphi version of the project (#187). The table is maintained in `Atlas.Common.Lsp.KeywordReference`. A test checks that every reserved word of the lexer has an entry or is on the list of everyday words. The short texts in the hover are German so far; they move to the text tables (#1458) with the remaining server texts.
+The hover explains rare language elements with a short text and links the DocWiki matching the Delphi version of the project (#187). The table is maintained in `Lsp.KeywordReference`. A test checks that every reserved word of the lexer has an entry or is on the list of everyday words. The short texts in the hover are German so far; they move to the text tables (#1458) with the remaining server texts.
 
 The hover only appears if no symbol of the same name is known at that position.
 

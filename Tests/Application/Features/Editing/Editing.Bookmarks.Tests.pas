@@ -1,6 +1,6 @@
 ﻿unit Editing.Bookmarks.Tests;
 
-// Tests für Lesezeichen "// @bookmark Name" (#306); die Suche testet Atlas.Common.Lsp.WorkspaceSymbols.Tests.
+// Tests für Lesezeichen "// @bookmark Name" (#306); die Suche testet Lsp.WorkspaceSymbols.Tests.
 
 interface
 

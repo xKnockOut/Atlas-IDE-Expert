@@ -47,8 +47,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Logging.Providers.Logger,
-  Atlas.Common.Lsp.Completion,
-  Atlas.Common.Lsp.CodeActions,
+  Lsp.Completion,
+  Lsp.CodeActions,
   Atlas.Common.Semantics.Contract;
 
 function NoIndex: ISymbolIndex;

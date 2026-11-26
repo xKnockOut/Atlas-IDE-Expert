@@ -9,7 +9,7 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Index.Scheduler,
   Atlas.Common.JsonRpc.ServerStatus,
-  Atlas.Common.Lsp.WorkspaceCheck,
+  Lsp.WorkspaceCheck,
   Core.Workspace,
   Shell.Composition.Contract,
   Shell.Composition.Status.Contract,
@@ -55,7 +55,7 @@ uses
   Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Diagnostics.BugReport,
   Atlas.Common.Product.Version,
-  Atlas.Common.Lsp.Commands;
+  Lsp.Commands;
 
 type
   TLogLineProc = reference to procedure(const AText: string);

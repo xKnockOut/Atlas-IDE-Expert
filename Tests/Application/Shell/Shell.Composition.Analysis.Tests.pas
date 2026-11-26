@@ -30,9 +30,9 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.Metrics,
-  Atlas.Common.Lsp.Todos;
+  Lsp.Commands,
+  Lsp.Metrics,
+  Lsp.Todos;
 
 { TShellAnalysisTests }
 

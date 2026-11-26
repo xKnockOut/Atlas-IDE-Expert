@@ -37,8 +37,8 @@ uses
   System.JSON,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.LeakCandidates,
+  Lsp.Commands,
+  Lsp.LeakCandidates,
   Shell.Composition.LeakCandidates,
   Shell.Composition.TestSupport;
 

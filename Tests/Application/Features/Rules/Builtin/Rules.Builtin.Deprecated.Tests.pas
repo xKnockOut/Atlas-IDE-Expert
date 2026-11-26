@@ -73,7 +73,7 @@ uses
   Rules.Engine,
   Rules.Builtin,
   Rules.Builtin.Deprecated,
-  Atlas.Common.Lsp.DiagnosticItems,
+  Lsp.DiagnosticItems,
   Atlas.Tests.LspRules,
   Atlas.Tests.RuleAssert,
   Atlas.Common.Findings.Contract;

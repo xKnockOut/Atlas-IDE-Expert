@@ -61,7 +61,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Rules.Checker,
   Atlas.Common.Pascal.InactiveRegions,
-  Atlas.Common.Lsp.InlayHints,
+  Lsp.InlayHints,
   Atlas.Common.Findings.Contract,
   Atlas.Common.Pascal.Contract;
 

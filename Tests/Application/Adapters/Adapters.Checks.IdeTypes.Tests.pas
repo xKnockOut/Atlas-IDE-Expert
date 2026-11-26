@@ -24,8 +24,8 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Providers.IdeTypes,
+  Lsp.Contract,
+  Lsp.Providers.IdeTypes,
   Adapters.Checks.IdeTypes,
   Atlas.Common.Checks.Contract;
 

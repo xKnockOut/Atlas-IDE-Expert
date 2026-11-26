@@ -2,7 +2,7 @@
 
 // Austrittspunkte hervorheben (#698), ohne VCL und Open Tools API:
 // - FromJson liest die Antwort von atlas.server.exitPoints (siehe
-//   Atlas.Common.Lsp.ExitPoints; Zeilen und Zeichen ab 0).
+//   Lsp.ExitPoints; Zeilen und Zeichen ab 0).
 // - Triggers: Lohnt eine Anfrage an der Cursorstelle? Auf Exit, raise, Abort,
 //   Halt, RunError, Result, except, on, Break, Continue, auf einem Namen vor
 //   := (Funktionsname als Ergebnis) und auf dem Namen im Routinenkopf. Was der

@@ -15,9 +15,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.DocumentHighlights,
-  Atlas.Common.Lsp.ResourceStringCommands,
+  Lsp.Commands,
+  Lsp.DocumentHighlights,
+  Lsp.ResourceStringCommands,
   Editing.SmartIndent.Protocol,
   Editing.LearnedSuggestions.Protocol,
   Editing.MethodOrder.Protocol;
@@ -83,15 +83,15 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Lsp.ExitPoints,
-  Atlas.Common.Lsp.Reassigned,
-  Atlas.Common.Lsp.ExpressionType,
-  Atlas.Common.Lsp.OverrideMarks,
-  Atlas.Common.Lsp.InterfaceMethods,
+  Lsp.ExitPoints,
+  Lsp.Reassigned,
+  Lsp.ExpressionType,
+  Lsp.OverrideMarks,
+  Lsp.InterfaceMethods,
   Atlas.Common.Semantics.QualifiedNames,
-  Atlas.Common.Lsp.EnumValueCommands,
-  Atlas.Common.Lsp.ValueEdit,
-  Atlas.Common.Lsp.StringLiteralCommands;
+  Lsp.EnumValueCommands,
+  Lsp.ValueEdit,
+  Lsp.StringLiteralCommands;
 
 { TShellEditorCommands }
 

@@ -45,7 +45,7 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Common.Lsp.WorkspaceFolders,
+  Lsp.WorkspaceFolders,
   Atlas.Common.Logging.Providers.Logger;
 
 function NoText(const AFileName: string; out AText: string): Boolean;

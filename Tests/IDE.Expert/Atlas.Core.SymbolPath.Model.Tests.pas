@@ -40,7 +40,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
-  Atlas.Common.Lsp.SymbolPath,
+  Lsp.SymbolPath,
   Atlas.Core.SymbolPath.Model;
 
 function SampleSymbolPathAnswer: string;

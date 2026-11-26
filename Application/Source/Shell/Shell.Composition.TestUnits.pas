@@ -13,7 +13,7 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.Commands,
+  Lsp.Commands,
   Editing.TestUnits.Protocol,
   Editing.TestFromDebug.Protocol,
   Core.Workspace,
@@ -77,9 +77,9 @@ uses
   Atlas.Common.Projects.Contract,
   Editing.TestUnits,
   Editing.BoundaryTests.Protocol,
-  Atlas.Common.Lsp.TestCases,
+  Lsp.TestCases,
   Editing.BoundaryCases.Protocol,
-  Atlas.Common.Lsp.Mutants,
+  Lsp.Mutants,
   Atlas.Text.LogMarks;
 
 const

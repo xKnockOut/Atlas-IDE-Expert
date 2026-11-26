@@ -59,7 +59,7 @@ uses
   Atlas.Common.Architecture.Service,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Query.Contract,
-  Atlas.Common.Lsp.Metrics,
+  Lsp.Metrics,
   Atlas.Common.Semantics.Rationale,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Logging.Providers.Logger,

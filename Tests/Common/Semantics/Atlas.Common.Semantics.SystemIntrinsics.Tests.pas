@@ -46,7 +46,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.Completion.Lists,
+  Lsp.Completion.Lists,
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
@@ -54,11 +54,11 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.SystemIntrinsics,
-  Atlas.Common.Lsp.Completion,
-  Atlas.Common.Lsp.SignatureHelp,
-  Atlas.Common.Lsp.Hover,
+  Lsp.Completion,
+  Lsp.SignatureHelp,
+  Lsp.Hover,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Lsp.Completion.TestSupport,
+  Lsp.Completion.TestSupport,
   Atlas.Tests.SourceText;
 
 const

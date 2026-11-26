@@ -38,7 +38,7 @@
     "architecture-role-import": {
       "severity": "warning",
       "exclude": ["Tests/**"],
-      "hostedFeatures": ["Replay", "Monitor", "Update", "Rules", "Mcp", "Editing"],
+      "hostedFeatures": ["Replay", "Monitor", "Update", "Rules", "Mcp", "Editing", "Lsp"],
       "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Plugin",
         "Atlas.Vcl", "Atlas.ToolsApi", "Atlas.VersionControl", "Atlas.IDE.Base", "Atlas.IDE.Analysis", "Atlas.IDE.Assistants",
         "Atlas.IDE.Bookmarks", "Atlas.IDE.Build", "Atlas.IDE.BuildPipeline", "Atlas.IDE.Debugger", "Atlas.IDE.Designer", "Atlas.IDE.Editor",
@@ -82,7 +82,7 @@
     "architecture-contract-content": {
       "severity": "warning",
       "exclude": ["Tests/**"],
-      "hostedFeatures": ["Replay", "Monitor", "Update", "Rules", "Mcp", "Editing"],
+      "hostedFeatures": ["Replay", "Monitor", "Update", "Rules", "Mcp", "Editing", "Lsp"],
       "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Plugin",
         "Atlas.Vcl", "Atlas.ToolsApi", "Atlas.VersionControl", "Atlas.IDE.Base", "Atlas.IDE.Analysis", "Atlas.IDE.Assistants",
         "Atlas.IDE.Bookmarks", "Atlas.IDE.Build", "Atlas.IDE.BuildPipeline", "Atlas.IDE.Debugger", "Atlas.IDE.Designer", "Atlas.IDE.Editor",
@@ -108,13 +108,6 @@
       "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Core", "Atlas.UI",
         "Atlas.IDE"],
       "known": [],
-      "directions": [
-        "Atlas.Common: Lsp | Rules | Editing | Mcp",
-        "Atlas.Common: Semantics < Lsp",
-        "Atlas.Common: Semantics < Rules",
-        "Atlas.Common: Semantics < Editing",
-        "Atlas.Common: Semantics < Mcp"
-      ],
       "knownEdges": []
     },
     "forbidden-symbol": {

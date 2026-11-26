@@ -11,9 +11,9 @@ uses
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Architecture.UsesLocator,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
-  Atlas.Common.Lsp.ConditionalSymbols,
-  Atlas.Common.Lsp.CompilerSwitches,
+  Lsp.SyntaxDiagnostics,
+  Lsp.ConditionalSymbols,
+  Lsp.CompilerSwitches,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings;
 

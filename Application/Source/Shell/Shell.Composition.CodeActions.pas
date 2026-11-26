@@ -16,11 +16,11 @@ uses
   Editing.Contract,
   Atlas.Common.Pascal.UsesGroups,
   Editing.Contract.CodeActions,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Lsp.SyntaxDiagnostics,
   Rules.CheckContext,
-  Atlas.Common.Lsp.CodeActions,
+  Lsp.CodeActions,
   Editing.DocumentLinks.Protocol,
-  Atlas.Common.Lsp.Colors,
+  Lsp.Colors,
   Atlas.Common.Semantics.Contract;
 
 type
@@ -103,7 +103,7 @@ uses
   Adapters.Lsp.RuleActions,
   Adapters.Lsp.SourceActions,
   Editing.Composition,
-  Atlas.Common.Lsp.FormFiles,
+  Lsp.FormFiles,
   Atlas.Common.Semantics.UsesUsage,
   Core.Bootstrap,
   Platform.Server;

@@ -41,7 +41,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Lsp.Commands,
+  Lsp.Commands,
   Editing.TestUnits.Protocol;
 
 { TShellTestUnitsTests }

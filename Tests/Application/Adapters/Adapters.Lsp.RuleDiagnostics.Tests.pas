@@ -23,7 +23,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Lsp.Contract,
+  Lsp.Contract,
   Rules.Contract.Api,
   Rules.Providers.DocumentChecks,
   Adapters.Lsp.RuleDiagnostics;

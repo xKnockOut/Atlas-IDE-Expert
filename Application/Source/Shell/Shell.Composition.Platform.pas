@@ -54,7 +54,7 @@ implementation
 uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Configuration.Workspace,
-  Atlas.Common.Lsp.ConfigurationProtocol,
+  Lsp.ConfigurationProtocol,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.Contract.UnitLookup,
   Atlas.Common.Projects.UnitLookup,

@@ -1,0 +1,445 @@
+﻿unit Lsp.CompletionAnonymous.Tests;
+
+// Anonyme Methoden (#468): Deklaration lesen, Typargumente einsetzen, RTL-Ersatz, Parameternamen, Gerüst und
+// der Eintrag der Vervollständigung (oben, nach "(" allein, abschaltbar).
+
+interface
+
+uses
+  DUnitX.TestFramework,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Semantics.NameResolver,
+  Lsp.Completion,
+  Atlas.Common.Completion.Contract;
+
+type
+  [TestFixture]
+  TCompletionAnonymousTests = class
+  private
+    FIndex: ISymbolIndex;
+    FResolver: TNameResolver;
+    function ItemAt(const AMarked: string; ASnippets: Boolean; const ASettings: TCompletionSettings;
+      const ANamingFor: TCompletionNamingFunc; out AItem: TCompletionItem): Boolean; overload;
+    function ItemAt(const AMarked: string; out AItem: TCompletionItem): Boolean; overload;
+    function HeaderAt(const AMarked: string): string;
+  public
+    [Setup]
+    procedure Setup;
+    [TearDown]
+    procedure TearDown;
+    [Test]
+    procedure ParsesDeclarations;
+    [Test]
+    procedure SubstitutesWholeWords;
+    [Test]
+    procedure NamesArgParameters;
+    [Test]
+    procedure BuildsSnippetAndPlain;
+    [Test]
+    procedure ProcedureForTaskRun;
+    [Test]
+    procedure PredicateGetsValue;
+    [Test]
+    procedure GenericRtlTypes;
+    [Test]
+    procedure OwnTypesAndAliases;
+    [Test]
+    procedure AssignmentAndResult;
+    [Test]
+    procedure PrefixAndOtherWords;
+    [Test]
+    procedure ParameterPrefix;
+    [Test]
+    procedure SwitchOff;
+    [Test]
+    procedure AloneAfterParenthesis;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  System.JSON,
+  Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Documents.Providers.DocumentStore,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
+  Lsp.CompletionCollector,
+  Lsp.CompletionAnonymous,
+  Lsp.Completion.Methods,
+  Atlas.Tests.SourceText,
+  Atlas.Common.Completion.Request;
+
+const
+  cHauptFile = 'C:\P\Haupt.pas';
+  cTasksFile = 'C:\P\Tasks.pas';
+
+  cUnitTasks =
+    'unit Tasks;'#10 +
+    'interface'#10 +
+    'uses System.SysUtils;'#10 +
+    'type'#10 +
+    '  TTask = class'#10 +
+    '  public'#10 +
+    '    class function Run(const Action: TProc): Integer;'#10 +
+    '  end;'#10 +
+    '  TCustomer = class'#10 +
+    '  end;'#10 +
+    '  TCustomers = class'#10 +
+    '  public'#10 +
+    '    function Find(const Filter: TPredicate<TCustomer>): TCustomer;'#10 +
+    '    procedure Each(const Action: TProc<TCustomer, Integer>);'#10 +
+    '    function Sum(const Value: TFunc<TCustomer, Currency>): Currency;'#10 +
+    '  end;'#10 +
+    '  TCalc = reference to function(const A, B: Integer): Integer;'#10 +
+    '  TGenericFilter<T> = TPredicate<T>;'#10 +
+    '  TCustomerFilter = TGenericFilter<TCustomer>;'#10 +
+    '  TNotify = procedure(Sender: TObject) of object;'#10 +
+    '  TRunner = class'#10 +
+    '  public'#10 +
+    '    procedure Calc(const Calc: TCalc);'#10 +
+    '    procedure Filter(const Filter: TCustomerFilter);'#10 +
+    '    procedure Notify(const Event: TNotify);'#10 +
+    '    function Make: TCalc;'#10 +
+    '  end;'#10 +
+    '  TBox<T> = class'#10 +
+    '  public'#10 +
+    '    function Where(const Filter: TPredicate<T>): TBox<T>;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'end.';
+
+  cUnitHaupt =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'uses System.SysUtils, Tasks;'#10 +
+    'function Main: TCalc;'#10 +
+    'var'#10 +
+    '  Customers: TCustomers;'#10 +
+    '  Runner: TRunner;'#10 +
+    '  P: TProc<string>;'#10 +
+    '  Box: TBox<TCustomer>;'#10 +
+    'begin'#10 +
+    '  { Code }'#10 +
+    'end;'#10 +
+    'end.';
+
+function Source(const AMarked: string): string;
+begin
+  Result := StringReplace(cUnitHaupt, '{ Code }', AMarked, []);
+end;
+
+function Param(const AModifier, AName, ATypeText: string): TMethodRefParam;
+begin
+  Result.Modifier := AModifier;
+  Result.Name := AName;
+  Result.TypeText := ATypeText;
+end;
+
+{ TCompletionAnonymousTests }
+
+function TCompletionAnonymousTests.ItemAt(const AMarked: string; ASnippets: Boolean;
+  const ASettings: TCompletionSettings; const ANamingFor: TCompletionNamingFunc; out AItem: TCompletionItem): Boolean;
+var
+  mText: string;
+  mPosition: TTextPosition;
+  mTree: TSyntaxTree;
+  mRequest: TCompletionRequest;
+begin
+  mText := TTestSource.Unmark(Source(AMarked), mPosition);
+  mTree := TPascalParser.Parse(mText);
+  mRequest := TCompletionRequest.Create(mText, cHauptFile, mPosition);
+  try
+    mRequest.Tree := mTree;
+    mRequest.Resolver := FResolver;
+    mRequest.Index := FIndex;
+    mRequest.Settings := ASettings;
+    Result := TCompletionMethods.AnonymousItem(mRequest, ASnippets, ANamingFor, AItem);
+  finally
+    mRequest.Free;
+    mTree.Free;
+  end;
+end;
+
+function TCompletionAnonymousTests.ItemAt(const AMarked: string; out AItem: TCompletionItem): Boolean;
+begin
+  Result := ItemAt(AMarked, True, TCompletionSettings.Default, nil, AItem);
+end;
+
+function TCompletionAnonymousTests.HeaderAt(const AMarked: string): string;
+var
+  mItem: TCompletionItem;
+begin
+  Result := '-';
+  if ItemAt(AMarked, mItem) then
+  begin
+    Result := mItem.Name;
+  end;
+end;
+
+procedure TCompletionAnonymousTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitTasks, cTasksFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TCompletionAnonymousTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
+end;
+
+procedure TCompletionAnonymousTests.ParsesDeclarations;
+var
+  mTypeParams: TArray<string>;
+  mMethodRef: TMethodRef;
+  mTarget: string;
+begin
+  Assert.IsTrue(TCompletionAnonymous.Parse('TPredicate<T> = reference to function(Arg1: T): Boolean', mTypeParams,
+    mMethodRef, mTarget));
+  Assert.AreEqual('T', string.Join(',', mTypeParams));
+  Assert.IsTrue(mMethodRef.IsFunction);
+  Assert.AreEqual(1, Integer(Length(mMethodRef.Params)));
+  Assert.AreEqual('Arg1', mMethodRef.Params[0].Name);
+  Assert.AreEqual('T', mMethodRef.Params[0].TypeText);
+  Assert.AreEqual('Boolean', mMethodRef.ResultType);
+  // Gruppen, Modifikatoren, Vorgaben, generische Parametertypen und Constraints.
+  Assert.IsTrue(TCompletionAnonymous.Parse('TCalc<T: class; U> = reference to procedure(const A, B: TArray<T>; ' +
+    'var C: U; out D; E: Integer = 0);', mTypeParams, mMethodRef, mTarget));
+  Assert.AreEqual('T,U', string.Join(',', mTypeParams));
+  Assert.IsFalse(mMethodRef.IsFunction);
+  Assert.AreEqual(5, Integer(Length(mMethodRef.Params)));
+  Assert.AreEqual('const B: TArray<T>', mMethodRef.Params[1].Modifier + ' ' + mMethodRef.Params[1].Name + ': ' +
+    mMethodRef.Params[1].TypeText);
+  Assert.AreEqual('var', mMethodRef.Params[2].Modifier);
+  Assert.AreEqual('out', mMethodRef.Params[3].Modifier);
+  Assert.AreEqual('', mMethodRef.Params[3].TypeText);
+  Assert.AreEqual('Integer', mMethodRef.Params[4].TypeText);
+  // Ohne Parameter.
+  Assert.IsTrue(TCompletionAnonymous.Parse('TProc = reference to procedure', mTypeParams, mMethodRef, mTarget));
+  Assert.AreEqual(0, Integer(Length(mMethodRef.Params)));
+  // Alias und andere Typen.
+  Assert.IsFalse(TCompletionAnonymous.Parse('TFilter = TPredicate<TCustomer>;', mTypeParams, mMethodRef, mTarget));
+  Assert.AreEqual('TPredicate<TCustomer>', mTarget);
+  Assert.IsFalse(TCompletionAnonymous.Parse('TNotify = procedure(Sender: TObject) of object', mTypeParams, mMethodRef,
+    mTarget));
+  Assert.AreEqual('', mTarget);
+  Assert.IsFalse(TCompletionAnonymous.Parse('TFoo = class(TObject)', mTypeParams, mMethodRef, mTarget));
+  Assert.AreEqual('', mTarget);
+end;
+
+procedure TCompletionAnonymousTests.SubstitutesWholeWords;
+begin
+  Assert.AreEqual('TArray<TCustomer>; Unit1.T; TX',
+    TCompletionAnonymous.Substitute('TArray<T>; Unit1.T; TX', TArray<string>.Create('T'),
+    TArray<string>.Create('TCustomer')));
+  Assert.AreEqual('Integer, string', TCompletionAnonymous.Substitute('T1, T2', TArray<string>.Create('T1', 'T2'),
+    TArray<string>.Create('Integer', 'string')));
+end;
+
+procedure TCompletionAnonymousTests.NamesArgParameters;
+var
+  mMethodRef: TMethodRef;
+begin
+  mMethodRef := Default(TMethodRef);
+  mMethodRef.Params := [Param('', 'Arg1', 'TCustomer')];
+  Assert.AreEqual('procedure(const Value: TCustomer)',
+    TCompletionAnonymous.Header(TCompletionAnonymous.Named(mMethodRef, '')));
+  // Mehrere: nach dem Typ, sonst nummeriert; eigene Namen und Modifikatoren bleiben, Dubletten bekommen eine Zahl.
+  mMethodRef.Params := [Param('', 'Arg1', 'TCustomer'), Param('', 'Arg2', 'Integer'), Param('var', 'Arg3', 'TCustomer'),
+    Param('', 'Own', 'string')];
+  Assert.AreEqual('procedure(const Customer: TCustomer; const Value2: Integer; var Customer2: TCustomer; Own: string)',
+    TCompletionAnonymous.Header(TCompletionAnonymous.Named(mMethodRef, '')));
+  // Präfix der Parameter.
+  mMethodRef.Params := [Param('', 'Arg1', 'string')];
+  Assert.AreEqual('procedure(const AValue: string)',
+    TCompletionAnonymous.Header(TCompletionAnonymous.Named(mMethodRef, 'A')));
+end;
+
+procedure TCompletionAnonymousTests.BuildsSnippetAndPlain;
+var
+  mMethodRef: TMethodRef;
+begin
+  mMethodRef := Default(TMethodRef);
+  Assert.AreEqual('procedure'#10'  begin'#10'    $0'#10'  end', TCompletionAnonymous.Snippet(mMethodRef));
+  Assert.AreEqual('procedure'#13#10'      begin'#13#10#13#10'      end',
+    TCompletionAnonymous.Plain(mMethodRef, '    ', #13#10));
+  mMethodRef.IsFunction := True;
+  mMethodRef.ResultType := 'Boolean';
+  mMethodRef.Params := [Param('const', 'Value', 'TCustomer')];
+  Assert.AreEqual('function(const Value: TCustomer): Boolean'#10'  begin'#10'    Result := $0'#10'  end',
+    TCompletionAnonymous.Snippet(mMethodRef));
+  Assert.AreEqual('function(const Value: TCustomer): Boolean'#10'  begin'#10'    Result := '#10'  end',
+    TCompletionAnonymous.Plain(mMethodRef, '', #10));
+  // "$" im Typ (z. B. Konstanten) maskiert.
+  mMethodRef.ResultType := 'T$';
+  Assert.IsTrue(TCompletionAnonymous.Snippet(mMethodRef).Contains('T\$'));
+end;
+
+procedure TCompletionAnonymousTests.ProcedureForTaskRun;
+var
+  mItem: TCompletionItem;
+begin
+  Assert.IsTrue(ItemAt('TTask.Run(|', mItem));
+  Assert.AreEqual('procedure', mItem.Name);
+  Assert.AreEqual('TProc', mItem.MethodRef);
+  Assert.AreEqual('anonyme Methode', mItem.Detail);
+  Assert.AreEqual('anonymous', mItem.Action);
+  Assert.IsTrue(mItem.Snippet);
+  Assert.IsTrue(mItem.Pinned);
+  Assert.AreEqual(cKindSnippet, mItem.Kind);
+  Assert.AreEqual('procedure'#10'  begin'#10'    $0'#10'  end', mItem.TextEdit.NewText);
+  Assert.AreEqual(12, mItem.TextEdit.Range.StartPos.Character);
+  Assert.AreEqual(12, mItem.TextEdit.Range.EndPos.Character);
+end;
+
+procedure TCompletionAnonymousTests.PredicateGetsValue;
+var
+  mItem: TCompletionItem;
+begin
+  Assert.IsTrue(ItemAt('Customers.Find(|', mItem));
+  Assert.AreEqual('function(const Value: TCustomer): Boolean', mItem.Name);
+  Assert.AreEqual('function', mItem.FilterText);
+  Assert.AreEqual('function(const Value: TCustomer): Boolean'#10'  begin'#10'    Result := $0'#10'  end',
+    mItem.TextEdit.NewText);
+end;
+
+procedure TCompletionAnonymousTests.GenericRtlTypes;
+begin
+  Assert.AreEqual('procedure(const Customer: TCustomer; const Value2: Integer)', HeaderAt('Customers.Each(|'));
+  Assert.AreEqual('function(const Value: TCustomer): Currency', HeaderAt('Customers.Sum(|'));
+  // Typparameter der Klasse aus dem Typ der Variablen.
+  Assert.AreEqual('function(const Value: TCustomer): Boolean', HeaderAt('Box.Where(|'));
+end;
+
+procedure TCompletionAnonymousTests.OwnTypesAndAliases;
+begin
+  // Eigene Namen aus der Deklaration bleiben.
+  Assert.AreEqual('function(const A: Integer; const B: Integer): Integer', HeaderAt('Runner.Calc(|'));
+  // Alias auf einen generischen Alias auf TPredicate<T>.
+  Assert.AreEqual('function(const Value: TCustomer): Boolean', HeaderAt('Runner.Filter(|'));
+  // Methodenzeiger "of object" sind Ereignisse (#444), keine anonymen Methoden.
+  Assert.AreEqual('-', HeaderAt('Runner.Notify(|'));
+  // Andere Parametertypen.
+  Assert.AreEqual('-', HeaderAt('Customers.Find(nil); Writeln(|'));
+end;
+
+procedure TCompletionAnonymousTests.AssignmentAndResult;
+begin
+  Assert.AreEqual('procedure(const Value: string)', HeaderAt('P := |'));
+  Assert.AreEqual('function(const A: Integer; const B: Integer): Integer', HeaderAt('Result := |'));
+end;
+
+procedure TCompletionAnonymousTests.PrefixAndOtherWords;
+var
+  mItem: TCompletionItem;
+begin
+  Assert.IsTrue(ItemAt('TTask.Run(pro|', mItem));
+  Assert.AreEqual(12, mItem.TextEdit.Range.StartPos.Character);
+  Assert.AreEqual(15, mItem.TextEdit.Range.EndPos.Character);
+  Assert.IsTrue(ItemAt('Customers.Find(Func|', mItem));
+  Assert.IsFalse(ItemAt('TTask.Run(Cust|', mItem));
+  Assert.IsFalse(ItemAt('TTask.|', mItem));
+end;
+
+procedure TCompletionAnonymousTests.ParameterPrefix;
+var
+  mItem: TCompletionItem;
+  mNamingFor: TCompletionNamingFunc;
+begin
+  // Typisierte Variable: ItemAt ist überladen.
+  mNamingFor :=
+    function(const AUri: string; AKind: TNamingKind): string
+    begin
+      Result := '';
+      if AKind = TNamingKind.Parameter then
+      begin
+        Result := 'A';
+      end;
+    end;
+  Assert.IsTrue(ItemAt('P := |', True, TCompletionSettings.Default, mNamingFor, mItem));
+  Assert.AreEqual('procedure(const AValue: string)', mItem.Name);
+  // Ohne Platzhalter: Klartext mit der Einrückung der Zeile.
+  Assert.IsTrue(ItemAt('P := |', False, TCompletionSettings.Default, nil, mItem));
+  Assert.IsFalse(mItem.Snippet);
+  Assert.AreEqual('procedure(const Value: string)'#10'    begin'#10#10'    end', mItem.TextEdit.NewText);
+end;
+
+procedure TCompletionAnonymousTests.SwitchOff;
+var
+  mSettings: TCompletionSettings;
+  mItem: TCompletionItem;
+begin
+  mSettings := TCompletionSettings.Default;
+  mSettings.AnonymousMethods := False;
+  Assert.IsFalse(ItemAt('TTask.Run(|', True, mSettings, nil, mItem));
+end;
+
+procedure TCompletionAnonymousTests.AloneAfterParenthesis;
+var
+  mText, mUri, mAnswer: string;
+  mStore: IDocumentStore;
+  mCompletion: TLspCompletion;
+  mDispatcher: TJsonRpcDispatcher;
+  mPosition: TTextPosition;
+
+  function Ask(const ATrigger: string): string;
+  var
+    mRequest, mResponse: TJSONObject;
+    mTrigger: string;
+  begin
+    mTrigger := '';
+    if ATrigger <> '' then
+    begin
+      mTrigger := ',"context":{"triggerKind":2,"triggerCharacter":"' + ATrigger + '"}';
+    end;
+    mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"textDocument/completion",' +
+      '"params":{"textDocument":{"uri":"' + mUri.Replace('\', '\\') + '"},"position":{"line":' +
+      IntToStr(mPosition.Line) + ',"character":' + IntToStr(mPosition.Character) + '}' + mTrigger + '}}') as TJSONObject;
+    try
+      mResponse := mDispatcher.DispatchMessage(mRequest);
+      try
+        Result := mResponse.ToJSON;
+      finally
+        mResponse.Free;
+      end;
+    finally
+      mRequest.Free;
+    end;
+  end;
+
+begin
+  mText := TTestSource.Unmark(Source('TTask.Run(|'), mPosition);
+  mUri := TDocumentUris.FromPath(cHauptFile);
+  mStore := TDocumentStore.Create;
+  mStore.Open(mUri, 'delphi', 1, mText);
+  mCompletion := nil;
+  mDispatcher := nil;
+  try
+    mCompletion := TLspCompletion.Create(mStore, FIndex);
+    mDispatcher := TJsonRpcDispatcher.Create;
+    mCompletion.Attach(mDispatcher);
+    // Nach "(": nur das Gerüst.
+    mAnswer := Ask('(');
+    Assert.IsTrue(mAnswer.Contains('"label":"procedure"'), mAnswer);
+    Assert.IsTrue(mAnswer.Contains('"methodRef":"TProc"'), mAnswer);
+    Assert.IsFalse(mAnswer.Contains('"label":"Customers"'), mAnswer);
+    // Strg+Leer: oben, die übrige Liste bleibt.
+    mAnswer := Ask('');
+    Assert.IsTrue(mAnswer.Contains('"label":"procedure"'), mAnswer);
+    Assert.IsTrue(mAnswer.Contains('"label":"Customers"'), mAnswer);
+    Assert.IsTrue(Pos('"label":"procedure"', mAnswer) < Pos('"label":"Customers"', mAnswer), mAnswer);
+  finally
+    mDispatcher.Free;
+    mCompletion.Free;
+  end;
+end;
+
+end.

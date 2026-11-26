@@ -12,7 +12,7 @@
 //     Art im Projekt es tragen (UsesPrefix) oder die Projektdatei es vorgibt;
 //     vergebene Namen bekommen eine Ziffer (Unique).
 // Vergebene Namen und die Zählung des Projekts bringt
-// Atlas.Common.Lsp.Completion über Namensauflösung und Index mit.
+// Lsp.Completion über Namensauflösung und Index mit.
 
 interface
 

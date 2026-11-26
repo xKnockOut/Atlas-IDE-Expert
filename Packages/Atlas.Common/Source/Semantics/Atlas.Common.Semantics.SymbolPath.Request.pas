@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Semantics.SymbolPath.Request;
 
 // Anfrage der Pfadsuche (#1117) aus JSON: from, to, via, maxSteps und all, wie
-// sie atlas/symbolPath (Atlas.Common.Lsp.SymbolPath) und das MCP-Werkzeug
+// sie atlas/symbolPath (Lsp.SymbolPath) und das MCP-Werkzeug
 // find_path übergeben. Ungültige Werte lehnt EJsonRpcError mit
 // cInvalidParams ab.
 

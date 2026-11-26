@@ -53,7 +53,7 @@ uses
   Atlas.Common.JsonRpc.Positions,
   Editing.ExtractInterface.Protocol,
   Atlas.Common.JsonRpc.TestSupport,
-  Atlas.Common.Lsp.Edits.TestSupport;
+  Lsp.Edits.TestSupport;
 
 const
   cBasisFile = 'C:\P\Basis.pas';

@@ -9,7 +9,7 @@ interface
 uses
   System.JSON,
   Atlas.Common.JsonRpc.Connection,
-  Atlas.Common.Lsp.TextDocumentSync,
+  Lsp.TextDocumentSync,
   Editing.TestUnits.Protocol,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,

@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Semantics.Definitions;
 
 // Sprungziele für Gehe zu Definition, Deklaration und Typ über die Namensauflösung;
-// die Anfragen des Sprachservers beantwortet Atlas.Common.Lsp.Definition.
+// die Anfragen des Sprachservers beantwortet Lsp.Definition.
 //
 // Bei Routinen und Methoden mit getrennter Deklaration und Implementierung:
 //   - declaration springt immer zur Deklaration (interface bzw. Klasse),

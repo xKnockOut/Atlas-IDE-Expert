@@ -16,7 +16,7 @@ uses
   Atlas.Common.JsonRpc.TracingTransport,
   Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.JsonRpc.ServerStatus,
-  Atlas.Common.Lsp.WorkspaceCheck,
+  Lsp.WorkspaceCheck,
   Core.Workspace,
   Shell.Composition.Contract;
 

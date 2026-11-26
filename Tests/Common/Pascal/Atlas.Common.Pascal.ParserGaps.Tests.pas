@@ -92,7 +92,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.DocumentSymbols,
+  Lsp.DocumentSymbols,
   Atlas.Tests.SourceText,
   Atlas.Common.Pascal.TestSupport;
 

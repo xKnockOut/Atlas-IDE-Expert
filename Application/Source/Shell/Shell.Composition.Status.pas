@@ -9,7 +9,7 @@ interface
 uses
   System.JSON,
   System.Diagnostics,
-  Atlas.Common.Lsp.Commands,
+  Lsp.Commands,
   Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Diagnostics.ServerActivity,
   Atlas.Text.LogMarks,
@@ -60,7 +60,7 @@ uses
   Atlas.Common.Index.Scheduler,
   Atlas.Common.JsonRpc.TracingTransport,
   Atlas.Common.Diagnostics.Anonymizer,
-  Atlas.Common.Lsp.WorkspaceCheck,
+  Lsp.WorkspaceCheck,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Common.Diagnostics.BugReport,

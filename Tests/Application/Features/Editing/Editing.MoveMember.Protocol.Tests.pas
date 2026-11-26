@@ -53,7 +53,7 @@ uses
   Atlas.Common.JsonRpc.Positions,
   Editing.MoveMember.Protocol,
   Atlas.Common.JsonRpc.TestSupport,
-  Atlas.Common.Lsp.Edits.TestSupport;
+  Lsp.Edits.TestSupport;
 
 const
   cClassesFile = 'C:\L\System.Classes.pas';
