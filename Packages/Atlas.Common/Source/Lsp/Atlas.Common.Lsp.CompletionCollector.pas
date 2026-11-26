@@ -144,8 +144,6 @@ type
     function Finish(out AIncomplete: Boolean): TArray<TCompletionItem>;
   end;
 
-/// <summary>CompletionItemKind des LSP zur Symbolart.</summary>
-function CompletionKindOf(AKind: TIndexSymbolKind): Integer;
 /// <summary>Eintrag aus dem nächsten Gültigkeitsbereich: lokal, Parameter, eigenes Mitglied (nicht geerbt)
 /// oder eigene Unit; solche Einträge fallen beim Kürzen auf MaxItems nie heraus.</summary>
 function IsNearItem(const AItem: TCompletionItem): Boolean;
@@ -164,9 +162,10 @@ uses
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Completion.FuzzyMatch,
   Atlas.Common.Lsp.CompletionSameNames,
-  Atlas.Common.Lsp.Completion.TypeConversions,
+  Atlas.Common.Pascal.TypeConversions,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TypeTexts;
+  Atlas.Common.Pascal.TypeTexts,
+  Atlas.Common.Completion.SymbolKinds;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -175,36 +174,6 @@ type
 const
   cTexts: array[TCompletionCollectorText] of TAtlasText = (
     (De: ' (uses ergänzen)'; En: ' (add to uses)'));
-
-function CompletionKindOf(AKind: TIndexSymbolKind): Integer;
-begin
-  case AKind of
-    TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.HelperType, TIndexSymbolKind.TypeAlias:
-      Result := cKindClass;
-    TIndexSymbolKind.RecordType:
-      Result := cKindStruct;
-    TIndexSymbolKind.InterfaceType:
-      Result := cKindInterface;
-    TIndexSymbolKind.EnumType:
-      Result := cKindEnum;
-    TIndexSymbolKind.EnumMember:
-      Result := cKindEnumMember;
-    TIndexSymbolKind.Constant:
-      Result := cKindConstant;
-    TIndexSymbolKind.Field:
-      Result := cKindField;
-    TIndexSymbolKind.Property_:
-      Result := cKindProperty;
-    TIndexSymbolKind.Method:
-      Result := cKindMethod;
-    TIndexSymbolKind.Constructor_:
-      Result := cKindConstructor;
-    TIndexSymbolKind.Routine:
-      Result := cKindFunction;
-  else
-    Result := cKindVariable;
-  end;
-end;
 
 function IsNearItem(const AItem: TCompletionItem): Boolean;
 begin

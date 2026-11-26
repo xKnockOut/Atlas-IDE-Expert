@@ -158,7 +158,6 @@ begin
   mTemplate.Key := 'notnil';
   Assert.AreEqual('if Assigned(A\\\$B) then'#10'  $0',
     TPostfixTemplates.Expand(mTemplate, 'A\$B', mTraits, TPostfixLayout.Create('', #10, True, True)).Text);
-  Assert.AreEqual('a\\b\$c\}', TPostfixTemplates.Escape('a\b$c}'));
 end;
 
 procedure TPostfixTemplatesTests.CustomConditions;

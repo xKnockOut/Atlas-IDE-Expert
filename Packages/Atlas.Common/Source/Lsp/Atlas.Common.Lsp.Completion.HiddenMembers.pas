@@ -38,7 +38,8 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Index.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.CompletionCollector;
+  Atlas.Common.Lsp.CompletionCollector,
+  Atlas.Common.Completion.SymbolKinds;
 
 const
   cVisibilities: array[TIndexVisibility] of string = ('public', 'published', 'protected', 'strict protected',

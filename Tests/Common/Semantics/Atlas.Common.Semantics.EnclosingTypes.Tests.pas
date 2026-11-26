@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Internals.CompletionSource.Tests;
+﻿unit Atlas.Common.Semantics.EnclosingTypes.Tests;
 
 // Helfer der Vervollständigung über den Index der eigenen Unit.
 
@@ -9,7 +9,7 @@ uses
 
 type
   [TestFixture]
-  TCompletionSourceTests = class
+  TEnclosingTypesTests = class
   public
     [Test]
     procedure EnclosingTypeFindsInnermost;
@@ -17,6 +17,8 @@ type
     procedure EnclosingTypeHonoursEnd;
     [Test]
     procedure EnclosingTypeNeedsAncestors;
+    [Test]
+    procedure EnclosingTypeNameWithRecords;
     [Test]
     procedure TypeChainFollowsAncestors;
     [Test]
@@ -31,7 +33,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Internals.CompletionSource;
+  Atlas.Common.Semantics.EnclosingTypes;
 
 const
   // Zeile 4: im Rumpf von TInnen, Zeile 6: "end;" von TInnen, Zeile 8: "end;" von TAussen.
@@ -62,9 +64,9 @@ begin
   Result := TIndexExtractor.ExtractText(cUnitText, 'C:\P\Haupt.pas', nil);
 end;
 
-{ TCompletionSourceTests }
+{ TEnclosingTypesTests }
 
-procedure TCompletionSourceTests.EnclosingTypeFindsInnermost;
+procedure TEnclosingTypesTests.EnclosingTypeFindsInnermost;
 var
   mSymbol: TIndexSymbol;
 begin
@@ -77,7 +79,7 @@ begin
   Assert.IsFalse(EnclosingTypeAt(UnitOf, 5, [TIndexSymbolKind.RecordType], 0, True, mSymbol));
 end;
 
-procedure TCompletionSourceTests.EnclosingTypeHonoursEnd;
+procedure TEnclosingTypesTests.EnclosingTypeHonoursEnd;
 var
   mSymbol: TIndexSymbol;
 begin
@@ -90,7 +92,24 @@ begin
   Assert.IsFalse(EnclosingTypeAt(UnitOf, 15, [TIndexSymbolKind.ClassType], 0, True, mSymbol));
 end;
 
-procedure TCompletionSourceTests.EnclosingTypeNeedsAncestors;
+procedure TEnclosingTypesTests.EnclosingTypeNameWithRecords;
+const
+  cRecordUnit = 'unit R;'#13#10'interface'#13#10'type'#13#10'  TWert = record'#13#10'    A: Integer;'#13#10 +
+    '  end;'#13#10'implementation'#13#10'end.';
+var
+  mRecords: TUnitIndex;
+  mName: string;
+begin
+  Assert.IsTrue(EnclosingTypeName(UnitOf, 5, False, mName));
+  Assert.AreEqual('TAussen.TInnen', mName);
+  mRecords := TIndexExtractor.ExtractText(cRecordUnit, 'C:\P\R.pas', nil);
+  Assert.IsFalse(EnclosingTypeName(mRecords, 4, False, mName));
+  Assert.AreEqual('', mName);
+  Assert.IsTrue(EnclosingTypeName(mRecords, 4, True, mName));
+  Assert.AreEqual('TWert', mName);
+end;
+
+procedure TEnclosingTypesTests.EnclosingTypeNeedsAncestors;
 var
   mSymbol: TIndexSymbol;
 begin
@@ -100,7 +119,7 @@ begin
   Assert.IsFalse(EnclosingTypeAt(UnitOf, 7, [TIndexSymbolKind.ClassType], 2, False, mSymbol));
 end;
 
-procedure TCompletionSourceTests.TypeChainFollowsAncestors;
+procedure TEnclosingTypesTests.TypeChainFollowsAncestors;
 var
   mIndex: ISymbolIndex;
   mResolver: TNameResolver;
@@ -118,7 +137,7 @@ begin
   end;
 end;
 
-procedure TCompletionSourceTests.TypeChainStopsAtUnknown;
+procedure TEnclosingTypesTests.TypeChainStopsAtUnknown;
 var
   mIndex: ISymbolIndex;
   mResolver: TNameResolver;
@@ -135,6 +154,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TCompletionSourceTests);
+  TDUnitX.RegisterTestFixture(TEnclosingTypesTests);
 
 end.

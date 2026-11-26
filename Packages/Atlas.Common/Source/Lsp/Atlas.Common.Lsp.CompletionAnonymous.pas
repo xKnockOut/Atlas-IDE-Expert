@@ -67,7 +67,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Semantics.NameSuggestions,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Snippets;
 
 /// <summary>Tokens ohne Kommentare und Direktiven.</summary>
 function Significant(const AText: string): TArray<TPascalToken>;
@@ -596,14 +597,6 @@ begin
   end;
 end;
 
-/// <summary>Zeichen, die in einem LSP-Snippet eine Bedeutung haben, maskieren.</summary>
-function EscapeSnippet(const AText: string): string;
-begin
-  Result := StringReplace(AText, '\', '\\', [rfReplaceAll]);
-  Result := StringReplace(Result, '$', '\$', [rfReplaceAll]);
-  Result := StringReplace(Result, '}', '\}', [rfReplaceAll]);
-end;
-
 class function TCompletionAnonymous.Snippet(const AMethodRef: TMethodRef): string;
 var
   mBody: string;
@@ -613,7 +606,7 @@ begin
   begin
     mBody := 'Result := $0';
   end;
-  Result := EscapeSnippet(Header(AMethodRef)) + #10 + cIndentUnit + 'begin' + #10 + cIndentUnit + cIndentUnit + mBody +
+  Result := TTextSnippets.Escape(Header(AMethodRef)) + #10 + cIndentUnit + 'begin' + #10 + cIndentUnit + cIndentUnit + mBody +
     #10 + cIndentUnit + 'end';
 end;
 

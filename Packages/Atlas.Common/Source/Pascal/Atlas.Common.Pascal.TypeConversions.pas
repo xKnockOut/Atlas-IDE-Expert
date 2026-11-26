@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Completion.TypeConversions;
+﻿unit Atlas.Common.Pascal.TypeConversions;
 
 // Typverträglichkeit für die Vervollständigung (#417) und übliche Umwandlungen in den erwarteten Typ (#490):
 // eingebaute Typfamilien, Vergleich ohne Unit-Präfix und die Texte für IntToStr, StrToInt, Helper-Stil usw.

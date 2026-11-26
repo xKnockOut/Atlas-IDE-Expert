@@ -109,8 +109,6 @@ type
     /// <summary>Variablenname zum Typ: TStringList → StringList, TArray&lt;T&gt; → Values, ohne T-Vorsatz Value.
     /// </summary>
     class function SuggestName(const ATypeName: string): string; static;
-    /// <summary>Maskiert "\", "$" und "}" für ein LSP-Snippet.</summary>
-    class function Escape(const AText: string): string; static;
     /// <summary>Text einer eigenen Vorlage (#51-Format) als LSP-Snippet bzw. Klartext; $expr wird zu AExpr,
     /// Folgezeilen bekommen AIndent.</summary>
     class function CustomText(const ABody, AExpr, AIndent, ALineBreak: string; ASnippet: Boolean): string; static;
@@ -119,7 +117,8 @@ type
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Text.Snippets;
 
 const
   cConditions: array[0..7] of string = ('any', 'reference', 'class', 'string', 'boolean', 'enumerable',
@@ -319,7 +318,7 @@ begin
   Result := ADefault;
   if Layout.Snippet then
   begin
-    Result := Format('${%d:%s}', [ANumber, TPostfixTemplates.Escape(ADefault)]);
+    Result := Format('${%d:%s}', [ANumber, TTextSnippets.Escape(ADefault)]);
   end;
 end;
 
@@ -442,7 +441,7 @@ begin
   mExpander.Expr := AExpr;
   if ALayout.Snippet then
   begin
-    mExpander.Expr := Escape(AExpr);
+    mExpander.Expr := TTextSnippets.Escape(AExpr);
   end;
   if (mKey = 'for') or (mKey = 'forin') then
   begin
@@ -514,7 +513,7 @@ begin
     APart := AExpr;
     if ASnippet then
     begin
-      APart := TPostfixTemplates.Escape(AExpr);
+      APart := TTextSnippets.Escape(AExpr);
     end;
     Inc(AIndex, Length(TPostfixTemplates.cExprToken));
   end
@@ -572,11 +571,6 @@ begin
     mText := 'Value';
   end;
   Result := mText;
-end;
-
-class function TPostfixTemplates.Escape(const AText: string): string;
-begin
-  Result := AText.Replace('\', '\\').Replace('$', '\$').Replace('}', '\}');
 end;
 
 class function TPostfixTemplates.CustomText(const ABody, AExpr, AIndent, ALineBreak: string;

@@ -14,6 +14,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Completion.Request,
   Atlas.Common.Editing.Contract;
 
 type
@@ -101,6 +102,10 @@ function Wrap(ASource: TCommandSource; const AName: string; const AFrame: TWrapF
 /// <summary>Lokale Deklaration in den Abschnitt AKind der Routine; legt ihn vor begin an.</summary>
 function AddLocal(ASource: TCommandSource; ARoutine: TSyntaxNode; AKind: TSyntaxKind; const AKeyword,
   ADeclaration: string): TTextEdit;
+
+/// <summary>Quelle für die Zeile des Cursors einer Vervollständigung (Text, Zeile, Index der Anfrage); der
+/// Aufrufer gibt sie frei.</summary>
+function CommandSourceFor(ARequest: TCompletionRequest): TCommandSource;
 
 /// <summary>Trägt die fehlenden AUnits in das uses des Abschnitts an Zeile ALine ein.</summary>
 procedure AddUses(ASource: TCommandSource; const AContext: TSlashContext; ALine: Integer;
@@ -622,6 +627,18 @@ function AddLocal(ASource: TCommandSource; ARoutine: TSyntaxNode; AKind: TSyntax
 begin
   Result := TRoutineLocals.SectionDeclaration(ASource.Lines, ASource.LineBreak, ARoutine, AKind, AKeyword,
     ADeclaration);
+end;
+
+function CommandSourceFor(ARequest: TCompletionRequest): TCommandSource;
+var
+  mSlash: TSlashContext;
+begin
+  mSlash := Default(TSlashContext);
+  mSlash.Text := ARequest.Text;
+  mSlash.Line := ARequest.Position.Line;
+  mSlash.LineText := ARequest.LineText(ARequest.Position.Line);
+  mSlash.Index := ARequest.Index;
+  Result := TCommandSource.Create(mSlash);
 end;
 
 /// <summary>Trägt die fehlenden AUnits in das uses des Abschnitts an Zeile ALine ein.</summary>

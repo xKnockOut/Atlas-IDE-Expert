@@ -33,7 +33,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.GuardFree,
   Atlas.Common.Lsp.CompletionCollector,
-  Atlas.Common.Lsp.Internals.CompletionSource,
+  Atlas.Common.Semantics.EnclosingTypes,
   Atlas.Common.Localization.Texts;
 
 type

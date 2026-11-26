@@ -39,7 +39,6 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ExpectedTypes,
   Atlas.Common.Semantics.TypeImports,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Localization.Texts;
 
@@ -145,18 +144,6 @@ begin
     end;
   end;
   Result := ARequest.Resolver.Resolve(ARequest.Tree, ARequest.FileName, ASlot.NameRange.StartPos).Found;
-end;
-
-/// <summary>Quelle der Befehle für die Zeile des Cursors.</summary>
-function CommandSourceFor(ARequest: TCompletionRequest): TCommandSource;
-var
-  mSlash: TSlashContext;
-begin
-  mSlash := Default(TSlashContext);
-  mSlash.Text := ARequest.Text;
-  mSlash.Line := ARequest.Position.Line;
-  mSlash.LineText := ARequest.LineText(ARequest.Position.Line);
-  Result := TCommandSource.Create(mSlash);
 end;
 
 { TDeclareBuilder }
