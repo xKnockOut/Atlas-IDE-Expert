@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.CompletionEnums.Tests;
+﻿unit Atlas.Common.Pascal.EnumSlots.Tests;
 
 // Tests für Aufzählungen und Mengen in der Vervollständigung (#448), Teil ohne Namensauflösung.
 
@@ -6,11 +6,11 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Common.Lsp.CompletionEnums;
+  Atlas.Common.Pascal.EnumSlots;
 
 type
   [TestFixture]
-  TCompletionEnumsTests = class
+  TPascalEnumSlotsTests = class
   public
     [Test]
     procedure FindsComparisonsAndCaseBranches;
@@ -48,7 +48,7 @@ var
   mSlot: TEnumValueSlot;
 begin
   mTokens := Split(AMarked, mPosition);
-  if TCompletionEnums.ValueSlot(mTokens, mPosition, mSlot) then
+  if TPascalEnumSlots.ValueSlot(mTokens, mPosition, mSlot) then
   begin
     Result := string.Join('.', mSlot.Names);
   end
@@ -64,12 +64,12 @@ var
   mTokens: TArray<TPascalToken>;
 begin
   mTokens := Split(AMarked, mPosition);
-  Result := TCompletionEnums.SetSlot(mTokens, mPosition, ASlot);
+  Result := TPascalEnumSlots.SetSlot(mTokens, mPosition, ASlot);
 end;
 
-{ TCompletionEnumsTests }
+{ TPascalEnumSlotsTests }
 
-procedure TCompletionEnumsTests.FindsComparisonsAndCaseBranches;
+procedure TPascalEnumSlotsTests.FindsComparisonsAndCaseBranches;
 begin
   Assert.AreEqual('Shape.Kind', ValueNames('if Shape.Kind = |'));
   Assert.AreEqual('Shape.Kind', ValueNames('if Shape.Kind <> sk|'));
@@ -81,7 +81,7 @@ begin
   Assert.AreEqual('Shape.Kind', ValueNames('case Shape.Kind of'#10'  skCircle: case X of a: ; end;'#10'  |'));
 end;
 
-procedure TCompletionEnumsTests.IgnoresOtherPlaces;
+procedure TPascalEnumSlotsTests.IgnoresOtherPlaces;
 begin
   // Mitten in einem Zweig, in Aufrufen, Deklarationen und bei anderen Ausdrücken nach case.
   Assert.AreEqual('-', ValueNames('case Shape.Kind of'#10'  skCircle: begin A; |'));
@@ -91,7 +91,7 @@ begin
   Assert.AreEqual('-', ValueNames('X := |'));
 end;
 
-procedure TCompletionEnumsTests.FindsSetConstructors;
+procedure TPascalEnumSlotsTests.FindsSetConstructors;
 var
   mSlot: TEnumSetSlot;
 begin
@@ -114,7 +114,7 @@ begin
   Assert.AreEqual('skCircle..skRect|TShapeKind.skLine', string.Join('|', mSlot.Present));
 end;
 
-procedure TCompletionEnumsTests.IgnoresIndexes;
+procedure TPascalEnumSlotsTests.IgnoresIndexes;
 var
   mSlot: TEnumSetSlot;
 begin
@@ -125,36 +125,36 @@ begin
   Assert.IsFalse(SetText('X := [A + |', mSlot), 'Ausdruck statt Werteliste');
 end;
 
-procedure TCompletionEnumsTests.ReadsDeclarations;
+procedure TPascalEnumSlotsTests.ReadsDeclarations;
 var
   mValues: TArray<string>;
 begin
-  mValues := TCompletionEnums.EnumValues('TAlign = (alNone, alTop = 2, {x} alBottom, // y'#10'  alLeft);');
+  mValues := TPascalEnumSlots.EnumValues('TAlign = (alNone, alTop = 2, {x} alBottom, // y'#10'  alLeft);');
   Assert.AreEqual('alNone,alTop,alBottom,alLeft', string.Join(',', mValues));
-  Assert.AreEqual(0, Integer(Length(TCompletionEnums.EnumValues('TFoo = class(TObject)'))));
-  Assert.AreEqual('TAnchorKind', TCompletionEnums.SetElement('TAnchors = set of TAnchorKind;'));
-  Assert.AreEqual('System.UITypes.TX', TCompletionEnums.SetElement('TS = set of System.UITypes.TX;'));
-  Assert.AreEqual('', TCompletionEnums.SetElement('TS = set of (a, b);'));
-  Assert.AreEqual('', TCompletionEnums.SetElement('TS = array of Byte;'));
-  Assert.IsTrue(TCompletionEnums.ScopedAt('{$SCOPEDENUMS ON} type A = (x);', 20));
-  Assert.IsFalse(TCompletionEnums.ScopedAt('{$SCOPEDENUMS ON}{$scopedenums off} type', 40));
-  Assert.IsFalse(TCompletionEnums.ScopedAt('type {$SCOPEDENUMS ON}', 3), 'Direktive erst danach');
+  Assert.AreEqual(0, Integer(Length(TPascalEnumSlots.EnumValues('TFoo = class(TObject)'))));
+  Assert.AreEqual('TAnchorKind', TPascalEnumSlots.SetElement('TAnchors = set of TAnchorKind;'));
+  Assert.AreEqual('System.UITypes.TX', TPascalEnumSlots.SetElement('TS = set of System.UITypes.TX;'));
+  Assert.AreEqual('', TPascalEnumSlots.SetElement('TS = set of (a, b);'));
+  Assert.AreEqual('', TPascalEnumSlots.SetElement('TS = array of Byte;'));
+  Assert.IsTrue(TPascalEnumSlots.ScopedAt('{$SCOPEDENUMS ON} type A = (x);', 20));
+  Assert.IsFalse(TPascalEnumSlots.ScopedAt('{$SCOPEDENUMS ON}{$scopedenums off} type', 40));
+  Assert.IsFalse(TPascalEnumSlots.ScopedAt('type {$SCOPEDENUMS ON}', 3), 'Direktive erst danach');
 end;
 
-procedure TCompletionEnumsTests.MarksPresentValues;
+procedure TPascalEnumSlotsTests.MarksPresentValues;
 var
   mChecked: TArray<Boolean>;
 begin
-  Assert.IsTrue(TCompletionEnums.Checked(['a', 'b', 'c', 'd'], ['b..c', 'T.a'], mChecked));
+  Assert.IsTrue(TPascalEnumSlots.Checked(['a', 'b', 'c', 'd'], ['b..c', 'T.a'], mChecked));
   Assert.IsTrue(mChecked[0]);
   Assert.IsTrue(mChecked[1]);
   Assert.IsTrue(mChecked[2]);
   Assert.IsFalse(mChecked[3]);
   // Unbekannte Namen (Variablen, Konstanten): die Klammer lässt sich nicht neu schreiben.
-  Assert.IsFalse(TCompletionEnums.Checked(['a', 'b'], ['Standard'], mChecked));
+  Assert.IsFalse(TPascalEnumSlots.Checked(['a', 'b'], ['Standard'], mChecked));
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TCompletionEnumsTests);
+  TDUnitX.RegisterTestFixture(TPascalEnumSlotsTests);
 
 end.

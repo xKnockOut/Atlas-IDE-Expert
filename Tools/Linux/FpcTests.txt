@@ -84,6 +84,8 @@ Atlas.Common.Editing.AnonymousMethods.Shared.Tests
 Atlas.Common.Editing.AnonymousMethods.Tests
 Atlas.Common.Semantics.AssignFields.Tests
 Atlas.Common.Semantics.TypeImports.Tests
+Atlas.Common.Semantics.ExpectedTypes.Tests
+Atlas.Common.Pascal.CallSites.Tests
 Atlas.Common.Pascal.CaseCompletion.Tests
 Atlas.Common.Pascal.SignatureChanges.Tests
 Atlas.Common.Pascal.CommandLines.Tests
@@ -241,7 +243,7 @@ Atlas.Common.Lsp.Completion.HiddenMembers.Tests
 Atlas.Common.Lsp.Completion.TypeConversions.Tests
 Atlas.Common.Lsp.Completion.ProjectFrequency.Tests
 Atlas.Common.Lsp.Completion.TypeGuards.Tests
-Atlas.Common.Lsp.CompletionEnums.Tests
+Atlas.Common.Pascal.EnumSlots.Tests
 Atlas.Common.Lsp.CoveredBy.Tests
 Atlas.Common.Editing.DisableWarning.Protocol.Tests
 Atlas.Common.Index.DocWiki.Tests

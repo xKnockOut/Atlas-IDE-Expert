@@ -220,7 +220,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Lists.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Hooks.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Cases.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionEnums.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.EnumSlots.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionGenerics.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionAttributes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionAnonymous.pas"/>
@@ -372,6 +372,8 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.CaseCompletion.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.AssignFields.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeImports.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ExpectedTypes.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.CallSites.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.RoutineBody.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ParamOwnership.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ObjectUses.pas"/>

@@ -21,10 +21,6 @@ type
     [TearDown]
     procedure TearDown;
     [Test]
-    procedure FindsCallSiteAndActiveParameter;
-    [Test]
-    procedure NestedCallsAndBracketsAreSkipped;
-    [Test]
     procedure ParsesSignatureOverSeveralLines;
     [Test]
     procedure ListsOverloadsWithDocumentation;
@@ -49,6 +45,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Pascal.CallSites,
   System.SysUtils,
   System.JSON,
   Atlas.Common.Documents.Contract,
@@ -158,50 +155,6 @@ begin
   FIndex := nil;
 end;
 
-procedure TLspSignatureHelpTests.FindsCallSiteAndActiveParameter;
-var
-  mTree: TSyntaxTree;
-  mSite: TCallSite;
-begin
-  mTree := TPascalParser.Parse('begin Rechne(1, 2, ');
-  try
-    mSite := TLspSignatureHelp.CallSiteAt(mTree, TTextPosition.Create(0, 19));
-    Assert.IsTrue(mSite.Found);
-    Assert.AreEqual(6, mSite.NamePosition.Character);
-    Assert.AreEqual(2, mSite.ActiveParameter);
-    // Hinter der schließenden Klammer und nach ; ist kein Aufruf mehr offen.
-    Assert.IsFalse(TLspSignatureHelp.CallSiteAt(mTree, TTextPosition.Create(0, 5)).Found);
-  finally
-    mTree.Free;
-  end;
-  mTree := TPascalParser.Parse('begin Rechne(1); X');
-  try
-    Assert.IsFalse(TLspSignatureHelp.CallSiteAt(mTree, TTextPosition.Create(0, 18)).Found);
-    Assert.IsFalse(TLspSignatureHelp.CallSiteAt(mTree, TTextPosition.Create(0, 15)).Found);
-  finally
-    mTree.Free;
-  end;
-end;
-
-procedure TLspSignatureHelpTests.NestedCallsAndBracketsAreSkipped;
-var
-  mTree: TSyntaxTree;
-  mSite: TCallSite;
-begin
-  mTree := TPascalParser.Parse('begin Rechne(Liste[1, 2], (3 + 4), Max(5, 6), ');
-  try
-    mSite := TLspSignatureHelp.CallSiteAt(mTree, TTextPosition.Create(0, 46));
-    Assert.IsTrue(mSite.Found);
-    Assert.AreEqual(6, mSite.NamePosition.Character);
-    Assert.AreEqual(3, mSite.ActiveParameter);
-    mSite := TLspSignatureHelp.CallSiteAt(mTree, TTextPosition.Create(0, 42));
-    Assert.AreEqual(35, mSite.NamePosition.Character);
-    Assert.AreEqual(1, mSite.ActiveParameter);
-  finally
-    mTree.Free;
-  end;
-end;
-
 procedure TLspSignatureHelpTests.ParsesSignatureOverSeveralLines;
 var
   mSignature: TSignature;
@@ -277,13 +230,13 @@ const
   cCode = 'begin P(''a'', ''ab'', 5, 1.5, -3, $FF, nil, [1, 2], True, #13, ''a''#13, ''it''''s'', X + 1, F(2), ';
 var
   mTree: TSyntaxTree;
-  mSite: TCallSite;
+  mSite: TPascalCallSite;
   mTypes: string;
   mIndex: Integer;
 begin
   mTree := TPascalParser.Parse(cCode);
   try
-    mSite := TLspSignatureHelp.CallSiteAt(mTree, TTextPosition.Create(0, Length(cCode)));
+    mSite := TPascalCallSites.At(mTree, TTextPosition.Create(0, Length(cCode)));
     Assert.IsTrue(mSite.Found);
     Assert.AreEqual(14, mSite.ActiveParameter);
     Assert.AreEqual(15, Integer(Length(mSite.ArgumentFirst)));
@@ -301,7 +254,7 @@ begin
   // Ein offenes String-Literal wird noch getippt.
   mTree := TPascalParser.Parse('begin P(''a');
   try
-    mSite := TLspSignatureHelp.CallSiteAt(mTree, TTextPosition.Create(0, 10));
+    mSite := TPascalCallSites.At(mTree, TTextPosition.Create(0, 10));
     Assert.AreEqual('', TLspSignatureHelp.ArgumentType(nil, mTree, cHauptFile, mSite.ArgumentFirst[0],
       mSite.ArgumentLast[0]));
   finally

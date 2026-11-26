@@ -62,6 +62,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Semantics.ExpectedTypes,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
@@ -74,7 +75,6 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.InterfaceStubs,
   Atlas.Common.Semantics.AssignFields,
-  Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.Completion.Details,
   Atlas.Common.Completion.Contract;
@@ -1074,7 +1074,7 @@ procedure TLspCompletionProposalTests.GroupsByExpectedType;
     mTree := TPascalParser.Parse(mText);
     mResolver := TNameResolver.Create(FIndex);
     try
-      Result := TCompletionContexts.ExpectedType(mResolver, mTree, cHauptFile, mPosition);
+      Result := TExpectedTypes.At(mResolver, mTree, cHauptFile, mPosition);
       mItems := TCompletionLists.Collect(mResolver, FIndex, mTree, cHauptFile, mPosition);
       // Passende zuerst, danach keine passenden mehr.
       mFits := '';

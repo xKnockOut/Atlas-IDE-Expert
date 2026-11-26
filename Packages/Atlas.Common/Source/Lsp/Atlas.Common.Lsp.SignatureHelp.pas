@@ -32,18 +32,6 @@ uses
   Atlas.Common.Semantics.Feature;
 
 type
-  TCallSite = record
-    /// <summary>Position des Routinennamens vor der Klammer.</summary>
-    NamePosition: TTextPosition;
-    /// <summary>Nullbasiert.</summary>
-    ActiveParameter: Integer;
-    Found: Boolean;
-    /// <summary>Tokens der bisherigen Argumente (Index in ATree.Tokens, Last einschließlich), das gerade getippte
-    /// eingeschlossen; First &gt; Last bei leerem Argument (#498).</summary>
-    ArgumentFirst: TArray<Integer>;
-    ArgumentLast: TArray<Integer>;
-  end;
-
   TSignatureParameter = record
     /// <summary>Bereich im Label der Signatur (Zeichen, nullbasiert, Ende exklusiv).</summary>
     StartIndex: Integer;
@@ -115,8 +103,6 @@ type
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>signatureHelpProvider mit ( und , als Auslöser.</summary>
     class function Capability: TJSONObject; static;
-    /// <summary>Innerster offener Aufruf vor APosition.</summary>
-    class function CallSiteAt(ATree: TSyntaxTree; const APosition: TTextPosition): TCallSite; static;
     /// <summary>Typ des Arguments aus ATokens[AFirst..ALast] (#498): Char, string, Integer, Double, Boolean, nil,
     /// [] oder der Typ eines Bezeichners; '' wenn unbekannt.</summary>
     class function ArgumentType(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
@@ -148,6 +134,7 @@ uses
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Pascal.CallSites,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.XmlDoc,
@@ -171,39 +158,18 @@ const
   cRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
   cMaxHeaderLines = 50;
   cParameterModifiers: array[0..4] of string = ('const ', 'var ', 'out ', 'constref ', '[ref] ');
-  /// <summary>Schlüsselwörter, an denen die Suche nach der offenen Klammer endet.</summary>
-  cStatementKeywords: array[0..4] of string = ('begin', 'end', 'then', 'do', 'var');
   /// <summary>Zeichen hinter einem Parameternamen in seiner Gruppe.</summary>
   cNameEnds: array[0..2] of string = (':', ' ', ',');
   /// <summary>LiteralChars: kein Zeichen- oder String-Literal.</summary>
   cNoLiteral = -2;
 
 type
-  /// <summary>Rückwärtssuche nach der innersten offenen Aufrufklammer (CallSiteAt); sammelt die Argumente
-  /// (#498).</summary>
-  TCallScan = record
-    Tokens: TArray<TPascalToken>;
-    /// <summary>Letztes Token vor der Position.</summary>
-    Last: Integer;
-    Depth: Integer;
-    Commas: Integer;
-    /// <summary>Letztes Token des Arguments links vom nächsten Komma.</summary>
-    SpanEnd: Integer;
-    Firsts: TArray<Integer>;
-    Lasts: TArray<Integer>;
-    procedure AddArgument(AFirst: Integer);
-    function Opening(AIndex: Integer; var ASite: TCallSite): Boolean;
-    function Separator(AIndex: Integer): Boolean;
-    /// <summary>Verarbeitet das Token AIndex; True beendet die Suche.</summary>
-    function Step(AIndex: Integer; var ASite: TCallSite): Boolean;
-  end;
-
   /// <summary>Ein Lauf von HelpAt: Aufruf finden, Überladungen sammeln, Argumente vergleichen.</summary>
   THelpRun = class
   private
     FRequest: TSignatureHelpRequest;
     FPosition: TTextPosition;
-    FSite: TCallSite;
+    FSite: TPascalCallSite;
     FResolved: TResolvedSymbol;
     FLines: TArray<string>;
     FStarts: TArray<TTextPosition>;
@@ -263,93 +229,6 @@ begin
   while (Result >= 0) and IsSkipped(ATokens[Result]) do
   begin
     Dec(Result);
-  end;
-end;
-
-/// <summary>; oder ein Schlüsselwort, hinter dem kein offener Aufruf mehr stehen kann.</summary>
-function EndsStatement(const AToken: TPascalToken): Boolean;
-var
-  mKeyword: string;
-begin
-  Result := AToken.IsSymbol(';');
-  for mKeyword in cStatementKeywords do
-  begin
-    Result := Result or AToken.IsKeyword(mKeyword);
-  end;
-end;
-
-{ TCallScan }
-
-procedure TCallScan.AddArgument(AFirst: Integer);
-begin
-  Firsts := TArray<Integer>.Create(AFirst) + Firsts;
-  Lasts := TArray<Integer>.Create(SpanEnd) + Lasts;
-end;
-
-function TCallScan.Opening(AIndex: Integer; var ASite: TCallSite): Boolean;
-var
-  mPrevious: Integer;
-begin
-  Result := False;
-  if Depth > 0 then
-  begin
-    Dec(Depth);
-    Exit;
-  end;
-  mPrevious := PreviousCodeToken(Tokens, AIndex);
-  if Tokens[AIndex].IsSymbol('(') and (mPrevious >= 0) and (Tokens[mPrevious].Kind = TPascalTokenKind.Identifier) then
-  begin
-    AddArgument(AIndex + 1);
-    ASite.NamePosition := Tokens[mPrevious].StartPos;
-    ASite.ActiveParameter := Commas;
-    ASite.Found := True;
-    ASite.ArgumentFirst := Firsts;
-    ASite.ArgumentLast := Lasts;
-    Exit(True);
-  end;
-  // Klammer um einen Ausdruck oder eine Menge: sie ist selbst ein Argument des äußeren Aufrufs.
-  Commas := 0;
-  Firsts := nil;
-  Lasts := nil;
-  SpanEnd := Last;
-end;
-
-function TCallScan.Separator(AIndex: Integer): Boolean;
-begin
-  Result := False;
-  if Tokens[AIndex].IsSymbol(',') then
-  begin
-    Inc(Commas);
-    AddArgument(AIndex + 1);
-    SpanEnd := AIndex - 1;
-  end
-  else
-  begin
-    Result := EndsStatement(Tokens[AIndex]);
-  end;
-end;
-
-function TCallScan.Step(AIndex: Integer; var ASite: TCallSite): Boolean;
-var
-  mToken: TPascalToken;
-begin
-  Result := False;
-  mToken := Tokens[AIndex];
-  if IsSkipped(mToken) then
-  begin
-    Exit;
-  end;
-  if mToken.IsSymbol(')') or mToken.IsSymbol(']') then
-  begin
-    Inc(Depth);
-  end
-  else if mToken.IsSymbol('(') or mToken.IsSymbol('[') then
-  begin
-    Result := Opening(AIndex, ASite);
-  end
-  else if Depth = 0 then
-  begin
-    Result := Separator(AIndex);
   end;
 end;
 
@@ -646,30 +525,6 @@ begin
     else if AText[mIndex] = ')' then
     begin
       Dec(mDepth);
-    end;
-  end;
-end;
-
-class function TLspSignatureHelp.CallSiteAt(ATree: TSyntaxTree; const APosition: TTextPosition): TCallSite;
-var
-  mScan: TCallScan;
-  mIndex: Integer;
-begin
-  Result := Default(TCallSite);
-  if ATree = nil then
-  begin
-    Exit;
-  end;
-  mScan := Default(TCallScan);
-  mScan.Tokens := ATree.Tokens;
-  mScan.Last := TokenBeforePosition(mScan.Tokens, APosition);
-  // Argumente rückwärts gesammelt (#498).
-  mScan.SpanEnd := mScan.Last;
-  for mIndex := mScan.Last downto 0 do
-  begin
-    if mScan.Step(mIndex, Result) then
-    begin
-      Break;
     end;
   end;
 end;
@@ -1281,7 +1136,7 @@ end;
 function THelpRun.Run: TSignatureHelp;
 begin
   Result := Default(TSignatureHelp);
-  FSite := TLspSignatureHelp.CallSiteAt(FRequest.Tree, FPosition);
+  FSite := TPascalCallSites.At(FRequest.Tree, FPosition);
   if not FSite.Found then
   begin
     Exit;

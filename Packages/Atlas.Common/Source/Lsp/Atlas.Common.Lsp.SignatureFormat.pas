@@ -69,10 +69,10 @@ type
     Resolver: TNameResolver;
     Tree: TSyntaxTree;
     FileName: string;
-    /// <summary>Erstes und letztes Token je Argument (Token-Indizes wie TCallSite).</summary>
+    /// <summary>Erstes und letztes Token je Argument (Token-Indizes wie TPascalCallSite).</summary>
     Firsts: TArray<Integer>;
     Lasts: TArray<Integer>;
-    /// <summary>Parameter am Cursor wie TCallSite.</summary>
+    /// <summary>Parameter am Cursor wie TPascalCallSite.</summary>
     ActiveParameter: Integer;
   end;
 
