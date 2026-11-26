@@ -393,12 +393,6 @@ begin
   Result := AnsweredIf(TCompletionDeclarations.OverrideItems(ARequest, AAnswer.Exclusive));
 end;
 
-/// <summary>Property-Zugriffe (#31): nach read bzw. write nur passende Felder und Methoden.</summary>
-function PropertyCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
-begin
-  Result := AnsweredIf(TCompletionDeclarations.PropertyItems(ARequest, AAnswer.Exclusive));
-end;
-
 /// <summary>Ereignis-Zuweisung (#444).</summary>
 function EventCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 begin
@@ -591,7 +585,7 @@ begin
   AddCase(Result, AssignAllCase);
   AddCase(Result, NameCase);
   AddCase(Result, OverrideCase);
-  AddCase(Result, PropertyCase);
+  AddCase(Result, SlotCase(TCompletionSlot.PropertyAccess));
   AddCase(Result, EventCase);
   AddCase(Result, InterfaceCase);
   AddCase(Result, EnumCase);
