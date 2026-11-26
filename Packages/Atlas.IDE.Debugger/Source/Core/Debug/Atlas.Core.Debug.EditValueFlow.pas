@@ -36,6 +36,9 @@ type
     /// <summary>Zu setzender Text: ANew; bei Umschalten und Rückgängig (ADirect) wie der Dialog umgesetzt, wenn die
     /// Prüfung ACheck gelingt.</summary>
     class function Final(const ADirect, ANew: string; const ACheck: TAtlasEditCheck): string; static;
+    /// <summary>Gesetzt wird ohne Dialog (ADirect) nicht, wenn die Prüfung ACheck den Wert als nur lesbar ablehnt;
+    /// andere Ablehnungen setzen ADirect unverändert (Final).</summary>
+    class function Refused(const ADirect: string; const ACheck: TAtlasEditCheck): Boolean; static;
     /// <summary>APlace für „Rückgängig“ aus der gemerkten Änderung AChange: alter Wert als Direct.</summary>
     class procedure ApplyUndo(var APlace: TAtlasEditPlace; const AChange: TAtlasEditChange); static;
     /// <summary>Gemerkte Änderung: ANew bzw. der Wert, den der Debugger nach dem Ändern meldet (AOutcome).</summary>
@@ -64,6 +67,11 @@ begin
   begin
     Result := ACheck.Value;
   end;
+end;
+
+class function TAtlasEditValueFlow.Refused(const ADirect: string; const ACheck: TAtlasEditCheck): Boolean;
+begin
+  Result := (ADirect <> '') and (ACheck.Problem = TAtlasEditProblem.ReadOnly);
 end;
 
 class procedure TAtlasEditValueFlow.ApplyUndo(var APlace: TAtlasEditPlace; const AChange: TAtlasEditChange);

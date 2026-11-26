@@ -1,0 +1,2 @@
+### Behoben
+- Debug-Hover: „Set to False“/„Set to True“ und „Change …“ wirken jetzt auch bei neu deklarierten Eigenschaften wie `TButton.Enabled` (`property Enabled;`). Atlas hielt sie für nur lesbar und schrieb ohne Setter; jetzt ruft der Debugger der IDE den geerbten Setter auf (`SetEnabled`), und am Zeilenende steht der danach gelesene Wert. Eine wirklich nur lesbare Eigenschaft meldet Atlas, statt still nichts zu tun.
