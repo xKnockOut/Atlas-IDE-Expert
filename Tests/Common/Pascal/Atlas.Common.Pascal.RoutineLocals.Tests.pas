@@ -2,7 +2,8 @@
 
 // Tests für die lokalen Namen einer Routine (#50, #103): Sammeln samt
 // gruppierter Parameter, Gültigkeitsbereich von Inline-Variablen, Zugriff
-// eines Bezeichners und Entfernen aus dem var-Abschnitt.
+// eines Bezeichners, Entfernen aus dem var-Abschnitt und Einfügen einer
+// lokalen Deklaration.
 
 interface
 
@@ -23,6 +24,9 @@ type
     procedure RemovesVariables;
     [Test]
     procedure RemovesVariableSharingLine;
+    /// <summary>Deklaration in den var-Abschnitt der Routine um die Zeile; ohne Abschnitt neu vor begin.</summary>
+    [Test]
+    procedure DeclaresAroundLine;
   end;
 
 implementation
@@ -193,6 +197,24 @@ begin
   finally
     mTree.Free;
   end;
+end;
+
+procedure TRoutineLocalsTests.DeclaresAroundLine;
+const
+  cNoVar = 'unit U;'#10'implementation'#10'procedure Q;'#10'begin'#10'  Liste.fo'#10'end;'#10'end.';
+var
+  mEdit: TTextEdit;
+begin
+  // Zeile 10 (X := A) liegt im Rumpf von P: hinter "Z: Integer;" (Zeile 8).
+  Assert.IsTrue(TRoutineLocals.DeclareAround(cSource, 10, TSyntaxKind.VarSection, 'var', 'N: Integer;', mEdit));
+  Assert.AreEqual(8, mEdit.Range.StartPos.Line);
+  Assert.AreEqual(#10'  N: Integer;', mEdit.NewText);
+  // Ohne var-Abschnitt und mit angefangener Eingabe in der Zeile: neuer Abschnitt vor begin.
+  Assert.IsTrue(TRoutineLocals.DeclareAround(cNoVar, 4, TSyntaxKind.VarSection, 'var', 'Item: TObject;', mEdit));
+  Assert.AreEqual(3, mEdit.Range.StartPos.Line);
+  Assert.AreEqual('var'#10'  Item: TObject;'#10, mEdit.NewText);
+  // Außerhalb eines Rumpfs keine Deklaration.
+  Assert.IsFalse(TRoutineLocals.DeclareAround(cNoVar, 1, TSyntaxKind.VarSection, 'var', 'Item: TObject;', mEdit));
 end;
 
 initialization

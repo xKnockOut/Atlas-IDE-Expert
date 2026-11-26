@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.PostfixTemplates.Tests;
+﻿unit Atlas.Common.Pascal.PostfixTemplates.Tests;
 
 // Tests für die Postfix-Vorlagen (#188): Typprüfung und erzeugter Text.
 
@@ -35,7 +35,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Editing.PostfixTemplates;
+  Atlas.Common.Pascal.PostfixTemplates;
 
 { TPostfixTemplatesTests }
 

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.PostfixTemplates;
+﻿unit Atlas.Common.Pascal.PostfixTemplates;
 
 // Postfix-Vorlagen (#188, ARG-053): Ein Kürzel hinter einem Ausdruck formt ihn um.
 //   Liste.for, Liste.forin   for var Item in Liste do        aufzählbar

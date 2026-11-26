@@ -144,7 +144,7 @@ Atlas.Common.Editing.MoveClass.Tests
 Atlas.Common.Semantics.NameSuggestions.Tests
 Atlas.Common.Editing.NestedRoutines.Tests
 Atlas.Common.Editing.Overloads.Tests
-Atlas.Common.Editing.PostfixTemplates.Tests
+Atlas.Common.Pascal.PostfixTemplates.Tests
 Atlas.Common.Editing.PromoteVariable.Tests
 Atlas.Common.Editing.PropertyFromAccessors.Tests
 Atlas.Common.Editing.RaiseVisibility.Tests

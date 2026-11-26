@@ -79,7 +79,7 @@ uses
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.PostfixTemplates,
+  Atlas.Common.Pascal.PostfixTemplates,
   Atlas.Common.Lsp.Completion.Postfix,
   Atlas.Common.Lsp.Completion.Lists,
   Atlas.Common.Pascal.SyntaxTree,
