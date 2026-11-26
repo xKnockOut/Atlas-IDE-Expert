@@ -372,6 +372,7 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.CaseCompletion.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.AssignFields.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeImports.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.EnumTypes.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ExpectedTypes.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.CallSites.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.RoutineBody.pas"/>

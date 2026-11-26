@@ -764,6 +764,7 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.CaseCompletion.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.AssignFields.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.TypeImports.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.EnumTypes.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ExpectedTypes.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.CallSites.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.RoutineLocals.Tests.pas"/>

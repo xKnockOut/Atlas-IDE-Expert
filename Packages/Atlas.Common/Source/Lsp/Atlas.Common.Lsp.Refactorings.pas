@@ -8,7 +8,7 @@
 //   - Typen eines Ausdrucks über einen Probetext mit "var AtlasProbe := …"
 //     und die Typableitung der Inlay Hints (#453), mit eigener
 //     Namensauflösung je Probe (der Probebaum lebt nur kurz).
-//   - Aufzählungswerte über TCompletionValues.CaseValues (#448).
+//   - Aufzählungswerte über TEnumTypes.CaseValues (#448).
 //   - Herkunft über TNameResolver.Queries.WithMember.
 // Dazu „Methode aus Aufruf anlegen“ (#472): Typen der Argumente über
 // denselben Probetext, Rückgabetyp über den erwarteten Typ (#417), Zielklasse
@@ -124,7 +124,7 @@ implementation
 
 uses
   Atlas.Common.Semantics.ExpectedTypes,
-  Atlas.Common.Lsp.Completion.Values,
+  Atlas.Common.Semantics.EnumTypes,
   System.StrUtils,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Parser,
@@ -326,7 +326,7 @@ begin
   Result := OptionsOf(AContext);
 end;
 
-/// <summary>Was TCompletionValues.CaseValues zum Auflösen der Aufzählung braucht.</summary>
+/// <summary>Was TEnumTypes.CaseValues zum Auflösen der Aufzählung braucht.</summary>
 function CaseLookup(AResolver: TNameResolver; const AContext: TRefactoringContext; ATree: TSyntaxTree;
   const AText: string): TEnumLookup;
 begin
@@ -351,7 +351,7 @@ begin
   Result := False;
   mCaseNode := TCaseCompletion.CaseAt(ATree, APosition);
   if (mCaseNode = nil) or not TCaseCompletion.OfPosition(ATree, mCaseNode, mOfPos) or
-    not TCompletionValues.CaseValues(CaseLookup(AResolver, AContext, ATree, AText), mOfPos, mValues, mPrefix) or
+    not TEnumTypes.CaseValues(CaseLookup(AResolver, AContext, ATree, AText), mOfPos, mValues, mPrefix) or
     not TCaseCompletion.Complete(AText, ATree, mCaseNode, mValues, mPrefix, mCompletion) then
   begin
     Exit;

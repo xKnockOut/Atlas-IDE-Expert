@@ -3242,6 +3242,7 @@ uses
   Atlas.Common.Pascal.CaseCompletion.Tests in 'Common\Pascal\Atlas.Common.Pascal.CaseCompletion.Tests.pas',
   Atlas.Common.Semantics.AssignFields.Tests in 'Common\Semantics\Atlas.Common.Semantics.AssignFields.Tests.pas',
   Atlas.Common.Semantics.TypeImports.Tests in 'Common\Semantics\Atlas.Common.Semantics.TypeImports.Tests.pas',
+  Atlas.Common.Semantics.EnumTypes.Tests in 'Common\Semantics\Atlas.Common.Semantics.EnumTypes.Tests.pas',
   Atlas.Common.Semantics.ExpectedTypes.Tests in 'Common\Semantics\Atlas.Common.Semantics.ExpectedTypes.Tests.pas',
   Atlas.Common.Pascal.CallSites.Tests in 'Common\Pascal\Atlas.Common.Pascal.CallSites.Tests.pas',
   Atlas.Common.Pascal.RoutineLocals.Tests in 'Common\Pascal\Atlas.Common.Pascal.RoutineLocals.Tests.pas',
