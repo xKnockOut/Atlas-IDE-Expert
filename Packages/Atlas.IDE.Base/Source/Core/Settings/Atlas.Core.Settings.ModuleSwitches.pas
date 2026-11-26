@@ -43,9 +43,14 @@ type
     /// des Moduls ihren Wert für „aus“; sonst genau ASettings.</summary>
     class function Apply(const ASettings: TAtlasPluginSettings;
       const ASwitches: TArray<TAtlasModuleSwitch>): TAtlasPluginSettings; static;
-    /// <summary>Ist das Modul AModule in ASettings an? Unbekannte Kennung = an.</summary>
+    /// <summary>Ist das Modul AModule in ASettings an? Unbekannte Kennung = an. Liest alle Werte von ASettings
+    /// (TAtlasMemorySettingsStore.FromSettings): Für häufige Abfragen OffModules einmal je Änderung bilden und
+    /// IsOnAmong fragen.</summary>
     class function IsOn(const ASettings: TAtlasPluginSettings; const ASwitches: TArray<TAtlasModuleSwitch>;
       const AModule: string): Boolean; static;
+    /// <summary>Ist das Modul AModule an, wenn AOffModules (aus OffModules) die ausgeschalteten nennt? Unbekannte
+    /// Kennung = an; ohne Groß-/Kleinschreibung.</summary>
+    class function IsOnAmong(const AOffModules: TArray<string>; const AModule: string): Boolean; static;
     /// <summary>Kennungen der ausgeschalteten Module in Katalogreihenfolge.</summary>
     class function OffModules(const ASettings: TAtlasPluginSettings;
       const ASwitches: TArray<TAtlasModuleSwitch>): TArray<string>; static;
@@ -174,19 +179,13 @@ end;
 
 class function TAtlasModuleSwitches.IsOn(const ASettings: TAtlasPluginSettings;
   const ASwitches: TArray<TAtlasModuleSwitch>; const AModule: string): Boolean;
-var
-  mStore: IAtlasMemorySettingsStore;
-  mSwitch: TAtlasModuleSwitch;
 begin
-  Result := True;
-  for mSwitch in ASwitches do
-  begin
-    if SameText(mSwitch.Module, AModule) then
-    begin
-      mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
-      Exit(SwitchOn(mStore, mSwitch));
-    end;
-  end;
+  Result := IsOnAmong(OffModules(ASettings, ASwitches), AModule);
+end;
+
+class function TAtlasModuleSwitches.IsOnAmong(const AOffModules: TArray<string>; const AModule: string): Boolean;
+begin
+  Result := not MatchText(AModule, AOffModules);
 end;
 
 class function TAtlasModuleSwitches.OffModules(const ASettings: TAtlasPluginSettings;
