@@ -123,7 +123,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.Completion.Context,
+  Atlas.Common.Semantics.ExpectedTypes,
   Atlas.Common.Lsp.Completion.Values,
   System.StrUtils,
   Atlas.Text.Lines,
@@ -503,7 +503,7 @@ begin
     TCallContext.Condition:
       Result := 'Boolean';
   else
-    Result := TCompletionContexts.ExpectedType(FResolver, FTree, FContext.FileName, FSite.NameRange.StartPos);
+    Result := TExpectedTypes.At(FResolver, FTree, FContext.FileName, FSite.NameRange.StartPos);
     if (Result = '') and (FSite.Target <> '') then
     begin
       Result := ProbeWithUnit(FSite.Target).Name;

@@ -40,6 +40,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Semantics.ExpectedTypes,
   System.SysUtils,
   System.Math,
   System.StrUtils,
@@ -542,7 +543,7 @@ begin
   begin
     Exit;
   end;
-  mExpected := TCompletionContexts.ExpectedFullType(ARequest.Resolver, ARequest.Tree, ARequest.FileName,
+  mExpected := TExpectedTypes.FullAt(ARequest.Resolver, ARequest.Tree, ARequest.FileName,
     ARequest.Position);
   if (mExpected = '') or not MethodRefOf(ARequest.Resolver, ARequest.UnitIndex, mExpected, mMethodRef) then
   begin

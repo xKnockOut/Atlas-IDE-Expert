@@ -40,6 +40,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Semantics.ExpectedTypes,
   System.SysUtils,
   System.StrUtils,
   System.Math,
@@ -379,7 +380,7 @@ begin
   mExpected := '';
   if FContext.Kind in [TCompletionContextKind.Member, TCompletionContextKind.Scope] then
   begin
-    mExpected := TCompletionContexts.ExpectedType(FRequest.Resolver, FRequest.Tree, FRequest.FileName,
+    mExpected := TExpectedTypes.At(FRequest.Resolver, FRequest.Tree, FRequest.FileName,
       FRequest.Position);
   end;
   // Viele Auflösungen auf demselben Baum: einmal auswerten. Hat Handle den Baum schon

@@ -71,6 +71,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Semantics.ExpectedTypes,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
@@ -86,7 +87,7 @@ uses
   Atlas.Common.Editing.Contract,
   Atlas.Common.Completion.FuzzyMatch,
   Atlas.Common.Lsp.CompletionCollector,
-  Atlas.Common.Lsp.CompletionEnums,
+  Atlas.Common.Pascal.EnumSlots,
   Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Semantics.TypeImports,
   Atlas.Common.Pascal.TypeTexts;
@@ -245,7 +246,7 @@ begin
   begin
     Exit(False);
   end;
-  mElement := TCompletionEnums.SetElement(ADeclaration);
+  mElement := TPascalEnumSlots.SetElement(ADeclaration);
   if mElement = '' then
   begin
     Exit((AType.TypeName <> '') and ALookup.Resolver.ResolveTypeFrom(mOwner, AType.TypeName, AType));
@@ -331,14 +332,14 @@ begin
   Result := FindEnumDeclaration(ALookup, AAllowSet, AType, AEnum, mSource, mDeclaration);
   if Result then
   begin
-    AEnum.Values := TCompletionEnums.EnumValues(mDeclaration);
+    AEnum.Values := TPascalEnumSlots.EnumValues(mDeclaration);
     Result := AEnum.Values <> nil;
   end;
   if Result then
   begin
     AEnum.Name := AType.Name;
     AEnum.FileName := AType.FileName;
-    AEnum.Scoped := TCompletionEnums.ScopedAt(mSource, OffsetOf(mSource, AType.Range.StartPos));
+    AEnum.Scoped := TPascalEnumSlots.ScopedAt(mSource, OffsetOf(mSource, AType.Range.StartPos));
     FindEnumPositions(ALookup, AType, AEnum);
   end;
 end;
@@ -441,7 +442,7 @@ var
 begin
   if not ASlot.AssignTarget then
   begin
-    Exit(TCompletionContexts.ExpectedType(ARequest.Resolver, ARequest.Tree, ARequest.FileName, ARequest.Position));
+    Exit(TExpectedTypes.At(ARequest.Resolver, ARequest.Tree, ARequest.FileName, ARequest.Position));
   end;
   mTokens := ARequest.Tree.Tokens;
   Result := TDeclareUnknown.Shape(mTokens, ASlot.ValueFirst, ASlot.ValueLast, mTermFirst, mTermLast);
@@ -680,7 +681,7 @@ begin
   end
   else
   begin
-    mExpected := TCompletionContexts.ExpectedType(ARequest.Resolver, ARequest.Tree, ARequest.FileName, ASlot.Bracket);
+    mExpected := TExpectedTypes.At(ARequest.Resolver, ARequest.Tree, ARequest.FileName, ASlot.Bracket);
     Result := mExpected <> '';
   end;
   if Result then
@@ -701,7 +702,7 @@ var
 begin
   AItems := nil;
   Result := SetElementType(ARequest, ASlot, mType) and EnumOf(TEnumLookup.FromRequest(ARequest), mType,
-    ASlot.ElementOf = nil, mEnum) and TCompletionEnums.Checked(mEnum.Values, ASlot.Present, mChecked);
+    ASlot.ElementOf = nil, mEnum) and TPascalEnumSlots.Checked(mEnum.Values, ASlot.Present, mChecked);
   if not Result then
   begin
     Exit;
@@ -738,7 +739,7 @@ begin
   mExpected := '';
   if mContext.Kind = TCompletionContextKind.Scope then
   begin
-    mExpected := TCompletionContexts.ExpectedType(ARequest.Resolver, ARequest.Tree, ARequest.FileName,
+    mExpected := TExpectedTypes.At(ARequest.Resolver, ARequest.Tree, ARequest.FileName,
       ARequest.Position);
   end;
   Result := (mExpected <> '') and EnumOf(mLookup, TypeAt(mLookup, mContext.Offset, mExpected), False, mEnum);
@@ -1075,7 +1076,7 @@ begin
     Exit(False);
   end;
   // Mengenkonstruktor: "X in [" nimmt den Typ von X, sonst gilt der erwartete Typ an der Klammer.
-  if TCompletionEnums.SetSlot(ARequest.Tree.Tokens, ARequest.Position, mSlot) then
+  if TPascalEnumSlots.SetSlot(ARequest.Tree.Tokens, ARequest.Position, mSlot) then
   begin
     Result := SetItems(ARequest, mSlot, AItems);
     ASetMode := Result;
@@ -1098,7 +1099,7 @@ begin
   // Am Anfang eines Zweigs ist der erwartete Typ der des Selektors (#448).
   if ALookup.Tree <> nil then
   begin
-    mExpected := TCompletionContexts.ExpectedType(ALookup.Resolver, ALookup.Tree, ALookup.FileName, APosition);
+    mExpected := TExpectedTypes.At(ALookup.Resolver, ALookup.Tree, ALookup.FileName, APosition);
   end;
   Result := (mExpected <> '') and EnumOf(ALookup, TypeAt(ALookup, OffsetOf(ALookup.Text, APosition), mExpected),
     False, mEnum);

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.CompletionEnums;
+﻿unit Atlas.Common.Pascal.EnumSlots;
 
 // Aufzählungen und Mengen in der Vervollständigung (#448), ohne Namensauflösung:
 //   - ValueSlot: Stellen, an denen ein Wert vom Typ einer Kette erwartet wird und die ExpectedType nicht
@@ -41,7 +41,7 @@ type
     Present: TArray<string>;
   end;
 
-  TCompletionEnums = class
+  TPascalEnumSlots = class
   public
     /// <summary>Vergleich oder case-Zweig an APosition; False sonst.</summary>
     class function ValueSlot(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
@@ -215,9 +215,9 @@ begin
   end;
 end;
 
-{ TCompletionEnums }
+{ TPascalEnumSlots }
 
-class function TCompletionEnums.ValueSlot(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
+class function TPascalEnumSlots.ValueSlot(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
   out ASlot: TEnumValueSlot): Boolean;
 var
   mIndex, mPrefix, mOf, mStart: Integer;
@@ -377,7 +377,7 @@ begin
   FlushElement(Result, mElement);
 end;
 
-class function TCompletionEnums.SetSlot(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
+class function TPascalEnumSlots.SetSlot(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
   out ASlot: TEnumSetSlot): Boolean;
 var
   mPrefix, mBracket, mBefore, mStart, mLast: Integer;
@@ -434,7 +434,7 @@ begin
   end;
 end;
 
-class function TCompletionEnums.EnumValues(const ADeclaration: string): TArray<string>;
+class function TPascalEnumSlots.EnumValues(const ADeclaration: string): TArray<string>;
 var
   mTokens: TArray<TPascalToken>;
   mIndex, mDepth: Integer;
@@ -477,7 +477,7 @@ begin
   end;
 end;
 
-class function TCompletionEnums.SetElement(const ADeclaration: string): string;
+class function TPascalEnumSlots.SetElement(const ADeclaration: string): string;
 var
   mTokens: TArray<TPascalToken>;
   mIndex: Integer;
@@ -520,7 +520,7 @@ begin
   end;
 end;
 
-class function TCompletionEnums.ScopedAt(const AText: string; AOffset: Integer): Boolean;
+class function TPascalEnumSlots.ScopedAt(const AText: string; AOffset: Integer): Boolean;
 var
   mMatch: TMatch;
 begin
@@ -531,7 +531,7 @@ begin
   end;
 end;
 
-class function TCompletionEnums.Checked(const AValues, APresent: TArray<string>;
+class function TPascalEnumSlots.Checked(const AValues, APresent: TArray<string>;
   out AChecked: TArray<Boolean>): Boolean;
 begin
   Result := TCaseCompletion.Covered(AValues, APresent, AChecked);
