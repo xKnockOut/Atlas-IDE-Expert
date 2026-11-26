@@ -280,11 +280,30 @@ end;
 
 { TAtlasStackScan }
 
+/// <summary>AAddress als "Modul+Offset", wenn sie im Code eines Moduls liegt; '' sonst. Zeiger in die Daten eines
+/// Moduls sind keine Rahmen.</summary>
+function FrameOf(AAddress: UInt64; const AModules: TArray<TAtlasModuleRange>): string;
+var
+  mModule: TAtlasModuleRange;
+begin
+  Result := '';
+  for mModule in AModules do
+  begin
+    if mModule.Holds(AAddress) then
+    begin
+      if mModule.HoldsCode(AAddress) then
+      begin
+        Result := Format('%s+%x', [mModule.Name, AAddress - mModule.Base]);
+      end;
+      Exit;
+    end;
+  end;
+end;
+
 class function TAtlasStackScan.Frames(const AAddresses: TArray<UInt64>; const AModules: TArray<TAtlasModuleRange>;
   AMax: Integer): TArray<string>;
 var
   mAddress: UInt64;
-  mModule: TAtlasModuleRange;
   mFrame: string;
 begin
   Result := nil;
@@ -294,22 +313,10 @@ begin
     begin
       Break;
     end;
-    for mModule in AModules do
+    mFrame := FrameOf(mAddress, AModules);
+    if (mFrame <> '') and ((Length(Result) = 0) or (Result[High(Result)] <> mFrame)) then
     begin
-      if mModule.Holds(mAddress) then
-      begin
-        // Zeiger in die Daten eines Moduls sind keine Rahmen.
-        if not mModule.HoldsCode(mAddress) then
-        begin
-          Break;
-        end;
-        mFrame := Format('%s+%x', [mModule.Name, mAddress - mModule.Base]);
-        if (Length(Result) = 0) or (Result[High(Result)] <> mFrame) then
-        begin
-          Result := Result + [mFrame];
-        end;
-        Break;
-      end;
+      Result := Result + [mFrame];
     end;
   end;
 end;
