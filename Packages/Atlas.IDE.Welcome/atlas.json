@@ -123,7 +123,6 @@
         "Atlas.IDE.Assistants.Composition.HostAdapters -> Atlas.Core.*.Providers.*",
         "Atlas.IDE.BuildTools.Composition -> Atlas.Core.*.Providers.*",
         "Atlas.IDE.Debug.Composition -> Atlas.Core.*.Providers.*",
-        "Atlas.IDE.Tests.Composition -> Atlas.Core.*.Providers.*",
         "Atlas.IDE.Tracker.Composition -> Atlas.Core.*.Providers.*",
         "Atlas.IDE.Tests.Composition -> Atlas.VersionControl.Repository.Providers.ProcessRunner",
         "Atlas.IDE.VersionControl.Composition -> Atlas.VersionControl.Repository.Providers.ProcessRunner",

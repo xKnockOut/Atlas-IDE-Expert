@@ -286,9 +286,6 @@ begin
   end;
 end;
 
-initialization
-  TDUnitX.RegisterTestFixture(TAtlasDebugBreakpointsFrameTests);
-
 /// <summary>Höhe der Leiste mit Gruppierung und Chips, wenn der Frame AWidth breit ist; prüft dabei, dass jedes
 /// Element der drei oberen Leisten ganz in seiner Leiste liegt und die Leisten nicht in die Liste ragen.</summary>
 function FilterBarHeight(AWidth: Integer): Integer;
@@ -333,5 +330,8 @@ begin
   mNarrow := FilterBarHeight(260);
   Assert.IsTrue(mNarrow > mWide, Format('schmal %d, breit %d: Chips brechen nicht um', [mNarrow, mWide]));
 end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TAtlasDebugBreakpointsFrameTests);
 
 end.

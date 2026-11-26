@@ -225,9 +225,10 @@ procedure TAtlasAiGhostTests.DailyCountRoundTripsJson;
 var
   mCount, mRead: TAtlasAiDailyCount;
 begin
+  mRead := nil;
   mCount := TAtlasAiDailyCount.Create;
-  mRead := TAtlasAiDailyCount.Create;
   try
+    mRead := TAtlasAiDailyCount.Create;
     mCount.TryTake('2026-11-18', 5);
     mCount.TryTake('2026-11-18', 5);
     Assert.IsTrue(mRead.FromJson(mCount.ToJson), 'gelesen');

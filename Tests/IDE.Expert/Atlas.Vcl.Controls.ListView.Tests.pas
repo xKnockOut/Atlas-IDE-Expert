@@ -92,11 +92,13 @@ end;
 procedure TAtlasListViewTests.DoubleBufferSurvivesStyleChanges;
 begin
   FList.HandleNeeded;
-  Assert.IsTrue((ListView_GetExtendedListViewStyle(FList.Handle) and LVS_EX_DOUBLEBUFFER) <> 0, 'nach dem Anlegen');
+  Assert.AreNotEqual<Cardinal>(0,
+    ListView_GetExtendedListViewStyle(FList.Handle) and LVS_EX_DOUBLEBUFFER, 'nach dem Anlegen');
   // RowSelect und Checkboxes setzt die VCL über die erweiterten Stile neu.
   FList.RowSelect := not FList.RowSelect;
   FList.Checkboxes := True;
-  Assert.IsTrue((ListView_GetExtendedListViewStyle(FList.Handle) and LVS_EX_DOUBLEBUFFER) <> 0, 'nach RowSelect');
+  Assert.AreNotEqual<Cardinal>(0,
+    ListView_GetExtendedListViewStyle(FList.Handle) and LVS_EX_DOUBLEBUFFER, 'nach RowSelect');
   Assert.AreEqual(FList.RowSelect, (ListView_GetExtendedListViewStyle(FList.Handle) and LVS_EX_FULLROWSELECT) <> 0,
     'RowSelect wirkt weiter');
 end;

@@ -12,6 +12,8 @@
 // Where nennt außer dem Pfad auch den Fundort für die Optionsseite.
 // TAtlasVcsCommand bündelt Programm, Arbeitsverzeichnis und Zeitlimit einer
 // Umsetzung; die Ausgabe des Programms geht nie ins Protokoll (Pfade).
+// TAtlasVcsCancellation sagt den Prozessläufern beider Systeme, ob ein Aufruf
+// abzubrechen ist.
 
 interface
 
@@ -105,9 +107,18 @@ type
     property TimeoutMs: Cardinal read FTimeoutMs write FTimeoutMs;
   end;
 
+  /// <summary>Abbruch eines Aufrufs von git bzw. svn, gleich für die Prozessläufer unter Windows und Linux.</summary>
+  TAtlasVcsCancellation = class
+  public
+    /// <summary>Wurde der eigene Thread beendet (TThread.Terminate), oder meldet ACancelled einen Abbruch?
+    /// ACancelled = nil: kein zusätzlicher Abbruch.</summary>
+    class function Requested(const ACancelled: TFunc<Boolean>): Boolean; static;
+  end;
+
 implementation
 
 uses
+  System.Classes,
   Atlas.VersionControl.Repository.ServerAccess;
 
 const
@@ -125,6 +136,18 @@ begin
   for mPart in AParts do
   begin
     Result := Result + [IncludeTrailingPathDelimiter(ADir) + StringReplace(mPart, '\', PathDelim, [rfReplaceAll])];
+  end;
+end;
+
+{ TAtlasVcsCancellation }
+
+class function TAtlasVcsCancellation.Requested(const ACancelled: TFunc<Boolean>): Boolean;
+begin
+  // CheckTerminated wirft im Hauptthread und in fremden Threads; dort gibt es nichts abzubrechen.
+  Result := not TThread.CurrentThread.ExternalThread and TThread.CheckTerminated;
+  if not Result and Assigned(ACancelled) then
+  begin
+    Result := ACancelled();
   end;
 end;
 

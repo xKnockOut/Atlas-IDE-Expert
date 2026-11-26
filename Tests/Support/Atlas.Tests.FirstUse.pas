@@ -489,6 +489,7 @@ end;
 procedure WarmUpClientDataSet;
 var
   mData: TClientDataSet;
+  mMark: TBookmark;
 begin
   mData := TClientDataSet.Create(nil);
   try
@@ -501,7 +502,8 @@ begin
     mData.Post;
     mData.First;
     mData.MoveBy(1);
-    mData.Bookmark := mData.Bookmark;
+    mMark := mData.Bookmark;
+    mData.Bookmark := mMark;
   finally
     mData.Free;
   end;
