@@ -279,6 +279,9 @@ begin
   Assert.IsTrue(ASettings.DebugCompletionInDialogs, 'debug.completionInDialogs (#538)');
   Assert.IsTrue(ASettings.DebugEvaluateWindow, 'debug.evaluateWindow (#784)');
   Assert.IsTrue(ASettings.DebugEvaluateReplaceCtrlF7, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
+  Assert.IsTrue(ASettings.DebugEvaluateDataSetTable, 'debug.evaluateWindow.dataSetTable (#3024)');
+  Assert.AreEqual(50, ASettings.DebugEvaluateDataSetTablePageSize, 'dataSetTable.pageSize (#3024)');
+  Assert.AreEqual('ask', ASettings.DebugEvaluateDataSetTableMoveCursor, 'dataSetTable.moveCursor (#3024)');
   Assert.IsTrue(ASettings.DebugExplainAccessViolation, 'debug.explainAccessViolation (#865)');
   Assert.IsFalse(ASettings.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
   Assert.AreEqual('', ASettings.DebugParallelStacksWaitRoutines, 'debug.parallelStacks.waitRoutines (#837)');
@@ -513,6 +516,9 @@ begin
   ASettings.DebugCompletionInDialogs := False;
   ASettings.DebugEvaluateWindow := False;
   ASettings.DebugEvaluateReplaceCtrlF7 := False;
+  ASettings.DebugEvaluateDataSetTable := False;
+  ASettings.DebugEvaluateDataSetTablePageSize := 200;
+  ASettings.DebugEvaluateDataSetTableMoveCursor := 'always';
   ASettings.DebugExplainAccessViolation := False;
   ASettings.DebugExplainAccessViolationAllowCalls := True;
   ASettings.DebugModuleOfAddress := False;
@@ -733,6 +739,9 @@ begin
   Assert.IsFalse(ALoaded.DebugCompletionInDialogs, 'debug.completionInDialogs (#538)');
   Assert.IsFalse(ALoaded.DebugEvaluateWindow, 'debug.evaluateWindow (#784)');
   Assert.IsFalse(ALoaded.DebugEvaluateReplaceCtrlF7, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
+  Assert.IsFalse(ALoaded.DebugEvaluateDataSetTable, 'debug.evaluateWindow.dataSetTable (#3024)');
+  Assert.AreEqual(200, ALoaded.DebugEvaluateDataSetTablePageSize, 'dataSetTable.pageSize (#3024)');
+  Assert.AreEqual('always', ALoaded.DebugEvaluateDataSetTableMoveCursor, 'dataSetTable.moveCursor (#3024)');
   Assert.IsFalse(ALoaded.DebugExplainAccessViolation, 'debug.explainAccessViolation (#865)');
   Assert.IsTrue(ALoaded.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
   Assert.AreEqual('TMonitor.Enter;MyLock.Acquire', ALoaded.DebugParallelStacksWaitRoutines);
@@ -1038,6 +1047,8 @@ begin
   mStore.WriteString('UndoMultiFileOnConflict', ' ABORT ');
   mStore.WriteString('UndoMultiFileNewFiles', 'irgendwas');
   mStore.WriteString('ShortcutTipsScope', ' ATLAS ');
+  mStore.WriteInteger('DebugEvaluateDataSetTablePageSize', 5000);
+  mStore.WriteString('DebugEvaluateDataSetTableMoveCursor', ' ALWAYS ');
   mSettings := Default(TAtlasPluginSettings);
   mSettings.Load(mStore);
   Assert.AreEqual(TAtlasPluginSettings.cMinProviderTimeLimit, mSettings.ProviderTimeLimitMs);
@@ -1066,6 +1077,15 @@ begin
   Assert.AreEqual('recycleBin', mSettings.UndoMultiFileNewFiles, 'unbekannt: Papierkorb');
   // shortcutTips.scope (#600): nur atlas oder all.
   Assert.AreEqual('atlas', mSettings.ShortcutTipsScope);
+  // debug.evaluateWindow.dataSetTable (#3024): höchstens 1000 Zeilen je Seite, Wahl ohne Groß/Klein.
+  Assert.AreEqual(1000, mSettings.DebugEvaluateDataSetTablePageSize);
+  Assert.AreEqual('always', mSettings.DebugEvaluateDataSetTableMoveCursor);
+  mStore.WriteInteger('DebugEvaluateDataSetTablePageSize', 0);
+  mStore.WriteString('DebugEvaluateDataSetTableMoveCursor', 'manchmal');
+  mSettings := Default(TAtlasPluginSettings);
+  mSettings.Load(mStore);
+  Assert.AreEqual(1, mSettings.DebugEvaluateDataSetTablePageSize);
+  Assert.AreEqual('ask', mSettings.DebugEvaluateDataSetTableMoveCursor, 'unbekannt: nachfragen');
 end;
 
 /// <summary>Normalize begrenzt Wiederholungen, Wackeltests, Grenzfälle und Mutationszeit der Tests.</summary>

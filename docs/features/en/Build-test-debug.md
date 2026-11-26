@@ -546,6 +546,21 @@ Settings: `debug.completionInDialogs`
 
 Settings: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 
+<a id="dataset-table"></a>
+#### Data set as table
+
+If the selected expression is a `TDataSet` (query, table, client data set …), the button "Table …" shows its records in a separate, larger window (#3024).
+
+- A header with expression, state and "record x of y"; the current record is marked with ▶, NULL shows as "(NULL)".
+- Records are read page by page ("Load n more") in small steps, so the IDE stays responsive; "Cancel" stops.
+- Without help Atlas reads only the current record. For more it has to move the cursor (`BeforeScroll`, `AfterScroll` and `OnCalcFields` run), so it asks first; afterwards the cursor is back on the starting record.
+- Faster and without visible cursor movement with the optional unit `Atlas.Debug.DataSets` from `Setup/Vorlagen`, best in debug builds only: `{$IFDEF DEBUG} Atlas.Debug.DataSets, {$ENDIF}`. It detaches scroll events and bound controls while reading and restores the record.
+- "Go to record" moves the program's cursor, "Edit value …" sets a field (Edit, Post); both only after asking.
+- "Copy as CSV", "Copy as JSON" and Ctrl+C for the selected rows.
+- Data sets in edit mode and unidirectional ones are never moved.
+
+Settings: `debug.evaluateWindow.dataSetTable`, `debug.evaluateWindow.dataSetTable.pageSize`, `debug.evaluateWindow.dataSetTable.moveCursor` (`never`, `ask`, `always`)
+
 <a id="window-atlasvariables"></a>
 ### Variables window
 

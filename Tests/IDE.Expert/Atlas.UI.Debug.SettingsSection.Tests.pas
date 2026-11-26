@@ -98,6 +98,9 @@ begin
   Assert.IsTrue(CheckOf(APage, 'DebugCompletionInDialogs').Checked, 'debug.completionInDialogs (#538)');
   Assert.IsTrue(CheckOf(APage, 'DebugEvaluateWindow').Checked, 'debug.evaluateWindow (#784)');
   Assert.IsTrue(CheckOf(APage, 'DebugEvaluateReplaceCtrlF7').Checked, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
+  Assert.IsTrue(CheckOf(APage, 'DebugEvaluateDataSetTable').Checked, 'debug.evaluateWindow.dataSetTable (#3024)');
+  Assert.AreEqual('50', EditOf(APage, 'DebugEvaluateDataSetTablePageSize').Text, 'dataSetTable.pageSize (#3024)');
+  Assert.AreEqual(1, ChoiceOf(APage, 'DebugEvaluateDataSetTableMoveCursor').Choice, 'dataSetTable.moveCursor (#3024)');
   Assert.IsTrue(CheckOf(APage, 'DebugExplainAccessViolation').Checked, 'debug.explainAccessViolation (#865)');
   Assert.IsFalse(CheckOf(APage, 'DebugExplainAccessViolationAllowCalls').Checked, 'allowCalls (#865)');
   Assert.AreEqual('64', EditOf(APage, 'DebugParallelStacksMaxThreads').Text, 'debug.parallelStacks.maxThreads (#837)');
@@ -142,6 +145,9 @@ begin
   CheckOf(APage, 'DebugCompletionInDialogs').Checked := False;
   CheckOf(APage, 'DebugEvaluateWindow').Checked := False;
   CheckOf(APage, 'DebugEvaluateReplaceCtrlF7').Checked := False;
+  CheckOf(APage, 'DebugEvaluateDataSetTable').Checked := False;
+  EditOf(APage, 'DebugEvaluateDataSetTablePageSize').Text := '120';
+  ChoiceOf(APage, 'DebugEvaluateDataSetTableMoveCursor').Choice := 0;
   CheckOf(APage, 'DebugExplainAccessViolation').Checked := False;
   CheckOf(APage, 'DebugExplainAccessViolationAllowCalls').Checked := True;
   CheckOf(APage, 'DebugModuleOfAddress').Checked := False;
@@ -186,6 +192,9 @@ begin
   Assert.IsFalse(ASaved.DebugCompletionInDialogs);
   Assert.IsFalse(ASaved.DebugEvaluateWindow);
   Assert.IsFalse(ASaved.DebugEvaluateReplaceCtrlF7);
+  Assert.IsFalse(ASaved.DebugEvaluateDataSetTable);
+  Assert.AreEqual(120, ASaved.DebugEvaluateDataSetTablePageSize);
+  Assert.AreEqual('never', ASaved.DebugEvaluateDataSetTableMoveCursor);
   Assert.IsFalse(ASaved.DebugExplainAccessViolation);
   Assert.IsTrue(ASaved.DebugExplainAccessViolationAllowCalls);
   Assert.IsFalse(ASaved.DebugModuleOfAddress);

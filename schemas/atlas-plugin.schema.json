@@ -2501,6 +2501,45 @@
       "x-captionEn": "Ctrl+F7 opens the Atlas window",
       "x-issue": "#784"
     },
+    "DebugEvaluateDataSetTable": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.evaluateWindow.dataSetTable",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-parent": "debug.evaluateWindow",
+      "x-caption": "Datenmenge als Tabelle",
+      "x-captionEn": "Data set as table",
+      "x-issue": "#3024"
+    },
+    "DebugEvaluateDataSetTablePageSize": {
+      "type": "integer",
+      "default": 50,
+      "description": "Zeilen, die die Tabelle einer Datenmenge auf einmal liest (1 bis 1000).",
+      "x-key": "debug.evaluateWindow.dataSetTable.pageSize",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.evaluateWindow.dataSetTable",
+      "x-control": "Zahl",
+      "x-issue": "#3024"
+    },
+    "DebugEvaluateDataSetTableMoveCursor": {
+      "description": "Ohne die Unit Atlas.Debug.DataSets im Programm muss Atlas den Cursor bewegen, um mehr als den aktuellen Datensatz zu lesen: never = nie (nur der aktuelle Datensatz), ask = nach Rückfrage im Fenster, always = immer.",
+      "type": "string",
+      "enum": [
+        "never",
+        "ask",
+        "always"
+      ],
+      "default": "ask",
+      "x-key": "debug.evaluateWindow.dataSetTable.moveCursor",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.evaluateWindow.dataSetTable",
+      "x-control": "Auswahl",
+      "x-issue": "#3024"
+    },
     "DebugExplainAccessViolation": {
       "type": "boolean",
       "default": true,

@@ -8,7 +8,8 @@
 //     zeigt den Verlauf) und „Nebenwirkungen erlauben“.
 //   - TAtlasEvalDetailPanel: unten die Ansicht des gewählten Werts (Text mit
 //     sichtbaren Steuerzeichen, Zeilen einer TStrings, JSON, Hex), darüber die
-//     Leiste mit den Ansichten, „Ändern …“, „Festheften“ und „IDE-Dialog“. Die
+//     Leiste mit den Ansichten, „Tabelle …“ (Datenmenge als Tabelle, #3024, nur
+//     mit Hooks.Table), „Ändern …“, „Festheften“ und „IDE-Dialog“. Die
 //     Zeilen-Ansicht braucht den Wert von „Ausdruck.Text“: Die IDE-Schicht
 //     wertet ihn auf Hooks.Lines aus und reicht ihn mit SetLines zurück.
 // Welcher Knoten gewählt ist, weiß nur der Frame; die Ansicht fragt ihn über
@@ -42,6 +43,7 @@ type
     FHistory: TFunc<TArray<string>>;
     FSideEffects: TProc<Boolean>;
     FIdeDialog: TProc;
+    FTable: TAtlasEvalNodeProc;
   public
     /// <summary>Enter im Eingabefeld: Ausdruck als Zeile anfügen.</summary>
     property Add: TProc<string> read FAdd write FAdd;
@@ -60,6 +62,8 @@ type
     property History: TFunc<TArray<string>> read FHistory write FHistory;
     property SideEffects: TProc<Boolean> read FSideEffects write FSideEffects;
     property IdeDialog: TProc read FIdeDialog write FIdeDialog;
+    /// <summary>„Tabelle …“: Datenmenge des Knotens als Tabelle zeigen (#3024); nil blendet den Knopf aus.</summary>
+    property Table: TAtlasEvalNodeProc read FTable write FTable;
   end;
 
   /// <summary>Eingabefeld, „Nebenwirkungen erlauben“ und das Verlaufsmenü.</summary>
@@ -93,6 +97,7 @@ type
     FSource: TAtlasEvalNodeSource;
     FBar: TFlowPanel;
     FViewButtons: array[TAtlasEvalView] of TSpeedButton;
+    FTableButton: TButton;
     FModifyButton: TButton;
     FPinButton: TButton;
     FIdeDialogButton: TButton;
@@ -107,6 +112,7 @@ type
     procedure BuildBar(AFrame: TWinControl);
     procedure ViewClick(Sender: TObject);
     procedure ModifyClick(Sender: TObject);
+    procedure TableClick(Sender: TObject);
     procedure PinClick(Sender: TObject);
     procedure IdeDialogClick(Sender: TObject);
     /// <summary>Zeilen-Ansicht: Wert von „.Text“ fehlt noch. Anfragen, bis dahin „wird ausgewertet“; True, wenn
@@ -136,6 +142,7 @@ type
       const ALines: string; out AUnfit: Boolean): string; static;
     property Bar: TFlowPanel read FBar;
     property ViewButtons[AView: TAtlasEvalView]: TSpeedButton read GetViewButton;
+    property TableButton: TButton read FTableButton;
     property ModifyButton: TButton read FModifyButton;
     property PinButton: TButton read FPinButton;
     property IdeDialogButton: TButton read FIdeDialogButton;
@@ -147,6 +154,8 @@ implementation
 uses
   System.Types,
   Winapi.Windows,
+  Atlas.Core.Debug.Visualizers.Format,
+  Atlas.UI.Debug.DataSetTable.Strings,
   Atlas.UI.Debug.Evaluate.Strings;
 
 const
@@ -179,14 +188,14 @@ begin
 end;
 
 /// <summary>Knopf der fließenden Leiste; die Reihenfolge ist die der Erzeugung.</summary>
-function AddButton(AFrame, AParent: TWinControl; AText: TAtlasEvaluateTextId; AClick: TNotifyEvent): TButton;
+function AddButton(AFrame, AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
 begin
   Result := TButton.Create(AParent);
   Result.Parent := AParent;
   Result.AlignWithMargins := True;
   Result.Width := PixelsFor(AFrame, cButtonWidth);
   Result.Height := PixelsFor(AFrame, cButtonHeight);
-  Result.Caption := TAtlasEvaluateStrings.Text(AText);
+  Result.Caption := ACaption;
   Result.OnClick := AClick;
 end;
 
@@ -392,7 +401,7 @@ begin
   FMemo.Font.Name := 'Consolas';
 end;
 
-/// <summary>Leiste über der Ansicht: erst die Ansichten, dann Ändern, Festheften, IDE-Dialog. Fließend: Bei
+/// <summary>Leiste über der Ansicht: erst die Ansichten, dann Tabelle, Ändern, Festheften, IDE-Dialog. Fließend: Bei
 /// schmalem Fenster brechen die Knöpfe in weitere Zeilen um; TFlowPanel ordnet nach Erzeugungsreihenfolge.</summary>
 procedure TAtlasEvalDetailPanel.BuildBar(AFrame: TWinControl);
 var
@@ -410,9 +419,14 @@ begin
   begin
     FViewButtons[mKind] := AddViewButton(AFrame, FBar, mKind, mKind = FView, ViewClick);
   end;
-  FModifyButton := AddButton(AFrame, FBar, TAtlasEvaluateTextId.DebugEvaluateModify, ModifyClick);
-  FPinButton := AddButton(AFrame, FBar, TAtlasEvaluateTextId.DebugEvaluatePin, PinClick);
-  FIdeDialogButton := AddButton(AFrame, FBar, TAtlasEvaluateTextId.DebugEvaluateIdeDialog, IdeDialogClick);
+  FTableButton := AddButton(AFrame, FBar, TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.EvaluateTableButton),
+    TableClick);
+  FTableButton.Visible := False;
+  FModifyButton := AddButton(AFrame, FBar, TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateModify),
+    ModifyClick);
+  FPinButton := AddButton(AFrame, FBar, TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluatePin), PinClick);
+  FIdeDialogButton := AddButton(AFrame, FBar, TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateIdeDialog),
+    IdeDialogClick);
 end;
 
 function TAtlasEvalDetailPanel.GetViewButton(AView: TAtlasEvalView): TSpeedButton;
@@ -431,6 +445,17 @@ end;
 procedure TAtlasEvalDetailPanel.ModifyClick(Sender: TObject);
 begin
   ModifyNode(FSource());
+end;
+
+procedure TAtlasEvalDetailPanel.TableClick(Sender: TObject);
+var
+  mNode: TAtlasEvalNode;
+begin
+  mNode := FSource();
+  if (mNode <> nil) and FTableButton.Enabled and Assigned(FHooks.Table) then
+  begin
+    FHooks.Table(mNode);
+  end;
 end;
 
 procedure TAtlasEvalDetailPanel.PinClick(Sender: TObject);
@@ -516,6 +541,10 @@ begin
     FPinButton.Caption := TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluatePin);
   end;
   FIdeDialogButton.Enabled := Assigned(FHooks.IdeDialog);
+  // Tabelle nur für Objekte (strukturierter Wert); ob es eine Datenmenge ist, prüft das Tabellenfenster.
+  FTableButton.Visible := Assigned(FHooks.Table);
+  FTableButton.Enabled := mHasExpression and (mNode.State = TAtlasEvalState.Value) and
+    TAtlasVisualizerFormat.IsStructured(mNode.Value);
 end;
 
 procedure TAtlasEvalDetailPanel.SetView(AView: TAtlasEvalView);

@@ -1,0 +1,2 @@
+### Neu
+- Datenmenge als Tabelle (#3024): Im Fenster „Atlas: Auswerten“ öffnet der Knopf „Table …“ ein `TDataSet` als Tabelle in einem eigenen Fenster: seitenweise lesen, abbrechen, zum Datensatz springen, Wert ändern (beides nach Rückfrage), als CSV oder JSON kopieren. Ohne Zusatz nur der aktuelle Datensatz oder, nach Zustimmung, Lesen durch Bewegen des Cursors mit Rückkehr; schneller und ohne Cursorbewegung mit der freiwilligen Unit `Setup/Vorlagen/Atlas.Debug.DataSets.pas`. Einstellungen `debug.evaluateWindow.dataSetTable`, `.pageSize`, `.moveCursor`.
