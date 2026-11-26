@@ -911,8 +911,18 @@ begin
   Result := ReadVcsChanges(mStatus, mText, ADevelopment, AError);
 end;
 
-/// <summary>Seit APoll.Since geänderte Issues, Suchbegriffe in ALanguage; False mit AError, APoll.FailedStatus
-/// und APoll.FailedMessage.</summary>
+/// <summary>Platzhalter für den Anmeldenamen im Protokoll; '' ohne Anmeldename.</summary>
+function MaskedLogin(const AMe: string): string;
+begin
+  Result := '';
+  if Trim(AMe) <> '' then
+  begin
+    Result := 'LOGIN';
+  end;
+end;
+
+/// <summary>Seit APoll.Since geänderte Issues, Suchbegriffe in ALanguage; False mit AError, APoll.FailedStatus,
+/// APoll.FailedMessage und APoll.FailedQuery.</summary>
 function ChangedIssuesIn(const ACall: TAtlasTrackerCall; const ALanguage: string; var APoll: TAtlasTrackerPoll;
   out AIssues: TArray<TAtlasTrackerChange>; out AError: TAtlasCiFetchError): Boolean;
 var
@@ -923,8 +933,9 @@ begin
   Result := False;
   APoll.FailedStatus := 0;
   APoll.FailedMessage := '';
-  if not ACall.Transport.Get(TAtlasYouTrackApi.ChangedIssuesUrl(ACall.Target, APoll.Since, APoll.Scope, ALanguage),
-    ACall.TimeoutMs, mStatus, mText, AError) then
+  APoll.FailedQuery := '';
+  if not ACall.Transport.Get(TAtlasYouTrackApi.ChangedIssuesUrl(ACall.Target, APoll.Since, APoll.Scope, ALanguage,
+    APoll.Me), ACall.TimeoutMs, mStatus, mText, AError) then
   begin
     APoll.FailedStatus := mStatus;
     Exit;
@@ -934,6 +945,8 @@ begin
     AError := TAtlasYouTrackApi.ErrorOfStatus(mStatus);
     APoll.FailedStatus := mStatus;
     APoll.FailedMessage := TAtlasYouTrackApi.ErrorMessage(mText);
+    APoll.FailedQuery := TAtlasYouTrackApi.ChangedIssuesQuery(APoll.Since, APoll.Scope, ALanguage,
+      MaskedLogin(APoll.Me));
     Exit;
   end;
   if not TAtlasYouTrackParse.ParseChangedIssues(mText, APoll.Since, AIssues) then

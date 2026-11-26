@@ -429,6 +429,9 @@ type
     FailedStatus: Integer;
     /// <summary>Fehlertext des Trackers zur gescheiterten Abfrage (einzeilig, gekürzt); '' ohne.</summary>
     FailedMessage: string;
+    /// <summary>YouTrack: Suchabfrage der gescheiterten Abfrage, der Anmeldename durch LOGIN ersetzt (fürs
+    /// Protokoll); '' ohne.</summary>
+    FailedQuery: string;
     class function Create(ASince: TDateTime; const AMe: string; AScope: TAtlasTrackerNotifyScope): TAtlasTrackerPoll;
       static;
   end;
