@@ -98,7 +98,7 @@ uses
   System.StrUtils,
   System.Generics.Defaults,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Common.Completion.FuzzyMatch,
   Atlas.Common.Pascal.TokenCursor;
 
 /// <summary>A liegt vor B.</summary>

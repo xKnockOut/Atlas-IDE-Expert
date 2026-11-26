@@ -84,7 +84,7 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Lsp.Documentation,
-  Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Common.Completion.FuzzyMatch,
   Atlas.Common.Lsp.CompletionGenerics,
   Atlas.Common.Documents.Contract;
 

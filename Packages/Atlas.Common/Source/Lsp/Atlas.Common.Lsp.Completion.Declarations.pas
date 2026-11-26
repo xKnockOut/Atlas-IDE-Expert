@@ -62,7 +62,7 @@ uses
   Atlas.Common.Editing.ContextSnippets,
   Atlas.Common.Semantics.ClassCompletion,
   Atlas.Common.Pascal.InterfaceStubs,
-  Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Common.Completion.FuzzyMatch,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.Completion.TypeConversions,
   Atlas.Common.Lsp.Internals.CompletionSource,

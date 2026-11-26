@@ -62,7 +62,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Common.Completion.FuzzyMatch,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Completion.Contract;
 

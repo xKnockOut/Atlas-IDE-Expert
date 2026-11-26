@@ -1,10 +1,10 @@
-﻿unit Atlas.Common.Lsp.FuzzyMatch.Tests;
+﻿unit Atlas.Common.Completion.FuzzyMatch.Tests;
 
 interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Common.Lsp.FuzzyMatch;
+  Atlas.Common.Completion.FuzzyMatch;
 
 type
   [TestFixture]

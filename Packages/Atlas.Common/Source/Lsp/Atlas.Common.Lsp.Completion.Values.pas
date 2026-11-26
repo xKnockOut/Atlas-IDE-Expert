@@ -90,7 +90,7 @@ uses
   Atlas.Common.Editing.Contract,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Common.Completion.FuzzyMatch,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.CompletionEnums,
   Atlas.Common.Lsp.Completion.Context,

@@ -82,7 +82,7 @@ uses
   System.StrUtils,
   Atlas.Common.Index.Files,
   Atlas.Common.Lsp.CompletionCollector,
-  Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Common.Completion.FuzzyMatch,
   Atlas.Common.Pascal.TokenCursor;
 
 const

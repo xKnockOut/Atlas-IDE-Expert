@@ -87,6 +87,7 @@ uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Completion.Contract,
   Atlas.Common.Editing.Completion.CreateMethod,
+  Atlas.Common.Editing.Completion.ContextSnippets,
   Atlas.Common.Pascal.LanguageFeatures,
   Rules.Contract.Api,
   Rules.Providers.CatalogInfo,
@@ -178,6 +179,8 @@ begin
   FCompletion.Hooks.WithFor := WithEdits;
   // Methode aus Aufruf anlegen nach "(" bzw. mit Strg+Leer (#472), abschaltbar mit refactoring.createMethod.
   FCompletion.Sources.Add(TCompletionSlot.CreateMethod, TEditingCreateMethodCompletion.Source(CreateMethod));
+  // Code-Vorlagen am Zeilenanfang (#51) am Ende der Liste.
+  FCompletion.Sources.Add(TCompletionSlot.ContextSnippets, TEditingContextSnippetCompletion.Source());
   FCompletion.Hooks.NamingFor := FServices.NamingFor;
   FCompletion.Hooks.IdeTypesFor := FServices.IdeTypesFor;
   FCompletion.Hooks.HintsFor := FServices.HintsFor;

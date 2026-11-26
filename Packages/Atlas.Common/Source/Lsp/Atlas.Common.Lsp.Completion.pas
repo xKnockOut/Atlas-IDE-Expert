@@ -300,6 +300,7 @@ begin
     mRequest.Uri := AUri;
     mRequest.Index := FIndex;
     mRequest.ReadText := FHooks.ReadText;
+    mRequest.SnippetSupport := FHooks.SnippetSupport;
     if Assigned(FHooks.IdeTypesFor) then
     begin
       mRequest.IdeTypes := FHooks.IdeTypesFor();
@@ -352,7 +353,8 @@ begin
   TRequestDiagnostics.Note('syntaxErr', Length(ARequest.Tree.Diagnostics));
   mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    mResolver.Namespaces := FHooks.Namespaces;
+    ARequest.Namespaces := FHooks.Namespaces;
+    mResolver.Namespaces := ARequest.Namespaces;
     ARequest.Resolver := mResolver;
     // Den Baum einmal auswerten für alle Teile der Anfrage.
     mResolver.PinTree(ARequest.Tree, ARequest.FileName);

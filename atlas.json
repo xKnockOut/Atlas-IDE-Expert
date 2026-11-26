@@ -123,8 +123,6 @@
         "Atlas.Common.Lsp.Completion.Declarations -> Atlas.Common.Editing.ContextSnippets",
         "Atlas.Common.Lsp.Completion.Declarations -> Atlas.Common.Editing.Contract",
         "Atlas.Common.Lsp.Completion.Hooks -> Atlas.Common.Editing.Contract",
-        "Atlas.Common.Lsp.Completion.Lists -> Atlas.Common.Editing.ContextSnippets",
-        "Atlas.Common.Lsp.Completion.Lists -> Atlas.Common.Editing.Contract",
         "Atlas.Common.Lsp.Completion.Slash -> Atlas.Common.Editing.Contract",
         "Atlas.Common.Lsp.Completion.Slash -> Atlas.Common.Editing.SlashCommands",
         "Atlas.Common.Lsp.Completion.Slash -> Atlas.Common.Editing.SlashMenu",

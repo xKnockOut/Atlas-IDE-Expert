@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.FuzzyMatch;
+﻿unit Atlas.Common.Completion.FuzzyMatch;
 
 // Unscharfer Vergleich von Namen mit einer Suchanfrage, gemeinsam für die
 // Symbolsuche (#39) und die Vervollständigung (#229).
@@ -17,6 +17,9 @@
 
 interface
 
+uses
+  Atlas.Common.Configuration.Contract;
+
 type
   TFuzzyMatch = class
   public const
@@ -31,10 +34,14 @@ type
     class function CompletionScore(const AName, AQuery: string): Integer; static;
   end;
 
+/// <summary>Punktzahl von AName für den getippten Anfang APrefix in der Vervollständigung nach AMatching; TFuzzyMatch.cNoMatch, wenn er nicht passt.</summary>
+function MatchScore(const AName, APrefix: string; AMatching: TCompletionMatching): Integer;
+
 implementation
 
 uses
   System.SysUtils,
+  System.Math,
   Atlas.Text.Fuzzy;
 
 const
@@ -42,6 +49,9 @@ const
   cPrefixScore = 3000;
   cSubstringScore = 2000;
   cSubsequenceScore = 1000;
+  // Kürzel über Wortanfänge (#882): zwischen Anfang (TFuzzyMatch, ab etwa 3000) und Teilwort (höchstens
+  // 2499 mit Wortanfang-Zuschlag), wie im Plugin (TAtlasCompletionMatcher: Anfang vor Kürzel vor Teilwort).
+  cWordStartsScore = 2600;
 
 /// <summary>Erste Stelle ab AFrom, an der AChar steht und ein Wort beginnt; 0 ohne Treffer.</summary>
 function WordStartFrom(const AName, ALowerName: string; AChar: Char; AFrom: Integer): Integer;
@@ -203,6 +213,30 @@ begin
   if Result >= cSubstringScore then
   begin
     Result := cSubstringScore - 1;
+  end;
+end;
+
+function MatchScore(const AName, APrefix: string; AMatching: TCompletionMatching): Integer;
+begin
+  if APrefix = '' then
+  begin
+    Exit(0);
+  end;
+  if AMatching = TCompletionMatching.Prefix then
+  begin
+    if AName.StartsWith(APrefix, True) then
+    begin
+      Exit(0);
+    end;
+    Exit(TFuzzyMatch.cNoMatch);
+  end;
+  Result := TFuzzyMatch.CompletionScore(AName, APrefix);
+  // Kürzel ("bs" → btnSave) vor Teilwort und Teilfolge (#882): Sonst fielen sie beim Kürzen auf MaxItems
+  // hinter bloße Teilwörter zurück und erschienen erst mit passendem Anfang.
+  if (Result <> TFuzzyMatch.cNoMatch) and not AName.StartsWith(APrefix, True) and
+    TTextFuzzy.MatchesWordStarts(APrefix, AName) then
+  begin
+    Result := cWordStartsScore - Min(Length(AName) - Length(APrefix), 99);
   end;
 end;
 

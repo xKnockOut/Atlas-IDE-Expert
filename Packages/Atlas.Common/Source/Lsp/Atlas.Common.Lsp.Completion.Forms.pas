@@ -83,7 +83,7 @@ uses
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.FormFiles,
   Atlas.Common.Dfm.DataFieldNames,
-  Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Common.Completion.FuzzyMatch,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Lsp.Completion.TypeGuards,

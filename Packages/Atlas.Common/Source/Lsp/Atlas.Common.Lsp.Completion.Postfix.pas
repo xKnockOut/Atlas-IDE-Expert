@@ -49,7 +49,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Common.Completion.FuzzyMatch,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Pascal.TypeTexts,
   Atlas.Common.Pascal.RoutineLocals;

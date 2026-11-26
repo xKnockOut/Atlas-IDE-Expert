@@ -224,7 +224,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Formatting.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.SmartIndent.Protocol.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.LearnedSuggestions.Protocol.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.FuzzyMatch.Tests.pas"/>
+        <DCCReference Include="Common\Completion\Atlas.Common.Completion.FuzzyMatch.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.DocWiki.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompilerDirectives.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ConditionalSymbols.Tests.pas"/>

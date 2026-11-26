@@ -149,8 +149,6 @@ function CompletionKindOf(AKind: TIndexSymbolKind): Integer;
 /// <summary>Eintrag aus dem nächsten Gültigkeitsbereich: lokal, Parameter, eigenes Mitglied (nicht geerbt)
 /// oder eigene Unit; solche Einträge fallen beim Kürzen auf MaxItems nie heraus.</summary>
 function IsNearItem(const AItem: TCompletionItem): Boolean;
-/// <summary>Punktzahl von AName; TFuzzyMatch.cNoMatch, wenn er nicht passt.</summary>
-function MatchScore(const AName, APrefix: string; AMatching: TCompletionMatching): Integer;
 /// <summary>Vorfilter des Resolvers (#616): nur Namen, die zu APrefix passen. GetEnumerator bleibt, weil die
 /// Postfix-Vorlagen daran erkennen, ob der Typ aufzählbar ist; Add verwirft ihn ohne Treffer wieder.</summary>
 function PrefixFilter(const APrefix: string; AMatching: TCompletionMatching): TCandidateNameFilter;
@@ -164,10 +162,9 @@ uses
   Atlas.Common.Index.NameIndex,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Common.Completion.FuzzyMatch,
   Atlas.Common.Lsp.CompletionSameNames,
   Atlas.Common.Lsp.Completion.TypeConversions,
-  Atlas.Text.Fuzzy,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TypeTexts;
 
@@ -178,11 +175,6 @@ type
 const
   cTexts: array[TCompletionCollectorText] of TAtlasText = (
     (De: ' (uses ergänzen)'; En: ' (add to uses)'));
-
-const
-  // Kürzel über Wortanfänge (#882): zwischen Anfang (TFuzzyMatch, ab etwa 3000) und Teilwort (höchstens
-  // 2499 mit Wortanfang-Zuschlag), wie im Plugin (TAtlasCompletionMatcher: Anfang vor Kürzel vor Teilwort).
-  cWordStartsScore = 2600;
 
 function CompletionKindOf(AKind: TIndexSymbolKind): Integer;
 begin
@@ -231,30 +223,6 @@ begin
   else
   begin
     Result := Left.Order - Right.Order;
-  end;
-end;
-
-function MatchScore(const AName, APrefix: string; AMatching: TCompletionMatching): Integer;
-begin
-  if APrefix = '' then
-  begin
-    Exit(0);
-  end;
-  if AMatching = TCompletionMatching.Prefix then
-  begin
-    if AName.StartsWith(APrefix, True) then
-    begin
-      Exit(0);
-    end;
-    Exit(TFuzzyMatch.cNoMatch);
-  end;
-  Result := TFuzzyMatch.CompletionScore(AName, APrefix);
-  // Kürzel ("bs" → btnSave) vor Teilwort und Teilfolge (#882): Sonst fielen sie beim Kürzen auf MaxItems
-  // hinter bloße Teilwörter zurück und erschienen erst mit passendem Anfang.
-  if (Result <> TFuzzyMatch.cNoMatch) and not AName.StartsWith(APrefix, True) and
-    TTextFuzzy.MatchesWordStarts(APrefix, AName) then
-  begin
-    Result := cWordStartsScore - Min(Length(AName) - Length(APrefix), 99);
   end;
 end;
 

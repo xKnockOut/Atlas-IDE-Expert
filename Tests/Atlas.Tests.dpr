@@ -492,7 +492,7 @@ uses
   Atlas.Common.Lsp.Formatting.Tests in 'Common\Lsp\Atlas.Common.Lsp.Formatting.Tests.pas',
   Atlas.Common.Editing.SmartIndent.Protocol.Tests in 'Common\Editing\Atlas.Common.Editing.SmartIndent.Protocol.Tests.pas',
   Atlas.Common.Editing.LearnedSuggestions.Protocol.Tests in 'Common\Editing\Atlas.Common.Editing.LearnedSuggestions.Protocol.Tests.pas',
-  Atlas.Common.Lsp.FuzzyMatch.Tests in 'Common\Lsp\Atlas.Common.Lsp.FuzzyMatch.Tests.pas',
+  Atlas.Common.Completion.FuzzyMatch.Tests in 'Common\Completion\Atlas.Common.Completion.FuzzyMatch.Tests.pas',
   Atlas.Common.Lsp.WorkspaceSymbols.Tests in 'Common\Lsp\Atlas.Common.Lsp.WorkspaceSymbols.Tests.pas',
   Atlas.Common.Lsp.DocumentHighlights.Tests in 'Common\Lsp\Atlas.Common.Lsp.DocumentHighlights.Tests.pas',
   Atlas.Common.Lsp.KeywordHighlights.Tests in 'Common\Lsp\Atlas.Common.Lsp.KeywordHighlights.Tests.pas',

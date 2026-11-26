@@ -556,14 +556,6 @@ begin
   AAnswer.Hidden := mCollected.Hidden;
 end;
 
-/// <summary>Kontextabhängige Code-Vorlagen (#51) am Ende der Liste.</summary>
-function ContextCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
-begin
-  Result := TCompletionOutcome.Next;
-  AAnswer.Tail := AAnswer.Tail + TCompletionLists.ContextItems(ARequest, AAnswer.Hooks.Namespaces,
-    AAnswer.Hooks.SnippetSupport);
-end;
-
 /// <summary>Unbekannter Name (#471): Deklarieren am Ende. Die Einträge hängen am getippten Namen, deshalb neu
 /// fragen.</summary>
 function DeclareCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
@@ -633,7 +625,7 @@ begin
   AddCase(Result, PostfixCase);
   AddCase(Result, SenderCase);
   AddCase(Result, ListCase);
-  AddCase(Result, ContextCase);
+  AddCase(Result, SlotCase(TCompletionSlot.ContextSnippets));
   AddCase(Result, DeclareCase);
 end;
 
