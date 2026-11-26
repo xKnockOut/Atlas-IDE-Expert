@@ -214,20 +214,16 @@ begin
 end;
 
 class function TAtlasDataFile.TryRead(const AFileName: string; out AText: string): Boolean;
+var
+  mBytes: TBytes;
 begin
   AText := '';
-  Result := False;
-  if not FileExists(AFileName) then
+  // Fehlt, gesperrt (der Compiler oder eine zweite IDE schreibt gerade) oder Lesefehler; Load unterscheidet das
+  // über FileExists. Ohne Ausnahme: Die IDE sammelt bei jeder den Stapel, mitten in einem Build spürbar.
+  Result := TAtlasTextFile.TryReadAllBytes(AFileName, mBytes);
+  if Result then
   begin
-    Exit;
-  end;
-  try
-    AText := TextOf(TAtlasTextFile.ReadAllBytes(AFileName));
-    Result := True;
-  except
-    // Fehlt inzwischen, gesperrt oder Lesefehler; Load unterscheidet das über FileExists.
-    on EStreamError do
-      AText := '';
+    AText := TextOf(mBytes);
   end;
 end;
 

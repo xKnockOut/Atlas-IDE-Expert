@@ -33,6 +33,9 @@ type
     /// daran, weil es Löschen nicht teilt.</summary>
     [Test]
     procedure ReadsWhileSomeoneReplaces;
+    /// <summary>TryReadAllBytes: gelesen wie ReadAllBytes; fehlt oder gesperrt ohne Ausnahme False.</summary>
+    [Test]
+    procedure TryReadReportsWithoutException;
   end;
 
 implementation
@@ -124,6 +127,26 @@ begin
   finally
     CloseHandle(mHandle);
   end;
+end;
+
+procedure TAtlasSharedReadTests.TryReadReportsWithoutException;
+var
+  mBytes: TBytes;
+  mHandle: THandle;
+begin
+  Assert.IsTrue(TAtlasSharedRead.TryReadAllBytes(FFile, mBytes));
+  Assert.AreEqual(2, Integer(Length(mBytes)));
+  Assert.IsFalse(TAtlasSharedRead.TryReadAllBytes(TPath.Combine(FDir, 'fehlt.json'), mBytes), 'fehlt');
+  Assert.AreEqual(0, Integer(Length(mBytes)), 'fehlt: leer');
+  // Gesperrt: Ein anderer hat die Datei ohne Freigabe offen (wie der Compiler beim Schreiben).
+  mHandle := CreateFile(PChar(FFile), GENERIC_READ or GENERIC_WRITE, 0, nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+  Assert.AreNotEqual<THandle>(INVALID_HANDLE_VALUE, mHandle, SysErrorMessage(GetLastError));
+  try
+    Assert.IsFalse(TAtlasSharedRead.TryReadAllBytes(FFile, mBytes), 'gesperrt');
+  finally
+    CloseHandle(mHandle);
+  end;
+  mBytes := nil;
 end;
 
 initialization

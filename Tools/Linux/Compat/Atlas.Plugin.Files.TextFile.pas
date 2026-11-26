@@ -23,6 +23,9 @@ type
   public
     /// <summary>Alle Bytes von AFileName; EFOpenError, wenn die Datei fehlt.</summary>
     class function ReadAllBytes(const AFileName: string): TBytes; static;
+    /// <summary>Wie ReadAllBytes ohne Ausnahme nach außen: False, wenn die Datei fehlt oder nicht lesbar ist.
+    /// </summary>
+    class function TryReadAllBytes(const AFileName: string; out ABytes: TBytes): Boolean; static;
     /// <summary>Ersetzt AFileName atomar durch ABytes: erst daneben schreiben, dann umbenennen.</summary>
     class procedure Replace(const AFileName: string; const ABytes: TBytes); static;
     /// <summary>Benennt ASource in ATarget um und ersetzt eine vorhandene ATarget in einem Schritt.</summary>
@@ -55,6 +58,26 @@ begin
     end;
   finally
     mStream.Free;
+  end;
+end;
+
+class function TAtlasTextFile.TryReadAllBytes(const AFileName: string; out ABytes: TBytes): Boolean;
+begin
+  ABytes := nil;
+  Result := FileExists(AFileName);
+  if not Result then
+  begin
+    Exit;
+  end;
+  try
+    ABytes := ReadAllBytes(AFileName);
+  except
+    // Nur im Linux-Bau der Tests: Die echte Unit liest ohne Ausnahme (TAtlasSharedRead.TryReadAllBytes).
+    on EStreamError do
+    begin
+      ABytes := nil;
+      Result := False;
+    end;
   end;
 end;
 
