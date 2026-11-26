@@ -8,7 +8,10 @@
 //   - WM_MOUSEACTIVATE liefert MA_NOACTIVATE: Klicks wählen, ohne zu aktivieren.
 //   - Zeigen über SetWindowPos mit SWP_NOACTIVATE (wie THintWindow), nicht über Visible.
 // Aussehen nach dem Entwurf (#411): Farben aus TAtlasColors, Rahmen in
-// Akzentfarbe, abgerundete Ecken (ab Windows 11 vom Fenstermanager mit
+// Akzentfarbe. Ohne eigene Farben (Colors) folgt das Fenster bei jedem Zeigen
+// dem Themendienst (TAtlasUiTheme.Colors, in der IDE deren Thema); der globale
+// VCL-Stil ist in der IDE nicht ihr Thema, das Fenster wäre im dunklen Editor
+// hell. Rahmen abgerundete Ecken (ab Windows 11 vom Fenstermanager mit
 // Kantenglättung, sonst über eine Fensterregion). Code (Namen, Signaturen)
 // steht in der Editorschrift (Font), Beschriftungen in der UI-Schrift (UIFont).
 // Maße (#412, #445): alle in logischen Pixeln (96 dpi), umgerechnet mit PPI =
@@ -58,6 +61,8 @@ type
     FColors: TAtlasColors;
     FUIFont: TFont;
     FBorderColor: TAtlasColor;
+    /// <summary>Farben über Colors gesetzt; sonst folgt das Fenster beim Zeigen dem Themendienst.</summary>
+    FOwnColors: Boolean;
     FCorners: TCorners;
     FPPI: Integer;
     FAccess: TAccess;
@@ -69,6 +74,8 @@ type
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
     procedure SetColors(const AValue: TAtlasColors);
     procedure SetBorderColor(AValue: TAtlasColor);
+    /// <summary>Ohne eigene Farben die des Themendienstes übernehmen; ein abweichender Rahmen bleibt.</summary>
+    procedure FollowTheme;
     procedure UpdateCorners;
   protected
     procedure CreateParams(var Params: TCreateParams); override;
@@ -162,7 +169,7 @@ uses
   Winapi.DwmApi,
   System.Math,
   Vcl.Forms,
-  Vcl.Themes;
+  Atlas.Vcl.Theme.Service;
 
 const
   // Windows 11 (ab Build 22000); in älteren Winapi.DwmApi nicht deklariert.
@@ -182,12 +189,6 @@ begin
   Result := Atlas.Vcl.Popup.Draw.ToColor(AColor);
 end;
 
-/// <summary>Farben passend zum aktiven VCL-Stil (in der IDE deren Thema).</summary>
-function StyleColors: TAtlasColors;
-begin
-  Result := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices.GetSystemColor(clWindow))));
-end;
-
 { TAtlasPopupWindow }
 
 constructor TAtlasPopupWindow.Create(AOwner: TComponent);
@@ -198,7 +199,7 @@ begin
   Visible := False;
   FUIFont := TFont.Create;
   FPPI := Screen.PixelsPerInch;
-  FColors := StyleColors;
+  FColors := TAtlasUiTheme.Colors;
   FBorderColor := FColors.Accent;
   Perform(CM_FONTCHANGED, 0, 0);
 end;
@@ -211,10 +212,28 @@ end;
 
 procedure TAtlasPopupWindow.SetColors(const AValue: TAtlasColors);
 begin
+  FOwnColors := True;
   FColors := AValue;
   FBorderColor := FColors.Accent;
   UpdateCorners;
   Invalidate;
+end;
+
+procedure TAtlasPopupWindow.FollowTheme;
+var
+  mColors: TAtlasColors;
+begin
+  if FOwnColors then
+  begin
+    Exit;
+  end;
+  mColors := TAtlasUiTheme.Colors;
+  if FBorderColor = FColors.Accent then
+  begin
+    FBorderColor := mColors.Accent;
+  end;
+  FColors := mColors;
+  UpdateCorners;
 end;
 
 procedure TAtlasPopupWindow.SetBorderColor(AValue: TAtlasColor);
@@ -435,6 +454,7 @@ end;
 procedure TAtlasPopupWindow.ShowAt(const ABounds: TRect);
 begin
   HandleNeeded;
+  FollowTheme;
   // Erst Größe, dann ohne Aktivierung zeigen; Visible bleibt False wie bei THintWindow.
   SetBounds(ABounds.Left, ABounds.Top, ABounds.Width, ABounds.Height);
   // SWP_NOOWNERZORDER: Ohne das sortiert Windows die ganze Gruppe der Fenster mit demselben Owner (IDE-
