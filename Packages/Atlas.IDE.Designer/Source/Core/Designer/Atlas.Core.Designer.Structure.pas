@@ -26,6 +26,11 @@
 // - Freie Stelle für ein neues Symbol: am unteren Rand des Formulars von
 //   links, dann Reihe für Reihe darüber; belegt ist eine Stelle, deren Symbol
 //   ein vorhandenes überdeckt. Alles in Pixeln der DFM (Left/Top).
+// - Symbole auf der Formularfläche ausblenden (TAtlasStructureHide): Der
+//   Befehl der IDE schaltet eine Umgebungsoption für alle Designer um. Er
+//   läuft nur, solange ein visuelles Formular fertig im Designer steht; sonst
+//   wartet der Schritt (Wait). Hat der Benutzer selbst ausgeblendet, bleibt
+//   es dabei; hat er selbst wieder eingeblendet, gibt Atlas nichts zurück.
 
 interface
 
@@ -38,7 +43,31 @@ type
   TAtlasStructureKind = (Data, Actions, Dialogs, Images, Other);
   TAtlasStructureNodeKind = (Controls, NonVisual, Control, Group, Component, Link);
   TAtlasStructureFinding = (None, Empty, Unused);
+  /// <summary>Nächster Schritt für den Befehl „Nichtvisuelle Komponenten ausblenden“ der IDE: nichts, ausführen,
+  /// eigenes Ausblenden vergessen (der Benutzer hat selbst eingeblendet), später erneut versuchen.</summary>
+  TAtlasStructureHideStep = (None, Execute, Forget, Wait);
 {$SCOPEDENUMS OFF}
+
+  /// <summary>Stand für TAtlasStructureHide.Step.</summary>
+  TAtlasStructureHideState = record
+    /// <summary>Ausblenden gewünscht (Fenster offen und designer.structureHideOnForm an).</summary>
+    Wanted: Boolean;
+    /// <summary>Atlas hat ausgeblendet und stellt beim Schließen zurück.</summary>
+    Hid: Boolean;
+    /// <summary>Ein visuelles Formular steht fertig im Designer: Erst dann darf die Umgebungsoption wechseln.
+    /// </summary>
+    Settled: Boolean;
+    /// <summary>Befehl der IDE: zur Zeit ausgeblendet (nur mit Settled gelesen).</summary>
+    Checked: Boolean;
+    /// <summary>Befehl der IDE verfügbar (nur mit Settled gelesen).</summary>
+    Enabled: Boolean;
+  end;
+
+  TAtlasStructureHide = class
+  public
+    /// <summary>Schritt für den Stand AState; ohne Settled nie Execute.</summary>
+    class function Step(const AState: TAtlasStructureHideState): TAtlasStructureHideStep; static;
+  end;
 
   /// <summary>Verweis einer Komponente auf eine andere über eine Eigenschaft; Target leer = nicht gesetzt.
   /// </summary>
@@ -558,6 +587,38 @@ begin
   end;
   // Kein Platz (sehr kleines oder volles Formular): links oben.
   Result := TPoint.Create(cMargin, cMargin);
+end;
+
+{ TAtlasStructureHide }
+
+class function TAtlasStructureHide.Step(const AState: TAtlasStructureHideState): TAtlasStructureHideStep;
+begin
+  if AState.Wanted = AState.Hid then
+  begin
+    Result := TAtlasStructureHideStep.None;
+  end
+  else if not AState.Settled then
+  begin
+    Result := TAtlasStructureHideStep.Wait;
+  end
+  else if AState.Wanted and AState.Checked then
+  begin
+    // Schon ausgeblendet (vom Benutzer): nichts tun und beim Schließen nichts zurückstellen.
+    Result := TAtlasStructureHideStep.None;
+  end
+  else if not AState.Wanted and not AState.Checked then
+  begin
+    // Der Benutzer hat selbst wieder eingeblendet.
+    Result := TAtlasStructureHideStep.Forget;
+  end
+  else if not AState.Enabled then
+  begin
+    Result := TAtlasStructureHideStep.Wait;
+  end
+  else
+  begin
+    Result := TAtlasStructureHideStep.Execute;
+  end;
 end;
 
 { TAtlasStructureModel }

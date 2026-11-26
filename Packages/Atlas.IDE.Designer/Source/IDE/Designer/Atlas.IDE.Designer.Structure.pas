@@ -28,6 +28,12 @@
 //   (ToggleNonVisualComponentVisibilityCommand), wenn
 //   designer.structureHideOnForm an ist; beim Schließen gilt wieder der
 //   vorherige Zustand. Left/Top (DesignInfo) bleiben unverändert.
+//   Der Befehl schaltet eine Umgebungsoption, und die IDE meldet das jedem
+//   Designer (DesignerOptionsChanged). Mit einem Datenmodul oder einem
+//   halb auf- bzw. abgebauten Designer (Öffnen, Schließen, Formularwechsel)
+//   stürzt die IDE dabei ab. Öffnen und Schließen merken daher nur den
+//   Wunsch; ausgeführt wird im Takt, sobald ein visuelles Formular seit dem
+//   vorigen Takt unverändert im Designer steht (TAtlasStructureHide).
 // Nur im Hauptthread.
 
 interface
@@ -48,6 +54,33 @@ uses
   Atlas.IDE.Designer.PaletteImages;
 
 type
+  /// <summary>Symbole auf der Formularfläche über den Befehl der IDE aus- und wieder einblenden, nur wenn ein
+  /// visuelles Formular fertig im Designer steht.</summary>
+  TAtlasIdeStructureHide = class
+  private
+    FOnMessage: TProc<string>;
+    /// <summary>Atlas hat ausgeblendet und stellt beim Schließen zurück.</summary>
+    FHid: Boolean;
+    /// <summary>Symbole sollen ausgeblendet sein (Fenster offen und Einstellung an).</summary>
+    FWanted: Boolean;
+    FPending: Boolean;
+    /// <summary>Wurzel des Designers beim vorigen Versuch; nur verglichen, nie benutzt.</summary>
+    FSettledRoot: Pointer;
+    /// <summary>Ein visuelles Formular steht fertig im Designer, seit dem vorigen Aufruf dasselbe (AFinal: ohne
+    /// diesen Vergleich, beim Entladen).</summary>
+    function DesignerSettled(AFinal: Boolean): Boolean;
+  public
+    /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
+    constructor Create(const AOnMessage: TProc<string>);
+    /// <summary>Wunsch merken; ausgeführt wird erst mit Apply.</summary>
+    procedure Want(AHidden: Boolean);
+    /// <summary>Vorgemerktes Aus- bzw. Einblenden ausführen, wenn der Designer es zulässt; sonst vorgemerkt
+    /// lassen (außer AFinal).</summary>
+    procedure Apply(AFinal: Boolean);
+    /// <summary>Wunsch noch nicht umgesetzt: Der Takt läuft weiter, auch bei verstecktem Fenster.</summary>
+    function Pending: Boolean;
+  end;
+
   TAtlasIdeStructure = class
   public const
     cId = 'structure';
@@ -62,7 +95,7 @@ type
     FMarked: string;
     FFilter: string;
     FByKind: Boolean;
-    FHidOnForm: Boolean;
+    FHide: TAtlasIdeStructureHide;
     /// <summary>Fenster offen (Form sichtbar, auch als Reiter im Hintergrund): Symbole auf der Formularfläche
     /// folgen designer.structureHideOnForm.</summary>
     FOpen: Boolean;
@@ -73,8 +106,8 @@ type
     procedure FrameArrived(AFrame: TCustomFrame);
     function Open: Boolean;
     procedure CloseWindow;
-    /// <summary>Offen bzw. geschlossen merken; nur beim Wechsel die Symbole auf der Formularfläche umschalten.
-    /// </summary>
+    /// <summary>Offen bzw. geschlossen merken; beim Wechsel das Umschalten der Symbole auf der Formularfläche
+    /// vormerken (TAtlasIdeStructureHide.Apply im Takt).</summary>
     procedure SetOpen(AOpen: Boolean);
     procedure Wire(AFrame: TAtlasStructureFrame);
     procedure Place;
@@ -90,7 +123,6 @@ type
     procedure MenuFor(const AName: string; const APoint: TPoint);
     procedure MenuClick(Sender: TObject);
     procedure Drop;
-    procedure HideOnForm(AHide: Boolean);
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -344,6 +376,92 @@ begin
   Result := ARoot.FindComponent(AName);
 end;
 
+{ TAtlasIdeStructureHide }
+
+constructor TAtlasIdeStructureHide.Create(const AOnMessage: TProc<string>);
+begin
+  inherited Create;
+  FOnMessage := AOnMessage;
+end;
+
+procedure TAtlasIdeStructureHide.Want(AHidden: Boolean);
+begin
+  FWanted := AHidden;
+  FPending := FWanted <> FHid;
+  // Der Designer muss ab jetzt zwei Takte lang derselbe sein.
+  FSettledRoot := nil;
+end;
+
+function TAtlasIdeStructureHide.Pending: Boolean;
+begin
+  Result := FPending;
+end;
+
+function TAtlasIdeStructureHide.DesignerSettled(AFinal: Boolean): Boolean;
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+  mPrevious: Pointer;
+begin
+  mPrevious := FSettledRoot;
+  FSettledRoot := nil;
+  // Nur ein visuelles Formular oder ein Frame: Ein Datenmodul besteht ganz aus nichtvisuellen Komponenten.
+  if not TAtlasDesignerAccess.Current(mEditor, mRoot) or not (mRoot is TWinControl) or
+    ([csLoading, csReading, csDestroying] * mRoot.ComponentState <> []) then
+  begin
+    Exit(False);
+  end;
+  FSettledRoot := mRoot;
+  Result := AFinal or (mPrevious = Pointer(mRoot));
+end;
+
+procedure TAtlasIdeStructureHide.Apply(AFinal: Boolean);
+var
+  mAction: TContainedAction;
+  mState: TAtlasStructureHideState;
+begin
+  if not FPending then
+  begin
+    Exit;
+  end;
+  FPending := False;
+  mAction := FindHideAction;
+  if not (mAction is TCustomAction) then
+  begin
+    if FWanted then
+    begin
+      FOnMessage(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.StHideMissing));
+    end;
+    Exit;
+  end;
+  mState := Default(TAtlasStructureHideState);
+  mState.Wanted := FWanted;
+  mState.Hid := FHid;
+  mState.Settled := DesignerSettled(AFinal);
+  if mState.Settled then
+  begin
+    mAction.Update;
+    // Checked = ausgeblendet.
+    mState.Checked := TCustomAction(mAction).Checked;
+    mState.Enabled := mAction.Enabled;
+  end;
+  case TAtlasStructureHide.Step(mState) of
+    TAtlasStructureHideStep.Execute:
+      begin
+        mAction.Execute;
+        FHid := FWanted;
+      end;
+    TAtlasStructureHideStep.Forget:
+      begin
+        FHid := False;
+      end;
+    TAtlasStructureHideStep.Wait:
+      begin
+        FPending := not AFinal;
+      end;
+  end;
+end;
+
 { TAtlasIdeStructure }
 
 constructor TAtlasIdeStructure.Create(const AOnMessage: TProc<string>);
@@ -354,6 +472,7 @@ begin
   FTimer.Enabled := False;
   FTimer.Interval := cTick;
   FTimer.OnTimer := Tick;
+  FHide := TAtlasIdeStructureHide.Create(AOnMessage);
   FPalette := TAtlasPaletteImages.Create;
   FMenu := TPopupMenu.Create(nil);
   // Vor dem Laden des Desktops anmelden, sonst verliert das angedockte Fenster seinen Platz.
@@ -366,6 +485,12 @@ var
 begin
   FTimer.Enabled := False;
   CloseWindow;
+  FTimer.Enabled := False;
+  // Letzter Versuch, ausgeblendete Symbole zurückzugeben; ohne fertigen Designer bleibt es dabei.
+  if FHide <> nil then
+  begin
+    FHide.Apply(True);
+  end;
   // Der Frame im angedockten Fenster kann dieses Objekt überleben: nichts darf es danach noch erreichen.
   mFrame := Frame;
   if mFrame <> nil then
@@ -382,6 +507,7 @@ begin
   FTimer.Free;
   FMenu.Free;
   FPalette.Free;
+  FHide.Free;
   inherited Destroy;
 end;
 
@@ -461,7 +587,11 @@ begin
     Exit;
   end;
   FOpen := AOpen;
-  HideOnForm(AOpen and TAtlasIdeSettings.Current.DesignerStructureHideOnForm);
+  FHide.Want(AOpen and TAtlasIdeSettings.Current.DesignerStructureHideOnForm);
+  if FHide.Pending then
+  begin
+    FTimer.Enabled := True;
+  end;
 end;
 
 procedure TAtlasIdeStructure.Wire(AFrame: TAtlasStructureFrame);
@@ -527,12 +657,15 @@ begin
   if (FHost = nil) or not FHost.Shown then
   begin
     // Nicht zu sehen: ruhen, bis der Baum wieder gezeichnet wird. Nur eine versteckte Form ist geschlossen (X,
-    // Desktop-Wechsel); ein Reiter im Hintergrund oder eine eingeklappte Leiste bleibt offen.
-    FTimer.Enabled := False;
+    // Desktop-Wechsel); ein Reiter im Hintergrund oder eine eingeklappte Leiste bleibt offen. Ein vorgemerktes
+    // Ein- oder Ausblenden hält den Takt wach.
     SetOpen((FHost <> nil) and (FHost.Form <> nil) and FHost.Form.Visible);
+    FHide.Apply(False);
+    FTimer.Enabled := FHide.Pending;
     Exit;
   end;
   SetOpen(True);
+  FHide.Apply(False);
   Fill(False);
   SyncSelection;
 end;
@@ -779,40 +912,6 @@ begin
   FOnMessage(TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.StCreated, [mComponent.Name]));
   Fill(True);
   SelectName(mComponent.Name);
-end;
-
-procedure TAtlasIdeStructure.HideOnForm(AHide: Boolean);
-var
-  mAction: TContainedAction;
-begin
-  if AHide = FHidOnForm then
-  begin
-    Exit;
-  end;
-  mAction := FindHideAction;
-  if not (mAction is TCustomAction) then
-  begin
-    if AHide then
-    begin
-      FOnMessage(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.StHideMissing));
-    end;
-    Exit;
-  end;
-  mAction.Update;
-  // Checked = ausgeblendet. Schon ausgeblendet: nichts tun und beim Schließen nichts zurückstellen.
-  if AHide and not TCustomAction(mAction).Checked then
-  begin
-    mAction.Execute;
-    FHidOnForm := True;
-  end
-  else if not AHide then
-  begin
-    if TCustomAction(mAction).Checked then
-    begin
-      mAction.Execute;
-    end;
-    FHidOnForm := False;
-  end;
 end;
 
 function TAtlasIdeStructure.Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
