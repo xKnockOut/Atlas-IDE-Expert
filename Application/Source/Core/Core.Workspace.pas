@@ -18,7 +18,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.Configuration,
+  Atlas.Common.Configuration.Workspace,
   Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Index.Contract,
   Atlas.Common.Findings.Baseline,
@@ -37,7 +37,7 @@ type
     FRoot: string;
     FName: string;
     FLogger: ILogger;
-    FConfiguration: TLspConfiguration;
+    FConfiguration: TWorkspaceConfiguration;
     FSetup: TCoreWorkspaceSetup;
     FEvents: TCoreWorkspaceEvents;
     FState: TCoreProjectState;
@@ -96,7 +96,7 @@ type
     function RuleReady(out AReason: string): Boolean;
     property Root: string read FRoot;
     property Name: string read FName;
-    property Configuration: TLspConfiguration read FConfiguration;
+    property Configuration: TWorkspaceConfiguration read FConfiguration;
     /// <summary>Vorgaben, vor Load zu setzen (Projektgruppe, Cache-Ordner, IDE-Projekte, Projektwahl …).</summary>
     property Setup: TCoreWorkspaceSetup read FSetup;
     property Events: TCoreWorkspaceEvents read FEvents;
@@ -176,7 +176,7 @@ begin
   mParts := IndexingParts(ARoot, AName, AServices, FSetup, FEvents, FState);
   mParts.Cache := FCache;
   FIndexing := TCoreWorkspaceIndexing.Create(mParts);
-  FConfiguration := TLspConfiguration.Create(AServices.Store, AServices.Transport,
+  FConfiguration := TWorkspaceConfiguration.Create(AServices.Store, AServices.Factories.PublisherFor(AServices.Transport),
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := TCoreBootstrap.ReadSourceText(AFileName, AText);

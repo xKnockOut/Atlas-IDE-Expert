@@ -12,6 +12,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Configuration.Workspace,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.IdeProject,
   Atlas.Common.Checks.Contract.Refactorings,
@@ -35,6 +36,11 @@ type
     const AReadText: TProjectReadText; const AComplete: TProjectGroupComplete;
     AUsesGraph: TUsesGraphService): IProjectGroupFiles;
 
+  /// <summary>Wie ein Arbeitsbereich Fehler in seiner atlas.json an den Client meldet (bei LSP
+  /// publishDiagnostics über ATransport).</summary>
+  TCoreConfigurationPublisherFactory = reference to function(const ATransport: IJsonRpcTransport):
+    TConfigurationIssuesPublisher;
+
   /// <summary>Adapter, die ein Arbeitsbereich braucht, als Host-Core aber nicht selbst erzeugt (Konzept 8.1):
   /// Die Shell setzt sie zusammen (TShellPlatformAdapters.WorkspaceFactories). Ohne Erzeuger gibt es keine
   /// Installation und keine Unit-Suche, wie auf einem Rechner ohne Delphi.</summary>
@@ -47,11 +53,15 @@ type
     UnitLookup: TUnitLookupFactory;
     /// <summary>Projekte der Gruppe für projektweite Regeln; nil = unbekannt, die Regeln schweigen.</summary>
     GroupFiles: TCoreGroupFilesFactory;
+    /// <summary>Meldung der Fehler in atlas.json; nil = ungemeldet.</summary>
+    ConfigurationPublisher: TCoreConfigurationPublisherFactory;
     /// <summary>Installierte Versionen; leer ohne Erzeuger.</summary>
     function Versions: TArray<string>;
     /// <summary>Installation zu AVersion; nil ohne Version oder Erzeuger. Löst EProjectError aus wie der
     /// Erzeuger.</summary>
     function InstallationOf(const AVersion: string): ILibraryPathProvider;
+    /// <summary>Melder über ATransport; nil ohne Erzeuger.</summary>
+    function PublisherFor(const ATransport: IJsonRpcTransport): TConfigurationIssuesPublisher;
   end;
 
   /// <summary>Dienste, die ein Arbeitsbereich vom Server bekommt: Dokumente, Transport zum Client, Protokoll,
@@ -206,6 +216,15 @@ begin
   if (AVersion <> '') and Assigned(Installation) then
   begin
     Result := Installation(AVersion);
+  end;
+end;
+
+function TCoreWorkspaceFactories.PublisherFor(const ATransport: IJsonRpcTransport): TConfigurationIssuesPublisher;
+begin
+  Result := nil;
+  if Assigned(ConfigurationPublisher) then
+  begin
+    Result := ConfigurationPublisher(ATransport);
   end;
 end;
 

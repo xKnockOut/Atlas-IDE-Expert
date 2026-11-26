@@ -1,22 +1,27 @@
-﻿unit Atlas.Common.Lsp.Configuration.Tests;
+﻿unit Atlas.Common.Configuration.Workspace.Tests;
 
 interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.SyntaxDiagnostics.Tests,
-  Atlas.Common.Lsp.Configuration;
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Configuration.Workspace;
 
 type
+  /// <summary>Was der Melder bekam.</summary>
+  TPublishedIssues = record
+    Uri: string;
+    Version: Integer;
+    Issues: TArray<TConfigurationIssue>;
+  end;
+
   [TestFixture]
-  TLspConfigurationTests = class
+  TWorkspaceConfigurationTests = class
   private
     FStore: IDocumentStore;
-    FCapture: TCapturingTransport;
-    FTransport: IJsonRpcTransport;
-    FConfiguration: TLspConfiguration;
+    FPublished: TArray<TPublishedIssues>;
+    FConfiguration: TWorkspaceConfiguration;
     FDiskText: string;
     FLegacyText: string;
     FChanges: Integer;
@@ -46,14 +51,9 @@ type
     [Test]
     procedure AppliesEditsAndRevertsOnClose;
     [Test]
-    procedure ReadsRootFromInitializeParams;
-    [Test]
     procedure EditorSettingsCountAsGlobal;
     [Test]
     procedure IndexComesFromGlobalLayers;
-    /// <summary>initializationOptions.locale vor locale (#1458).</summary>
-    [Test]
-    procedure ClientLocaleFromInitialize;
     [Test]
     procedure EachKeyHasOnePlace;
     [Test]
@@ -66,29 +66,33 @@ type
 implementation
 
 uses
-  System.Generics.Collections,
   System.SysUtils,
-  System.JSON,
-  Atlas.Common.JsonRpc.Dispatcher,
-  Atlas.Common.Documents.Providers.DocumentStore,
-  Atlas.Common.Configuration.Contract;
+  Atlas.Common.Documents.Providers.DocumentStore;
 
 const
   cRoot = 'c:\Projekt';
   cConfigUri = 'file:///c%3A/Projekt/atlas.json';
   cLegacyConfigUri = 'file:///c%3A/Projekt/delphi-lsp.json';
 
-{ TLspConfigurationTests }
+{ TWorkspaceConfigurationTests }
 
-procedure TLspConfigurationTests.Setup;
+procedure TWorkspaceConfigurationTests.Setup;
 begin
   FStore := TDocumentStore.Create;
-  FCapture := TCapturingTransport.Create;
-  FTransport := FCapture;
+  FPublished := nil;
   FDiskText := '';
   FLegacyText := '';
   FChanges := 0;
-  FConfiguration := TLspConfiguration.Create(FStore, FTransport,
+  FConfiguration := TWorkspaceConfiguration.Create(FStore,
+    procedure(const AUri: string; AVersion: Integer; const AIssues: TArray<TConfigurationIssue>)
+    var
+      mItem: TPublishedIssues;
+    begin
+      mItem.Uri := AUri;
+      mItem.Version := AVersion;
+      mItem.Issues := AIssues;
+      FPublished := FPublished + [mItem];
+    end,
     function(const AFileName: string; out AText: string): Boolean
     begin
       if SameText(AFileName, cRoot + '\' + cLegacyConfigurationFileName) then
@@ -113,25 +117,25 @@ begin
   FConfiguration.Attach;
 end;
 
-procedure TLspConfigurationTests.TearDown;
+procedure TWorkspaceConfigurationTests.TearDown;
 begin
   FConfiguration.Free;
   FStore := nil;
-  FTransport := nil;
+  FPublished := nil;
   // Sonst gibt erst das nächste Setup den Text frei (Leck-Monitor).
   FDiskText := '';
   FLegacyText := '';
 end;
 
-procedure TLspConfigurationTests.UsesDefaultsWithoutFile;
+procedure TWorkspaceConfigurationTests.UsesDefaultsWithoutFile;
 begin
   FConfiguration.LoadWorkspace(cRoot);
   Assert.AreEqual('', FConfiguration.Settings.Language);
   Assert.AreEqual(1, FChanges);
-  Assert.AreEqual(0, Integer(FCapture.Count));
+  Assert.AreEqual(0, Integer(Length(FPublished)));
 end;
 
-procedure TLspConfigurationTests.LoadWorkspaceWithGlobalTextChangesOnce;
+procedure TWorkspaceConfigurationTests.LoadWorkspaceWithGlobalTextChangesOnce;
 begin
   FDiskText := '{"platform": "Win64"}';
   FConfiguration.LoadWorkspace(cRoot, '{"language": "en", "platform": "Win32"}');
@@ -140,25 +144,19 @@ begin
   Assert.AreEqual('Win64', FConfiguration.Settings.Platform, 'Projekt-Schlüssel aus der globalen Datei wirkt nicht');
 end;
 
-procedure TLspConfigurationTests.LoadsFileFromWorkspaceRoot;
-var
-  mMessage: TJSONObject;
+procedure TWorkspaceConfigurationTests.LoadsFileFromWorkspaceRoot;
 begin
   FDiskText := '{"platform": "Win64", "unbekannt": 1}';
   FConfiguration.LoadWorkspace(cRoot);
   Assert.AreEqual('Win64', FConfiguration.Settings.Platform);
-  Assert.AreEqual(1, Integer(FCapture.Count));
-  mMessage := FCapture.MessageAt(0);
-  try
-    Assert.AreEqual(cConfigUri, mMessage.GetValue<string>('params.uri'));
-    Assert.AreEqual(1, mMessage.GetValue<TJSONArray>('params.diagnostics').Count);
-    Assert.AreEqual(2, mMessage.GetValue<Integer>('params.diagnostics[0].severity'));
-  finally
-    mMessage.Free;
-  end;
+  Assert.AreEqual(1, Integer(Length(FPublished)));
+  Assert.AreEqual(cConfigUri, FPublished[0].Uri);
+  Assert.AreEqual(-1, FPublished[0].Version);
+  Assert.AreEqual(1, Integer(Length(FPublished[0].Issues)));
+  Assert.IsFalse(FPublished[0].Issues[0].IsError);
 end;
 
-procedure TLspConfigurationTests.LoadsFileFromParentFolder;
+procedure TWorkspaceConfigurationTests.LoadsFileFromParentFolder;
 begin
   FDiskText := '{"platform": "Win64"}';
   FConfiguration.LoadWorkspace(cRoot + '\Packages\Expert');
@@ -169,7 +167,7 @@ begin
   Assert.AreEqual(TServerSettings.Default.Platform, FConfiguration.Settings.Platform);
 end;
 
-procedure TLspConfigurationTests.ConfigRootIsFolderOfFile;
+procedure TWorkspaceConfigurationTests.ConfigRootIsFolderOfFile;
 begin
   FDiskText := '{"platform": "Win64"}';
   FConfiguration.LoadWorkspace(cRoot + '\Packages\Expert');
@@ -180,26 +178,19 @@ begin
   Assert.AreEqual(cRoot + '\Packages\Expert', FConfiguration.ConfigRoot);
 end;
 
-procedure TLspConfigurationTests.LoadsLegacyFileWithoutNewOne;
-var
-  mMessage: TJSONObject;
+procedure TWorkspaceConfigurationTests.LoadsLegacyFileWithoutNewOne;
 begin
   FLegacyText := '{"platform": "Win32"}';
   FConfiguration.LoadWorkspace(cRoot);
   Assert.AreEqual('Win32', FConfiguration.Settings.Platform);
-  Assert.AreEqual(1, Integer(FCapture.Count));
-  mMessage := FCapture.MessageAt(0);
-  try
-    Assert.AreEqual(cLegacyConfigUri, mMessage.GetValue<string>('params.uri'));
-  finally
-    mMessage.Free;
-  end;
+  Assert.AreEqual(1, Integer(Length(FPublished)));
+  Assert.AreEqual(cLegacyConfigUri, FPublished[0].Uri);
   // Änderungen im Editor an der früheren Datei gelten ebenfalls.
   FStore.Open(cLegacyConfigUri, 'json', 1, '{"platform": "Win64"}');
   Assert.AreEqual('Win64', FConfiguration.Settings.Platform);
 end;
 
-procedure TLspConfigurationTests.PrefersNewFileOverLegacy;
+procedure TWorkspaceConfigurationTests.PrefersNewFileOverLegacy;
 begin
   FDiskText := '{"platform": "Win64"}';
   FLegacyText := '{"platform": "Win32"}';
@@ -210,24 +201,18 @@ begin
   Assert.AreEqual('Win64', FConfiguration.Settings.Platform);
 end;
 
-procedure TLspConfigurationTests.PublishesIssuesOfOpenedFile;
-var
-  mMessage: TJSONObject;
+procedure TWorkspaceConfigurationTests.PublishesIssuesOfOpenedFile;
 begin
   FStore.Open('file:///c%3A/Anderer/atlas.json', 'json', 3, '{"language": 1}');
-  Assert.AreEqual(1, Integer(FCapture.Count));
-  mMessage := FCapture.MessageAt(0);
-  try
-    Assert.AreEqual(3, mMessage.GetValue<Integer>('params.version'));
-    Assert.AreEqual(1, mMessage.GetValue<Integer>('params.diagnostics[0].severity'));
-  finally
-    mMessage.Free;
-  end;
+  Assert.AreEqual(1, Integer(Length(FPublished)));
+  Assert.AreEqual('file:///c%3A/Anderer/atlas.json', FPublished[0].Uri);
+  Assert.AreEqual(3, FPublished[0].Version);
+  Assert.IsTrue(FPublished[0].Issues[0].IsError);
   // Eine andere Datei als die des Arbeitsbereichs ändert die Einstellungen nicht.
   Assert.AreEqual(0, FChanges);
 end;
 
-procedure TLspConfigurationTests.AppliesEditsAndRevertsOnClose;
+procedure TWorkspaceConfigurationTests.AppliesEditsAndRevertsOnClose;
 begin
   FDiskText := '{"platform": "Win32"}';
   FConfiguration.LoadWorkspace(cRoot);
@@ -239,49 +224,14 @@ begin
   Assert.AreEqual('Win32', FConfiguration.Settings.Platform);
 end;
 
-procedure TLspConfigurationTests.ReadsRootFromInitializeParams;
-var
-  mParams: TJSONObject;
-begin
-  mParams := TJSONObject.ParseJSONValue('{"rootUri": "file:///c%3A/Projekt"}') as TJSONObject;
-  try
-    Assert.AreEqual('c:\Projekt', TLspConfiguration.RootPathFromInitialize(mParams));
-  finally
-    mParams.Free;
-  end;
-  mParams := TJSONObject.ParseJSONValue('{"rootUri": null, "workspaceFolders": [{"uri": "file:///d%3A/W", "name": "W"}]}') as TJSONObject;
-  try
-    Assert.AreEqual('d:\W', TLspConfiguration.RootPathFromInitialize(mParams));
-  finally
-    mParams.Free;
-  end;
-  Assert.AreEqual('', TLspConfiguration.RootPathFromInitialize(nil));
-end;
-
-procedure TLspConfigurationTests.EditorSettingsCountAsGlobal;
-var
-  mDispatcher: TJsonRpcDispatcher;
-  mMessage, mResponse: TJSONObject;
+procedure TWorkspaceConfigurationTests.EditorSettingsCountAsGlobal;
 begin
   // Die Editor-Ebene liegt über der globalen Datei und gilt nur für globale Schlüssel; das IDE-Plugin meldet
   // dort die Version der laufenden IDE.
   FDiskText := '{"platform": "Win64"}';
   FConfiguration.LoadWorkspace(cRoot);
-  mDispatcher := TJsonRpcDispatcher.Create;
-  try
-    FConfiguration.Attach(mDispatcher);
-    mMessage := TJSONObject.ParseJSONValue('{"jsonrpc": "2.0", "method": "workspace/didChangeConfiguration", ' +
-      '"params": {"settings": {"atlas": {"platform": "Win32", "config": "Release", "delphiVersion": "37.0", ' +
-      '"language": "en"}}}}') as TJSONObject;
-    try
-      mResponse := mDispatcher.DispatchMessage(mMessage);
-      Assert.IsNull(mResponse);
-    finally
-      mMessage.Free;
-    end;
-  finally
-    mDispatcher.Free;
-  end;
+  FConfiguration.SetEditorSettings('{"platform": "Win32", "config": "Release", "delphiVersion": "37.0", ' +
+    '"language": "en"}');
   Assert.AreEqual('Win64', FConfiguration.Settings.Platform);
   Assert.AreEqual(TServerSettings.Default.Config, FConfiguration.Settings.Config, 'config gehört zum Projekt');
   Assert.AreEqual('37.0', FConfiguration.Settings.DelphiVersion);
@@ -289,13 +239,11 @@ begin
   FConfiguration.SetGlobalSettings('{"language": "de", "delphiVersion": "23.0"}');
   Assert.AreEqual('en', FConfiguration.Settings.Language, 'Editor über global');
   Assert.AreEqual('37.0', FConfiguration.Settings.DelphiVersion);
-  Assert.AreEqual('', TLspConfiguration.EditorSettingsFromParams(nil));
 end;
 
-procedure TLspConfigurationTests.IndexComesFromGlobalLayers;
+procedure TWorkspaceConfigurationTests.IndexComesFromGlobalLayers;
 var
-  mMessage: TJSONObject;
-  mDiagnostics: TJSONArray;
+  mIssues: TArray<TConfigurationIssue>;
 begin
   // Indexumfang gilt für alle Projekte (#652); atlas.json behält nur index.exclude.
   FDiskText := '{"index": {"libraryPaths": false, "exclude": ["**/Demos/**"]}}';
@@ -306,42 +254,16 @@ begin
   Assert.AreEqual(1, Integer(Length(FConfiguration.Settings.IndexExclude)));
   Assert.AreEqual('**/Demos/**', FConfiguration.Settings.IndexExclude[0]);
   // Die Datei bekommt eine Warnung am Schlüssel, der nicht ins Projekt gehört.
-  mMessage := FCapture.MessageAt(FCapture.Count - 1);
-  try
-    mDiagnostics := mMessage.GetValue<TJSONArray>('params.diagnostics');
-    Assert.AreEqual(1, Integer(mDiagnostics.Count));
-    Assert.AreEqual(2, (mDiagnostics.Items[0] as TJSONObject).GetValue<Integer>('severity'));
-    Assert.Contains((mDiagnostics.Items[0] as TJSONObject).GetValue<string>('message'), '"index.libraryPaths"');
-    Assert.AreEqual(0, (mDiagnostics.Items[0] as TJSONObject).GetValue<Integer>('range.start.line'));
-    Assert.AreEqual(11, (mDiagnostics.Items[0] as TJSONObject).GetValue<Integer>('range.start.character'));
-  finally
-    mMessage.Free;
-  end;
+  mIssues := FPublished[High(FPublished)].Issues;
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.IsFalse(mIssues[0].IsError);
+  Assert.Contains(mIssues[0].Message, '"index.libraryPaths"');
+  Assert.AreEqual(0, mIssues[0].Range.StartPos.Line);
+  Assert.AreEqual(11, mIssues[0].Range.StartPos.Character);
+  mIssues := nil;
 end;
 
-procedure TLspConfigurationTests.ClientLocaleFromInitialize;
-
-  function LocaleOf(const AJson: string): string;
-  var
-    mParams: TJSONValue;
-  begin
-    mParams := TJSONObject.ParseJSONValue(AJson);
-    try
-      Result := TLspClientLocale.FromInitialize(mParams);
-    finally
-      mParams.Free;
-    end;
-  end;
-
-begin
-  Assert.AreEqual('de', LocaleOf('{"locale": "en-US", "initializationOptions": {"locale": "de"}}'));
-  Assert.AreEqual('en-US', LocaleOf('{"locale": "en-US", "initializationOptions": {"locale": " "}}'));
-  Assert.AreEqual('en-US', LocaleOf('{"locale": "en-US"}'));
-  Assert.AreEqual('', LocaleOf('{"processId": 1}'));
-  Assert.AreEqual('', TLspClientLocale.FromInitialize(nil));
-end;
-
-procedure TLspConfigurationTests.EachKeyHasOnePlace;
+procedure TWorkspaceConfigurationTests.EachKeyHasOnePlace;
 begin
   // #227: globale Schlüssel aus %APPDATA%\Atlas\settings.json, Projekt-Schlüssel aus atlas.json; am falschen
   // Ort wirkt ein Schlüssel nicht.
@@ -364,7 +286,7 @@ begin
   Assert.AreEqual('', FConfiguration.Settings.Language);
 end;
 
-procedure TLspConfigurationTests.ReloadsChangedFileUnlessOpen;
+procedure TWorkspaceConfigurationTests.ReloadsChangedFileUnlessOpen;
 var
   mBefore: Integer;
 begin
@@ -386,9 +308,8 @@ begin
   Assert.AreEqual('Linux64', FConfiguration.Settings.Platform);
 end;
 
-procedure TLspConfigurationTests.ExtraIssuesAndRevalidate;
+procedure TWorkspaceConfigurationTests.ExtraIssuesAndRevalidate;
 var
-  mMessage: TJSONObject;
   mKnown: Boolean;
 begin
   mKnown := False;
@@ -409,29 +330,19 @@ begin
     end;
   FDiskText := '{"dfmPropertyRules": [{"class": "TLabelX", "property": "Transparent", "value": "True"}]}';
   FConfiguration.LoadWorkspace(cRoot);
-  Assert.AreEqual(1, Integer(FCapture.Count));
-  mMessage := FCapture.MessageAt(0);
-  try
-    Assert.AreEqual(1, mMessage.GetValue<TJSONArray>('params.diagnostics').Count);
-    Assert.AreEqual('unbekannt: TLabelX', mMessage.GetValue<string>('params.diagnostics[0].message'));
-    Assert.AreEqual(32, mMessage.GetValue<Integer>('params.diagnostics[0].range.start.character'));
-  finally
-    mMessage.Free;
-  end;
+  Assert.AreEqual(1, Integer(Length(FPublished)));
+  Assert.AreEqual(1, Integer(Length(FPublished[0].Issues)));
+  Assert.AreEqual('unbekannt: TLabelX', FPublished[0].Issues[0].Message);
+  Assert.AreEqual(32, FPublished[0].Issues[0].Range.StartPos.Character);
   // Später kennt der Index die Klasse: Revalidate sendet die Meldungen neu, jetzt ohne.
   mKnown := True;
   FConfiguration.Revalidate;
-  Assert.AreEqual(2, Integer(FCapture.Count));
-  mMessage := FCapture.MessageAt(1);
-  try
-    Assert.AreEqual(0, mMessage.GetValue<TJSONArray>('params.diagnostics').Count);
-  finally
-    mMessage.Free;
-  end;
+  Assert.AreEqual(2, Integer(Length(FPublished)));
+  Assert.AreEqual(0, Integer(Length(FPublished[1].Issues)));
   FConfiguration.ExtraIssues := nil;
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspConfigurationTests);
+  TDUnitX.RegisterTestFixture(TWorkspaceConfigurationTests);
 
 end.

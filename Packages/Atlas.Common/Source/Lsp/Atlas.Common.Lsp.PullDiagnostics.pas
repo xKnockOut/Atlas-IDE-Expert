@@ -818,7 +818,7 @@ end;
 { TLspPullDiagnostics }
 
 /// <summary>Stand der Datei AUri für textDocument/diagnostic: Ergebnis-Id ('' ohne Stand, etwa atlas.json, das
-/// TLspConfiguration prüft und per publishDiagnostics meldet), Generation, ADocument (nil ohne) und ob sie
+/// TWorkspaceConfiguration prüft und per publishDiagnostics meldet), Generation, ADocument (nil ohne) und ob sie
 /// geöffnet ist.</summary>
 function DocumentState(AOwner: TLspPullDiagnostics; const AUri, AFileName: string; out AGeneration: Integer;
   out ADocument: ITextDocument; out AOpen: Boolean): string;

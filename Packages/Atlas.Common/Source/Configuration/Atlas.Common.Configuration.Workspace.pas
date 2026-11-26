@@ -1,11 +1,11 @@
-﻿unit Atlas.Common.Lsp.Configuration;
+﻿unit Atlas.Common.Configuration.Workspace;
 
 // Konfigurationsdatei atlas.json im Arbeitsbereich.
 //
 // - LoadWorkspace liest die Datei aus dem Wurzelordner (nach initialized).
 //   Fehlt sie, gilt die frühere delphi-lsp.json (#403).
-// - Ist eine atlas.json im Editor geöffnet, werden ihre Fehler als
-//   publishDiagnostics gemeldet, schon beim Tippen.
+// - Ist eine atlas.json im Editor geöffnet, gehen ihre Fehler an den Melder
+//   (TConfigurationIssuesPublisher, bei LSP publishDiagnostics), schon beim Tippen.
 // - Ändert sich die Datei des Arbeitsbereichs im Editor, gelten die neuen
 //   Einstellungen sofort; nach dem Schließen gilt wieder der Stand auf der
 //   Platte. Änderungen außerhalb des Editors meldet FileChanged (Dateibeobachter
@@ -15,9 +15,10 @@
 //   (%APPDATA%\Atlas\settings.json, #227, über SetGlobalSettings) nur für
 //   globale. Ein Schlüssel am falschen Ort wirkt nicht und wird in atlas.json
 //   als Warnung gemeldet.
-// - Einstellungen aus dem Editor kommen über workspace/didChangeConfiguration
-//   und initializationOptions (Abschnitt "atlas") und zählen wie global; das
-//   IDE-Plugin nutzt diesen Weg nicht mehr. Reihenfolge: global < Editor <
+// - Einstellungen aus dem Editor (bei LSP workspace/didChangeConfiguration und
+//   initializationOptions, Abschnitt "atlas", TLspConfigurationProtocol) kommen
+//   über SetEditorSettings und zählen wie global; das IDE-Plugin nutzt diesen
+//   Weg nicht mehr. Reihenfolge: global < Editor <
 //   atlas.json (TConfigurationScopes.Effective).
 // - Meldungen, die den Index brauchen (unbekannte Klasse oder Property einer
 //   Eigenschaftsregel, #309), liefert ExtraIssues; nach dem Indexaufbau sendet
@@ -27,9 +28,6 @@ interface
 
 uses
   System.SysUtils,
-  System.JSON,
-  Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract;
 
@@ -38,6 +36,10 @@ type
   TConfigurationFileReader = reference to function(const AFileName: string; out AText: string): Boolean;
   /// <summary>Weitere Meldungen zu den Einstellungen einer atlas.json, z. B. über den Index (#309).</summary>
   TConfigurationExtraIssues = reference to function(const ASettings: TServerSettings): TArray<TConfigurationIssue>;
+  /// <summary>Meldet die Fehler AIssues einer Konfigurationsdatei AUri (AVersion = Stand im Editor, -1 von der
+  /// Platte; leere Liste = keine Fehler mehr).</summary>
+  TConfigurationIssuesPublisher = reference to procedure(const AUri: string; AVersion: Integer;
+    const AIssues: TArray<TConfigurationIssue>);
 
   /// <summary>Konfigurationsdateien eines Arbeitsbereichs.</summary>
   TConfigurationFiles = record
@@ -60,14 +62,10 @@ type
     Workspace: string;
   end;
 
-  TLspConfiguration = class
-  public const
-    cDidChangeConfigurationMethod = 'workspace/didChangeConfiguration';
-    /// <summary>Abschnitt der Editor-Einstellungen, z. B. atlas.project in VS Code.</summary>
-    cEditorSection = 'atlas';
+  TWorkspaceConfiguration = class
   private
     FStore: IDocumentStore;
-    FTransport: IJsonRpcTransport;
+    FPublish: TConfigurationIssuesPublisher;
     FReadFile: TConfigurationFileReader;
     FLock: TObject;
     FSettings: TServerSettings;
@@ -79,7 +77,6 @@ type
     // Nur im Thread der Nachrichtenschleife benutzt.
     FTexts: TConfigurationTexts;
     procedure Recompute;
-    procedure HandleDidChangeConfiguration(const AParams: TJSONValue);
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
     procedure Apply(const ASettings: TServerSettings);
     procedure Publish(const AUri: string; AVersion: Integer; const AIssues: TArray<TConfigurationIssue>);
@@ -89,15 +86,13 @@ type
     function IsWorkspaceFile(const AUri: string): Boolean;
     function GetSettings: TServerSettings;
   public
-    constructor Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
+    /// <summary>APublish darf nil sein: Dann bleiben Fehler ungemeldet.</summary>
+    constructor Create(const AStore: IDocumentStore; const APublish: TConfigurationIssuesPublisher;
       const AReadFile: TConfigurationFileReader);
     destructor Destroy; override;
-    /// <summary>Meldet sich am Dokumentspeicher und, falls angegeben, für Editor-Einstellungen am Dispatcher an.
-    /// Bei mehreren Arbeitsbereichsordnern verteilt die Komposition die Ereignisse selbst
-    /// (DocumentEvent, SetEditorSettings) und ruft Attach nicht auf.</summary>
-    procedure Attach(ADispatcher: TJsonRpcDispatcher); overload;
-    /// <summary>Wie oben ohne Dispatcher (ADispatcher = nil).</summary>
-    procedure Attach; overload;
+    /// <summary>Meldet sich am Dokumentspeicher an. Bei mehreren Arbeitsbereichsordnern verteilt die Komposition
+    /// die Ereignisse selbst (DocumentEvent, SetEditorSettings) und ruft Attach nicht auf.</summary>
+    procedure Attach;
     /// <summary>Verarbeitet ein Dokumentereignis wie nach Attach.</summary>
     procedure DocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
     /// <summary>Übernimmt Editor-Einstellungen (JSON des Abschnitts, '' = keine).</summary>
@@ -116,10 +111,6 @@ type
     /// <summary>Wie LoadWorkspace(ARootPath), setzt vorher die globale Datei AGlobalText ohne eigene
     /// Neuberechnung; OnChanged kommt so nur einmal (MCP-Modus).</summary>
     procedure LoadWorkspace(const ARootPath, AGlobalText: string); overload;
-    /// <summary>Wurzelordner aus den initialize-Parametern (rootUri, workspaceFolders, rootPath); sonst ''.</summary>
-    class function RootPathFromInitialize(const AParams: TJSONObject): string; static;
-    /// <summary>Abschnitt atlas aus den Parametern von didChangeConfiguration als JSON; sonst ''.</summary>
-    class function EditorSettingsFromParams(const AParams: TJSONValue): string; static;
     /// <summary>Aktuelle Einstellungen (Kopie, threadsicher).</summary>
     property Settings: TServerSettings read GetSettings;
     property RootPath: string read FRootPath;
@@ -137,27 +128,13 @@ type
     property OnChanged: TConfigurationChangedEvent read FOnChanged write FOnChanged;
   end;
 
-  /// <summary>Sprache des Clients aus den initialize-Parametern (#1458).</summary>
-  TLspClientLocale = record
-  public
-    /// <summary>initializationOptions.locale (IDE-Plugin), sonst locale (LSP 3.16); '' ohne Angabe. Gewählt wird
-    /// mit TAtlasLocale.Resolve.</summary>
-    class function FromInitialize(const AParams: TJSONValue): string; static;
-  end;
-
 implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Common.JsonRpc.Messages,
-  Atlas.Common.Lsp.Contract,
-  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes;
-
-const
-  cDiagnosticSource = 'Atlas';
 
 function IsConfigurationUri(const AUri: string): Boolean;
 var
@@ -167,26 +144,26 @@ begin
   Result := IsConfigurationFileName(Copy(mPath, LastDelimiter('/', mPath) + 1, MaxInt));
 end;
 
-{ TLspConfiguration }
+{ TWorkspaceConfiguration }
 
-constructor TLspConfiguration.Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
+constructor TWorkspaceConfiguration.Create(const AStore: IDocumentStore; const APublish: TConfigurationIssuesPublisher;
   const AReadFile: TConfigurationFileReader);
 begin
   inherited Create;
   FStore := AStore;
-  FTransport := ATransport;
+  FPublish := APublish;
   FReadFile := AReadFile;
   FLock := TObject.Create;
   FSettings := TServerSettings.Default;
 end;
 
-destructor TLspConfiguration.Destroy;
+destructor TWorkspaceConfiguration.Destroy;
 begin
   FLock.Free;
   inherited;
 end;
 
-function TLspConfiguration.GetSettings: TServerSettings;
+function TWorkspaceConfiguration.GetSettings: TServerSettings;
 begin
   TMonitor.Enter(FLock);
   try
@@ -196,7 +173,7 @@ begin
   end;
 end;
 
-procedure TLspConfiguration.Recompute;
+procedure TWorkspaceConfiguration.Recompute;
 var
   mIgnored: TArray<TConfigurationIssue>;
 begin
@@ -205,12 +182,7 @@ begin
     mIgnored));
 end;
 
-procedure TLspConfiguration.HandleDidChangeConfiguration(const AParams: TJSONValue);
-begin
-  SetEditorSettings(EditorSettingsFromParams(AParams));
-end;
-
-procedure TLspConfiguration.HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
+procedure TWorkspaceConfiguration.HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
 var
   mIssues: TArray<TConfigurationIssue>;
 begin
@@ -243,7 +215,7 @@ begin
   end;
 end;
 
-procedure TLspConfiguration.Apply(const ASettings: TServerSettings);
+procedure TWorkspaceConfiguration.Apply(const ASettings: TServerSettings);
 begin
   TMonitor.Enter(FLock);
   try
@@ -257,7 +229,7 @@ begin
   end;
 end;
 
-procedure TLspConfiguration.LoadFromDisk;
+procedure TWorkspaceConfiguration.LoadFromDisk;
 var
   mText: string;
   mIssues: TArray<TConfigurationIssue>;
@@ -283,7 +255,7 @@ begin
   Recompute;
 end;
 
-function TLspConfiguration.FileIssues(const AText: string): TArray<TConfigurationIssue>;
+function TWorkspaceConfiguration.FileIssues(const AText: string): TArray<TConfigurationIssue>;
 var
   mMisplaced: TArray<TConfigurationIssue>;
   mSettings: TServerSettings;
@@ -297,54 +269,22 @@ begin
   end;
 end;
 
-function TLspConfiguration.IsWorkspaceFile(const AUri: string): Boolean;
+function TWorkspaceConfiguration.IsWorkspaceFile(const AUri: string): Boolean;
 begin
   Result := (FFiles.Read <> '') and SameText(TDocumentUris.ToPath(AUri), FFiles.Read);
 end;
 
-procedure TLspConfiguration.Attach(ADispatcher: TJsonRpcDispatcher);
+procedure TWorkspaceConfiguration.Attach;
 begin
   FStore.Subscribe(HandleDocumentEvent);
-  if ADispatcher <> nil then
-  begin
-    ADispatcher.RegisterNotification(cDidChangeConfigurationMethod, HandleDidChangeConfiguration);
-  end;
 end;
 
-procedure TLspConfiguration.Attach;
-begin
-  Attach(nil);
-end;
-
-procedure TLspConfiguration.DocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
+procedure TWorkspaceConfiguration.DocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
 begin
   HandleDocumentEvent(AKind, ADocument);
 end;
 
-{ TLspClientLocale }
-
-class function TLspClientLocale.FromInitialize(const AParams: TJSONValue): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if not (AParams is TJSONObject) then
-  begin
-    Exit;
-  end;
-  mValue := TJSONObject(AParams).FindValue('initializationOptions.locale');
-  if (mValue is TJSONString) and (Trim(TJSONString(mValue).Value) <> '') then
-  begin
-    Exit(Trim(TJSONString(mValue).Value));
-  end;
-  mValue := TJSONObject(AParams).GetValue('locale');
-  if mValue is TJSONString then
-  begin
-    Result := Trim(TJSONString(mValue).Value);
-  end;
-end;
-
-procedure TLspConfiguration.SetEditorSettings(const AText: string);
+procedure TWorkspaceConfiguration.SetEditorSettings(const AText: string);
 begin
   if AText = FTexts.Editor then
   begin
@@ -354,7 +294,7 @@ begin
   Recompute;
 end;
 
-procedure TLspConfiguration.SetGlobalSettings(const AText: string);
+procedure TWorkspaceConfiguration.SetGlobalSettings(const AText: string);
 begin
   if AText = FTexts.Global then
   begin
@@ -364,7 +304,7 @@ begin
   Recompute;
 end;
 
-function TLspConfiguration.FileChanged(const AFileName: string): Boolean;
+function TWorkspaceConfiguration.FileChanged(const AFileName: string): Boolean;
 var
   mDocument: ITextDocument;
 begin
@@ -381,53 +321,16 @@ begin
   LoadFromDisk;
 end;
 
-/// <summary>Diagnostics zu den Fehlern; der Aufrufer übernimmt das Objekt.</summary>
-function BuildParams(const AUri: string; AVersion: Integer; const AIssues: TArray<TConfigurationIssue>): TJSONObject;
-var
-  mItems: TJSONArray;
-  mItem: TJSONObject;
-  mIssue: TConfigurationIssue;
+procedure TWorkspaceConfiguration.Publish(const AUri: string; AVersion: Integer;
+  const AIssues: TArray<TConfigurationIssue>);
 begin
-  mItems := TJSONArray.Create;
-  for mIssue in AIssues do
+  if Assigned(FPublish) then
   begin
-    mItem := TJSONObject.Create;
-    mItem.AddPair('range', TLspPositions.RangeToJson(mIssue.Range));
-    if mIssue.IsError then
-    begin
-      mItem.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.cError));
-    end
-    else
-    begin
-      mItem.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.cWarning));
-    end;
-    mItem.AddPair('source', cDiagnosticSource);
-    mItem.AddPair('message', mIssue.Message);
-    mItems.AddElement(mItem);
-  end;
-  Result := TJSONObject.Create;
-  Result.AddPair('uri', AUri);
-  if AVersion >= 0 then
-  begin
-    Result.AddPair('version', TJSONNumber.Create(AVersion));
-  end;
-  Result.AddPair('diagnostics', mItems);
-end;
-
-procedure TLspConfiguration.Publish(const AUri: string; AVersion: Integer; const AIssues: TArray<TConfigurationIssue>);
-var
-  mNotification: TJSONObject;
-begin
-  mNotification := TJsonRpcMessages.Notification(TLspTextDocumentMethod.cPublishDiagnostics,
-    BuildParams(AUri, AVersion, AIssues));
-  try
-    FTransport.WriteMessage(mNotification);
-  finally
-    mNotification.Free;
+    FPublish(AUri, AVersion, AIssues);
   end;
 end;
 
-procedure TLspConfiguration.Revalidate;
+procedure TWorkspaceConfiguration.Revalidate;
 var
   mUri: string;
   mDocument: ITextDocument;
@@ -447,7 +350,7 @@ begin
   end;
 end;
 
-procedure TLspConfiguration.LoadWorkspace(const ARootPath, AGlobalText: string);
+procedure TWorkspaceConfiguration.LoadWorkspace(const ARootPath, AGlobalText: string);
 begin
   FTexts.Global := AGlobalText;
   LoadWorkspace(ARootPath);
@@ -497,7 +400,7 @@ begin
   end;
 end;
 
-procedure TLspConfiguration.LoadWorkspace(const ARootPath: string);
+procedure TWorkspaceConfiguration.LoadWorkspace(const ARootPath: string);
 var
   mDir, mFound: string;
 begin
@@ -520,57 +423,6 @@ begin
     FFiles.Legacy := mDir + cLegacyConfigurationFileName;
   end;
   LoadFromDisk;
-end;
-
-class function TLspConfiguration.RootPathFromInitialize(const AParams: TJSONObject): string;
-var
-  mValue: TJSONValue;
-  mFolders: TJSONArray;
-begin
-  Result := '';
-  if AParams = nil then
-  begin
-    Exit;
-  end;
-  mValue := AParams.GetValue('rootUri');
-  if (mValue is TJSONString) and (mValue.Value <> '') then
-  begin
-    Exit(TDocumentUris.ToPath(mValue.Value));
-  end;
-  mValue := AParams.GetValue('workspaceFolders');
-  if mValue is TJSONArray then
-  begin
-    mFolders := TJSONArray(mValue);
-    if (mFolders.Count > 0) and (mFolders.Items[0] is TJSONObject) then
-    begin
-      mValue := TJSONObject(mFolders.Items[0]).GetValue('uri');
-      if mValue is TJSONString then
-      begin
-        Exit(TDocumentUris.ToPath(mValue.Value));
-      end;
-    end;
-  end;
-  mValue := AParams.GetValue('rootPath');
-  if mValue is TJSONString then
-  begin
-    Result := mValue.Value;
-  end;
-end;
-
-class function TLspConfiguration.EditorSettingsFromParams(const AParams: TJSONValue): string;
-var
-  mSection: TJSONValue;
-begin
-  Result := '';
-  if not (AParams is TJSONObject) then
-  begin
-    Exit;
-  end;
-  mSection := TJSONObject(AParams).FindValue('settings.' + cEditorSection);
-  if mSection is TJSONObject then
-  begin
-    Result := mSection.ToJSON;
-  end;
 end;
 
 end.
