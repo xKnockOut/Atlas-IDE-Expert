@@ -8,8 +8,9 @@
 // Implementierungen von
 // Methoden (TFoo.Bar in implementation) erscheinen nicht doppelt.
 // Eine leere Anfrage liefert nichts, damit der Client nicht den ganzen
-// Index erhält. Lesezeichen ("// @bookmark Name", #306) kommen vor den
-// Symbolen, wenn BookmarksFor gesetzt ist.
+// Index erhält. Benannte Stellen außerhalb des Index (die Shell reicht die
+// Lesezeichen "// @bookmark Name" aus Editing, #306) kommen vor den Symbolen,
+// wenn PlacesFor gesetzt ist.
 
 interface
 
@@ -18,30 +19,37 @@ uses
   System.JSON,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
-  Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.Bookmarks;
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Index.Contract;
 
 type
   TWorkspaceSymbol = record
     Symbol: TIndexSymbol;
     UnitName: string;
     FileName: string;
-    /// <summary>Lesezeichen statt Symbol aus dem Index.</summary>
-    Bookmark: Boolean;
+    /// <summary>Benannte Stelle statt Symbol aus dem Index.</summary>
+    Place: Boolean;
   end;
 
-  /// <summary>Alle bekannten Lesezeichen.</summary>
-  TBookmarkSource = reference to function: TArray<TBookmarkHit>;
+  /// <summary>Benannte Stelle außerhalb des Index, etwa ein Lesezeichen (#306).</summary>
+  TWorkspacePlace = record
+    Name: string;
+    FileName: string;
+    Range: TTextRange;
+  end;
+
+  /// <summary>Alle bekannten benannten Stellen.</summary>
+  TWorkspacePlaceSource = reference to function: TArray<TWorkspacePlace>;
 
   TLspWorkspaceSymbols = class
   public const
     cMethod = 'workspace/symbol';
     cMaxResults = 200;
-    /// <summary>SymbolKind.Key für Lesezeichen.</summary>
-    cBookmarkKind = 20;
+    /// <summary>SymbolKind.Key für benannte Stellen.</summary>
+    cPlaceKind = 20;
   private
     FIndex: ISymbolIndex;
-    FBookmarksFor: TBookmarkSource;
+    FPlacesFor: TWorkspacePlaceSource;
     function HandleSymbol(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AIndex: ISymbolIndex);
@@ -52,14 +60,14 @@ type
     /// <summary>Wie oben ohne Abbruch (ACancellation = nil).</summary>
     class function Search(const AIndex: ISymbolIndex; const AQuery: string; AMax: Integer): TArray<TWorkspaceSymbol>;
       overload; static;
-    /// <summary>Lesezeichen aus AHits, die zu AQuery passen, beste zuerst.</summary>
-    class function SearchBookmarks(const AHits: TArray<TBookmarkHit>; const AQuery: string): TArray<TWorkspaceSymbol>;
-      static;
+    /// <summary>Benannte Stellen aus APlaces, die zu AQuery passen, beste zuerst.</summary>
+    class function SearchPlaces(const APlaces: TArray<TWorkspacePlace>; const AQuery: string):
+      TArray<TWorkspaceSymbol>; static;
     /// <summary>LSP-SymbolKind zur Symbolart.</summary>
     class function LspKind(AKind: TIndexSymbolKind): Integer; static;
     /// <summary>SymbolInformation[]. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const ASymbols: TArray<TWorkspaceSymbol>): TJSONArray; static;
-    property BookmarksFor: TBookmarkSource read FBookmarksFor write FBookmarksFor;
+    property PlacesFor: TWorkspacePlaceSource read FPlacesFor write FPlacesFor;
   end;
 
 implementation
@@ -116,9 +124,9 @@ begin
       cTexts[TWorkspaceSymbolsText.FieldQueryMissingIn].Text + cMethod);
   end;
   mFound := nil;
-  if Assigned(FBookmarksFor) then
+  if Assigned(FPlacesFor) then
   begin
-    mFound := SearchBookmarks(FBookmarksFor(), mQuery);
+    mFound := SearchPlaces(FPlacesFor(), mQuery);
   end;
   mFound := mFound + Search(FIndex, mQuery, cMaxResults, ACancellation);
   if Length(mFound) > cMaxResults then
@@ -160,7 +168,7 @@ begin
   Result.Item.Symbol := ASymbol;
   Result.Item.UnitName := AUnit.UnitName;
   Result.Item.FileName := AUnit.FileName;
-  Result.Item.Bookmark := False;
+  Result.Item.Place := False;
   Result.Rank := -ARank * 2;
   if not (ASymbol.Kind in cTypeKinds) then
   begin
@@ -251,11 +259,11 @@ begin
   Result := Search(AIndex, AQuery, AMax, nil);
 end;
 
-class function TLspWorkspaceSymbols.SearchBookmarks(const AHits: TArray<TBookmarkHit>;
+class function TLspWorkspaceSymbols.SearchPlaces(const APlaces: TArray<TWorkspacePlace>;
   const AQuery: string): TArray<TWorkspaceSymbol>;
 var
   mQuery: string;
-  mHit: TBookmarkHit;
+  mPlace: TWorkspacePlace;
   mCandidates: TList<TCandidate>;
   mCandidate: TCandidate;
   mRank: Integer;
@@ -268,20 +276,20 @@ begin
   end;
   mCandidates := TList<TCandidate>.Create;
   try
-    for mHit in AHits do
+    for mPlace in APlaces do
     begin
-      mRank := TFuzzyMatch.Score(mHit.Bookmark.Name, mQuery);
+      mRank := TFuzzyMatch.Score(mPlace.Name, mQuery);
       if mRank = TFuzzyMatch.cNoMatch then
       begin
         Continue;
       end;
       mCandidate.Item.Symbol := Default(TIndexSymbol);
-      mCandidate.Item.Symbol.Name := mHit.Bookmark.Name;
-      mCandidate.Item.Symbol.Range := mHit.Bookmark.Range;
-      mCandidate.Item.Symbol.SelectionRange := mHit.Bookmark.Range;
-      mCandidate.Item.UnitName := ChangeFileExt(ExtractFileName(mHit.FileName), '');
-      mCandidate.Item.FileName := mHit.FileName;
-      mCandidate.Item.Bookmark := True;
+      mCandidate.Item.Symbol.Name := mPlace.Name;
+      mCandidate.Item.Symbol.Range := mPlace.Range;
+      mCandidate.Item.Symbol.SelectionRange := mPlace.Range;
+      mCandidate.Item.UnitName := ChangeFileExt(ExtractFileName(mPlace.FileName), '');
+      mCandidate.Item.FileName := mPlace.FileName;
+      mCandidate.Item.Place := True;
       mCandidate.Rank := -mRank;
       mCandidates.Add(mCandidate);
     end;
@@ -344,9 +352,9 @@ begin
   begin
     mInfo := TJSONObject.Create;
     mInfo.AddPair('name', mItem.Symbol.Name);
-    if mItem.Bookmark then
+    if mItem.Place then
     begin
-      mInfo.AddPair('kind', TJSONNumber.Create(cBookmarkKind));
+      mInfo.AddPair('kind', TJSONNumber.Create(cPlaceKind));
     end
     else
     begin

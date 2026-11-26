@@ -20,8 +20,8 @@ uses
   Atlas.Common.Lsp.FoldingRanges,
   Atlas.Common.Lsp.BlockFolds,
   Atlas.Common.Lsp.SelectionRanges,
-  Atlas.Common.Lsp.Formatting,
-  Atlas.Common.Lsp.SlashMenu;
+  Atlas.Common.Editing.Formatting.Protocol,
+  Atlas.Common.Editing.SlashMenu.Protocol;
 
 type
   /// <summary>Was das Bearbeiten von der Komposition braucht.</summary>
@@ -45,8 +45,8 @@ type
     FDocumentSymbols: TLspDocumentSymbols;
     FFoldingRanges: TLspFoldingRanges;
     FBlockFolds: TLspBlockFolds;
-    FFormatting: TLspFormatting;
-    FSlashMenu: TLspSlashMenu;
+    FFormatting: TFormattingProtocol;
+    FSlashMenu: TSlashMenuProtocol;
     FSelectionRanges: TLspSelectionRanges;
     function LanguageLevel(const AUri: string): string;
     function GetSlashHost: ISlashHost;
@@ -69,6 +69,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Completion.Contract,
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.JSON,
@@ -94,13 +95,13 @@ begin
   FDocumentSymbols.ReadText := FServices.ReadText;
   FFoldingRanges := TLspFoldingRanges.Create(FServices.Documents);
   FBlockFolds := TLspBlockFolds.Create(FServices.Documents);
-  FFormatting := TLspFormatting.Create(FServices.Documents, FServices.FormatStyleFor, ReadEditorConfig);
+  FFormatting := TFormattingProtocol.Create(FServices.Documents, FServices.FormatStyleFor, ReadEditorConfig);
   FFormatting.SlashCommandsFor := FServices.SlashCommandsFor;
   FFormatting.DelphiVersionFor := FServices.LanguageLevelFor;
   FFormatting.DocCommentsFor := FServices.DocCommentsFor;
   FFormatting.SortUses := SortUsesEdits;
   // Erzeugen-Menü (#719): dieselben Schalter, Versionen und derselbe Host wie die Schnellbefehle nach Enter.
-  FSlashMenu := TLspSlashMenu.Create(FServices.Documents);
+  FSlashMenu := TSlashMenuProtocol.Create(FServices.Documents);
   FSlashMenu.SlashCommandsFor := FServices.SlashCommandsFor;
   FSlashMenu.DelphiVersionFor := LanguageLevel;
   FSlashMenu.FormatStyleFor := FServices.ResolvedFormatStyleFor;
@@ -139,17 +140,17 @@ end;
 
 procedure TShellEditing.RegisterCommands(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspSlashMenu.cMenuCommand,
+  ACommands.Register(TSlashMenuProtocol.cMenuCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FSlashMenu.ExecuteMenu(AArguments);
     end);
-  ACommands.Register(TLspSlashMenu.cChoicesCommand,
+  ACommands.Register(TSlashMenuProtocol.cChoicesCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FSlashMenu.ExecuteChoices(AArguments);
     end);
-  ACommands.Register(TLspSlashMenu.cRunCommand,
+  ACommands.Register(TSlashMenuProtocol.cRunCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FSlashMenu.ExecuteRun(AArguments);
@@ -170,9 +171,24 @@ begin
   FSlashMenu.Index := AIndex;
 end;
 
+/// <summary>Fehlende Interface-Methoden für das Erzeugen-Menü aus der Vervollständigung ACompletion; nil ohne.
+/// </summary>
+function InterfaceItemsOf(ACompletion: TLspCompletion): TSlashInterfaceItemsFunc;
+begin
+  Result := nil;
+  if ACompletion <> nil then
+  begin
+    Result :=
+      function(const AUri, AText: string; const APosition: TTextPosition; out AItems: TArray<TCompletionItem>): Boolean
+      begin
+        Result := ACompletion.InterfaceItemsAt(AUri, AText, APosition, AItems);
+      end;
+  end;
+end;
+
 procedure TShellEditing.UseCompletion(ACompletion: TLspCompletion);
 begin
-  FSlashMenu.Completion := ACompletion;
+  FSlashMenu.InterfaceItemsFor := InterfaceItemsOf(ACompletion);
 end;
 
 end.

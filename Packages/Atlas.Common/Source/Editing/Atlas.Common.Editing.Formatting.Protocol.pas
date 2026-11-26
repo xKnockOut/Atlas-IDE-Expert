@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Formatting;
+﻿unit Atlas.Common.Editing.Formatting.Protocol;
 
 // textDocument/formatting und textDocument/rangeFormatting (#43). Die
 // Einstellungen kommen in drei Ebenen: die FormattingOptions des Editors,
@@ -42,7 +42,7 @@ type
   /// <summary>Block "format" aus atlas.json bzw. dem Editor für AUri.</summary>
   TFormatStyleProvider = reference to function(const AUri: string): TFormatStyle;
 
-  TLspFormatting = class
+  TFormattingProtocol = class
   public const
     cMethod = 'textDocument/formatting';
     cRangeMethod = 'textDocument/rangeFormatting';
@@ -125,9 +125,9 @@ const
 
 {$SCOPEDENUMS OFF}
 
-{ TLspFormatting }
+{ TFormattingProtocol }
 
-constructor TLspFormatting.Create(const AStore: IDocumentStore; const ASettingsProvider: TFormatStyleProvider;
+constructor TFormattingProtocol.Create(const AStore: IDocumentStore; const ASettingsProvider: TFormatStyleProvider;
   const AReadFile: TEditorConfigReadFile);
 begin
   inherited Create;
@@ -136,7 +136,7 @@ begin
   FReadFile := AReadFile;
 end;
 
-function TLspFormatting.StyleFor(AParams: TJSONObject; const AUri: string): TFormatStyle;
+function TFormattingProtocol.StyleFor(AParams: TJSONObject; const AUri: string): TFormatStyle;
 var
   mConfigured: TFormatStyle;
   mOptions: TJSONValue;
@@ -153,7 +153,7 @@ begin
   Result := TFormatStyles.Resolve(mOptions, TDocumentUris.ToPath(AUri), mConfigured, FReadFile);
 end;
 
-function TLspFormatting.HandleOnType(const AParams: TJSONValue;
+function TFormattingProtocol.HandleOnType(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
   mUri, mCharacter: string;
@@ -202,7 +202,7 @@ begin
   end;
 end;
 
-procedure TLspFormatting.AddDocComment(const ADocument: ITextDocument; const AUri: string;
+procedure TFormattingProtocol.AddDocComment(const ADocument: ITextDocument; const AUri: string;
   const APosition: TTextPosition; const ACancellation: IJsonRpcCancellationToken; AResult: TJSONArray);
 var
   mCancellation: IPascalCancellation;
@@ -224,7 +224,7 @@ begin
   end;
 end;
 
-procedure TLspFormatting.AddSlashCommand(AParams: TJSONObject; const ADocument: ITextDocument; const AUri: string;
+procedure TFormattingProtocol.AddSlashCommand(AParams: TJSONObject; const ADocument: ITextDocument; const AUri: string;
   const APosition: TTextPosition; const ACancellation: IJsonRpcCancellationToken; AResult: TJSONArray);
 var
   mDisabled: TArray<string>;
@@ -254,19 +254,19 @@ begin
   end;
 end;
 
-function TLspFormatting.HandleFormatting(const AParams: TJSONValue;
+function TFormattingProtocol.HandleFormatting(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 begin
   Result := Handle(AParams, False, ACancellation);
 end;
 
-function TLspFormatting.HandleRangeFormatting(const AParams: TJSONValue;
+function TFormattingProtocol.HandleRangeFormatting(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 begin
   Result := Handle(AParams, True, ACancellation);
 end;
 
-procedure TLspFormatting.Attach(ADispatcher: TJsonRpcDispatcher);
+procedure TFormattingProtocol.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(cMethod, HandleFormatting);
   ADispatcher.RegisterConcurrentRequest(cRangeMethod, HandleRangeFormatting);
@@ -283,7 +283,7 @@ begin
   if not AParams.TryGetValue<TJSONValue>('range', mRangeValue) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TFormattingText.FieldRangeMissingIn].Text +
-      TLspFormatting.cRangeMethod);
+      TFormattingProtocol.cRangeMethod);
   end;
   mRange := TLspPositions.ReadRange(mRangeValue);
   AFirstLine := mRange.StartPos.Line;
@@ -334,7 +334,7 @@ begin
   end;
 end;
 
-function TLspFormatting.SortedUses(const ADocument: ITextDocument; const AUri: string; const AStyle: TFormatStyle;
+function TFormattingProtocol.SortedUses(const ADocument: ITextDocument; const AUri: string; const AStyle: TFormatStyle;
   out AEdits: TArray<TTextEdit>): Boolean;
 var
   mContext: TSlashContext;
@@ -354,7 +354,7 @@ begin
   Result := FSortUses(mContext, AEdits);
 end;
 
-function TLspFormatting.Handle(const AParams: TJSONValue; AWithRange: Boolean;
+function TFormattingProtocol.Handle(const AParams: TJSONValue; AWithRange: Boolean;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
   mUri: string;
@@ -392,7 +392,7 @@ begin
   AddEdits(TJSONArray(Result), mEdits);
 end;
 
-class function TLspFormatting.OnTypeCapability: TJSONObject;
+class function TFormattingProtocol.OnTypeCapability: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('firstTriggerCharacter', #10);
@@ -400,6 +400,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.Formatting', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.Formatting.Protocol', cTexts);
 
 end.

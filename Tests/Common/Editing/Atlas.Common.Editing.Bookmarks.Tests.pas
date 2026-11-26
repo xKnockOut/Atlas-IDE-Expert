@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Editing.Bookmarks.Tests;
 
-// Tests für Lesezeichen "// @bookmark Name" und ihre Suche (#306).
+// Tests für Lesezeichen "// @bookmark Name" (#306); die Suche testet Atlas.Common.Lsp.WorkspaceSymbols.Tests.
 
 interface
 
@@ -15,16 +15,13 @@ type
     procedure FindsMarkedComments;
     [Test]
     procedure StoreReadsOnlyChangedFiles;
-    [Test]
-    procedure WorkspaceSymbolFindsBookmark;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Editing.Bookmarks,
-  Atlas.Common.Lsp.WorkspaceSymbols;
+  Atlas.Common.Editing.Bookmarks;
 
 const
   cSource = 'unit U;'#10 +
@@ -82,20 +79,6 @@ begin
   finally
     mStore.Free;
   end;
-end;
-
-procedure TBookmarksTests.WorkspaceSymbolFindsBookmark;
-var
-  mHit: TBookmarkHit;
-  mFound: TArray<TWorkspaceSymbol>;
-begin
-  mHit.FileName := 'C:\P\Kasse.pas';
-  mHit.Bookmark := TBookmarks.Find(cSource)[0];
-  mFound := TLspWorkspaceSymbols.SearchBookmarks([mHit], 'Abrechnung');
-  Assert.AreEqual(1, Integer(Length(mFound)));
-  Assert.IsTrue(mFound[0].Bookmark);
-  Assert.AreEqual('Kasse', mFound[0].UnitName);
-  Assert.AreEqual(0, Integer(Length(TLspWorkspaceSymbols.SearchBookmarks([mHit], 'Lieferung'))));
 end;
 
 initialization

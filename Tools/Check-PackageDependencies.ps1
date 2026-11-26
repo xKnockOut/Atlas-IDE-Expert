@@ -460,9 +460,9 @@ $AllowedJsonFormLocal = @{
     'Atlas.Common.Lsp.Baseline.Tests:NumberAt'                           = 'Pfad mit Punkten (FindValue), prüft den Typ mit Assert'
     'Atlas.Common.Lsp.Baseline.Tests:TextAt'                             = 'Pfad mit Punkten (FindValue), prüft den Typ mit Assert'
     'Atlas.Common.Editing.BoundaryCases.Protocol.Tests:Count'                         = 'Test: fehlendes Array soll als Ausnahme auffallen'
-    'Atlas.Common.Lsp.SlashMenu.Tests:Field'                             = 'Test: fehlender Wert soll als Ausnahme auffallen'
-    'Atlas.Common.Lsp.SlashMenu.Tests:Flag'                              = 'Test: fehlender Wert soll als Ausnahme auffallen'
-    'Atlas.Common.Lsp.SlashMenu.Tests:List'                              = 'Test: fehlender Wert soll als Ausnahme auffallen'
+    'Atlas.Common.Editing.SlashMenu.Protocol.Tests:Field'                             = 'Test: fehlender Wert soll als Ausnahme auffallen'
+    'Atlas.Common.Editing.SlashMenu.Protocol.Tests:Flag'                              = 'Test: fehlender Wert soll als Ausnahme auffallen'
+    'Atlas.Common.Editing.SlashMenu.Protocol.Tests:List'                              = 'Test: fehlender Wert soll als Ausnahme auffallen'
     'Atlas.Common.Editing.SafeDelete.Protocol.Tests:Items'                            = 'Test: setzt die Einträge eines Arrays zu einer Vergleichszeile zusammen'
 }
 
