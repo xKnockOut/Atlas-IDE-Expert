@@ -23,8 +23,6 @@ type
     LargestFreeMb: Int64;
     /// <summary>Adressraum des eigenen Prozesses; alle Werte 0, wenn die Abfrage scheitert.</summary>
     class function Measure: TAtlasAddressSpace; static;
-    /// <summary>„used 2900 of 4096 MB, largest free block 120 MB“.</summary>
-    function Text: string;
   end;
 
   /// <summary>Schreibt den Adressraum zu Beginn und am Ende jedes Gruppenlaufs ins Protokoll.</summary>
@@ -82,21 +80,24 @@ begin
   Result.LargestFreeMb := Int64(mLargest div cMb);
 end;
 
-function TAtlasAddressSpace.Text: string;
-begin
-  Result := Format('used %d of %d MB, largest free block %d MB', [UsedMb, TotalMb, LargestFreeMb]);
-end;
-
 { TAtlasAddressSpaceLog }
 
 procedure TAtlasAddressSpaceLog.GroupStarted(AKind: TAtlasCompileKind);
+var
+  mSpace: TAtlasAddressSpace;
 begin
-  TAtlasGuard.Log('Address space before build: ' + TAtlasAddressSpace.Measure.Text);
+  mSpace := TAtlasAddressSpace.Measure;
+  TAtlasGuard.Log(Format('Address space before build: used %d of %d MB, largest free block %d MB',
+    [mSpace.UsedMb, mSpace.TotalMb, mSpace.LargestFreeMb]));
 end;
 
 procedure TAtlasAddressSpaceLog.GroupFinished(ASucceeded: Boolean; ADurationMs: Int64);
+var
+  mSpace: TAtlasAddressSpace;
 begin
-  TAtlasGuard.Log('Address space after build: ' + TAtlasAddressSpace.Measure.Text);
+  mSpace := TAtlasAddressSpace.Measure;
+  TAtlasGuard.Log(Format('Address space after build: used %d of %d MB, largest free block %d MB',
+    [mSpace.UsedMb, mSpace.TotalMb, mSpace.LargestFreeMb]));
 end;
 
 end.
