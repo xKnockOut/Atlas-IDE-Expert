@@ -23,6 +23,8 @@ type
     ProblemsOpenFirstHint, ProblemsStatusTiers, ProblemsStatusHidden, ProblemsMenuFixAll, ProblemsManual,
     // Fehler der IDE (#1819): Spalte und Filter „Quelle“.
     ProblemsColumnSource, ProblemsOriginAll, ProblemsOriginAtlas, ProblemsOriginIde,
+    // Spalte und Gruppe „Regel“ für Befunde ohne Regel-ID: Fehler der IDE, sonstige.
+    ProblemsRuleIde, ProblemsRuleNone,
     // Compilermeldungen erklären (#54).
     ProblemsMenuExplainMessage, ProblemsExplainMessageTitle, ProblemsExplainCause, ProblemsExplainDocWiki,
     // Auftrag für KI-Assistenten (#2570).
@@ -104,6 +106,8 @@ const
      'Atlas und IDE',
      'nur Atlas',
      'nur IDE',
+     'IDE-Fehler',
+     'Ohne Regel',
      'Meldung erklären',
      'Meldung %s',
      'Typische Ursache',
@@ -175,6 +179,8 @@ const
      'Atlas and IDE',
      'Atlas only',
      'IDE only',
+     'IDE error',
+     'No rule',
      'Explain message',
      'Message %s',
      'Typical cause',

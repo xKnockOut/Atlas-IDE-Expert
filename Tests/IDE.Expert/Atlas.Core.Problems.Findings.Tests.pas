@@ -45,6 +45,8 @@ type
     [Test]
     procedure GroupsByFileRuleAndCategory;
     [Test]
+    procedure FindingsWithoutRuleGetTheirOwnRuleGroups;
+    [Test]
     procedure CollapsedGroupStaysCollapsedAfterUpdate;
     [Test]
     procedure SelectionSurvivesUpdateAndShiftedLines;
@@ -475,6 +477,60 @@ begin
     Assert.AreEqual(5, Integer(Length(mRows)));
     Assert.AreEqual('code-smell', mRows[0].Caption);
     Assert.AreEqual<TAtlasFindingCategory>(TAtlasFindingCategory.CodeSmell, mRows[0].Category);
+  finally
+    mView.Free;
+  end;
+end;
+
+procedure TAtlasFindingsTests.FindingsWithoutRuleGetTheirOwnRuleGroups;
+var
+  mIde, mCompiler, mOther: TAtlasProblem;
+  mView: TAtlasFindingsView;
+  mRows: TArray<TAtlasFindingRow>;
+  mRow: TAtlasFindingRow;
+  mRuleless: TArray<TAtlasFindingRuleless>;
+  mFilter: TAtlasFindingFilter;
+begin
+  // Fehler der IDE (Error Insight) haben keine Regel-ID: eigene Gruppe „IDE-Fehler“ statt einer leeren Gruppe,
+  // getrennt von Compilermeldungen ohne Nummer und sonstigen Befunden ohne Regel.
+  mIde := Problem(4, '', 'Undeclared identifier', TAtlasProblemSeverity.Error);
+  mIde.Source := TAtlasProblem.cIdeSource;
+  mCompiler := Problem(5, '', 'Linker error', TAtlasProblemSeverity.Error);
+  mCompiler.Source := TAtlasProblem.cCompilerSource;
+  mOther := Problem(6, '', 'Without rule', TAtlasProblemSeverity.Warning);
+  Assert.AreEqual<TAtlasFindingRuleless>(TAtlasFindingRuleless.Ide, TAtlasFindings.RulelessOf(mIde));
+  Assert.AreEqual<TAtlasFindingRuleless>(TAtlasFindingRuleless.Compiler, TAtlasFindings.RulelessOf(mCompiler));
+  Assert.AreEqual<TAtlasFindingRuleless>(TAtlasFindingRuleless.Other, TAtlasFindings.RulelessOf(mOther));
+  Assert.AreEqual<TAtlasFindingRuleless>(TAtlasFindingRuleless.None,
+    TAtlasFindings.RulelessOf(Problem(7, 'empty-except', 'Leer', TAtlasProblemSeverity.Warning)));
+  mView := TAtlasFindingsView.Create;
+  try
+    mView.SetFindings(TAtlasFindings.FromProblems('C:\P\A.pas', [mIde, mCompiler, mOther,
+      Problem(7, 'empty-except', 'Leer', TAtlasProblemSeverity.Warning), mIde], nil));
+    mFilter := TAtlasFindingFilter.Create;
+    mFilter.Compiler := True;
+    mView.Filter := mFilter;
+    mView.Grouping := TAtlasFindingGrouping.ByRule;
+    mRows := mView.Rows;
+    mRuleless := nil;
+    for mRow in mRows do
+    begin
+      if mRow.IsGroup then
+      begin
+        mRuleless := mRuleless + [mRow.Ruleless];
+        if mRow.Ruleless = TAtlasFindingRuleless.Ide then
+        begin
+          Assert.AreEqual(2, Integer(mRow.Count));
+        end;
+        if mRow.Ruleless <> TAtlasFindingRuleless.None then
+        begin
+          Assert.AreEqual('', mRow.Caption);
+        end;
+      end;
+    end;
+    Assert.AreEqual(4, Integer(Length(mRuleless)));
+    // Ohne Regel-ID zuerst (leere ID sortiert vorn), dann die Regeln.
+    Assert.AreEqual<TAtlasFindingRuleless>(TAtlasFindingRuleless.None, mRuleless[3]);
   finally
     mView.Free;
   end;
