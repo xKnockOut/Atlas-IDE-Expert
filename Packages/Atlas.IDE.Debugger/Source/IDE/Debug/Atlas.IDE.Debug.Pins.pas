@@ -395,6 +395,11 @@ begin
   begin
     Exit;
   end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasDebugLineEnd.Covered(Rect, Context) then
+  begin
+    Exit;
+  end;
   try
     mX := -1;
     for mPin in TAtlasPinsFlow.OnLine(FPins.InFile(FProject, Context.FileName), Context.LogicalLineNum) do
