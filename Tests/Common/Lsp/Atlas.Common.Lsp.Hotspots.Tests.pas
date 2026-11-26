@@ -48,7 +48,6 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Hotspots.Contract,
-  Atlas.Common.Hotspots.Analysis,
   Atlas.Common.Hotspots.Service,
   Atlas.Common.Lsp.Hotspots,
   Atlas.Common.Architecture.UsesGraph.Tests,
@@ -402,10 +401,6 @@ end;
 procedure TLspHotspotsTests.RejectsInvalidOptions;
 var
   mFixture: TFixture;
-  mRequest: THotspotRequest;
-  mError: string;
-  mParams: TJSONObject;
-  mResult: THotspotResult;
 begin
   mFixture := TFixture.Create;
   try
@@ -433,28 +428,6 @@ begin
   finally
     mFixture.Free;
   end;
-  mRequest := THotspotRequest.FromSettings(TServerSettings.Default);
-  mParams := TJSONObject.ParseJSONValue('{"months":61}') as TJSONObject;
-  try
-    Assert.IsFalse(TLspHotspots.ApplyOptions(mParams, mRequest, mError));
-    Assert.IsTrue(mError.Contains('months'));
-  finally
-    mParams.Free;
-  end;
-  mParams := TJSONObject.ParseJSONValue('{"months":3,"level":"method"}') as TJSONObject;
-  try
-    Assert.IsTrue(TLspHotspots.ApplyOptions(mParams, mRequest, mError));
-    Assert.AreEqual(3, mRequest.Options.Months);
-    Assert.AreEqual<THotspotLevel>(THotspotLevel.Methods, mRequest.Level);
-  finally
-    mParams.Free;
-  end;
-  mResult := Default(THotspotResult);
-  SetLength(mResult.Units, 5);
-  SetLength(mResult.Coupling, 2);
-  mResult := TLspHotspots.Limited(mResult, 3);
-  Assert.AreEqual(3, Integer(Length(mResult.Units)));
-  Assert.AreEqual(2, Integer(Length(mResult.Coupling)));
 end;
 
 initialization

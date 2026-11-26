@@ -50,7 +50,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.Rename,
+  Atlas.Common.Semantics.Renames,
   Atlas.Common.Semantics.ParameterHeaders,
   Atlas.Common.Semantics.References;
 
@@ -228,7 +228,7 @@ begin
   mResolver := TNameResolver.Create(mIndex);
   mTree := TSyntaxTreeCache.Parse(cUnitProbe);
   try
-    mEdits := TLspRename.Edits(mResolver, mIndex, mTree, TReferenceSearch.Create(cProbeFile, SpotOf(ALine, AName),
+    mEdits := TRenames.Edits(mResolver, mIndex, mTree, TReferenceSearch.Create(cProbeFile, SpotOf(ALine, AName),
       True, [cProbeFile], ReadProbe), TRenameRequest.Create(ANewName, True, TReferenceSettings.Default, nil),
       mUnchanged);
     AUnchanged := Length(mUnchanged);
@@ -418,7 +418,7 @@ begin
   try
     for mPosition in mPositions do
     begin
-      mEdits := TLspRename.Edits(mResolver, mIndex, mTree, TReferenceSearch.Create(cHakenFile, mPosition, True,
+      mEdits := TRenames.Edits(mResolver, mIndex, mTree, TReferenceSearch.Create(cHakenFile, mPosition, True,
         [cHakenFile], ReadHaken), TRenameRequest.Create('AWParam', True, TReferenceSettings.Default, nil));
       Assert.AreEqual('5:18 8:21 12:11 13:12', EditsText(mEdits, 'AWParam'), SpotText(mPosition));
     end;

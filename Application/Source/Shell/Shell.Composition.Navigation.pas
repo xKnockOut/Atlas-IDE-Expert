@@ -24,7 +24,7 @@ uses
   Atlas.Common.Lsp.DebugUnavailable,
   Atlas.Common.Lsp.References,
   Atlas.Common.Semantics.References,
-  Atlas.Common.Lsp.Rename;
+  Atlas.Common.Semantics.Renames;
 
 type
   TShellNavigationReadText = reference to function(const AFileName: string; out AText: string): Boolean;
@@ -66,7 +66,7 @@ type
     FCompilerSwitches: TLspCompilerSwitches;
     FDebugUnavailable: TLspDebugUnavailable;
     FReferences: TLspReferences;
-    FRename: TLspRename;
+    FRename: TRenames;
     /// <summary>Quelltext über den Dienst; als eigene Methode an alle Leser mit ihren eigenen Typen.</summary>
     function ReadText(const AFileName: string; out AText: string): Boolean;
     function ProjectFiles: TArray<string>;
@@ -151,7 +151,7 @@ begin
   FReferences := TLspReferences.Create(FServices.Documents, FServices.Index, ReadText, ProjectFiles,
     FServices.EnsureUnit);
   FReferences.SettingsFor := FServices.ReferenceSettingsFor;
-  FRename := TLspRename.Create(FServices.Documents, FServices.Index, ReadText, ProjectFiles, FServices.EnsureUnit);
+  FRename := TRenames.Create(FServices.Documents, FServices.Index, ReadText, ProjectFiles, FServices.EnsureUnit);
   FRename.SettingsFor := FServices.ReferenceSettingsFor;
   FRename.TypeCommentsFor := FServices.RenameTypeCommentsFor;
 end;

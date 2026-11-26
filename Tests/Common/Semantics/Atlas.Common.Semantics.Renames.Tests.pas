@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Rename.Tests;
+﻿unit Atlas.Common.Semantics.Renames.Tests;
 
 // Tests für das Umbenennen im Projekt (#30); Typkommentare wandern mit (#1838).
 
@@ -8,11 +8,11 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Rename;
+  Atlas.Common.Semantics.Renames;
 
 type
   [TestFixture]
-  TLspRenameTests = class
+  TRenamesTests = class
   private
     FIndex: ISymbolIndex;
     FResolver: TNameResolver;
@@ -179,27 +179,27 @@ const
     'end;'#10 +                                      // 25
     'end.';
 
-{ TLspRenameTests }
+{ TRenamesTests }
 
-function TLspRenameTests.CheckAt(const AMarker: string; const AFiles: TArray<string>): TRenameCheck;
+function TRenamesTests.CheckAt(const AMarker: string; const AFiles: TArray<string>): TRenameCheck;
 var
   mTree: TSyntaxTree;
 begin
   mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Result := TLspRename.Check(FResolver, FIndex, mTree, cHauptFile, TTestSource.PositionOf(cUnitHaupt, AMarker), AFiles);
+    Result := TRenames.Check(FResolver, FIndex, mTree, cHauptFile, TTestSource.PositionOf(cUnitHaupt, AMarker), AFiles);
   finally
     mTree.Free;
   end;
 end;
 
-function TLspRenameTests.EditsAt(const AMarker, ANewName: string): TArray<TRenameEdit>;
+function TRenamesTests.EditsAt(const AMarker, ANewName: string): TArray<TRenameEdit>;
 var
   mTree: TSyntaxTree;
 begin
   mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Result := TLspRename.Edits(FResolver, FIndex, mTree, TReferenceSearch.Create(cHauptFile,
+    Result := TRenames.Edits(FResolver, FIndex, mTree, TReferenceSearch.Create(cHauptFile,
       TTestSource.PositionOf(cUnitHaupt, AMarker), True, [cWerkzeugFile, cHauptFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
@@ -222,7 +222,7 @@ begin
   end;
 end;
 
-function TLspRenameTests.KundeError(const AMarker, ANewName: string): string;
+function TRenamesTests.KundeError(const AMarker, ANewName: string): string;
 var
   mIndex: ISymbolIndex;
   mResolver: TNameResolver;
@@ -235,7 +235,7 @@ begin
   try
     Result := '';
     try
-      TLspRename.Edits(mResolver, mIndex, mTree, TReferenceSearch.Create(cKundeFile, TTestSource.PositionOf(cUnitKunde, AMarker),
+      TRenames.Edits(mResolver, mIndex, mTree, TReferenceSearch.Create(cKundeFile, TTestSource.PositionOf(cUnitKunde, AMarker),
         True, [cKundeFile],
         function(const AFileName: string; out AText: string): Boolean
         begin
@@ -255,12 +255,12 @@ begin
   end;
 end;
 
-function TLspRenameTests.FormEdits(const AMarker, ANewName: string; AHandlers: Boolean): TArray<TRenameEdit>;
+function TRenamesTests.FormEdits(const AMarker, ANewName: string; AHandlers: Boolean): TArray<TRenameEdit>;
 begin
   Result := FormEdits(AMarker, ANewName, AHandlers, False);
 end;
 
-function TLspRenameTests.FormEdits(const AMarker, ANewName: string; AHandlers: Boolean;
+function TRenamesTests.FormEdits(const AMarker, ANewName: string; AHandlers: Boolean;
 
   AFmx: Boolean): TArray<TRenameEdit>;
 var
@@ -281,7 +281,7 @@ begin
   mResolver := TNameResolver.Create(mIndex);
   mTree := TPascalParser.Parse(mUnitText);
   try
-    Result := TLspRename.Edits(mResolver, mIndex, mTree, TReferenceSearch.Create(cMaskeFile,
+    Result := TRenames.Edits(mResolver, mIndex, mTree, TReferenceSearch.Create(cMaskeFile,
       TTestSource.PositionOf(mUnitText, AMarker), True, [cMaskeFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
@@ -309,20 +309,20 @@ begin
   end;
 end;
 
-procedure TLspRenameTests.Setup;
+procedure TRenamesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
-procedure TLspRenameTests.TearDown;
+procedure TRenamesTests.TearDown;
 begin
   FResolver.Free;
   FIndex := nil;
 end;
 
-procedure TLspRenameTests.ValidatesNewNames;
+procedure TRenamesTests.ValidatesNewNames;
 begin
   Assert.IsTrue(TPascalLexer.IsIdentifierName('Addiere'));
   Assert.IsTrue(TPascalLexer.IsIdentifierName('_Wert2'));
@@ -333,7 +333,7 @@ begin
   Assert.IsFalse(TPascalLexer.IsIdentifierName('&Wert'));
 end;
 
-procedure TLspRenameTests.PrepareReturnsNameAndRange;
+procedure TRenamesTests.PrepareReturnsNameAndRange;
 var
   mChecked: TRenameCheck;
 begin
@@ -345,19 +345,19 @@ begin
   Assert.AreEqual(9, mChecked.Range.EndPos.Character);
 end;
 
-procedure TLspRenameTests.RejectsSymbolsOutsideProject;
+procedure TRenamesTests.RejectsSymbolsOutsideProject;
 begin
   // Werkzeug.pas gehört hier nicht zum Projekt, wie eine Bibliotheks-Unit.
   Assert.IsTrue(Pos('außerhalb des Projekts', CheckAt('Summe(1', []).Error) > 0);
   Assert.AreNotEqual('', CheckAt('begin', [cWerkzeugFile]).Error);
 end;
 
-procedure TLspRenameTests.RejectsUnitNames;
+procedure TRenamesTests.RejectsUnitNames;
 begin
   Assert.IsTrue(Pos('Dateinamen', CheckAt('Werkzeug;', [cWerkzeugFile]).Error) > 0);
 end;
 
-procedure TLspRenameTests.RenamesAcrossUnitsAndForm;
+procedure TRenamesTests.RenamesAcrossUnitsAndForm;
 var
   mFound: TArray<TRenameEdit>;
   mEdit: TRenameEdit;
@@ -387,7 +387,7 @@ begin
   Assert.AreEqual(2, mForm);
 end;
 
-procedure TLspRenameTests.RejectsInvalidNewName;
+procedure TRenamesTests.RejectsInvalidNewName;
 var
   mRaised: Boolean;
 begin
@@ -401,7 +401,7 @@ begin
   Assert.IsTrue(mRaised);
 end;
 
-procedure TLspRenameTests.RenamesComponentWithHandlers;
+procedure TRenamesTests.RenamesComponentWithHandlers;
 var
   mFound: TArray<TRenameEdit>;
   mEdit: TRenameEdit;
@@ -433,7 +433,7 @@ begin
   Assert.AreEqual(0, mOther);
 end;
 
-procedure TLspRenameTests.KeepsHandlersWhenDisabled;
+procedure TRenamesTests.KeepsHandlersWhenDisabled;
 var
   mEdit: TRenameEdit;
 begin
@@ -443,7 +443,7 @@ begin
   end;
 end;
 
-procedure TLspRenameTests.RenamesHandlersInFmxViews;
+procedure TRenamesTests.RenamesHandlersInFmxViews;
 var
   mEdit: TRenameEdit;
   mFmx, mWindows: Integer;
@@ -466,7 +466,7 @@ begin
   Assert.AreEqual(2, mWindows);
 end;
 
-procedure TLspRenameTests.RenamesHandlerMethodInFmxViews;
+procedure TRenamesTests.RenamesHandlerMethodInFmxViews;
 var
   mEdit: TRenameEdit;
   mFmx, mWindows: Integer;
@@ -495,7 +495,7 @@ begin
   Assert.AreEqual(1, mWindows);
 end;
 
-procedure TLspRenameTests.RejectsParameterThatWouldHideField;
+procedure TRenamesTests.RejectsParameterThatWouldHideField;
 var
   mError: string;
 begin
@@ -506,7 +506,7 @@ begin
   Assert.IsTrue(Pos('Feld TKunde.Name', mError) > 0, mError);
 end;
 
-procedure TLspRenameTests.RejectsFieldThatWouldBeHiddenByLocal;
+procedure TRenamesTests.RejectsFieldThatWouldBeHiddenByLocal;
 var
   mError: string;
 begin
@@ -518,7 +518,7 @@ begin
   Assert.IsTrue(Pos('lokale Variable Anzahl', mError) > 0, mError);
 end;
 
-procedure TLspRenameTests.AllowsRenameWithoutShadowing;
+procedure TRenamesTests.AllowsRenameWithoutShadowing;
 begin
   // Das Feld ist in SetzeName nur über Self.Name erreichbar; Wert kommt dort nicht vor.
   Assert.AreEqual('', KundeError('Name; // K1', 'Wert'));
@@ -574,7 +574,7 @@ begin
   try
     mRequest := TRenameRequest.Create('TCustomer');
     mRequest.TypeComments := ATypeComments;
-    Result := TLspRename.Edits(mResolver, mIndex, mTree, TReferenceSearch.Create(cKopfFile,
+    Result := TRenames.Edits(mResolver, mIndex, mTree, TReferenceSearch.Create(cKopfFile,
       TTestSource.PositionOf(cUnitKopf, 'TKunde = class'), True, [cKopfFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
@@ -605,7 +605,7 @@ begin
   Result := False;
 end;
 
-procedure TLspRenameTests.RenamesTypeComments;
+procedure TRenamesTests.RenamesTypeComments;
 var
   mFound: TArray<TRenameEdit>;
   mEdit: TRenameEdit;
@@ -622,7 +622,7 @@ begin
   Assert.IsTrue(EditOnLine(mFound, 11, mEdit), 'Rumpf wie bisher');
 end;
 
-procedure TLspRenameTests.KeepsTypeCommentsWhenOff;
+procedure TRenamesTests.KeepsTypeCommentsWhenOff;
 var
   mFound: TArray<TRenameEdit>;
   mEdit: TRenameEdit;
@@ -633,6 +633,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspRenameTests);
+  TDUnitX.RegisterTestFixture(TRenamesTests);
 
 end.

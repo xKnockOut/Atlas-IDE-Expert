@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Rename;
+﻿unit Atlas.Common.Semantics.Renames;
 
 // Umbenennen im ganzen Projekt (textDocument/prepareRename und
 // textDocument/rename, #30). Grundlage ist die Referenzsuche samt .dfm.
@@ -67,7 +67,7 @@ type
   /// <summary>Typkommentare beim Umbenennen anpassen (#1838) je Datei.</summary>
   TRenameTypeCommentsFunc = reference to function(const AUri: string): Boolean;
 
-  TLspRename = class
+  TRenames = class
   public const
     cPrepareMethod = 'textDocument/prepareRename';
     cRenameMethod = 'textDocument/rename';
@@ -136,7 +136,6 @@ uses
   Atlas.Common.Dfm.FormFiles,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Semantics.Definitions,
   Atlas.Common.Semantics.ReferenceConfidence,
@@ -179,9 +178,9 @@ const
 
 {$SCOPEDENUMS OFF}
 
-{ TLspRename }
+{ TRenames }
 
-constructor TLspRename.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+constructor TRenames.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
 begin
   inherited Create;
@@ -193,23 +192,23 @@ begin
   FRenameHandlers := True;
 end;
 
-constructor TLspRename.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+constructor TRenames.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider);
 begin
   Create(AStore, AIndex, AReadText, AFiles, nil);
 end;
 
-function TLspRename.GetNamespaces: TArray<string>;
+function TRenames.GetNamespaces: TArray<string>;
 begin
   Result := TSharedNamespaces.Read(FNamespaces);
 end;
 
-procedure TLspRename.SetNamespaces(const AValue: TArray<string>);
+procedure TRenames.SetNamespaces(const AValue: TArray<string>);
 begin
   TSharedNamespaces.Write(FNamespaces, AValue);
 end;
 
-function TLspRename.ProjectFiles: TArray<string>;
+function TRenames.ProjectFiles: TArray<string>;
 begin
   if Assigned(FFiles) then
   begin
@@ -221,7 +220,7 @@ begin
   end;
 end;
 
-function TLspRename.HandlePrepare(const AParams: TJSONValue;
+function TRenames.HandlePrepare(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
   mCancellation: IPascalCancellation;
@@ -259,14 +258,14 @@ begin
   // Der Editor zeigt die Fehlermeldung an.
   if mChecked.Error <> '' then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed, mChecked.Error);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, mChecked.Error);
   end;
   Result := TJSONObject.Create;
   TJSONObject(Result).AddPair('range', TLspPositions.RangeToJson(mChecked.Range));
   TJSONObject(Result).AddPair('placeholder', mChecked.Name);
 end;
 
-function TLspRename.SettingsOf(const AUri: string): TReferenceSettings;
+function TRenames.SettingsOf(const AUri: string): TReferenceSettings;
 begin
   if Assigned(FSettingsFor) then
   begin
@@ -278,7 +277,7 @@ begin
   end;
 end;
 
-procedure TLspRename.Attach(ADispatcher: TJsonRpcDispatcher);
+procedure TRenames.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(cPrepareMethod, HandlePrepare);
   ADispatcher.RegisterConcurrentRequest(cRenameMethod, HandleRename);
@@ -481,7 +480,7 @@ begin
   end;
 end;
 
-class function TLspRename.Capability: TJSONObject;
+class function TRenames.Capability: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('prepareProvider', TJSONBool.Create(True));
@@ -695,7 +694,7 @@ begin
   begin
     if not SameText(ExtractFileExt(mEdit.FileName), '.pas') and TFileEncoding.IsBinaryFormFile(mEdit.FileName) then
     begin
-      raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed, cTexts[TRenameText.IsAFormStoredAs].Fmt([
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, cTexts[TRenameText.IsAFormStoredAs].Fmt([
         ExtractFileName(mEdit.FileName)]));
     end;
   end;
@@ -719,7 +718,7 @@ begin
   Result.TypeComments := True;
 end;
 
-class function TLspRename.Check(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+class function TRenames.Check(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AFileName: string; const APosition: TTextPosition; const AFiles: TArray<string>): TRenameCheck;
 var
   mIndex: Integer;
@@ -761,7 +760,7 @@ begin
   end;
 end;
 
-class function TLspRename.Conflict(AResolver: TNameResolver; ATree: TSyntaxTree; const ASearch: TReferenceSearch;
+class function TRenames.Conflict(AResolver: TNameResolver; ATree: TSyntaxTree; const ASearch: TReferenceSearch;
   const ANewName: string; const ALocations: TArray<TReferenceLocation>): string;
 var
   mScope: TConflictScope;
@@ -799,7 +798,7 @@ begin
   end;
 end;
 
-class function TLspRename.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+class function TRenames.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const ASearch: TReferenceSearch; const ARequest: TRenameRequest;
   out AUnchanged: TArray<TReferenceLocation>): TArray<TRenameEdit>;
 var
@@ -817,7 +816,7 @@ begin
   mChecked := Check(AResolver, AIndex, ATree, ASearch.FileName, ASearch.Position, ASearch.Files);
   if mChecked.Error <> '' then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed, mChecked.Error);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, mChecked.Error);
   end;
   mScope.Resolver := AResolver;
   mScope.Index := AIndex;
@@ -830,7 +829,7 @@ begin
   mReason := Conflict(AResolver, ATree, mScope.Search, ARequest.NewName, mLocations);
   if mReason <> '' then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed, mReason);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, mReason);
   end;
   Result := LocationEdits(mLocations, ARequest.NewName) + TypeCommentEdits(mScope, mChecked);
   if ARequest.RenameHandlers and Assigned(ASearch.ReadText) then
@@ -840,7 +839,7 @@ begin
   CheckTextForms(Result);
 end;
 
-class function TLspRename.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+class function TRenames.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const ASearch: TReferenceSearch; const ARequest: TRenameRequest): TArray<TRenameEdit>;
 var
   mUnchanged: TArray<TReferenceLocation>;
@@ -895,7 +894,7 @@ begin
   end;
 end;
 
-function TLspRename.HandleRename(const AParams: TJSONValue;
+function TRenames.HandleRename(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
   mUri, mNewName: string;
@@ -941,13 +940,13 @@ begin
   end;
 end;
 
-class function TLspRename.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+class function TRenames.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const ASearch: TReferenceSearch; const ANewName: string): TArray<TRenameEdit>;
 begin
   Result := Edits(AResolver, AIndex, ATree, ASearch, TRenameRequest.Create(ANewName));
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.Rename', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.Renames', cTexts);
 
 end.

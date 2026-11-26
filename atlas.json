@@ -166,8 +166,7 @@
         "Atlas.Common.Lsp.TestUnits -> Atlas.Common.Editing.UnitTemplates",
         "Atlas.Common.Lsp.Unwrap -> Atlas.Common.Editing.Unwrap",
         "Atlas.Common.Lsp.Unwrap -> Atlas.Common.Editing.WithResolution",
-        "Atlas.Common.Lsp.WorkspaceSymbols -> Atlas.Common.Editing.Bookmarks",
-        "Atlas.Common.Mcp.EditTools -> Atlas.Common.Lsp.Rename"
+        "Atlas.Common.Lsp.WorkspaceSymbols -> Atlas.Common.Editing.Bookmarks"
       ]
     },
     "forbidden-symbol": {

@@ -102,7 +102,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.ReferenceConfidence,
   Atlas.Common.Semantics.Hierarchies,
-  Atlas.Common.Lsp.Rename,
+  Atlas.Common.Semantics.Renames,
   Atlas.Common.Mcp.CodeTools,
   Atlas.Common.Mcp.Confirm,
   Atlas.Common.Mcp.EditTools,
@@ -471,7 +471,7 @@ procedure TReferenceConfidenceTests.LspResponses;
 var
   mStore: IDocumentStore;
   mReferences: TLspReferences;
-  mRename: TLspRename;
+  mRename: TRenames;
   mDispatcher: TJsonRpcDispatcher;
   mUri, mPosition: string;
   mFiles: TReferenceFilesProvider;
@@ -495,7 +495,7 @@ begin
   mDispatcher := nil;
   try
     mReferences := TLspReferences.Create(mStore, FIndex, ReadText, mFiles);
-    mRename := TLspRename.Create(mStore, FIndex, ReadText, mFiles);
+    mRename := TRenames.Create(mStore, FIndex, ReadText, mFiles);
     mDispatcher := TJsonRpcDispatcher.Create;
     mReferences.SettingsFor := mProvider;
     mRename.SettingsFor := mProvider;
@@ -526,7 +526,7 @@ var
 begin
   mTree := TPascalParser.Parse(cUnitKunden);
   try
-    mEdits := TLspRename.Edits(FResolver, FIndex, mTree, TReferenceSearch.Create(cKundenFile,
+    mEdits := TRenames.Edits(FResolver, FIndex, mTree, TReferenceSearch.Create(cKundenFile,
       TTestSource.PositionOf(cUnitKunden, 'Speichern; override'), True, [cKundenFile, cHauptFile], ReadText),
       TRenameRequest.Create('Sichern', False, Settings(True, False), nil), mUnchanged);
   finally

@@ -163,7 +163,7 @@ contains
   Atlas.Common.Semantics.Implementations in 'Source\Semantics\Atlas.Common.Semantics.Implementations.pas',
   Atlas.Common.Semantics.Definitions in 'Source\Semantics\Atlas.Common.Semantics.Definitions.pas',
   Atlas.Common.Lsp.References in 'Source\Lsp\Atlas.Common.Lsp.References.pas',
-  Atlas.Common.Lsp.Rename in 'Source\Lsp\Atlas.Common.Lsp.Rename.pas',
+  Atlas.Common.Semantics.Renames in 'Source\Semantics\Atlas.Common.Semantics.Renames.pas',
   Atlas.Common.Lsp.Completion in 'Source\Lsp\Atlas.Common.Lsp.Completion.pas',
   Atlas.Common.Lsp.Completion.Context in 'Source\Lsp\Atlas.Common.Lsp.Completion.Context.pas',
   Atlas.Common.Lsp.Completion.Values in 'Source\Lsp\Atlas.Common.Lsp.Completion.Values.pas',

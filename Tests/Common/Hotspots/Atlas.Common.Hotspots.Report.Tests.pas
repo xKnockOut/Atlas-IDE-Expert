@@ -26,6 +26,8 @@ type
     procedure TextLimitsSections;
     [Test]
     procedure ParsesSections;
+    [Test]
+    procedure OptionsAndLimit;
   end;
 
 /// <summary>Ergebnis mit drei Units (eine mit Methode und Trend) und einem Kopplungspaar.</summary>
@@ -38,7 +40,9 @@ uses
   System.JSON,
   System.DateUtils,
   System.Generics.Collections,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Hotspots.Contract,
+  Atlas.Common.Hotspots.Service,
   Atlas.Common.Hotspots.Report;
 
 function Entry(const AUnit, APath: string; AChanges, AComplexity: Integer; AScore: Double): THotspotEntry;
@@ -213,6 +217,37 @@ begin
   Assert.IsTrue(THotspotReport.ParseSection('coupling', mSection) and (mSection = THotspotSection.Coupling));
   Assert.IsFalse(THotspotReport.ParseSection('trend', mSection));
   Assert.AreEqual('coupling', THotspotReport.SectionName(THotspotSection.Coupling));
+end;
+
+procedure THotspotReportTests.OptionsAndLimit;
+var
+  mRequest: THotspotRequest;
+  mError: string;
+  mParams: TJSONObject;
+  mResult: THotspotResult;
+begin
+  mRequest := THotspotRequest.FromSettings(TServerSettings.Default);
+  mParams := TJSONObject.ParseJSONValue('{"months":61}') as TJSONObject;
+  try
+    Assert.IsFalse(THotspotReport.ApplyOptions(mParams, mRequest, mError));
+    Assert.IsTrue(mError.Contains('months'));
+  finally
+    mParams.Free;
+  end;
+  mParams := TJSONObject.ParseJSONValue('{"months":3,"level":"method"}') as TJSONObject;
+  try
+    Assert.IsTrue(THotspotReport.ApplyOptions(mParams, mRequest, mError));
+    Assert.AreEqual(3, mRequest.Options.Months);
+    Assert.AreEqual<THotspotLevel>(THotspotLevel.Methods, mRequest.Level);
+  finally
+    mParams.Free;
+  end;
+  mResult := Default(THotspotResult);
+  SetLength(mResult.Units, 5);
+  SetLength(mResult.Coupling, 2);
+  mResult := THotspotReport.Limited(mResult, 3);
+  Assert.AreEqual(3, Integer(Length(mResult.Units)));
+  Assert.AreEqual(2, Integer(Length(mResult.Coupling)));
 end;
 
 initialization

@@ -23,8 +23,10 @@ interface
 
 uses
   System.SysUtils,
+  System.JSON,
   Atlas.Common.Hotspots.Contract,
-  Atlas.Common.Hotspots.Analysis;
+  Atlas.Common.Hotspots.Analysis,
+  Atlas.Common.Hotspots.Service;
 
 type
 {$SCOPEDENUMS ON}
@@ -57,6 +59,15 @@ type
     class function Entries(const AResult: THotspotResult): TArray<THotspotEntry>; static;
     /// <summary>"Unit" bzw. "TFoo.Bar" und Fundstelle "Pfad:Zeile".</summary>
     class function EntryName(const AEntry: THotspotEntry): string; static;
+    /// <summary>Ganze Zahl AName aus AObject; ADefault ohne Angabe, False bei einem anderen Typ.</summary>
+    class function IntegerOption(const AObject: TJSONObject; const AName: string; ADefault: Integer;
+      out AValue: Integer): Boolean; static;
+    /// <summary>Werte aus params bzw. MCP-Argumenten (level, months) in ARequest übernehmen; False mit AError bei
+    /// ungültigem Wert.</summary>
+    class function ApplyOptions(const AParams: TJSONObject; var ARequest: THotspotRequest;
+      out AError: string): Boolean; static;
+    /// <summary>Listen des Ergebnisses auf ALimit kürzen (0 = alle).</summary>
+    class function Limited(const AResult: THotspotResult; ALimit: Integer): THotspotResult; static;
   end;
 
 implementation
@@ -76,7 +87,7 @@ type
     ScoreNormalizedChangesNormalizedCognitive, NoChangedMethodsInThe, ChangeCoupling, PairsWithoutUsesEdgeThat,
     TextXYClassLabel, TextX14YClass, CircleCxCyRFill, ThThScoreThTh, ScoreNormalizedChangesNormalizedCognitive2,
     H2ChangeCouplingH2, PClassNotePairsWithout, PNoPairsP, Rising, Same, Falling, New, MonthsSinceCommits,
-    SharedCommitsAnd, BubbleChart, HtmlLanguage);
+    SharedCommitsAnd, BubbleChart, HtmlLanguage, LevelIsUnitOrMethod, MonthsIsAWholeNumber);
 
 const
   cTexts: array[THotspotsReportText] of TAtlasText = (
@@ -127,7 +138,9 @@ const
     (De: '%s, %d Monate seit %s, %d Commits'; En: '%s, %d months since %s, %d commits'),
     (De: '%s ↔ %s: %d gemeinsame Commits (%d %%; %d bzw. %d)'; En: '%s ↔ %s: %d shared commits (%d %%; %d and %d)'),
     (De: 'Blasendiagramm'; En: 'Bubble chart'),
-    (De: 'de'; En: 'en'));
+    (De: 'de'; En: 'en'),
+    (De: '"level" ist unit oder method'; En: '"level" is unit or method'),
+    (De: '"months" ist eine ganze Zahl von 1 bis 60'; En: '"months" is a whole number from 1 to 60'));
 
 {$SCOPEDENUMS OFF}
 
@@ -781,6 +794,68 @@ begin
   else
   begin
     Result := Format('%s (%s)', [AEntry.UnitName, AEntry.Path]);
+  end;
+end;
+
+class function THotspotReport.IntegerOption(const AObject: TJSONObject; const AName: string; ADefault: Integer;
+  out AValue: Integer): Boolean;
+var
+  mValue: TJSONValue;
+begin
+  AValue := ADefault;
+  Result := True;
+  if AObject = nil then
+  begin
+    Exit;
+  end;
+  mValue := AObject.GetValue(AName);
+  if mValue = nil then
+  begin
+    Exit;
+  end;
+  Result := (mValue is TJSONNumber) and TryStrToInt(mValue.Value, AValue);
+end;
+
+class function THotspotReport.ApplyOptions(const AParams: TJSONObject; var ARequest: THotspotRequest;
+  out AError: string): Boolean;
+var
+  mLevel: THotspotLevel;
+  mMonths: Integer;
+begin
+  AError := '';
+  if not THotspots.TryLevelOf(TJsonRead.TrimmedText(AParams, 'level'), mLevel) then
+  begin
+    AError := cTexts[THotspotsReportText.LevelIsUnitOrMethod].Text;
+    Exit(False);
+  end;
+  ARequest.Level := mLevel;
+  if not IntegerOption(AParams, 'months', ARequest.Options.Months, mMonths) or (mMonths < 1) or (mMonths > 60) then
+  begin
+    AError := cTexts[THotspotsReportText.MonthsIsAWholeNumber].Text;
+    Exit(False);
+  end;
+  ARequest.Options.Months := mMonths;
+  Result := True;
+end;
+
+class function THotspotReport.Limited(const AResult: THotspotResult; ALimit: Integer): THotspotResult;
+begin
+  Result := AResult;
+  if ALimit <= 0 then
+  begin
+    Exit;
+  end;
+  if Length(Result.Units) > ALimit then
+  begin
+    Result.Units := Copy(Result.Units, 0, ALimit);
+  end;
+  if Length(Result.Methods) > ALimit then
+  begin
+    Result.Methods := Copy(Result.Methods, 0, ALimit);
+  end;
+  if Length(Result.Coupling) > ALimit then
+  begin
+    Result.Coupling := Copy(Result.Coupling, 0, ALimit);
   end;
 end;
 
