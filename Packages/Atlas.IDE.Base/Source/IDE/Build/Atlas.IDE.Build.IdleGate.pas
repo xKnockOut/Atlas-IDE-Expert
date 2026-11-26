@@ -7,6 +7,13 @@
 // Dockfensters oder das Erfassen von Rückgängig im Designer; Idle sagt, ob
 // gerade Ruhe ist. Destroy meldet den Notifier ab und verwirft offene
 // Aufträge.
+// Ruhe heißt auch: Kein Fortschrittsdialog des Compilers und kein modaler
+// Dialog ist offen (TAtlasIdeCheckOnSave.CompilerBusy). Beim Gruppenbau
+// („Alle erzeugen“) zeigt die IDE den Fortschrittsdialog je Projekt modal,
+// bevor sie das Projekt meldet. Der Zeitgeber liefe dann in dessen
+// Nachrichtenschleife, nach der Ruhezeit also mitten im Build (das Erfassen
+// im Designer schrieb so ein Formular, dessen Packages die IDE gerade neu
+// lädt: Zugriffsverletzung in TWriter).
 
 interface
 
@@ -48,14 +55,16 @@ type
     destructor Destroy; override;
     /// <summary>AProc ausführen, sobald kein Compile läuft und Ruhe ist (im Hauptthread).</summary>
     procedure Run(const AProc: TProc);
-    /// <summary>Jetzt Ruhe: kein Compile aktiv und die Ruhezeit seit dem letzten Compile-Ereignis vorbei.</summary>
+    /// <summary>Jetzt Ruhe: kein Compile aktiv, die Ruhezeit seit dem letzten Compile-Ereignis vorbei und weder
+    /// Fortschrittsdialog des Compilers noch ein modaler Dialog offen.</summary>
     function Idle: Boolean;
   end;
 
 implementation
 
 uses
-  System.Classes;
+  System.Classes,
+  Atlas.IDE.Build.CheckOnSave;
 
 { TAtlasIdeBuildIdleGate.TNotifier }
 
@@ -141,7 +150,7 @@ var
   mProcs: TArray<TProc>;
   mProc: TProc;
 begin
-  if not FGate.Idle(Now) then
+  if not Idle then
   begin
     Exit;
   end;
@@ -167,7 +176,7 @@ end;
 
 function TAtlasIdeBuildIdleGate.Idle: Boolean;
 begin
-  Result := FGate.Idle(Now);
+  Result := FGate.Idle(Now) and not TAtlasIdeCheckOnSave.CompilerBusy;
 end;
 
 end.

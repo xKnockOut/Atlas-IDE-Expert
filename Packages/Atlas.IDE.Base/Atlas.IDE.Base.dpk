@@ -677,6 +677,7 @@ contains
   Atlas.IDE.Diagnostics.SafeMode in 'Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.SafeMode.pas',
   Atlas.Plugin.Diagnostics.Edition in '..\Atlas.Plugin\Source\Diagnostics\Atlas.Plugin.Diagnostics.Edition.pas',
   Atlas.UI.Diagnostics.Strings in 'Source\UI\Diagnostics\Atlas.UI.Diagnostics.Strings.pas',
+  Atlas.IDE.Diagnostics.AddressSpace in 'Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.AddressSpace.pas',
   Atlas.IDE.Diagnostics.Edition in 'Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.Edition.pas',
   Atlas.Plugin.Diagnostics.Timing in '..\Atlas.Plugin\Source\Diagnostics\Atlas.Plugin.Diagnostics.Timing.pas',
   Atlas.Plugin.Diagnostics.PluginTimings in '..\Atlas.Plugin\Source\Diagnostics\Atlas.Plugin.Diagnostics.PluginTimings.pas',

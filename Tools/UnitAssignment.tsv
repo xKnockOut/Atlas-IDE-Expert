@@ -475,6 +475,7 @@ Atlas.IDE.Base	Atlas.IDE.Completion.Favorites	IDE/Completion/Atlas.IDE.Completio
 Atlas.IDE.Base	Atlas.IDE.Completion.History	IDE/Completion/Atlas.IDE.Completion.History.pas	Ordner `IDE/Completion`
 Atlas.IDE.Base	Atlas.IDE.Completion.Placeholders	IDE/Completion/Atlas.IDE.Completion.Placeholders.pas	Ordner `IDE/Completion`
 Atlas.IDE.Base	Atlas.IDE.Completion.Preview	IDE/Completion/Atlas.IDE.Completion.Preview.pas	Ordner `IDE/Completion`
+Atlas.IDE.Base	Atlas.IDE.Diagnostics.AddressSpace	IDE/Diagnostics/Atlas.IDE.Diagnostics.AddressSpace.pas	Ordner `IDE/Diagnostics`
 Atlas.IDE.Base	Atlas.IDE.Diagnostics.BugReport	IDE/Diagnostics/Atlas.IDE.Diagnostics.BugReport.pas	Ordner `IDE/Diagnostics`
 Atlas.IDE.Base	Atlas.IDE.Diagnostics.Edition	IDE/Diagnostics/Atlas.IDE.Diagnostics.Edition.pas	Ordner `IDE/Diagnostics`
 Atlas.IDE.Base	Atlas.IDE.Diagnostics.Export	IDE/Diagnostics/Atlas.IDE.Diagnostics.Export.pas	Ordner `IDE/Diagnostics`
