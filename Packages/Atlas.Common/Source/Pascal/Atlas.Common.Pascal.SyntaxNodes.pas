@@ -66,6 +66,15 @@ type
     /// <summary>Quelltext von ANode aus AText in einer Zeile (Zeilenumbrüche und doppelter Leerraum zu einem
     /// Leerzeichen), höchstens AMaxLength Zeichen samt „…“; '' ohne ANode oder bei leerem Bereich.</summary>
     class function OneLineText(const AText: string; ANode: TSyntaxNode; AMaxLength: Integer): string; static;
+    /// <summary>Quelltext von ANode aus AText, unverändert; '' ohne ANode.</summary>
+    class function SourceOf(const AText: string; ANode: TSyntaxNode): string; static;
+    /// <summary>Ist ANode ein zweistelliger Ausdruck mit dem Operator AOperator (z. B. '+')?</summary>
+    class function IsBinary(ANode: TSyntaxNode; const AOperator: string): Boolean; static;
+    /// <summary>Erster Summand einer Kette mit AOperator ohne Klammern: bei A + B + C der Teil A; ohne Kette
+    /// ANode selbst (ohne Klammern).</summary>
+    class function FirstOperand(ANode: TSyntaxNode; const AOperator: string): TSyntaxNode; static;
+    /// <summary>Letzter Summand einer Kette mit AOperator ohne Klammern: bei A + B + C der Teil C.</summary>
+    class function LastOperand(ANode: TSyntaxNode; const AOperator: string): TSyntaxNode; static;
   end;
 
 implementation
@@ -381,6 +390,39 @@ begin
   if Length(Result) > AMaxLength then
   begin
     Result := Copy(Result, 1, AMaxLength - 1) + '…';
+  end;
+end;
+
+class function TSyntaxNodes.SourceOf(const AText: string; ANode: TSyntaxNode): string;
+begin
+  Result := '';
+  if ANode <> nil then
+  begin
+    Result := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+end;
+
+class function TSyntaxNodes.IsBinary(ANode: TSyntaxNode; const AOperator: string): Boolean;
+begin
+  Result := (ANode <> nil) and (ANode.Kind = TSyntaxKind.BinaryExpr) and SameText(ANode.Name, AOperator) and
+    (ANode.ChildCount = 2);
+end;
+
+class function TSyntaxNodes.FirstOperand(ANode: TSyntaxNode; const AOperator: string): TSyntaxNode;
+begin
+  Result := Unparen(ANode);
+  while IsBinary(Result, AOperator) do
+  begin
+    Result := Unparen(Result[0]);
+  end;
+end;
+
+class function TSyntaxNodes.LastOperand(ANode: TSyntaxNode; const AOperator: string): TSyntaxNode;
+begin
+  Result := Unparen(ANode);
+  while IsBinary(Result, AOperator) do
+  begin
+    Result := Unparen(Result[1]);
   end;
 end;
 

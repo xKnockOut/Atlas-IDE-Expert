@@ -88,6 +88,8 @@ uses
   Rules.Builtin.FormFields in 'Source\Features\Rules\Builtin\Rules.Builtin.FormFields.pas',
   Rules.Builtin.FormReferences in 'Source\Features\Rules\Builtin\Rules.Builtin.FormReferences.pas',
   Rules.Builtin.FormatArgs in 'Source\Features\Rules\Builtin\Rules.Builtin.FormatArgs.pas',
+  Rules.Builtin.Texts.Shared in 'Source\Features\Rules\Builtin\Rules.Builtin.Texts.Shared.pas',
+  Rules.Builtin.Texts.Concat in 'Source\Features\Rules\Builtin\Rules.Builtin.Texts.Concat.pas',
   Rules.Builtin.Forms in 'Source\Features\Rules\Builtin\Rules.Builtin.Forms.pas',
   Rules.Builtin.ForwardDeclarations in 'Source\Features\Rules\Builtin\Rules.Builtin.ForwardDeclarations.pas',
   Rules.Builtin.FreeFields in 'Source\Features\Rules\Builtin\Rules.Builtin.FreeFields.pas',

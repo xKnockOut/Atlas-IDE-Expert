@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeFindBugs: array[0..626] of string = (
+  cCatalogLinesDeFindBugs: array[0..641] of string = (
     '{',
     '      "id": "result-not-set",',
     '      "name": "Funktionsergebnis eventuell nicht gesetzt",',
@@ -240,6 +240,28 @@ const
     '          "name": "formatMethods",',
     '          "description": "Weitere Routinen mit Formatstring und folgender Argumentliste array of const, z. B. \"TLogger.LogFmt\" oder \"Protokoll\". Mit Punkt zählt ohne Namensauflösung der Methodenna' +
     'me hinter einem beliebigen Qualifizierer."',
+    '        }',
+    '      ]',
+    '    },',
+    '{',
+    '      "id": "text-concat-without-space",',
+    '      "name": "Text ohne Leerzeichen zusammengesetzt",',
+    '      "description": "Zwei String-Literale werden mit + verkettet, und an der Naht steht weder ein Leerzeichen noch ein Trenner: ''Bli Bla Blubb'' + ''Bla Bla Bla'' ergibt Bli Bla BlubbBla Bla Bla. Gemeld' +
+    'et, wenn Buchstabe oder Ziffer auf Buchstabe oder Ziffer trifft oder , ; : ! ? auf einen Großbuchstaben. Still, wenn der zusammengesetzte Text nicht nach Text für Menschen aussieht (Bezeichner, Klasse' +
+    'nnamen; nötig sind mindestens drei Buchstaben und ein Leerzeichen), wenn das Wort an der Naht ein Pfad, eine URL, eine Mailadresse, ein Bezeichner mit _ oder Markup ist, wenn der linke Text mit einem ' +
+    'Format-Platzhalter endet (%s kann selbst der Trenner sein) und bei langen, von einem Werkzeug umbrochenen Texten (linkes Literal mit mindestens wrapLength Zeichen, meist mitten im Wort getrennt). Ein ' +
+    'Punkt gilt als Teil eines Namens: Er ist nie eine Naht (''System.'' + ''SysUtils''), und ein Wort an der Naht mit Punkt darin (Unit.Klasse, Unit1.pas, 1.2) bleibt still. SQL ist nicht ausgenommen: ''SELECT' +
+    ' a FROM t'' + ''WHERE x'' ist ein echter Fehler. Mittlere Konfidenz. Die Option expressions (standardmäßig aus, niedrige Konfidenz) meldet auch ein Literal neben einem Ausdruck (''Lade '' + Name ist richti' +
+    'g, ''Lade'' + Name nicht); Trenner wie sLineBreak, PathDelim oder QuotedStr(…) bleiben still. Schnellkorrektur: ein Leerzeichen ans Ende des linken Textes (mit einem Ausdruck links an den Anfang des rec' +
+    'hten).",',
+    '      "options": [',
+    '        {',
+    '          "name": "wrapLength",',
+    '          "description": "Linke Literale mit mindestens so vielen Zeichen gelten als von einem Werkzeug umbrochen und bleiben still. 0 meldet auch sie."',
+    '        },',
+    '        {',
+    '          "name": "expressions",',
+    '          "description": "Auch ein Text-Literal ohne Leerzeichen neben einem Ausdruck melden (''Fehler in'' + FileName, Name + ''wurde gelöscht''), mit niedriger Konfidenz."',
     '        }',
     '      ]',
     '    },',

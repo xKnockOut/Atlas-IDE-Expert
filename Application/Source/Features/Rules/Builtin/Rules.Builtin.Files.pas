@@ -165,11 +165,6 @@ const
     'DirectoryExists', 'FileExists', 'CreateDirectory', 'Delete', 'ShowMessage', 'Writeln', 'Assert', 'Log',
     'SaveToFile', 'LoadFromFile');
 
-function SourceText(const AText: string; ANode: TSyntaxNode): string;
-begin
-  Result := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
-end;
-
 // Iterativ (tiefe Bäume sprengen den Stapel nicht): erst die Punktkette hinab, dann die Namen von innen nach außen
 // anhängen.
 
@@ -219,31 +214,6 @@ function TPathConcatWithoutDelimiterRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cPathConcatWithoutDelimiterRuleId, TRuleSeverity.Warning,
     cTexts[TFilesText.ConcatTitle].Text);
-end;
-
-function IsPlus(ANode: TSyntaxNode): Boolean;
-begin
-  Result := (ANode.Kind = TSyntaxKind.BinaryExpr) and (ANode.Name = '+') and (ANode.ChildCount = 2);
-end;
-
-/// <summary>Letzter Summand von ANode (bei A + B + C der Teil C).</summary>
-function LastTerm(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := TSyntaxNodes.Unparen(ANode);
-  while IsPlus(Result) do
-  begin
-    Result := TSyntaxNodes.Unparen(Result[1]);
-  end;
-end;
-
-/// <summary>Erster Summand von ANode (bei A + B + C der Teil A).</summary>
-function FirstTerm(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := TSyntaxNodes.Unparen(ANode);
-  while IsPlus(Result) do
-  begin
-    Result := TSyntaxNodes.Unparen(Result[0]);
-  end;
 end;
 
 /// <summary>Ist AName eine lokale Variable von ARoutine (var-Abschnitt oder Inline-Variable)?</summary>
@@ -470,7 +440,8 @@ var
       Exit;
     end;
     mEdits := [TTextEdit.Create(TTextRange.Create(APlus.StartPos, APlus.EndPos),
-      Format('TPath.Combine(%s, %s)', [SourceText(mText, APlus[0]), SourceText(mText, APlus[1])]))];
+      Format('TPath.Combine(%s, %s)', [TSyntaxNodes.SourceOf(mText, APlus[0]),
+      TSyntaxNodes.SourceOf(mText, APlus[1])]))];
     if not TPascalUses.IsUsed(mUsed, 'System.IOUtils', AContext.Namespaces) and
       TPascalUsesEdits.AddUnit(AContext.Tree.Tokens, APlus.StartOffset, 'System.IOUtils', mLineBreak, mUsesEdit) then
     begin
@@ -486,8 +457,8 @@ var
     mIsLiteral: Boolean;
     mConfidence: TRuleConfidence;
   begin
-    mLeft := LastTerm(APlus[0]);
-    mRight := FirstTerm(APlus[1]);
+    mLeft := TSyntaxNodes.LastOperand(APlus[0], '+');
+    mRight := TSyntaxNodes.FirstOperand(APlus[1], '+');
     if not IsNamePart(mRight, mIsLiteral, mPlain) then
     begin
       Exit;
@@ -522,7 +493,7 @@ var
     end
     else
     begin
-      mMessage := cTexts[TFilesText.NoBackslash].Fmt([mSubject, SourceText(mText, mRight)]);
+      mMessage := cTexts[TFilesText.NoBackslash].Fmt([mSubject, TSyntaxNodes.SourceOf(mText, mRight)]);
       mConfidence := TRuleConfidence.Medium;
     end;
     AReport.Add(TTextRange.Create(mLeft.StartPos, mRight.EndPos), mMessage, mConfidence, Fixes(APlus, mLeft, mRight));
@@ -540,7 +511,7 @@ begin
   AContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
-      if IsPlus(ANode) then
+      if TSyntaxNodes.IsBinary(ANode, '+') then
       begin
         mPluses := mPluses + [ANode];
       end;
@@ -799,10 +770,10 @@ function DerivedFromOther(const AText: string; ALeft, ARight: TSyntaxNode): Bool
     begin
       Exit;
     end;
-    mOther := SourceText(AText, AOther);
+    mOther := TSyntaxNodes.SourceOf(AText, AOther);
     for mIndex := 1 to ACall.ChildCount - 1 do
     begin
-      if SameText(SourceText(AText, TSyntaxNodes.Unparen(ACall[mIndex])), mOther) then
+      if SameText(TSyntaxNodes.SourceOf(AText, TSyntaxNodes.Unparen(ACall[mIndex])), mOther) then
       begin
         Exit(True);
       end;
@@ -857,8 +828,8 @@ begin
   begin
     mScope := mScope.Parent;
   end;
-  mLeft := SourceText(AText, TSyntaxNodes.Unparen(ACompare[0]));
-  mRight := SourceText(AText, TSyntaxNodes.Unparen(ACompare[1]));
+  mLeft := TSyntaxNodes.SourceOf(AText, TSyntaxNodes.Unparen(ACompare[0]));
+  mRight := TSyntaxNodes.SourceOf(AText, TSyntaxNodes.Unparen(ACompare[1]));
   mFound := False;
   mScope.Walk(
     function(ANode: TSyntaxNode): Boolean
@@ -867,8 +838,8 @@ begin
     begin
       if not mFound and IsIgnoreCaseCompare(ANode) then
       begin
-        First := SourceText(AText, TSyntaxNodes.Unparen(ANode[1]));
-        Second := SourceText(AText, TSyntaxNodes.Unparen(ANode[2]));
+        First := TSyntaxNodes.SourceOf(AText, TSyntaxNodes.Unparen(ANode[1]));
+        Second := TSyntaxNodes.SourceOf(AText, TSyntaxNodes.Unparen(ANode[2]));
         mFound := (SameText(First, mLeft) and SameText(Second, mRight)) or
           (SameText(First, mRight) and SameText(Second, mLeft));
       end;
@@ -895,8 +866,8 @@ var
   mUsesEdit: TTextEdit;
   mNewText: string;
 begin
-  mNewText := Format('SameFileName(%s, %s)', [SourceText(AContext.Text, ACompare[0]),
-    SourceText(AContext.Text, ACompare[1])]);
+  mNewText := Format('SameFileName(%s, %s)', [TSyntaxNodes.SourceOf(AContext.Text, ACompare[0]),
+    TSyntaxNodes.SourceOf(AContext.Text, ACompare[1])]);
   if ACompare.Name = '<>' then
   begin
     mNewText := 'not ' + mNewText;

@@ -1036,6 +1036,18 @@
                 "description": "Nur loop-runs-at-most-once: for-in aus einfachen Anweisungen, das mit Exit bzw. Break endet (erstes Element holen), nicht melden (#1131).",
                 "x-description-en": "Only loop-runs-at-most-once: do not report for-in made of simple statements that ends with Exit or Break (fetching the first element) (#1131)."
               },
+              "wrapLength": {
+                "type": "integer",
+                "default": 120,
+                "description": "Nur text-concat-without-space: Linke Literale mit mindestens so vielen Zeichen gelten als von einem Werkzeug umbrochen und bleiben still; 0 meldet auch sie (#3042).",
+                "x-description-en": "Only text-concat-without-space: left literals with at least this many characters count as wrapped by a tool and stay silent; 0 reports them too (#3042)."
+              },
+              "expressions": {
+                "type": "boolean",
+                "default": false,
+                "description": "Nur text-concat-without-space: auch ein Text-Literal ohne Leerzeichen neben einem Ausdruck melden ('Fehler in' + FileName), mit niedriger Konfidenz (#3042).",
+                "x-description-en": "Only text-concat-without-space: also report a text literal next to an expression without a space ('Error in' + FileName), with low confidence (#3042)."
+              },
               "formatMethods": {
                 "type": "array",
                 "items": {
