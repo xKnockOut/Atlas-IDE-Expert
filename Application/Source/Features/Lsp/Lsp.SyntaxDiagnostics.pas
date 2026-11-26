@@ -107,7 +107,6 @@ type
     /// <summary>Bündelt RefreshLater: In einer Projektgruppe melden sich viele Indexstufen kurz
     /// hintereinander, und jede Neuprüfung holt alle offenen Dokumente neu (#647).</summary>
     cRefreshDelayMs = 2000;
-    cSource = TLspDiagnosticItems.cSource;
   private
     FStore: IDocumentStore;
     FTransport: IJsonRpcTransport;
