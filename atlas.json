@@ -122,8 +122,6 @@
         "Atlas.Common.Lsp.Completion.Declarations -> Atlas.Common.Editing.CommandSource",
         "Atlas.Common.Lsp.Completion.Declarations -> Atlas.Common.Editing.ContextSnippets",
         "Atlas.Common.Lsp.Completion.Declarations -> Atlas.Common.Editing.Contract",
-        "Atlas.Common.Lsp.Completion.Values -> Atlas.Common.Editing.CommandSource",
-        "Atlas.Common.Lsp.Completion.Values -> Atlas.Common.Editing.Contract",
         "Atlas.Common.Lsp.Formatting -> Atlas.Common.Editing.Contract",
         "Atlas.Common.Lsp.Formatting -> Atlas.Common.Editing.EditorConfig",
         "Atlas.Common.Lsp.Formatting -> Atlas.Common.Editing.Formatter",

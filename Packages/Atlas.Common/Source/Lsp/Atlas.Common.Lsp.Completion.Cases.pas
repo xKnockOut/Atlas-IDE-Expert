@@ -505,6 +505,8 @@ function PostfixCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer
 begin
   Result := TCompletionOutcome.Next;
   AAnswer.Postfix := AAnswer.Hooks.PostfixOf(ARequest.Uri);
+  // Gilt auch für das Deklarieren unbekannter Namen (Quelle an TCompletionSlot.Declare).
+  ARequest.InlineVar := AAnswer.Postfix.InlineVar;
   if AAnswer.Token = '' then
   begin
     Exit;
@@ -543,21 +545,6 @@ begin
   end;
   AAnswer.Incomplete := mCollected.Incomplete;
   AAnswer.Hidden := mCollected.Hidden;
-end;
-
-/// <summary>Unbekannter Name (#471): Deklarieren am Ende. Die Einträge hängen am getippten Namen, deshalb neu
-/// fragen.</summary>
-function DeclareCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
-var
-  mDeclares: TArray<TCompletionItem>;
-begin
-  Result := TCompletionOutcome.Next;
-  if TCompletionValues.DeclareItems(ARequest, AAnswer.Postfix.InlineVar, AAnswer.Prefetched + AAnswer.Body +
-    AAnswer.Tail, mDeclares) then
-  begin
-    AAnswer.Tail := AAnswer.Tail + mDeclares;
-    AAnswer.Incomplete := True;
-  end;
 end;
 
 /// <summary>Hängt ACase an ACases an.</summary>
@@ -615,7 +602,7 @@ begin
   AddCase(Result, SenderCase);
   AddCase(Result, ListCase);
   AddCase(Result, SlotCase(TCompletionSlot.ContextSnippets));
-  AddCase(Result, DeclareCase);
+  AddCase(Result, SlotCase(TCompletionSlot.Declare));
 end;
 
 class function TCompletionCases.Run(const ACases: TArray<TCompletionCase>; ARequest: TCompletionRequest;

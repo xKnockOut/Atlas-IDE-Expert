@@ -3256,6 +3256,7 @@ uses
   Atlas.Common.Editing.CreateMethod.Tests in 'Common\Editing\Atlas.Common.Editing.CreateMethod.Tests.pas',
   Atlas.Common.Editing.Completion.CreateMethod.Tests in 'Common\Editing\Atlas.Common.Editing.Completion.CreateMethod.Tests.pas',
   Atlas.Common.Editing.Completion.Slash.Tests in 'Common\Editing\Atlas.Common.Editing.Completion.Slash.Tests.pas',
+  Atlas.Common.Editing.Completion.Declare.Tests in 'Common\Editing\Atlas.Common.Editing.Completion.Declare.Tests.pas',
   Atlas.Common.Semantics.NameSuggestions.Tests in 'Common\Semantics\Atlas.Common.Semantics.NameSuggestions.Tests.pas',
   Atlas.Common.Editing.AccessorCreation.Tests in 'Common\Editing\Atlas.Common.Editing.AccessorCreation.Tests.pas',
   Atlas.Common.Pascal.ResourceStrings.Tests in 'Common\Pascal\Atlas.Common.Pascal.ResourceStrings.Tests.pas',

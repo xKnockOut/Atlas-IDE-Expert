@@ -108,9 +108,6 @@ function RequestOf(const ALookup: TEnumLookup; const APosition: TTextPosition): 
 /// <summary>TCompletionValues.EnumItems an APosition.</summary>
 function EnumAt(const ALookup: TEnumLookup; const APosition: TTextPosition; out AItems: TArray<TCompletionItem>;
   out ASetMode: Boolean): Boolean;
-/// <summary>TCompletionValues.DeclareItems an APosition.</summary>
-function DeclareAt(const ALookup: TEnumLookup; const APosition: TTextPosition; AInlineVar: Boolean;
-  const AKnown: TArray<TCompletionItem>; out AItems: TArray<TCompletionItem>): Boolean;
 /// <summary>TCompletionDeclarations.PropertyItems an APosition mit AMatching.</summary>
 function PropertyAt(const ALookup: TEnumLookup; const APosition: TTextPosition; AMatching: TCompletionMatching;
   out AItems: TCompletionItems): Boolean;
@@ -286,20 +283,6 @@ begin
   mRequest := RequestOf(ALookup, APosition);
   try
     Result := TCompletionValues.EnumItems(mRequest, AItems, ASetMode);
-  finally
-    mRequest.Free;
-  end;
-end;
-
-/// <summary>TCompletionValues.DeclareItems an APosition.</summary>
-function DeclareAt(const ALookup: TEnumLookup; const APosition: TTextPosition; AInlineVar: Boolean;
-  const AKnown: TArray<TCompletionItem>; out AItems: TArray<TCompletionItem>): Boolean;
-var
-  mRequest: TCompletionRequest;
-begin
-  mRequest := RequestOf(ALookup, APosition);
-  try
-    Result := TCompletionValues.DeclareItems(mRequest, AInlineVar, AKnown, AItems);
   finally
     mRequest.Free;
   end;

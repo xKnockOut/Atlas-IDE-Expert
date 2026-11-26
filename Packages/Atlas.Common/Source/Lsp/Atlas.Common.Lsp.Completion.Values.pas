@@ -1,8 +1,8 @@
 ﻿unit Atlas.Common.Lsp.Completion.Values;
 
-// Werte und Deklarationen in der Vervollständigung: Aufzählungen und Mengen (#448), fehlende case-Zweige
-// (#449, #50), Muster fortsetzen (#671), unbekannte Namen deklarieren (#471) und „Alle Felder zuweisen“
-// (#491). Teil der Vervollständigung (Atlas.Common.Lsp.Completion).
+// Werte in der Vervollständigung: Aufzählungen und Mengen (#448), fehlende case-Zweige (#449, #50), Muster
+// fortsetzen (#671) und „Alle Felder zuweisen“ (#491); unbekannte Namen deklariert Editing (#471).
+// Teil der Vervollständigung (Atlas.Common.Lsp.Completion).
 
 interface
 
@@ -52,12 +52,6 @@ type
       out AValues: TArray<string>; out AIsSet: Boolean; out APrefix: string): Boolean; static;
     /// <summary>Text der Deklaration von ASymbol (höchstens einige Zeilen); '' ohne Quelltext.</summary>
     class function DeclarationOf(const ALookup: TEnumLookup; const ASymbol: TResolvedSymbol): string; static;
-    /// <summary>Unbekannter Name am Cursor im Rumpf einer Routine (#471): lokale Variable (mit AInlineVar auch als
-    /// Inline-var), Feld der Klasse (F-Konvention, die Verwendung wird umbenannt) und, wenn der Name als Wert
-    /// dient, Konstante in der implementation. Typ aus der rechten Seite einer Zuweisung, sonst aus dem
-    /// erwarteten Typ, sonst ein Platzhalter. False, wenn der Name bekannt ist oder in AKnown genau vorkommt.</summary>
-    class function DeclareItems(ARequest: TCompletionRequest; AInlineVar: Boolean;
-      const AKnown: TArray<TCompletionItem>; out AItems: TArray<TCompletionItem>): Boolean; static;
     /// <summary>„Alle Felder zuweisen (n)“ (#491) hinter "Ausdruck." am Anfang einer Anweisung, wenn der Ausdruck
     /// ein Record oder eine Klasse ist und completion.assignAllFields gilt: je öffentlich beschreibbarem Feld und
     /// jeder Property eine Zuweisung, in Deklarationsreihenfolge; was die folgenden Zeilen schon zuweisen, fällt
@@ -80,30 +74,22 @@ uses
   System.Math,
   System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Pascal.DeclareUnknown,
   Atlas.Common.Pascal.CaseCompletion,
   Atlas.Common.Semantics.AssignFields,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Completion.FuzzyMatch,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Pascal.EnumSlots,
   Atlas.Common.Lsp.Completion.Context,
-  Atlas.Common.Semantics.TypeImports,
   Atlas.Common.Pascal.TypeTexts;
 
 type
   /// <summary>Texte der Werte-Vervollständigung in beiden Sprachen (#1458).</summary>
-  TValuesText = (FillMissing, InsertAll, CreateALocalVariable, CreateInlineVariable, CreateField, CreateConstant);
+  TValuesText = (FillMissing, InsertAll);
 
 const
   cTexts: array[TValuesText] of TAtlasText = (
     (De: 'Fehlende Werte ergänzen (%d)'; En: 'Add missing values (%d)'),
-    (De: 'Alle Werte einfügen'; En: 'Insert all values'),
-    (De: 'Lokale Variable anlegen'; En: 'Create a local variable'),
-    (De: 'Inline-Variable anlegen'; En: 'Create inline variable'),
-    (De: 'Feld %s anlegen'; En: 'Create field %s'),
-    (De: 'Konstante anlegen'; En: 'Create constant'));
+    (De: 'Alle Werte einfügen'; En: 'Insert all values'));
   /// <summary>So oft folgt die Auflösung Aliasen und Mengen bis zur Aufzählung.</summary>
   cMaxAliasSteps = 4;
   /// <summary>Höchstens so viele Zeilen liest RangeText (lange Aufzählungen stehen über viele Zeilen).</summary>
@@ -121,29 +107,6 @@ type
     FileName: string;
     /// <summary>{$SCOPEDENUMS ON} an der Deklaration: Werte nur mit Typpräfix.</summary>
     Scoped: Boolean;
-  end;
-
-  /// <summary>Baut die Einträge von DeclareItems (#471) für einen unbekannten Namen.</summary>
-  TDeclareBuilder = class
-  private
-    FRequest: TCompletionRequest;
-    FSlot: TUnknownSlot;
-    FSource: TCommandSource;
-    FRoutine: TSyntaxNode;
-    FTypeName: string;
-    FDeclType: string;
-    FBase: TCompletionItem;
-    function TypeEdits(AOffset: Integer): TArray<TTextEdit>;
-    function ClassFields(const AClass: TIndexSymbol): TArray<string>;
-    function FieldEdit(const AClass: TIndexSymbol; const AField: string): TTextEdit;
-    function ConstantEdit(const ADetail: string): TTextEdit;
-  public
-    Items: TArray<TCompletionItem>;
-    constructor Create(ARequest: TCompletionRequest; const ASlot: TUnknownSlot; ASource: TCommandSource;
-      ARoutine: TSyntaxNode);
-    procedure AddLocal(AInlineVar: Boolean);
-    procedure AddField;
-    procedure AddConstant;
   end;
 
 /// <summary>Text von ARange, über höchstens cMaxRangeLines Zeilen.</summary>
@@ -406,247 +369,6 @@ begin
   begin
     AItem.AdditionalEdits := [TTextEdit.Create(TTextRange.Create(mSlot.EndInsert, mSlot.EndInsert), mEndText)];
   end;
-end;
-
-/// <summary>Typ eines aufgelösten Ausdrucksteils: Konstruktor → Klasse, Typumwandlung → Typ, sonst sein Typ.</summary>
-function TypeOfResolved(const ASymbol: TResolvedSymbol): string;
-begin
-  Result := '';
-  if not ASymbol.Found or (ASymbol.Kind = TResolvedKind.UnitName) then
-  begin
-    Exit;
-  end;
-  if ASymbol.SymbolKind = TIndexSymbolKind.Constructor_ then
-  begin
-    Result := ASymbol.Container;
-  end
-  else if ASymbol.IsType then
-  begin
-    Result := ASymbol.Name;
-  end
-  else if ASymbol.TypeName <> '' then
-  begin
-    Result := ASymbol.TypeName;
-  end
-  else if ASymbol.SymbolKind = TIndexSymbolKind.EnumMember then
-  begin
-    Result := ASymbol.Container;
-  end;
-end;
-
-/// <summary>Typ für den unbekannten Namen: rechte Seite der Zuweisung, sonst der erwartete Typ.</summary>
-function SlotType(ARequest: TCompletionRequest; const ASlot: TUnknownSlot): string;
-var
-  mTermFirst, mTermLast, mNameToken: Integer;
-  mTokens: TArray<TPascalToken>;
-begin
-  if not ASlot.AssignTarget then
-  begin
-    Exit(TExpectedTypes.At(ARequest.Resolver, ARequest.Tree, ARequest.FileName, ARequest.Position));
-  end;
-  mTokens := ARequest.Tree.Tokens;
-  Result := TDeclareUnknown.Shape(mTokens, ASlot.ValueFirst, ASlot.ValueLast, mTermFirst, mTermLast);
-  if (Result = '') and (mTermFirst >= 0) and (mTermFirst = mTermLast) then
-  begin
-    Result := TDeclareUnknown.LiteralType(mTokens[mTermFirst]);
-  end;
-  if (Result = '') and (mTermFirst >= 0) then
-  begin
-    mNameToken := TDeclareUnknown.TermName(mTokens, mTermFirst, mTermLast);
-    if mNameToken >= 0 then
-    begin
-      Result := TypeOfResolved(ARequest.Resolver.Resolve(ARequest.Tree, ARequest.FileName,
-        mTokens[mNameToken].StartPos));
-    end;
-  end;
-end;
-
-/// <summary>Ist der Name bekannt: ein Eintrag passt genau oder die Namensauflösung findet ihn?</summary>
-function IsKnownName(ARequest: TCompletionRequest; const ASlot: TUnknownSlot;
-  const AKnown: TArray<TCompletionItem>): Boolean;
-var
-  mKnown: TCompletionItem;
-begin
-  for mKnown in AKnown do
-  begin
-    if SameText(mKnown.Name, ASlot.Name) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := ARequest.Resolver.Resolve(ARequest.Tree, ARequest.FileName, ASlot.NameRange.StartPos).Found;
-end;
-
-/// <summary>Quelle der Befehle für die Zeile des Cursors.</summary>
-function CommandSourceFor(ARequest: TCompletionRequest): TCommandSource;
-var
-  mSlash: TSlashContext;
-begin
-  mSlash := Default(TSlashContext);
-  mSlash.Text := ARequest.Text;
-  mSlash.Line := ARequest.Position.Line;
-  mSlash.LineText := ARequest.LineText(ARequest.Position.Line);
-  Result := TCommandSource.Create(mSlash);
-end;
-
-{ TDeclareBuilder }
-
-constructor TDeclareBuilder.Create(ARequest: TCompletionRequest; const ASlot: TUnknownSlot; ASource: TCommandSource;
-  ARoutine: TSyntaxNode);
-begin
-  inherited Create;
-  FRequest := ARequest;
-  FSlot := ASlot;
-  FSource := ASource;
-  FRoutine := ARoutine;
-  FTypeName := SlotType(ARequest, ASlot);
-  FDeclType := FTypeName;
-  if FDeclType = '' then
-  begin
-    FDeclType := TDeclareUnknown.cTypePlaceholder;
-  end;
-  FBase := Default(TCompletionItem);
-  FBase.Action := 'declare';
-  FBase.Unknown := ASlot.Name;
-  FBase.HasTextEdit := True;
-end;
-
-function TDeclareBuilder.TypeEdits(AOffset: Integer): TArray<TTextEdit>;
-begin
-  Result := TTypeImports.Edits(FRequest.Resolver, FRequest.Index, FRequest.Tree, FRequest.FileName, FTypeName,
-    FSource.LineBreak, AOffset);
-end;
-
-function TDeclareBuilder.ClassFields(const AClass: TIndexSymbol): TArray<string>;
-var
-  mSymbol: TIndexSymbol;
-begin
-  Result := nil;
-  for mSymbol in FSource.UnitIndex.Symbols do
-  begin
-    if (mSymbol.Kind = TIndexSymbolKind.Field) and (SameText(mSymbol.Container, AClass.QualifiedName) or
-      SameText(mSymbol.Container, AClass.Name)) then
-    begin
-      Result := Result + [mSymbol.Name];
-    end;
-  end;
-end;
-
-function TDeclareBuilder.FieldEdit(const AClass: TIndexSymbol; const AField: string): TTextEdit;
-var
-  mLine, mEnd: Integer;
-  mDeclaration: string;
-begin
-  mDeclaration := Format('%s: %s;', [AField, FDeclType]);
-  mLine := FSource.PrivateLine(AClass);
-  if mLine >= 0 then
-  begin
-    Exit(FSource.AfterLine(mLine, FSource.Indent(mLine) + '  ' + mDeclaration));
-  end;
-  mEnd := AClass.Range.EndPos.Line;
-  Result := FSource.BeforeLine(mEnd, FSource.Indent(mEnd) + 'private' + FSource.LineBreak + FSource.Indent(mEnd) +
-    '  ' + mDeclaration);
-end;
-
-function TDeclareBuilder.ConstantEdit(const ADetail: string): TTextEdit;
-var
-  mSection, mNode: TSyntaxNode;
-  mIndex: Integer;
-begin
-  mSection := FSource.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
-  mNode := nil;
-  if mSection <> nil then
-  begin
-    for mIndex := 0 to mSection.ChildCount - 1 do
-    begin
-      if (mSection[mIndex].Kind = TSyntaxKind.ConstSection) and (mNode = nil) then
-      begin
-        mNode := mSection[mIndex];
-      end;
-    end;
-  end;
-  if mNode <> nil then
-  begin
-    Result := FSource.AfterLine(mNode.EndPos.Line, '  ' + ADetail);
-  end
-  else
-  begin
-    Result := FSource.AfterLine(FSource.ImplementationStart, FSource.LineBreak + 'const' + FSource.LineBreak + '  ' +
-      ADetail);
-  end;
-end;
-
-procedure TDeclareBuilder.AddLocal(AInlineVar: Boolean);
-var
-  mItem: TCompletionItem;
-begin
-  // Lokale Variable im var-Abschnitt; der Cursor bleibt im Namen.
-  mItem := FBase;
-  mItem.Name := cTexts[TValuesText.CreateALocalVariable].Text;
-  mItem.Kind := cKindVariable;
-  mItem.Detail := Format('%s: %s', [FSlot.Name, FDeclType]);
-  mItem.TextEdit := TTextEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret(FSlot.Name, FSlot.CursorOffset));
-  mItem.AdditionalEdits := [Atlas.Common.Editing.CommandSource.AddLocal(FSource, FRoutine, TSyntaxKind.VarSection,
-    'var', Format('%s: %s;', [FSlot.Name, FDeclType]))] + TypeEdits(FRoutine.StartOffset);
-  Items := Items + [mItem];
-  // Inline-Variable an der Stelle (ab Delphi 10.3): Den Typ leitet der Compiler ab.
-  if AInlineVar and FSlot.InlineAllowed then
-  begin
-    mItem := FBase;
-    mItem.Name := cTexts[TValuesText.CreateInlineVariable].Text;
-    mItem.Kind := cKindVariable;
-    mItem.Detail := Format('var %s := …', [FSlot.Name]);
-    mItem.TextEdit := TTextEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret('var ' + FSlot.Name,
-      FSlot.CursorOffset + 4));
-    Items := Items + [mItem];
-  end;
-end;
-
-procedure TDeclareBuilder.AddField;
-var
-  mClass: TIndexSymbol;
-  mFields: TArray<string>;
-  mField: string;
-  mItem: TCompletionItem;
-begin
-  // Feld im private-Abschnitt der Klasse, wenn die Routine eine ihrer Methoden ist.
-  if (Pos('.', FRoutine.Name) = 0) or not FSource.ClassAt(mClass) then
-  begin
-    Exit;
-  end;
-  mFields := ClassFields(mClass);
-  mField := TDeclareUnknown.FieldName(FSlot.Name, TDeclareUnknown.UsesFieldPrefix(mFields));
-  if MatchText(mField, mFields) then
-  begin
-    Exit;
-  end;
-  mItem := FBase;
-  mItem.Name := cTexts[TValuesText.CreateField].Fmt([mField]);
-  mItem.Kind := cKindField;
-  mItem.Detail := Format('%s: %s', [mField, FDeclType]);
-  // Die Verwendung heißt danach wie das Feld; der Cursor bleibt an derselben Stelle im Namen.
-  mItem.TextEdit := TTextEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret(mField,
-    FSlot.CursorOffset + Length(mField) - Length(FSlot.Name)));
-  mItem.AdditionalEdits := [FieldEdit(mClass, mField)] + TypeEdits(FSource.Offset(mClass.Range.StartPos.Line));
-  Items := Items + [mItem];
-end;
-
-procedure TDeclareBuilder.AddConstant;
-var
-  mItem: TCompletionItem;
-begin
-  // Konstante in der implementation, wenn der Name als Wert dient; der Wert ist ein Platzhalter.
-  if FSlot.AssignTarget or (FSource.ImplementationStart < 0) then
-  begin
-    Exit;
-  end;
-  mItem := FBase;
-  mItem.Name := cTexts[TValuesText.CreateConstant].Text;
-  mItem.Kind := cKindConstant;
-  mItem.Detail := Format('%s = %s;', [FSlot.Name, TDeclareUnknown.DefaultValue(FTypeName)]);
-  mItem.TextEdit := TTextEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret(FSlot.Name, FSlot.CursorOffset));
-  mItem.AdditionalEdits := [ConstantEdit(mItem.Detail)];
-  Items := Items + [mItem];
 end;
 
 { TEnumLookup }
@@ -1176,40 +898,6 @@ begin
   begin
     Result := RangeText(mSource, ASymbol.Range);
   end;
-end;
-
-class function TCompletionValues.DeclareItems(ARequest: TCompletionRequest; AInlineVar: Boolean;
-  const AKnown: TArray<TCompletionItem>; out AItems: TArray<TCompletionItem>): Boolean;
-var
-  mSlot: TUnknownSlot;
-  mSource: TCommandSource;
-  mBuilder: TDeclareBuilder;
-begin
-  AItems := nil;
-  if (ARequest.Tree = nil) or not TDeclareUnknown.Slot(ARequest.Tree.Tokens, ARequest.Position, mSlot) or
-    IsKnownName(ARequest, mSlot, AKnown) then
-  begin
-    Exit(False);
-  end;
-  mSource := CommandSourceFor(ARequest);
-  try
-    // Nur im Rumpf einer Routine: dort sind Variablen, Felder und Konstanten Deklarationen wert.
-    if mSource.RoutineAt <> nil then
-    begin
-      mBuilder := TDeclareBuilder.Create(ARequest, mSlot, mSource, mSource.RoutineAt);
-      try
-        mBuilder.AddLocal(AInlineVar);
-        mBuilder.AddField;
-        mBuilder.AddConstant;
-        AItems := mBuilder.Items;
-      finally
-        mBuilder.Free;
-      end;
-    end;
-  finally
-    mSource.Free;
-  end;
-  Result := AItems <> nil;
 end;
 
 class function TCompletionValues.AssignAllItem(ARequest: TCompletionRequest; ASnippets: Boolean;

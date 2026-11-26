@@ -388,6 +388,7 @@ contains
   Atlas.Common.Editing.Completion.CreateMethod in 'Source\Editing\Atlas.Common.Editing.Completion.CreateMethod.pas',
   Atlas.Common.Editing.Completion.ContextSnippets in 'Source\Editing\Atlas.Common.Editing.Completion.ContextSnippets.pas',
   Atlas.Common.Editing.Completion.Slash in 'Source\Editing\Atlas.Common.Editing.Completion.Slash.pas',
+  Atlas.Common.Editing.Completion.Declare in 'Source\Editing\Atlas.Common.Editing.Completion.Declare.pas',
   Atlas.Common.Semantics.NameSuggestions in 'Source\Semantics\Atlas.Common.Semantics.NameSuggestions.pas',
   Atlas.Common.Editing.AccessorCreation in 'Source\Editing\Atlas.Common.Editing.AccessorCreation.pas',
   Atlas.Common.Pascal.ResourceStrings in 'Source\Pascal\Atlas.Common.Pascal.ResourceStrings.pas',

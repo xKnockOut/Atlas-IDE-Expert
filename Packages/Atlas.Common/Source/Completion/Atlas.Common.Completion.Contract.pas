@@ -303,7 +303,9 @@ type
     /// <summary>Methode aus Aufruf anlegen (#472): nach "(" allein, sonst oben in der Liste.</summary>
     CreateMethod,
     /// <summary>Kontextabhängige Code-Vorlagen am Zeilenanfang (#51): am Ende der Liste.</summary>
-    ContextSnippets);
+    ContextSnippets,
+    /// <summary>Unbekannte Namen deklarieren (#471): ganz am Ende, die Liste bleibt unvollständig.</summary>
+    Declare);
 
 implementation
 
