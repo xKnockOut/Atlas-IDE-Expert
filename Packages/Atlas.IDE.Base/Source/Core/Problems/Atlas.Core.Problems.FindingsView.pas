@@ -368,13 +368,27 @@ begin
   Rebuild;
 end;
 
+/// <summary>Gruppe nach Regel: die Regel-ID; Befunde ohne Regel-ID je Art (IDE, Compiler, sonstige) in einer
+/// eigenen Gruppe, deren Schlüssel keiner Regel-ID gleichen kann.</summary>
+function RuleGroupKey(const AFinding: TAtlasFinding): string;
+begin
+  if AFinding.Problem.Code <> '' then
+  begin
+    Result := 'rule:' + AnsiLowerCase(AFinding.Problem.Code);
+  end
+  else
+  begin
+    Result := 'ruleless:' + IntToStr(Ord(TAtlasFindings.RulelessOf(AFinding.Problem)));
+  end;
+end;
+
 function TAtlasFindingsSorted.GroupKeyOf(const AFinding: TAtlasFinding): string;
 begin
   case FGrouping of
     TAtlasFindingGrouping.ByFile:
       Result := 'file:' + AnsiLowerCase(AFinding.FileName);
     TAtlasFindingGrouping.ByRule:
-      Result := 'rule:' + AnsiLowerCase(AFinding.Problem.Code);
+      Result := RuleGroupKey(AFinding);
     TAtlasFindingGrouping.ByCategory:
       Result := 'category:' + IntToStr(Ord(AFinding.Category));
   else
@@ -725,7 +739,10 @@ begin
     TAtlasFindingGrouping.ByFile:
       Result.Caption := ExtractFileName(AFirst.FileName);
     TAtlasFindingGrouping.ByRule:
-      Result.Caption := AFirst.Problem.Code;
+      begin
+        Result.Caption := AFirst.Problem.Code;
+        Result.Ruleless := TAtlasFindings.RulelessOf(AFirst.Problem);
+      end;
     TAtlasFindingGrouping.ByCategory:
       Result.Caption := TAtlasFindings.CategoryName(AFirst.Category);
     TAtlasFindingGrouping.None: ;
