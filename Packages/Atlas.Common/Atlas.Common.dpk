@@ -328,7 +328,7 @@ contains
   Atlas.Common.Semantics.GenericLists.Usages in 'Source\Semantics\Atlas.Common.Semantics.GenericLists.Usages.pas',
   Atlas.Common.Semantics.GenericLists in 'Source\Semantics\Atlas.Common.Semantics.GenericLists.pas',
   Atlas.Common.Pascal.StringLiterals in 'Source\Pascal\Atlas.Common.Pascal.StringLiterals.pas',
-  Atlas.Common.Editing.PostfixTemplates in 'Source\Editing\Atlas.Common.Editing.PostfixTemplates.pas',
+  Atlas.Common.Pascal.PostfixTemplates in 'Source\Pascal\Atlas.Common.Pascal.PostfixTemplates.pas',
   Atlas.Common.Pascal.CaseCompletion in 'Source\Pascal\Atlas.Common.Pascal.CaseCompletion.pas',
   Atlas.Common.Editing.AssignFields in 'Source\Editing\Atlas.Common.Editing.AssignFields.pas',
   Atlas.Common.Pascal.RoutineBody in 'Source\Pascal\Atlas.Common.Pascal.RoutineBody.pas',

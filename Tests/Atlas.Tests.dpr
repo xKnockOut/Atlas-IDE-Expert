@@ -3178,7 +3178,7 @@ uses
   Rules.Builtin.DataBinding.Tests in 'Application\Features\Rules\Builtin\Rules.Builtin.DataBinding.Tests.pas',
   Rules.Builtin.DfmProperties.Tests in 'Application\Features\Rules\Builtin\Rules.Builtin.DfmProperties.Tests.pas',
   Rules.Builtin.SavedQueries.Tests in 'Application\Features\Rules\Builtin\Rules.Builtin.SavedQueries.Tests.pas',
-  Atlas.Common.Editing.PostfixTemplates.Tests in 'Common\Editing\Atlas.Common.Editing.PostfixTemplates.Tests.pas',
+  Atlas.Common.Pascal.PostfixTemplates.Tests in 'Common\Pascal\Atlas.Common.Pascal.PostfixTemplates.Tests.pas',
   Atlas.Common.Pascal.CaseCompletion.Tests in 'Common\Pascal\Atlas.Common.Pascal.CaseCompletion.Tests.pas',
   Atlas.Common.Editing.AssignFields.Tests in 'Common\Editing\Atlas.Common.Editing.AssignFields.Tests.pas',
   Atlas.Common.Pascal.RoutineLocals.Tests in 'Common\Pascal\Atlas.Common.Pascal.RoutineLocals.Tests.pas',
