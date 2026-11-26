@@ -14,14 +14,39 @@
 //   und die IDE nicht beendet wird.
 // - Alle Dienste zeichnen den Editor nur hierüber neu;
 //   Tools/Check-WindowHosts.ps1 prüft das.
+// TAtlasIdeEditorCover: oben im Editor überdeckte Zeilen (mitlaufender Kopf,
+// #506). Alle Zeichner malen in plsEndPaint, und die IDE ruft sie je Zeile in
+// der Reihenfolge ihrer Anmeldung auf, Module nach Base. Ihre Zeichnungen
+// (Werte beim Debuggen, Inlay-Hints, Code Lens, Markierungen, Fehlertexte,
+// Besitzhinweise) lagen deshalb über dem Kopf, sobald eine Zeile hinter ihm
+// verschwand. Statt einer Reihenfolge, die keiner in der Hand hat, fragt
+// jeder Zeichner vor dem Malen Covers und lässt überdeckte Zeilen aus. Wer
+// oben Zeilen überdeckt, meldet sich mit SetCovers an (heute nur der Kopf);
+// ohne Anmeldung ist nichts überdeckt.
 // Nur im Hauptthread.
 
 interface
 
 uses
+  System.Types,
   ToolsAPI.Editor;
 
 type
+  /// <summary>True, wenn die Zeile ARect (Koordinaten des Editors) in der Ansicht, die AContext gerade zeichnet,
+  /// überdeckt ist.</summary>
+  TAtlasEditorCoverTest = reference to function(const ARect: TRect; const AContext: INTACodeEditorPaintContext):
+    Boolean;
+
+  TAtlasIdeEditorCover = class
+  private class var
+    FCovers: TAtlasEditorCoverTest;
+  public
+    /// <summary>Meldet an, wer oben Zeilen überdeckt; nil meldet ab.</summary>
+    class procedure SetCovers(const ACovers: TAtlasEditorCoverTest); static;
+    /// <summary>True, wenn die Zeile ARect von AContext überdeckt ist: Der Zeichner lässt sie aus.</summary>
+    class function Covers(const ARect: TRect; const AContext: INTACodeEditorPaintContext): Boolean; static;
+  end;
+
   TAtlasIdeEditorRefresh = class
   public
     /// <summary>Steht ein Editorfenster, das neu gezeichnet werden kann (und die IDE wird nicht beendet)?</summary>
@@ -47,6 +72,18 @@ uses
 
 const
   cEditWindowClass = 'TEditWindow';
+
+{ TAtlasIdeEditorCover }
+
+class procedure TAtlasIdeEditorCover.SetCovers(const ACovers: TAtlasEditorCoverTest);
+begin
+  FCovers := ACovers;
+end;
+
+class function TAtlasIdeEditorCover.Covers(const ARect: TRect; const AContext: INTACodeEditorPaintContext): Boolean;
+begin
+  Result := Assigned(FCovers) and (AContext <> nil) and FCovers(ARect, AContext);
+end;
 
 { TAtlasIdeEditorRefresh }
 

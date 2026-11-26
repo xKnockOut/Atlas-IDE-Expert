@@ -154,6 +154,11 @@ begin
   begin
     Exit;
   end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasDebugLineEnd.Covered(Rect, Context) then
+  begin
+    Exit;
+  end;
   try
     mText := NoteText(Context.FileName, Context.LogicalLineNum - 1, mLineText);
     if (mText = '') or not TAtlasDebugLineEnd.Matches(Context, mLineText) then

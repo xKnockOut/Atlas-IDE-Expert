@@ -163,7 +163,8 @@ begin
     Exit;
   end;
   try
-    if not SameText(Context.FileName, FFileName) then
+    // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+    if not SameText(Context.FileName, FFileName) or TAtlasIdeEditorCover.Covers(Rect, Context) then
     begin
       Exit;
     end;
