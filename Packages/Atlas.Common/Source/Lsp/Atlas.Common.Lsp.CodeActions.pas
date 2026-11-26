@@ -2,15 +2,15 @@
 
 // textDocument/codeAction (#42): Korrekturen und Unterdrückungen zu
 // Regeltreffern, try/finally um Create-Zuweisungen und fehlende
-// Methodenrümpfe. Die Logik liegt in Atlas.Common.Editing.CodeActions und
-// Atlas.Common.Editing.ClassCompletion (über TClassActions.MissingBodies); hier nur Protokoll und Regelaufruf.
+// Methodenrümpfe. Die Aktionen an Klasse, Anweisung, uses und Deklarationen
+// steuert der Host über ILspSourceActions bei (aus Editing); hier nur Protokoll und Regelaufruf.
 //
 // Für editor.codeActionsOnSave (#182) gibt es source.organizeImports (uses
 // aufräumen, sortieren über "sortUses") und source.fixAll (alle als sicher
 // markierten Korrekturen). Beide kommen nur, wenn der Client sie über
 // context.only ausdrücklich anfragt. Ebenso source.removeUnusedImports (#284);
 // "fehlende Unit ergänzen" und "ins implementation verschieben" kommen mit den
-// übrigen Korrekturen, sobald UsesContextFor gesetzt ist. Weitere Aktionen
+// übrigen Korrekturen, sobald SourceActions sie liefert. Weitere Aktionen
 // mit Dateioperationen (Testunit anlegen, #274) kommen über ExtraActions.
 // Die Aktionen schreibt Atlas.Common.CodeActions.Json.
 
@@ -23,36 +23,16 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Pascal.UsesEdits,
-  Atlas.Common.Editing.ClassActions,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.SyntaxDiagnostics;
+  Atlas.Common.Lsp.Contract;
 
 type
-  /// <summary>Einstellung "sortUses" für AUri als Optionen für "uses aufräumen" (#182, #284, #2794).</summary>
-  TUsesOrderProvider = reference to function(const AUri: string): TUsesRewrite;
-  /// <summary>Einstellung "completeBlocks.docComment" für AUri (#88).</summary>
-  TDocCommentsProvider = reference to function(const AUri: string): Boolean;
-  /// <summary>Einstellungen "stringLiteral" für AUri und ob ein mehrzeiliger String entsteht (#312).</summary>
-  TStringLiteralProvider = reference to function(const AUri: string;
-    out AMultiline: Boolean): TStringLiteralSettings;
-
-  /// <summary>Index und Einstellungen für die uses-Aktionen; False ohne Index. Dieselbe Art wie bei den
-  /// Diagnosen, die ungenutzte uses melden (#621).</summary>
-  TUsesContextProvider = Atlas.Common.Lsp.SyntaxDiagnostics.TUsesContextProvider;
   /// <summary>Aktionen in Formulardateien, z. B. binär gespeicherte in Text umwandeln (#122).</summary>
   TFormActionsFunc = reference to function(const AUri, AText: string; const ARange: TTextRange): TArray<TCodeAction>;
-
-  /// <summary>Einstellungen "memberOrder" für AUri (#89).</summary>
-  TMemberOrderProvider = reference to function(const AUri: string): TMemberOrderSettings;
   /// <summary>Formatstil für AUri (#43), etwa für die Einrückung von try/finally (#42).</summary>
   TCodeActionStyleProvider = reference to function(const AUri: string): TFormatStyle;
   /// <summary>Einstellungen "refactoring" für AUri, etwa tryFinally und classActions (#42).</summary>
   TCodeActionRefactoringProvider = reference to function(const AUri: string): TRefactoringSettings;
-  /// <summary>Index, Namespaces und Version für die Klassen-Aktionen (#42).</summary>
-  TClassActionContextProvider = reference to function(const AUri: string): TClassActionContext;
 
   /// <summary>Weitere Aktionen als fertige LSP-CodeActions, etwa mit Dateioperationen (#274). Der
   /// Aufrufer übernimmt die Objekte.</summary>
@@ -67,17 +47,11 @@ type
   private
     FStore: IDocumentStore;
     FRules: ILspRuleActions;
-    FUsesOrderFor: TUsesOrderProvider;
-    FUsesContextFor: TUsesContextProvider;
+    FSourceActions: ILspSourceActions;
     FFormActions: TFormActionsFunc;
-    FStringLiteralFor: TStringLiteralProvider;
-    FMemberOrderFor: TMemberOrderProvider;
-    FDocCommentsFor: TDocCommentsProvider;
     FFormatStyleFor: TCodeActionStyleProvider;
     FRefactoringFor: TCodeActionRefactoringProvider;
-    FClassActionContextFor: TClassActionContextProvider;
     FExtraActions: TExtraActionsFunc;
-    FDefinesFor: TDefinesProvider;
     function FormFileActions(const AUri, AText: string; const ARange: TTextRange): TJSONArray;
     function HandleCodeAction(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function Collect(const AUri: string; const ARange: TTextRange; const AOnly: TArray<string>;
@@ -94,30 +68,17 @@ type
     /// ohne Abbruch (MCP-Werkzeug refactor, #2150); leer, wenn das Dokument nicht geöffnet ist. Der Aufrufer übernimmt
     /// das Array.</summary>
     function ActionsAt(const AUri: string; const ARange: TTextRange): TJSONArray;
-    /// <summary>Ohne Zuweisung werden uses nicht sortiert, nur doppelte entfernt.</summary>
-    property UsesOrderFor: TUsesOrderProvider read FUsesOrderFor write FUsesOrderFor;
-    /// <summary>Ohne Zuweisung keine uses-Aktionen (#284).</summary>
-    property UsesContextFor: TUsesContextProvider read FUsesContextFor write FUsesContextFor;
-    /// <summary>Ohne Zuweisung gelten die Vorgaben mit Verkettung.</summary>
-    property StringLiteralFor: TStringLiteralProvider read FStringLiteralFor write FStringLiteralFor;
-    /// <summary>Ohne Zuweisung gelten die Vorgaben von "memberOrder".</summary>
-    property MemberOrderFor: TMemberOrderProvider read FMemberOrderFor write FMemberOrderFor;
-    /// <summary>Ohne Zuweisung gibt es die Aktionen zum Dokumentationskommentar (#88).</summary>
-    property DocCommentsFor: TDocCommentsProvider read FDocCommentsFor write FDocCommentsFor;
+    /// <summary>Aktionen an Klasse, Anweisung, uses und Deklarationen; ohne Zuweisung nur die der Prüfregeln und
+    /// ExtraActions.</summary>
+    property SourceActions: ILspSourceActions read FSourceActions write FSourceActions;
     /// <summary>Ohne Zuweisung gilt der Standard-Formatstil.</summary>
     property FormatStyleFor: TCodeActionStyleProvider read FFormatStyleFor write FFormatStyleFor;
     /// <summary>Ohne Zuweisung gelten die Vorgaben (try/finally und Klassen-Aktionen an).</summary>
     property RefactoringFor: TCodeActionRefactoringProvider read FRefactoringFor write FRefactoringFor;
-    /// <summary>Ohne Zuweisung laufen die Klassen-Aktionen ohne Index, nur mit der Datei.</summary>
-    property ClassActionContextFor: TClassActionContextProvider read FClassActionContextFor
-      write FClassActionContextFor;
     /// <summary>Aktionen in .dfm/.fmx; ohne Zuweisung keine.</summary>
     property FormActions: TFormActionsFunc read FFormActions write FFormActions;
     /// <summary>Weitere Aktionen in Units (Testunit anlegen und wechseln, #274/#189); ohne Zuweisung keine.</summary>
     property ExtraActions: TExtraActionsFunc read FExtraActions write FExtraActions;
-    /// <summary>Symbole des Projekts für die uses-Einträge in {$IFDEF}-Zweigen (#621); ohne Zuweisung zählen alle
-    /// Zweige.</summary>
-    property DefinesFor: TDefinesProvider read FDefinesFor write FDefinesFor;
   end;
 
 implementation
@@ -133,31 +94,23 @@ uses
   Atlas.Common.Findings.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Pascal.DocComments,
-  Atlas.Common.Editing.MemberOrder,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Dfm.Parser,
-  Atlas.Common.Editing.AssignmentSwap,
-  Atlas.Common.Editing.Extract,
-  Atlas.Common.Pascal.Destructors,
-  Atlas.Common.Editing.FreeFields,
-  Atlas.Common.Pascal.InactiveRegions,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json,
   Atlas.Common.CodeActions.Json,
-  Atlas.Common.Semantics.Contract;
+  Atlas.Common.Pascal.TreeHandles;
 
 {$SCOPEDENUMS ON}
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TLspCodeActionsText = (FieldsTextDocumentUriAndRange, CopyFindingAsPrompt, SortClassMembers);
+  TLspCodeActionsText = (FieldsTextDocumentUriAndRange, CopyFindingAsPrompt);
 
 const
   cTexts: array[TLspCodeActionsText] of TAtlasText = (
     (De: 'Felder "textDocument.uri" und "range" fehlen in '; En: 'Fields "textDocument.uri" and "range" missing in '),
-    (De: 'Befund %s als Auftrag für KI-Assistenten kopieren'; En: 'Copy finding %s as task for an AI assistant'),
-    (De: 'Klassenmitglieder ordnen'; En: 'Sort class members'));
+    (De: 'Befund %s als Auftrag für KI-Assistenten kopieren'; En: 'Copy finding %s as task for an AI assistant'));
 
 {$SCOPEDENUMS OFF}
 
@@ -245,27 +198,22 @@ type
     /// </summary>
     function RuleFindings: TArray<TRuleFinding>;
     procedure CollectFindings;
-    function UsesActions: TArray<TCodeAction>;
     function Style: TFormatStyle;
     function Refactoring: TRefactoringSettings;
     procedure Add(const AAction: TCodeAction); overload;
     procedure Add(const AActions: TArray<TCodeAction>); overload;
     procedure AddRuleActions(const ARefactoring: TRefactoringSettings; const AStyle: TFormatStyle);
-    procedure AddClassActions(const AStyle: TFormatStyle);
-    function ClassContext(const AStyle: TFormatStyle): TClassActionContext;
     function RuleOffersFreeField: Boolean;
     /// <summary>Index aus dem Umfeld der Prüfregeln; nil ohne.</summary>
     function Index: ISymbolIndex;
-    procedure AddFreeFieldActions(const ARefactoring: TRefactoringSettings);
+    /// <summary>Stelle der Anfrage für die Aktionen aus SourceActions.</summary>
+    function Site: TLspCodeActionSite;
     procedure AddPromptActions;
-    procedure AddStringLiteralActions;
-    procedure AddDocCommentActions;
-    procedure AddMemberOrderAction;
     procedure AddSourceActions;
     procedure AddExtraActions;
     /// <summary>Aktionen an der Stelle, die der Client bei jeder Cursorbewegung anfragt: Regeln, Klasse, Felder,
     /// Prompt.</summary>
-    procedure AddEditingActions;
+    procedure AddEditingActions(const ASite: TLspCodeActionSite);
   public
     constructor Create(AOwner: TLspCodeActions; const AUri: string; const ARange: TTextRange;
       const ADocument: ITextDocument; ATree: TSyntaxTree);
@@ -364,25 +312,6 @@ begin
   FFindings := FRules.SyntaxFindings(FDocument) + RuleFindings;
 end;
 
-function TCodeActionBuilder.UsesActions: TArray<TCodeAction>;
-var
-  mUsesContext: TUsesContext;
-  mDefines: TArray<string>;
-begin
-  Result := nil;
-  if not ((FWantsEditing or FWantsRemoveUnused) and Assigned(FOwner.FUsesContextFor) and
-    FOwner.FUsesContextFor(FUri, mUsesContext)) then
-  begin
-    Exit;
-  end;
-  mUsesContext.Inactive := nil;
-  if FWantsEditing and Assigned(FOwner.FDefinesFor) and FOwner.FDefinesFor(FUri, mDefines) then
-  begin
-    mUsesContext.Inactive := TInactiveRegions.Ranges(FText, mDefines);
-  end;
-  Result := TCodeActions.UsesActions(FText, FTree, FRange, mUsesContext, FWantsEditing, FWantsRemoveUnused);
-end;
-
 function TCodeActionBuilder.Style: TFormatStyle;
 begin
   if Assigned(FOwner.FFormatStyleFor) then
@@ -430,25 +359,6 @@ begin
   end;
 end;
 
-procedure TCodeActionBuilder.AddClassActions(const AStyle: TFormatStyle);
-begin
-  Add(TClassActions.Actions(FText, FTree, FRange.StartPos.Line, ClassContext(AStyle)));
-end;
-
-function TCodeActionBuilder.ClassContext(const AStyle: TFormatStyle): TClassActionContext;
-begin
-  if Assigned(FOwner.FClassActionContextFor) then
-  begin
-    Result := FOwner.FClassActionContextFor(FUri);
-  end
-  else
-  begin
-    Result := TClassActionContext.Default;
-    Result.Uri := FUri;
-  end;
-  Result.Style := AStyle;
-end;
-
 function TCodeActionBuilder.RuleOffersFreeField: Boolean;
 var
   mFinding: TRuleFinding;
@@ -472,11 +382,20 @@ begin
   end;
 end;
 
-procedure TCodeActionBuilder.AddFreeFieldActions(const ARefactoring: TRefactoringSettings);
+function TCodeActionBuilder.Site: TLspCodeActionSite;
 begin
-  // Die Aktion am Feld bringt die Regel mit, wenn sie läuft. Ohne Prüfregeln ohne Index.
-  Add(TFreeFields.Actions(FTree, FText, Index, FRange.StartPos.Line,
-    TPascalDestructors.StyleOf(ARefactoring.FreeFieldsStyle), not RuleOffersFreeField));
+  Result := Default(TLspCodeActionSite);
+  Result.Uri := FUri;
+  Result.Text := FText;
+  Result.Tree := TSyntaxTreeHandles.Wrap(FTree);
+  Result.Range := FRange;
+  // Ohne Prüfregeln ohne Index.
+  Result.Index := Index;
+  Result.Style := Style;
+  Result.Refactoring := Refactoring;
+  Result.RuleFreesField := RuleOffersFreeField;
+  Result.WantsEditing := FWantsEditing;
+  Result.WantsRemoveUnused := FWantsRemoveUnused;
 end;
 
 procedure TCodeActionBuilder.AddPromptActions;
@@ -499,68 +418,11 @@ begin
   end;
 end;
 
-procedure TCodeActionBuilder.AddStringLiteralActions;
-var
-  mSettings: TStringLiteralSettings;
-  mMultiline: Boolean;
-begin
-  mMultiline := False;
-  if Assigned(FOwner.FStringLiteralFor) then
-  begin
-    mSettings := FOwner.FStringLiteralFor(FUri, mMultiline);
-  end
-  else
-  begin
-    mSettings := TStringLiteralSettings.Default;
-  end;
-  Add(TCodeActions.StringLiteralActions(FText, FTree.Tokens, FRange, mSettings, mMultiline));
-end;
-
-procedure TCodeActionBuilder.AddDocCommentActions;
-begin
-  // Abschaltbar.
-  if not Assigned(FOwner.FDocCommentsFor) or FOwner.FDocCommentsFor(FUri) then
-  begin
-    Add(TDocComments.Actions(FText, FTree, FRange.StartPos.Line));
-  end;
-end;
-
-procedure TCodeActionBuilder.AddMemberOrderAction;
-var
-  mSettings: TMemberOrderSettings;
-  mEdit: TTextEdit;
-  mAction: TCodeAction;
-begin
-  if Assigned(FOwner.FMemberOrderFor) then
-  begin
-    mSettings := FOwner.FMemberOrderFor(FUri);
-  end
-  else
-  begin
-    mSettings := TMemberOrderSettings.Default;
-  end;
-  if TMemberOrder.Sort(FText, FTree, FRange.StartPos.Line, mSettings, mEdit) then
-  begin
-    mAction := Default(TCodeAction);
-    mAction.Title := cTexts[TLspCodeActionsText.SortClassMembers].Text;
-    mAction.Kind := cRewriteKind;
-    mAction.Edits := [mEdit];
-    Add(mAction);
-  end;
-end;
-
 procedure TCodeActionBuilder.AddSourceActions;
 var
   mAction: TCodeAction;
-  mOrder: TUsesRewrite;
 begin
-  mOrder := Default(TUsesRewrite);
-  if Assigned(FOwner.FUsesOrderFor) then
-  begin
-    mOrder := FOwner.FUsesOrderFor(FUri);
-  end;
-  mOrder.Dedupe := True;
-  if FWantsOrganize and TCodeActions.OrganizeImports(FText, mOrder, mAction) then
+  if FWantsOrganize and (FOwner.FSourceActions <> nil) and FOwner.FSourceActions.OrganizeImports(Site, mAction) then
   begin
     Add(mAction);
   end;
@@ -583,23 +445,13 @@ begin
   end;
 end;
 
-procedure TCodeActionBuilder.AddEditingActions;
-var
-  mStyle: TFormatStyle;
-  mRefactoring: TRefactoringSettings;
+procedure TCodeActionBuilder.AddEditingActions(const ASite: TLspCodeActionSite);
 begin
-  mStyle := Style;
-  mRefactoring := Refactoring;
-  AddRuleActions(mRefactoring, mStyle);
-  // Klassen-Aktionen (#42): Getter/Setter/Feld, Interface-Methoden, Überschreiben.
-  if mRefactoring.ClassActions then
+  AddRuleActions(ASite.Refactoring, ASite.Style);
+  // Klassen-Aktionen (#42) und Felder im Destruktor freigeben (#666).
+  if FOwner.FSourceActions <> nil then
   begin
-    AddClassActions(mStyle);
-  end;
-  // Felder im Destruktor freigeben (#666).
-  if mRefactoring.FreeFields then
-  begin
-    AddFreeFieldActions(mRefactoring);
+    Add(FOwner.FSourceActions.Structure(ASite));
   end;
   // Befund als Auftrag für KI-Assistenten kopieren (#158, #2570): den Text kopiert der Client (Befehl
   // atlas.copyText); derselbe Text wie im Fenster „Atlas-Prüfung“ und in explain_finding.
@@ -609,7 +461,9 @@ end;
 function TCodeActionBuilder.Build(const AOnly: TArray<string>;
   const ACancellation: IJsonRpcCancellationToken): TJSONArray;
 var
-  mCompletion, mAction: TCodeAction;
+  mSources: ILspSourceActions;
+  mSite: TLspCodeActionSite;
+  mCompletion: TCodeAction;
   mHasCompletion: Boolean;
   mUsesActions: TArray<TCodeAction>;
 begin
@@ -617,37 +471,36 @@ begin
   FCancellation := ACancellation;
   ACancellation.ThrowIfCancellationRequested;
   CollectFindings;
-  // Fehlende Rümpfe mit classCompletion.* (#1834) über den Host der Klassen-Aktionen.
-  mHasCompletion := FWantsEditing and TClassActions.MissingBodies(FText, FTree, FRange.StartPos,
-    ClassContext(Style), mCompletion);
-  mUsesActions := UsesActions;
+  mSources := FOwner.FSourceActions;
+  mSite := Site;
+  mHasCompletion := FWantsEditing and (mSources <> nil) and mSources.MissingBodies(mSite, mCompletion);
+  mUsesActions := nil;
+  if mSources <> nil then
+  begin
+    mUsesActions := mSources.UsesActions(mSite);
+  end;
   ACancellation.ThrowIfCancellationRequested;
   // Erst jetzt anlegen: Ein Abbruch oben soll kein Objekt zurücklassen.
   FResult := TJSONArray.Create;
   try
     if FWantsEditing then
     begin
-      AddEditingActions;
+      AddEditingActions(mSite);
     end;
     if mHasCompletion then
     begin
       Add(mCompletion);
     end;
-    if FWantsEditing and TCodeActions.SwapAssignments(FText, FRange,
-      TAssignmentSwap.ReadOnlyCheckOf(Index, TDocumentUris.ToPath(FUri), FText), mAction) then
+    // Zuweisung tauschen und String-Literale (#312).
+    if FWantsEditing and (mSources <> nil) then
     begin
-      Add(mAction);
-    end;
-    if FWantsEditing then
-    begin
-      AddStringLiteralActions;
+      Add(mSources.Statements(mSite));
     end;
     Add(mUsesActions);
     // Dokumentationskommentar erzeugen bzw. an die Signatur anpassen (#88) und Klassenmitglieder ordnen (#89).
-    if FWantsEditing then
+    if FWantsEditing and (mSources <> nil) then
     begin
-      AddDocCommentActions;
-      AddMemberOrderAction;
+      Add(mSources.Declarations(mSite));
     end;
     AddSourceActions;
     if FWantsEditing then

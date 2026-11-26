@@ -12,6 +12,8 @@ uses
 const
   cQuickFixKind = 'quickfix';
   cRewriteKind = 'refactor.rewrite';
+  /// <summary>Art der Extrahieren-Aktionen.</summary>
+  cExtractKind = 'refactor.extract';
   // Für editor.codeActionsOnSave (#182).
   cOrganizeImportsKind = 'source.organizeImports';
   cFixAllKind = 'source.fixAll';

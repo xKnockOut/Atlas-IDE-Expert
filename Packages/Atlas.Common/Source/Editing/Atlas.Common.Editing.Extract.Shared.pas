@@ -16,8 +16,6 @@ uses
   Atlas.Common.Pascal.RoutineLocals;
 
 const
-  /// <summary>Art der Extrahieren-Aktionen (LSP).</summary>
-  cExtractKind = 'refactor.extract';
   /// <summary>Name der Inline-Variablen im Probetext für die Typabfrage.</summary>
   cExtractProbeName = 'AtlasProbe';
   /// <summary>Name der neuen Methode bei „Methode extrahieren“.</summary>
