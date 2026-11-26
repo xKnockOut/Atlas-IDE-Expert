@@ -88,6 +88,7 @@ uses
   Atlas.Common.Completion.Contract,
   Atlas.Common.Editing.Completion.CreateMethod,
   Atlas.Common.Editing.Completion.ContextSnippets,
+  Atlas.Common.Editing.Completion.Declare,
   Atlas.Common.Editing.Completion.Slash,
   Atlas.Common.Pascal.LanguageFeatures,
   Rules.Contract.Api,
@@ -191,6 +192,8 @@ begin
   FCompletion.Sources.Add(TCompletionSlot.CreateMethod, TEditingCreateMethodCompletion.Source(CreateMethod));
   // Code-Vorlagen am Zeilenanfang (#51) am Ende der Liste.
   FCompletion.Sources.Add(TCompletionSlot.ContextSnippets, TEditingContextSnippetCompletion.Source());
+  // Unbekannte Namen deklarieren (#471) ganz am Ende.
+  FCompletion.Sources.Add(TCompletionSlot.Declare, TEditingDeclareCompletion.Source());
   FCompletion.Hooks.NamingFor := FServices.NamingFor;
   FCompletion.Hooks.IdeTypesFor := FServices.IdeTypesFor;
   FCompletion.Hooks.HintsFor := FServices.HintsFor;

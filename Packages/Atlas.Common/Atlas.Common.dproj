@@ -426,6 +426,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Completion.CreateMethod.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Completion.ContextSnippets.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Completion.Slash.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Completion.Declare.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameSuggestions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AccessorCreation.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ResourceStrings.pas"/>

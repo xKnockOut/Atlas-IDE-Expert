@@ -35,8 +35,6 @@ type
     [Test]
     procedure AssignsManyFieldsThroughList;
     [Test]
-    procedure OffersDeclarationsForUnknownNames;
-    [Test]
     procedure OffersMissingInterfaceMethods;
     [Test]
     procedure OffersTryFinallyAfterConstructor;
@@ -243,32 +241,6 @@ begin
   Assert.IsTrue(mItems[0].AdditionalEdits[0].NewText.Contains('function GetName: string;'));
   Assert.IsFalse(mItems[0].AdditionalEdits[0].NewText.Contains('Flush'));
 end;
-const
-  cUnknownText =
-    'unit Haupt;'#13#10 +
-    'interface'#13#10 +
-    'type'#13#10 +
-    '  TLines = class'#13#10 +
-    '    Count: Integer;'#13#10 +
-    '  end;'#13#10 +
-    '  TRechner = class'#13#10 +
-    '  private'#13#10 +
-    '    FLines: TLines;'#13#10 +
-    '  public'#13#10 +
-    '    procedure Summe(Extra: TLines);'#13#10 +
-    '  end;'#13#10 +
-    'implementation'#13#10 +
-    'procedure Zeige(N: Integer);'#13#10 +
-    'begin'#13#10 +
-    'end;'#13#10 +
-    'procedure TRechner.Summe(Extra: TLines);'#13#10 +
-    'begin'#13#10 +
-    '  TotalCount := FLines.Count + Extra.Count;'#13#10 +
-    '  Zeige(Anzahl);'#13#10 +
-    '  FLines := nil;'#13#10 +
-    'end;'#13#10 +
-    'end.';
-
 const
   cCaseText =
     'unit Haupt;'#13#10 +
@@ -759,79 +731,6 @@ begin
     mJson.Free;
   end;
   mItem := Default(TCompletionItem);
-end;
-
-procedure TLspCompletionProposalTests.OffersDeclarationsForUnknownNames;
-var
-  mTree: TSyntaxTree;
-  mResolver: TNameResolver;
-  mItems: TArray<TCompletionItem>;
-  mKnown: TArray<TCompletionItem>;
-
-  function Named(const AName: string): TCompletionItem;
-  var
-    mItem: TCompletionItem;
-  begin
-    for mItem in mItems do
-    begin
-      if mItem.Name = AName then
-      begin
-        Exit(mItem);
-      end;
-    end;
-    Result := Default(TCompletionItem);
-    Assert.Fail(Format('Eintrag "%s" fehlt', [AName]));
-  end;
-
-var
-  mItem: TCompletionItem;
-begin
-  mTree := TPascalParser.Parse(cUnknownText);
-  mResolver := TNameResolver.Create(FIndex);
-  try
-    // Ziel einer Zuweisung: Typ aus der rechten Seite.
-    Assert.IsTrue(DeclareAt(LookupOf(mResolver, FIndex, mTree, cUnknownText, nil),
-      PositionOf(cUnknownText, '  TotalCount'), True, nil, mItems));
-    mItem := Named('Lokale Variable anlegen');
-    Assert.AreEqual('TotalCount: Integer', mItem.Detail);
-    Assert.AreEqual('declare', mItem.Action);
-    Assert.AreEqual('TotalCount', mItem.Unknown);
-    // Die Verwendung bleibt, der Cursor auch; var vor begin.
-    Assert.AreEqual('TotalCount$0', mItem.TextEdit.NewText);
-    Assert.AreEqual(1, Integer(Length(mItem.AdditionalEdits)));
-    Assert.AreEqual('var'#13#10'  TotalCount: Integer;'#13#10, mItem.AdditionalEdits[0].NewText);
-    Assert.AreEqual(17, mItem.AdditionalEdits[0].Range.StartPos.Line);
-    Assert.AreEqual('var TotalCount$0', Named('Inline-Variable anlegen').TextEdit.NewText);
-    // Feld mit F-Konvention: im private-Abschnitt, die Verwendung heißt danach FTotalCount.
-    mItem := Named('Feld FTotalCount anlegen');
-    Assert.AreEqual('FTotalCount$0', mItem.TextEdit.NewText);
-    Assert.AreEqual(7, mItem.AdditionalEdits[0].Range.StartPos.Line);
-    Assert.AreEqual(#13#10'    FTotalCount: Integer;', mItem.AdditionalEdits[0].NewText);
-    // Keine Konstante als Ziel einer Zuweisung.
-    for mItem in mItems do
-    begin
-      Assert.AreNotEqual('Konstante anlegen', mItem.Name);
-    end;
-    // Als Argument: Typ des Parameters, auch als Konstante in der implementation.
-    Assert.IsTrue(DeclareAt(LookupOf(mResolver, FIndex, mTree, cUnknownText, nil),
-      PositionOf(cUnknownText, 'Zeige(Anzahl'), False, nil, mItems));
-    Assert.AreEqual('Anzahl: Integer', Named('Lokale Variable anlegen').Detail);
-    mItem := Named('Konstante anlegen');
-    Assert.AreEqual('Anzahl = 0;', mItem.Detail);
-    Assert.AreEqual(12, mItem.AdditionalEdits[0].Range.StartPos.Line);
-    // Bekannte Namen und genaue Treffer: nichts.
-    Assert.IsFalse(DeclareAt(LookupOf(mResolver, FIndex, mTree, cUnknownText, nil),
-      PositionOf(cUnknownText, 'Zeige(Anzahl);'#13#10'  FLines'), True, nil, mItems));
-    // Eigene Variable für die bekannten Einträge: Ein out-Parameter leert sein Ziel vor dem Aufruf.
-    SetLength(mKnown, 1);
-    mKnown[0] := Default(TCompletionItem);
-    mKnown[0].Name := 'Anzahl';
-    Assert.IsFalse(DeclareAt(LookupOf(mResolver, FIndex, mTree, cUnknownText, nil),
-      PositionOf(cUnknownText, 'Zeige(Anzahl'), True, mKnown, mItems));
-  finally
-    mResolver.Free;
-    mTree.Free;
-  end;
 end;
 
 procedure TLspCompletionProposalTests.OffersMissingInterfaceMethods;

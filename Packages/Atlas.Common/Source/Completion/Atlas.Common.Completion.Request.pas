@@ -48,6 +48,7 @@ type
     FIdeTypes: TArray<TIdeTypeEntry>;
     FNamespaces: TArray<string>;
     FSnippetSupport: Boolean;
+    FInlineVar: Boolean;
     procedure SetTree(AValue: TSyntaxTree);
     procedure SetResolver(AValue: TNameResolver);
   public
@@ -90,6 +91,8 @@ type
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
     /// <summary>Der Client versteht Snippets (#51); sonst gehen Vorlagen als Klartext.</summary>
     property SnippetSupport: Boolean read FSnippetSupport write FSnippetSupport;
+    /// <summary>Inline-Variablen sind erlaubt (Sprachstand und refactoring.inlineVar, #188, #471).</summary>
+    property InlineVar: Boolean read FInlineVar write FInlineVar;
   end;
 
 /// <summary>Zeilen von AText ohne Zeilenende (getrennt an LF, ein CR davor fällt weg).</summary>

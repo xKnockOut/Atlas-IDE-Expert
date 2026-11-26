@@ -105,6 +105,7 @@ Atlas.Common.Editing.BoundaryCases.Tests
 Atlas.Common.Editing.CreateMethod.Tests
 Atlas.Common.Editing.Completion.CreateMethod.Tests
 Atlas.Common.Editing.Completion.Slash.Tests
+Atlas.Common.Editing.Completion.Declare.Tests
 Atlas.Common.Completion.Answer.Tests
 Atlas.Common.Dfm.DataFieldNames.Tests
 Atlas.Common.Pascal.DeclareUnknown.Tests
