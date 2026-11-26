@@ -75,7 +75,7 @@ uses
   Atlas.Common.Lsp.Completion.Names,
   Atlas.Common.Lsp.Completion.Methods,
   Atlas.Common.Lsp.Completion.Guard,
-  Atlas.Common.Lsp.Completion.Slash,
+  Atlas.Common.Lsp.Completion.Directives,
   Atlas.Common.Lsp.Completion.TypeGuards,
   Atlas.Common.Lsp.Completion.Lists;
 
@@ -265,17 +265,6 @@ end;
 
 { Fälle ohne Syntaxbaum }
 
-function SlashCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
-var
-  mDisabled: TArray<string>;
-begin
-  mDisabled := nil;
-  Result := AnsweredIf((not Assigned(AAnswer.Hooks.SlashCommandsFor) or
-    AAnswer.Hooks.SlashCommandsFor(ARequest.Uri, mDisabled)) and
-    TCompletionSlash.SlashItems(ARequest, mDisabled, AAnswer.Hooks.RuleIdsFor, AAnswer.Hooks.RuleCatalog,
-      AAnswer.Exclusive));
-end;
-
 function DirectiveCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 var
   mContext: TConditionalContext;
@@ -285,8 +274,8 @@ begin
   begin
     mContext := AAnswer.Hooks.SymbolsFor(ARequest.Uri);
   end;
-  Result := AnsweredIf(TCompletionSlash.SymbolItems(ARequest, mContext, AAnswer.Exclusive) or
-    TCompletionSlash.DirectiveItems(ARequest, AAnswer.Exclusive));
+  Result := AnsweredIf(TCompletionDirectives.SymbolItems(ARequest, mContext, AAnswer.Exclusive) or
+    TCompletionDirectives.DirectiveItems(ARequest, AAnswer.Exclusive));
   // Abgeschaltet (directives.completion): in der Direktive gar nichts, auch nicht die übrige Liste.
   if (Result = TCompletionOutcome.Answered) and not mContext.CompletionEnabled then
   begin
@@ -597,7 +586,7 @@ end;
 class function TCompletionCases.TextCases: TArray<TCompletionCase>;
 begin
   Result := nil;
-  AddCase(Result, SlashCase);
+  AddCase(Result, SlotCase(TCompletionSlot.Slash));
   AddCase(Result, DirectiveCase);
   AddCase(Result, DataNameCase);
   AddCase(Result, DebugDisplayCase);

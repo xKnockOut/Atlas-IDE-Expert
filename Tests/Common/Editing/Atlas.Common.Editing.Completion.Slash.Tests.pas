@@ -1,6 +1,6 @@
-﻿unit Atlas.Common.Lsp.Completion.Slash.Tests;
+﻿unit Atlas.Common.Editing.Completion.Slash.Tests;
 
-// Tests für Schnellbefehle nach "/" (#293 ff.) und Vorschläge in Compilerdirektiven (#102).
+// Tests für die Vervollständigung der Schnellbefehle nach "/" (#293 ff.).
 
 interface
 
@@ -9,7 +9,7 @@ uses
 
 type
   [TestFixture]
-  TCompletionSlashTests = class
+  TEditingSlashCompletionTests = class
   public
     /// <summary>"/" am Zeilenanfang listet die Befehle, abgeschaltete nicht.</summary>
     [Test]
@@ -20,12 +20,12 @@ type
     /// <summary>In einem Kommentar keine Befehle.</summary>
     [Test]
     procedure NothingInComment;
-    /// <summary>Direktivennamen mit Beschreibung.</summary>
+    /// <summary>Ohne Auskunft der Zeile darunter die Kennungen des Katalogs.</summary>
     [Test]
-    procedure DirectiveNamesWithText;
-    /// <summary>Bedingte Symbole des Compilers nach {$IFDEF .</summary>
+    procedure IgnoreFallsBackToCatalog;
+    /// <summary>Die Quelle antwortet allein; sind alle Befehle aus, geht es weiter.</summary>
     [Test]
-    procedure SymbolsAfterIfdef;
+    procedure SourceAnswersAlone;
   end;
 
 implementation
@@ -35,10 +35,10 @@ uses
   System.StrUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Completion.Request,
-  Atlas.Common.Lsp.Completion.Slash,
-  Atlas.Common.Completion.Contract;
+  Atlas.Common.Completion.Contract,
+  Atlas.Common.Completion.Answer,
+  Atlas.Common.Editing.Completion.Slash;
 
 const
   cUnit =
@@ -83,33 +83,33 @@ begin
     end;
 end;
 
-{ TCompletionSlashTests }
+{ TEditingSlashCompletionTests }
 
-procedure TCompletionSlashTests.ListsCommandsWithoutDisabled;
+procedure TEditingSlashCompletionTests.ListsCommandsWithoutDisabled;
 var
   mRequest: TCompletionRequest;
   mItems: TCompletionItems;
 begin
   mRequest := RequestFor('/');
   try
-    Assert.IsTrue(TCompletionSlash.SlashItems(mRequest, nil, nil, nil, mItems));
+    Assert.IsTrue(TEditingSlashCompletion.Items(mRequest, nil, nil, nil, mItems));
     Assert.IsTrue(MatchText('uses', Names(mItems)));
     Assert.IsTrue(MatchText('ignore', Names(mItems)));
-    Assert.IsTrue(TCompletionSlash.SlashItems(mRequest, ['uses'], nil, nil, mItems));
+    Assert.IsTrue(TEditingSlashCompletion.Items(mRequest, ['uses'], nil, nil, mItems));
     Assert.IsFalse(MatchText('uses', Names(mItems)));
   finally
     mRequest.Free;
   end;
 end;
 
-procedure TCompletionSlashTests.IgnoreOffersRulesBelow;
+procedure TEditingSlashCompletionTests.IgnoreOffersRulesBelow;
 var
   mRequest: TCompletionRequest;
   mItems: TCompletionItems;
 begin
   mRequest := RequestFor('/ignore ');
   try
-    Assert.IsTrue(TCompletionSlash.SlashItems(mRequest, nil, RulesBelow(), nil, mItems));
+    Assert.IsTrue(TEditingSlashCompletion.Items(mRequest, nil, RulesBelow(), nil, mItems));
     Assert.AreEqual('magic-number', string.Join(',', Names(mItems)));
     Assert.AreEqual('/ignore', mItems.Items[0].Detail);
   finally
@@ -117,71 +117,63 @@ begin
   end;
 end;
 
-procedure TCompletionSlashTests.NothingInComment;
+procedure TEditingSlashCompletionTests.NothingInComment;
 var
   mRequest: TCompletionRequest;
   mItems: TCompletionItems;
 begin
   mRequest := RequestFor('// /');
   try
-    Assert.IsFalse(TCompletionSlash.SlashItems(mRequest, nil, nil, nil, mItems));
+    Assert.IsFalse(TEditingSlashCompletion.Items(mRequest, nil, nil, nil, mItems));
   finally
     mRequest.Free;
   end;
 end;
 
-procedure TCompletionSlashTests.DirectiveNamesWithText;
+procedure TEditingSlashCompletionTests.IgnoreFallsBackToCatalog;
 var
   mRequest: TCompletionRequest;
   mItems: TCompletionItems;
-  mItem: TCompletionItem;
-  mFound: Boolean;
 begin
-  mRequest := RequestFor('{$DEFI');
+  mRequest := RequestFor('/ignore ');
   try
-    Assert.IsTrue(TCompletionSlash.DirectiveItems(mRequest, mItems));
-    mFound := False;
-    for mItem in mItems.Items do
-    begin
-      if mItem.Name = 'DEFINE' then
+    Assert.IsTrue(TEditingSlashCompletion.Items(mRequest, nil, nil,
+      function: TArray<string>
       begin
-        mFound := True;
-        Assert.AreNotEqual('', mItem.Detail, 'Beschreibung');
-      end;
-    end;
-    Assert.IsTrue(mFound, string.Join(',', Names(mItems)));
-  finally
-    mRequest.Free;
-  end;
-  mRequest := RequestFor('Wert := 1;');
-  try
-    Assert.IsFalse(TCompletionSlash.DirectiveItems(mRequest, mItems));
+        Result := ['empty-block'];
+      end, mItems));
+    Assert.AreEqual('empty-block', string.Join(',', Names(mItems)));
   finally
     mRequest.Free;
   end;
 end;
 
-procedure TCompletionSlashTests.SymbolsAfterIfdef;
+procedure TEditingSlashCompletionTests.SourceAnswersAlone;
 var
   mRequest: TCompletionRequest;
-  mItems: TCompletionItems;
-  mContext: TConditionalContext;
+  mAnswer: TCompletionAnswer;
+  mSource: TCompletionSource;
 begin
-  mContext := Default(TConditionalContext);
-  mContext.CompletionEnabled := True;
-  mRequest := RequestFor('{$IFDEF ');
+  mRequest := RequestFor('/');
+  mAnswer := TCompletionAnswer.Create;
   try
-    Assert.IsTrue(TCompletionSlash.SymbolItems(mRequest, mContext, mItems));
-    Assert.IsTrue(MatchText('MSWINDOWS', Names(mItems)), string.Join(',', Names(mItems)));
-    mContext.CompletionEnabled := False;
-    Assert.IsTrue(TCompletionSlash.SymbolItems(mRequest, mContext, mItems));
-    Assert.AreEqual(0, Integer(Length(mItems.Items)), 'abgeschaltet');
+    mSource := TEditingSlashCompletion.Source(nil, nil, nil);
+    Assert.AreEqual(Ord(TCompletionOutcome.Answered), Ord(mSource(mRequest, mAnswer)));
+    Assert.IsTrue(MatchText('uses', Names(mAnswer.Exclusive)));
+    mSource := TEditingSlashCompletion.Source(
+      function(const AUri: string; out ADisabled: TArray<string>): Boolean
+      begin
+        ADisabled := nil;
+        Result := False;
+      end, nil, nil);
+    Assert.AreEqual(Ord(TCompletionOutcome.Next), Ord(mSource(mRequest, mAnswer)));
   finally
+    mAnswer.Free;
     mRequest.Free;
   end;
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TCompletionSlashTests);
+  TDUnitX.RegisterTestFixture(TEditingSlashCompletionTests);
 
 end.

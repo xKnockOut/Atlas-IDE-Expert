@@ -213,7 +213,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Details.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Postfix.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.InheritedCalls.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Slash.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Directives.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.HiddenMembers.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.ProjectFrequency.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.TypeGuards.pas"/>
@@ -371,6 +371,7 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.PostfixTemplates.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.CaseCompletion.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.AssignFields.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeImports.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.RoutineBody.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ParamOwnership.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ObjectUses.pas"/>
@@ -422,6 +423,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CreateMethod.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Completion.CreateMethod.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Completion.ContextSnippets.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Completion.Slash.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameSuggestions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AccessorCreation.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ResourceStrings.pas"/>

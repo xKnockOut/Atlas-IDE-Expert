@@ -88,10 +88,10 @@ uses
   Atlas.Common.Completion.Contract,
   Atlas.Common.Editing.Completion.CreateMethod,
   Atlas.Common.Editing.Completion.ContextSnippets,
+  Atlas.Common.Editing.Completion.Slash,
   Atlas.Common.Pascal.LanguageFeatures,
   Rules.Contract.Api,
-  Rules.Providers.CatalogInfo,
-  Adapters.Lsp.RuleCatalog;
+  Rules.Providers.CatalogInfo;
 
 { TShellCompletion }
 
@@ -164,16 +164,26 @@ begin
   end;
 end;
 
+/// <summary>Kennungen des eingebauten Regelkatalogs für /ignore (#293).</summary>
+function CatalogIds(const ACatalog: IRuleCatalogInfo): TSlashCatalogIdsFunc;
+begin
+  Result :=
+    function: TArray<string>
+    begin
+      Result := ACatalog.RuleIds;
+    end;
+end;
+
 procedure TShellCompletion.WireCallbacks;
 var
   mCatalog: IRuleCatalogInfo;
 begin
   FCompletion.Hooks.MatchingFor := MatchingFor;
   FCompletion.Hooks.SettingsFor := FServices.CompletionSettingsFor;
-  FCompletion.Hooks.SlashCommandsFor := FServices.SlashCommandsFor;
-  FCompletion.Hooks.RuleIdsFor := FServices.RuleIdsFor;
+  // Schnellbefehle nach "/" (#293) samt Argumenten; /ignore mit den Regeln der Zeile darunter (#297).
   mCatalog := TRuleCatalogInfo.Create;
-  FCompletion.Hooks.RuleCatalog := TLspRuleCatalogAdapter.Wrap(mCatalog);
+  FCompletion.Sources.Add(TCompletionSlot.Slash, TEditingSlashCompletion.Source(FServices.SlashCommandsFor,
+    FServices.RuleIdsFor, CatalogIds(mCatalog)));
   FCompletion.Hooks.PostfixFor := PostfixOptionsFor;
   // with auflösen über Strg+Leer auf with (#50), abschaltbar mit refactoring.resolveWith.
   FCompletion.Hooks.WithFor := WithEdits;
