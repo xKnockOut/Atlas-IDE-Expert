@@ -39,6 +39,9 @@ type
     /// </summary>
     [Test]
     procedure SearchesPlaces;
+    /// <summary>Lokale Routinen der Projekt-Units mit Unit und umgebender Routine als containerName.</summary>
+    [Test]
+    procedure FindsLocalRoutinesOfProjectUnits;
   end;
 
 implementation
@@ -180,6 +183,29 @@ begin
     Assert.AreEqual('Kunden.TKunde', mContainer);
     Assert.AreEqual(TDocumentUris.FromPath('C:\P\Kunden.pas'), mUri);
     Assert.AreEqual(5, mLine);
+  finally
+    mJson.Free;
+  end;
+end;
+
+procedure TLspWorkspaceSymbolsTests.FindsLocalRoutinesOfProjectUnits;
+const
+  cLokal = 'unit Lokal;'#10'interface'#10'implementation'#10'procedure Lade;'#10'  procedure PruefeKunde; begin end;'#10 +
+    'begin'#10'  PruefeKunde;'#10'end;'#10'end.';
+var
+  mJson: TJSONArray;
+  mContainer: string;
+  mLine: Integer;
+begin
+  Assert.AreEqual('', Names('PruefeKunde'));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cLokal, 'C:\P\Lokal.pas', nil, nil, False, True));
+  mJson := TLspWorkspaceSymbols.ToJson(TLspWorkspaceSymbols.Search(FIndex, 'PruefeKunde', 10));
+  try
+    Assert.AreEqual(1, Integer(mJson.Count));
+    mContainer := mJson.Items[0].GetValue<string>('containerName');
+    mLine := mJson.Items[0].GetValue<Integer>('location.range.start.line');
+    Assert.AreEqual('Lokal.Lade', mContainer);
+    Assert.AreEqual(4, mLine);
   finally
     mJson.Free;
   end;

@@ -183,6 +183,11 @@ begin
       TTextChars.StringBytes(mSymbol.DeprecatedText) + ArrayBytes(mSymbol.InlineRefs) + ArrayBytes(mSymbol.Resolutions) + ArrayBytes(mSymbol.Rationale) +
       TTextChars.StringBytes(mSymbol.ParamOwnership));
   end;
+  for mSymbol in AUnit.LocalRoutines do
+  begin
+    Inc(Result, SizeOf(TIndexSymbol) + TTextChars.StringBytes(mSymbol.Name) +
+      TTextChars.StringBytes(mSymbol.Container));
+  end;
   Inc(Result, UsageBytes(AUnit));
 end;
 
@@ -194,6 +199,7 @@ var
 begin
   Result := AUnit;
   Result.Compact := True;
+  Result.LocalRoutines := nil;
   SetLength(mKept, Length(AUnit.Symbols));
   mCount := 0;
   for mSymbol in AUnit.Symbols do
