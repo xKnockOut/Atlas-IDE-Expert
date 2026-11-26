@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Unwrap;
+﻿unit Atlas.Common.Editing.Unwrap.Protocol;
 
 // „Umschließung entfernen“ über das Protokoll (#657): Befehl
 // atlas.server.unwrap [uri, position, Einrückungsbreite?] liefert die
@@ -20,10 +20,10 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.Unwrap,
-  Atlas.Common.Lsp.Refactorings;
+  Atlas.Common.Editing.Refactorings;
 
 type
-  TLspUnwrap = class
+  TUnwrapProtocol = class
   public const
     cCommand = 'atlas.server.unwrap';
   public
@@ -42,9 +42,9 @@ uses
   Atlas.Common.Editing.WithResolution,
   Atlas.Common.JsonRpc.Positions;
 
-{ TLspUnwrap }
+{ TUnwrapProtocol }
 
-class function TLspUnwrap.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
+class function TUnwrapProtocol.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; const AContext: TRefactoringContext; AIndentWidth: Integer): TJSONObject;
 var
   mOptions: TUnwrapOptions;
@@ -70,8 +70,8 @@ begin
       var
         Resolved: TWithResolved;
       begin
-        Result := TWithResolution.Resolve(mText, mTree, AWith, TLspRefactorings.WithLookup(mResolver, mTree,
-          mContext.FileName), TLspRefactorings.ExtractOptions(mContext), Resolved);
+        Result := TWithResolution.Resolve(mText, mTree, AWith, TEditingRefactorings.WithLookup(mResolver, mTree,
+          mContext.FileName), TEditingRefactorings.ExtractOptions(mContext), Resolved);
         AEdits := Resolved.Action.Edits;
         AReason := Resolved.Reason;
       end;
@@ -79,7 +79,7 @@ begin
   Result := ToJson(TUnwrap.Candidates(AText, ATree, APosition, mOptions));
 end;
 
-class function TLspUnwrap.ToJson(const ACandidates: TArray<TUnwrapCandidate>): TJSONObject;
+class function TUnwrapProtocol.ToJson(const ACandidates: TArray<TUnwrapCandidate>): TJSONObject;
 var
   mCandidates, mVariants: TJSONArray;
   mCandidate: TUnwrapCandidate;
