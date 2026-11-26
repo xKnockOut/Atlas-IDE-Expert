@@ -418,7 +418,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Inlining.Method.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.WithResolution.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CreateMethod.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.NameSuggestions.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameSuggestions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AccessorCreation.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ResourceStrings.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ResourceStringCommands.pas"/>

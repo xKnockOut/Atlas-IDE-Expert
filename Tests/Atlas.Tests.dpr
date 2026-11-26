@@ -3200,7 +3200,7 @@ uses
   Atlas.Common.Editing.Inlining.Method.Tests in 'Common\Editing\Atlas.Common.Editing.Inlining.Method.Tests.pas',
   Atlas.Common.Editing.WithResolution.Tests in 'Common\Editing\Atlas.Common.Editing.WithResolution.Tests.pas',
   Atlas.Common.Editing.CreateMethod.Tests in 'Common\Editing\Atlas.Common.Editing.CreateMethod.Tests.pas',
-  Atlas.Common.Editing.NameSuggestions.Tests in 'Common\Editing\Atlas.Common.Editing.NameSuggestions.Tests.pas',
+  Atlas.Common.Semantics.NameSuggestions.Tests in 'Common\Semantics\Atlas.Common.Semantics.NameSuggestions.Tests.pas',
   Atlas.Common.Editing.AccessorCreation.Tests in 'Common\Editing\Atlas.Common.Editing.AccessorCreation.Tests.pas',
   Atlas.Common.Pascal.ResourceStrings.Tests in 'Common\Pascal\Atlas.Common.Pascal.ResourceStrings.Tests.pas',
   Atlas.Common.Lsp.ResourceStringCommands.Tests in 'Common\Lsp\Atlas.Common.Lsp.ResourceStringCommands.Tests.pas',

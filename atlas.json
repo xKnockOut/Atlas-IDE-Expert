@@ -1,4 +1,4 @@
-{
+﻿{
   "project": "Tests/Atlas.Tests.dproj",
   "minDelphiVersion": "23.0",
   "exclude": ["Output/**", "Tools/Linux/Compat/**", "Tests/Compilermeldungen/Faelle/**", "Tests/DccFaelle/**",
@@ -130,7 +130,6 @@
         "Atlas.Common.Lsp.Completion.Lists -> Atlas.Common.Editing.ContextSnippets",
         "Atlas.Common.Lsp.Completion.Lists -> Atlas.Common.Editing.Contract",
         "Atlas.Common.Lsp.Completion.Methods -> Atlas.Common.Editing.ClassCompletion",
-        "Atlas.Common.Lsp.Completion.Names -> Atlas.Common.Editing.NameSuggestions",
         "Atlas.Common.Lsp.Completion.Postfix -> Atlas.Common.Editing.CommandSource",
         "Atlas.Common.Lsp.Completion.Postfix -> Atlas.Common.Editing.Contract",
         "Atlas.Common.Lsp.Completion.Postfix -> Atlas.Common.Editing.PostfixTemplates",
@@ -141,7 +140,6 @@
         "Atlas.Common.Lsp.Completion.Values -> Atlas.Common.Editing.CommandSource",
         "Atlas.Common.Lsp.Completion.Values -> Atlas.Common.Editing.Contract",
         "Atlas.Common.Lsp.Completion.Values -> Atlas.Common.Editing.DeclareUnknown",
-        "Atlas.Common.Lsp.CompletionAnonymous -> Atlas.Common.Editing.NameSuggestions",
         "Atlas.Common.Lsp.DocumentSymbols -> Atlas.Common.Editing.ClassCompletion",
         "Atlas.Common.Lsp.Formatting -> Atlas.Common.Editing.Contract",
         "Atlas.Common.Lsp.Formatting -> Atlas.Common.Editing.EditorConfig",

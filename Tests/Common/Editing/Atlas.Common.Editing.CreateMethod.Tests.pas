@@ -155,12 +155,6 @@ begin
   finally
     mTree.Free;
   end;
-  Assert.AreEqual('Customer', TCreateMethod.NameFromType('TCustomer'));
-  Assert.AreEqual('Exporter', TCreateMethod.NameFromType('IExporter'));
-  Assert.AreEqual('List', TCreateMethod.NameFromType('System.Generics.Collections.TList<TKunde>'));
-  Assert.AreEqual('Text', TCreateMethod.NameFromType('string'));
-  Assert.AreEqual('Value', TCreateMethod.NameFromType('Integer'));
-  Assert.AreEqual('Value', TCreateMethod.NameFromType(TCreateMethod.cTypePlaceholder));
   mUnique := TCreateMethod.UniqueNames(['Value', 'Value', 'Rate', 'value']);
   Assert.AreEqual('Value,Value2,Rate,value3', mUnique[0] + ',' + mUnique[1] + ',' + mUnique[2] + ',' + mUnique[3]);
 end;

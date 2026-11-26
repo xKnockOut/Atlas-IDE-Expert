@@ -141,7 +141,7 @@ Atlas.Common.Editing.MethodWithoutSelf.Analysis.Tests
 Atlas.Common.Editing.MethodWithoutSelf.Tests
 Atlas.Common.Editing.Modernizer.Tests
 Atlas.Common.Editing.MoveClass.Tests
-Atlas.Common.Editing.NameSuggestions.Tests
+Atlas.Common.Semantics.NameSuggestions.Tests
 Atlas.Common.Editing.NestedRoutines.Tests
 Atlas.Common.Editing.Overloads.Tests
 Atlas.Common.Editing.PostfixTemplates.Tests
