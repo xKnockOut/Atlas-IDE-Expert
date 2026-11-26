@@ -12,7 +12,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.ClassActions.Contract;
+  Atlas.Common.ClassActions.Contract,
+  Atlas.Common.Semantics.Contract;
 
 type
   /// <summary>Klassen-Aktionen als Korrektur: Methode überschreiben, Interface implementieren, Feld oder
@@ -125,66 +126,24 @@ type
       const ARequest: TCheckMethodOrderRequest): TCheckMethodOrderReview;
   end;
 
-  /// <summary>Methode ohne Gegenstück: deklariert ohne Rumpf oder Rumpf ohne Deklaration.</summary>
-  TCheckUnmatchedMethod = record
-    /// <summary>Typ, ggf. mit umgebendem Typ (TAussen.TInnen).</summary>
-    TypeName: string;
-    Symbol: TIndexSymbol;
-    /// <summary>True: deklariert, aber ohne Rumpf; False: Rumpf ohne Deklaration.</summary>
-    Declared: Boolean;
-    /// <summary>Kopf ohne ";", z. B. "procedure TFoo.Bar(A: Integer)" beim Rumpf.</summary>
-    Header: string;
-  end;
-
-  /// <summary>Ein Parameter eines Methodenkopfs.</summary>
-  TCheckShapeParameter = record
-    /// <summary>const, var, out, constref oder '' (Kleinbuchstaben).</summary>
-    Modifier: string;
-    Name: string;
-    /// <summary>Typ wie geschrieben; '' bei untypisierten Parametern.</summary>
-    TypeName: string;
-  end;
-
-  /// <summary>Zerlegter Kopf einer Methode.</summary>
-  TCheckSignatureShape = record
-    /// <summary>procedure, function, constructor, destructor oder operator.</summary>
-    Kind: string;
-    Parameters: TArray<TCheckShapeParameter>;
-    /// <summary>Ergebnistyp wie geschrieben; '' ohne.</summary>
-    ResultType: string;
-    /// <summary>Aufrufkonvention in Kleinbuchstaben (stdcall, cdecl …); '' ohne Angabe.</summary>
-    Convention: string;
-    ConventionRange: TTextRange;
-    /// <summary>Im Kopf steht bedingte Übersetzung ({$IFDEF} …); welche Parameter gelten, ist offen.</summary>
-    Conditional: Boolean;
-  end;
-
-  /// <summary>Deklaration und Rumpf gleichen Namens, deren Köpfe voneinander abweichen.</summary>
-  TCheckSignaturePair = record
-    Declaration: TCheckUnmatchedMethod;
-    Body: TCheckUnmatchedMethod;
-    DeclarationShape: TCheckSignatureShape;
-    BodyShape: TCheckSignatureShape;
-  end;
-
   /// <summary>Zuordnung von Deklarationen und Rümpfen einer Unit samt Korrekturen; gilt, solange der Baum der
   /// Regel lebt.</summary>
   ICheckClassCompletionScan = interface
     ['{C6B1F526-0F6F-4DF6-8C8C-77173F34C13F}']
     /// <summary>Deklarierte Methoden ohne Rumpf und Rümpfe ohne Deklaration.</summary>
-    function Unmatched: TArray<TCheckUnmatchedMethod>;
+    function Unmatched: TArray<TUnmatchedMethod>;
     /// <summary>Deklaration und Rumpf gleichen Namens mit abweichendem Kopf.</summary>
-    function Pairs: TArray<TCheckSignaturePair>;
+    function Pairs: TArray<TSignaturePair>;
     /// <summary>Gehört AMethod zu einem der Paare?</summary>
-    function InPair(const AMethod: TCheckUnmatchedMethod): Boolean;
+    function InPair(const AMethod: TUnmatchedMethod): Boolean;
     /// <summary>Zerlegter Kopf der Methode ASymbol; False, wenn er sich nicht lesen lässt.</summary>
-    function Shape(const ASymbol: TIndexSymbol; out AShape: TCheckSignatureShape): Boolean;
+    function Shape(const ASymbol: TIndexSymbol; out AShape: TSignatureShape): Boolean;
     /// <summary>Leere Rümpfe für die fehlenden Methoden an APosition.</summary>
     function MissingBodies(const APosition: TTextPosition; out AAction: TCodeAction): Boolean;
     /// <summary>Fehlende Deklaration für den Rumpf AMethod.</summary>
-    function AddDeclaration(const AMethod: TCheckUnmatchedMethod; out AEdit: TTextEdit): Boolean;
+    function AddDeclaration(const AMethod: TUnmatchedMethod; out AEdit: TTextEdit): Boolean;
     /// <summary>Rumpf und Deklaration von APair in beide Richtungen angleichen.</summary>
-    function PairFixes(const APair: TCheckSignaturePair; out AFixes: TArray<TCodeAction>): Boolean;
+    function PairFixes(const APair: TSignaturePair; out AFixes: TArray<TCodeAction>): Boolean;
   end;
 
   /// <summary>Klassenvervollständigung für die Regeln zu Deklarationen.</summary>

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ClassBodies.Tests;
+﻿unit Atlas.Common.Semantics.ClassBodies.Tests;
 
 // Rümpfe einer Klasse (#1834): Gestalt aus der Deklaration, Rang beim Ordnen
 // (#1836), Vorbefüllung (#1837) und Kommentar um die Rümpfe (#1835).
@@ -35,7 +35,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.TypeComments,
-  Atlas.Common.Editing.ClassBodies;
+  Atlas.Common.Semantics.ClassBodies;
 
 const
   cQuelle =

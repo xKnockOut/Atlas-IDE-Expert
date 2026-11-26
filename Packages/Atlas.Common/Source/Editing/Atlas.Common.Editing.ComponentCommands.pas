@@ -32,7 +32,7 @@ uses
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ComponentRoots,
-  Atlas.Common.Editing.ClassCompletion,
+  Atlas.Common.Semantics.ClassCompletion,
   Atlas.Common.Editing.ClassCommands,
   Atlas.Text.Lines,
   Atlas.Common.Editing.ClassMembers,

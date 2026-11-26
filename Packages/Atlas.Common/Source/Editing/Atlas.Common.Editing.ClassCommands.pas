@@ -20,6 +20,8 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Semantics.ClassBodies,
   Atlas.Common.Editing.Contract;
 
 /// <summary>Trägt die Klassenbefehle über ARegister ein.</summary>
@@ -44,6 +46,10 @@ function CtorFields(const AContext: TSlashContext): TArray<string>;
 function OverrideCandidates(const AContext: TSlashContext): TArray<string>;
 /// <summary>Botschaften der Tabelle, z. B. WM_SIZE (#719).</summary>
 function MessageNames: TArray<string>;
+/// <summary>Optionen der Rümpfe aus den Einstellungen der Schnellbefehle (TSlashSettings); AHost nil: Vorgaben mit
+/// AStyle.</summary>
+function ClassBodyOptionsOf(const AHost: ISlashHost; const AUri: string; const AStyle: TFormatStyle):
+  TClassBodyOptions;
 
 implementation
 
@@ -60,9 +66,8 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.InterfaceStubs,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.ClassBodies,
   Atlas.Common.Pascal.TypeComments,
-  Atlas.Common.Editing.ClassCompletion,
+  Atlas.Common.Semantics.ClassCompletion,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Localization.Texts,
@@ -164,6 +169,22 @@ const
     (Name: 'CN_COMMAND'; Method: 'CNCommand'; RecordType: 'TWMCommand'),
     (Name: 'CN_NOTIFY'; Method: 'CNNotify'; RecordType: 'TWMNotify'),
     (Name: 'CN_KEYDOWN'; Method: 'CNKeyDown'; RecordType: 'TWMKeyDown'));
+
+function ClassBodyOptionsOf(const AHost: ISlashHost; const AUri: string; const AStyle: TFormatStyle):
+  TClassBodyOptions;
+var
+  mSettings: TClassCompletionSettings;
+begin
+  mSettings := TClassCompletionSettings.Default;
+  if AHost <> nil then
+  begin
+    mSettings.TypeComment := AHost.Setting(AUri, TSlashSettings.cTypeComment);
+    mSettings.BodyStubs := not SameText(AHost.Setting(AUri, TSlashSettings.cBodyStubs), 'false');
+    mSettings.LifecycleFirst := not SameText(AHost.Setting(AUri, TSlashSettings.cLifecycleFirst), 'false');
+    mSettings.BlankLines := not SameText(AHost.Setting(AUri, TSlashSettings.cBlankLines), 'false');
+  end;
+  Result := TClassBodyOptions.FromSettings(mSettings, AStyle);
+end;
 
 function MessageMethodName(const AMessage: string): string;
 var
@@ -348,7 +369,7 @@ begin
     // Kommentar, Reihenfolge und Vorbefüllung nach classCompletion.* (#1834).
     if not TClassCompletion.MissingBodies(mSource.Tree, mSource.Text,
       TTextPosition.Create(mClassSymbol.SelectionRange.StartPos.Line, 0),
-      TClassBodyOptions.FromHost(AContext.Host, AContext.Uri, AContext.Style), mAction) then
+      ClassBodyOptionsOf(AContext.Host, AContext.Uri, AContext.Style), mAction) then
     begin
       Exit(Fail(cTexts[TClassCommandsText.AllMethodsOfHaveA].Fmt([mClassSymbol.Name]), AReason));
     end;

@@ -50,8 +50,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Editing.ClassBodies,
-  Atlas.Common.Editing.ClassCompletion,
+  Atlas.Common.Semantics.ClassBodies,
+  Atlas.Common.Semantics.ClassCompletion,
   Atlas.Common.Editing.MethodOrder,
   Atlas.Common.Pascal.BodySpacing;
 

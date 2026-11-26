@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ClassCompletion;
+﻿unit Atlas.Common.Semantics.ClassCompletion;
 
 // Klassenvervollständigung (#42), wie Strg+Umschalt+C in der IDE: Zu Methoden,
 // die im Typ deklariert, aber nicht implementiert sind, erzeugt eine
@@ -41,17 +41,11 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.Contract.ClassCompletion,
-  Atlas.Common.Editing.ClassBodies,
-  Atlas.Common.Editing.MethodMatching;
+  Atlas.Common.Semantics.Contract,
+  Atlas.Common.Semantics.ClassBodies,
+  Atlas.Common.Semantics.MethodMatching;
 
 type
-  /// <summary>Liegen im Contract (Atlas.Common.Editing.Contract.ClassCompletion).</summary>
-  TUnmatchedMethod = TEditingUnmatchedMethod;
-  TShapeParameter = TEditingShapeParameter;
-  TSignatureShape = TEditingSignatureShape;
-  TSignaturePair = TEditingSignaturePair;
-
   /// <summary>Deklarierte Methode eines Typs mit ihrem Rumpf (#660).</summary>
   TDeclaredMethod = record
     /// <summary>Typ, ggf. mit umgebendem Typ (TAussen.TInnen).</summary>
@@ -1793,6 +1787,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.ClassCompletion', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.ClassCompletion', cTexts);
 
 end.

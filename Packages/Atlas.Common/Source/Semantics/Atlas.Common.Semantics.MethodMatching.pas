@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.MethodMatching;
+﻿unit Atlas.Common.Semantics.MethodMatching;
 
 // Zuordnung von Methodendeklarationen und Rümpfen einer Datei (#42, #660) für
 // TClassCompletion: je Typ die deklarierten Methoden, die Rümpfe und welcher

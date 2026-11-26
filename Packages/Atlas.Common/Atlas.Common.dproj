@@ -329,8 +329,8 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodOrder.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TypeComments.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TypeTexts.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassBodies.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodMatching.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ClassBodies.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.MethodMatching.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.BodySpacing.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.OverrideMarks.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InterfaceMethods.pas"/>
@@ -538,7 +538,7 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Ancestry.pas"/>
         <DCCReference Include="Source\History\Atlas.Common.History.ChangedFiles.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.DeclaredTypes.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassCompletion.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ClassCompletion.pas"/>
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.Contract.pas"/>
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.Parser.pas"/>
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.Navigation.pas"/>

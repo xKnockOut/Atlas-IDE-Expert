@@ -123,7 +123,7 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.RoutineBody,
-  Atlas.Common.Editing.ClassCompletion,
+  Atlas.Common.Semantics.ClassCompletion,
   Atlas.Common.Pascal.TypeTexts;
 
 /// <summary>Vor diesem Token beginnt eine Anweisung.</summary>

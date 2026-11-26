@@ -71,7 +71,7 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Common.Editing.ClassCompletion,
+  Atlas.Common.Semantics.ClassCompletion,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Lsp.FormFiles,
@@ -82,7 +82,8 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.SyntaxNodes;
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Common.Semantics.Contract;
 
 {$SCOPEDENUMS ON}
 

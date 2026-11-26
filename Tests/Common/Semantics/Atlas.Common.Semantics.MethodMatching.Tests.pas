@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.MethodMatching.Tests;
+﻿unit Atlas.Common.Semantics.MethodMatching.Tests;
 
 interface
 
@@ -32,7 +32,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Extractor,
   Atlas.Text.Lines,
-  Atlas.Common.Editing.MethodMatching;
+  Atlas.Common.Semantics.MethodMatching;
 
 /// <summary>Zuordnung für AText; der Aufrufer gibt sie frei.</summary>
 function MatchingOf(const AText: string): TMethodMatching;

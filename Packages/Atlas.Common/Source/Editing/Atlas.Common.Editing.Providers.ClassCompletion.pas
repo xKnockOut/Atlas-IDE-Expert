@@ -25,8 +25,9 @@ uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeHandles,
-  Atlas.Common.Editing.ClassBodies,
-  Atlas.Common.Editing.ClassCompletion;
+  Atlas.Common.Semantics.ClassBodies,
+  Atlas.Common.Semantics.ClassCompletion,
+  Atlas.Common.Semantics.Contract;
 
 type
   /// <summary>Zuordnung einer Unit samt Optionen für neue Rümpfe.</summary>
@@ -40,13 +41,13 @@ type
     constructor Create(ATree: TSyntaxTree; const AText: string; const AUnit: TUnitIndex;
       const AOptions: TClassBodyOptions);
     destructor Destroy; override;
-    function Unmatched: TArray<TEditingUnmatchedMethod>;
-    function Pairs: TArray<TEditingSignaturePair>;
-    function InPair(const AMethod: TEditingUnmatchedMethod): Boolean;
-    function Shape(const ASymbol: TIndexSymbol; out AShape: TEditingSignatureShape): Boolean;
+    function Unmatched: TArray<TUnmatchedMethod>;
+    function Pairs: TArray<TSignaturePair>;
+    function InPair(const AMethod: TUnmatchedMethod): Boolean;
+    function Shape(const ASymbol: TIndexSymbol; out AShape: TSignatureShape): Boolean;
     function MissingBodies(const APosition: TTextPosition; out AAction: TCodeAction): Boolean;
-    function AddDeclaration(const AMethod: TEditingUnmatchedMethod; out AEdit: TTextEdit): Boolean;
-    function PairFixes(const APair: TEditingSignaturePair; out AFixes: TArray<TCodeAction>): Boolean;
+    function AddDeclaration(const AMethod: TUnmatchedMethod; out AEdit: TTextEdit): Boolean;
+    function PairFixes(const APair: TSignaturePair; out AFixes: TArray<TCodeAction>): Boolean;
   end;
 
 { TEditingClassCompletionScan }
@@ -67,22 +68,22 @@ begin
   inherited Destroy;
 end;
 
-function TEditingClassCompletionScan.Unmatched: TArray<TEditingUnmatchedMethod>;
+function TEditingClassCompletionScan.Unmatched: TArray<TUnmatchedMethod>;
 begin
   Result := FScan.Unmatched;
 end;
 
-function TEditingClassCompletionScan.Pairs: TArray<TEditingSignaturePair>;
+function TEditingClassCompletionScan.Pairs: TArray<TSignaturePair>;
 begin
   Result := FScan.Pairs;
 end;
 
-function TEditingClassCompletionScan.InPair(const AMethod: TEditingUnmatchedMethod): Boolean;
+function TEditingClassCompletionScan.InPair(const AMethod: TUnmatchedMethod): Boolean;
 begin
   Result := FScan.InPair(AMethod);
 end;
 
-function TEditingClassCompletionScan.Shape(const ASymbol: TIndexSymbol; out AShape: TEditingSignatureShape): Boolean;
+function TEditingClassCompletionScan.Shape(const ASymbol: TIndexSymbol; out AShape: TSignatureShape): Boolean;
 begin
   Result := FScan.Shape(ASymbol, AShape);
 end;
@@ -92,13 +93,13 @@ begin
   Result := FScan.MissingBodies(APosition, FOptions, AAction);
 end;
 
-function TEditingClassCompletionScan.AddDeclaration(const AMethod: TEditingUnmatchedMethod;
+function TEditingClassCompletionScan.AddDeclaration(const AMethod: TUnmatchedMethod;
   out AEdit: TTextEdit): Boolean;
 begin
   Result := FScan.AddDeclaration(AMethod, AEdit);
 end;
 
-function TEditingClassCompletionScan.PairFixes(const APair: TEditingSignaturePair;
+function TEditingClassCompletionScan.PairFixes(const APair: TSignaturePair;
   out AFixes: TArray<TCodeAction>): Boolean;
 begin
   Result := TClassCompletion.PairFixes(FTree, FText, APair, AFixes);

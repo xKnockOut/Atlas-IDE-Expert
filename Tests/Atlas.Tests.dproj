@@ -179,10 +179,10 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Reassigned.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Commands.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ExpressionType.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.MethodMatching.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.MethodMatching.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MethodOrder.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TypeComments.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassBodies.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ClassBodies.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.BodySpacing.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MethodOrder.Protocol.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.SuggestConst.Tests.pas"/>
@@ -834,7 +834,7 @@
         <DCCReference Include="Application\Features\Rules\Builtin\Rules.Builtin.DataBinding.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Builtin\Rules.Builtin.DfmProperties.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Builtin\Rules.Builtin.SavedQueries.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassCompletion.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ClassCompletion.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.ComponentRename.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.FormModel.Tests.pas"/>

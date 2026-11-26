@@ -60,7 +60,7 @@ uses
   Atlas.Common.Editing.AccessorCreation,
   Atlas.Common.Pascal.ResourceStrings,
   Atlas.Common.Editing.ContextSnippets,
-  Atlas.Common.Editing.ClassCompletion,
+  Atlas.Common.Semantics.ClassCompletion,
   Atlas.Common.Pascal.InterfaceStubs,
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Lsp.CompletionCollector,
