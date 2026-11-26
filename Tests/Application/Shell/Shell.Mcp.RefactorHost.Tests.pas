@@ -3,7 +3,7 @@
 // Werkzeug refactor im MCP-Modus (#2150) mit den echten Code-Aktionen und Befehlen des Servers: Jede Art steht in
 // der Liste ihrer Stelle und liefert eine Vorschau, ohne zu schreiben; dryRun=false schreibt und legt neue Units an.
 // moveClass ist experimentell (experimental.enabled nur in den Benutzereinstellungen) und fehlt hier; die Auswahl
-// und Argumente prüft Atlas.Common.Mcp.RefactorTools.Tests mit einem Server-Ersatz.
+// und Argumente prüft Mcp.RefactorTools.Tests mit einem Server-Ersatz.
 
 interface
 
@@ -32,11 +32,11 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Mcp.Server,
-  Core.Mcp.Context,
+  Mcp.Server,
+  Mcp.Tools.Context,
   Shell.Mcp.Services,
   Shell.Mcp.RefactorSources,
-  Core.Mcp.EditingTools;
+  Mcp.Tools.Editing;
 
 const
   cUnit = 'Probe.Kunden.pas';

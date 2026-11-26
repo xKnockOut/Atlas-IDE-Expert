@@ -10,8 +10,8 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Semantics.Impact,
-  Atlas.Common.Mcp.Contract.AffectedTests,
-  Atlas.Common.Mcp.Contract.Workspace,
+  Mcp.Contract.AffectedTests,
+  Mcp.Contract.Workspace,
   Core.VersionControlChanges;
 
 type

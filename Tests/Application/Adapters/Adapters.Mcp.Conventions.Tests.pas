@@ -23,7 +23,7 @@ implementation
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Mcp.Contract.Conventions,
+  Mcp.Contract.Conventions,
   Rules.Contract.Api,
   Adapters.Mcp.Conventions;
 

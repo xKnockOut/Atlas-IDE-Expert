@@ -1,0 +1,229 @@
+﻿unit Mcp.IdeEdits;
+
+// Schreibende MCP-Werkzeuge bei laufender IDE (#397): Ist eine Datei in einer
+// IDE mit Atlas-Plugin offen, schreibt der MCP-Server sie nicht auf die
+// Platte, sondern schickt die Änderung an den Eingang des Plugins
+// (Protokoll: Atlas.Core.Assistants.EditInbox im Plugin):
+//   1. <id>.json.tmp schreiben und in <id>.json umbenennen,
+//   2. auf <id>.result.json warten,
+//   3. nach dem Zeitlimit <id>.json löschen: Gelingt das, hat das Plugin den
+//      Auftrag nie gesehen, und der MCP-Server schreibt selbst. Sonst hat das
+//      Plugin ihn übernommen; dann wartet er länger auf das Ergebnis.
+// Welche Dateien offen sind, steht unter "open" in editor-dirty-<pid>.json.
+// Zurückhalten (#2605): Mit Hold bittet der MCP-Server darum, eine Änderung an einer ungespeichert geänderten Datei
+// nicht abzulehnen, sondern in der IDE warten zu lassen, bis der Benutzer entscheidet. Das Plugin antwortet dann
+// sofort mit "held"; der MCP-Server schreibt die Datei in diesem Fall nie selbst.
+
+interface
+
+{$SCOPEDENUMS ON}
+
+uses
+  System.SysUtils;
+
+type
+  TMcpIdeEditOutcome = (Applied, WriteYourself, Failed, Held);
+
+  /// <summary>Änderung einer Datei: erwarteter Inhalt des Puffers und neuer Text.</summary>
+  TMcpIdeEdit = record
+    FileName: string;
+    Expected: string;
+    Text: string;
+    /// <summary>Bei ungespeicherten Änderungen im Editor zurückhalten statt ablehnen (#2605).</summary>
+    Hold: Boolean;
+    class function Make(const AFileName, AExpected, AText: string): TMcpIdeEdit; static;
+  end;
+
+  TMcpIdeEdits = class
+  public const
+    cAnswerMs = 3000;
+    cTakenMs = 30000;
+    /// <summary>Takt, in dem der Aufrufer von Send auf Antwort- und Übernahmedatei prüft.</summary>
+    cPollMs = 50;
+  public
+    /// <summary>Eingang des IDE-Prozesses APid unter ABase (%LOCALAPPDATA%\Atlas).</summary>
+    class function InboxOf(const ABase: string; APid: Cardinal): string; static;
+    /// <summary>
+    /// Schickt die Änderung AEdit (von Expected zu Text) an den Eingang AInbox und wartet auf das Plugin.
+    /// AWait schläft kurz (Tests: übernimmt die Rolle des Plugins); AClock liefert Millisekunden.
+    /// WriteYourself: Das Plugin hat den Auftrag nicht angenommen oder die Datei ist nicht mehr offen.
+    /// Failed: abgelehnt (AReason), etwa weil der Puffer inzwischen geändert wurde.
+    /// Held: Die Änderung wartet in der IDE auf den Benutzer (nur mit AEdit.Hold); nicht selbst schreiben.
+    /// </summary>
+    class function Send(const AInbox: string; const AEdit: TMcpIdeEdit; const AWait: TProc;
+      const AClock: TFunc<Int64>; out AReason: string): TMcpIdeEditOutcome; static;
+  end;
+
+implementation
+
+uses
+  System.IOUtils,
+  System.JSON,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TIdeEditsText = (AnswerOfTheIDENot, TheIDEAcceptedTheChange);
+
+const
+  cTexts: array[TIdeEditsText] of TAtlasText = (
+    (De: 'Antwort der IDE nicht lesbar.'; En: 'Answer of the IDE not readable.'),
+    (De: 'Die IDE hat die Änderung angenommen, aber nicht bestätigt.';
+     En: 'The IDE accepted the change but did not confirm it.'));
+
+{ TMcpIdeEdits }
+
+class function TMcpIdeEdits.InboxOf(const ABase: string; APid: Cardinal): string;
+begin
+  Result := TPath.Combine(TPath.Combine(ABase, 'ide-edits'), IntToStr(APid));
+end;
+
+type
+  /// <summary>Antwort des Plugins.</summary>
+  TIdeEditAnswer = record
+    Applied: Boolean;
+    NotOpen: Boolean;
+    Held: Boolean;
+    Reason: string;
+  end;
+
+function ReadAnswer(const AFileName: string; out AAnswer: TIdeEditAnswer): Boolean;
+var
+  mText: string;
+  mJson: TJSONValue;
+begin
+  AAnswer := Default(TIdeEditAnswer);
+  try
+    mText := TFile.ReadAllText(AFileName, TEncoding.UTF8);
+  except
+    // lsp-ignore: catch-all-without-raise -- Austauschdatei mit der IDE nach Kräften
+    on Exception do
+      Exit(False);
+  end;
+  mJson := TJSONObject.ParseJSONValue(mText);
+  try
+    Result := mJson is TJSONObject;
+    if Result then
+    begin
+      AAnswer.Applied := TJSONObject(mJson).GetValue<Boolean>('applied', False);
+      AAnswer.NotOpen := TJSONObject(mJson).GetValue<Boolean>('notOpen', False);
+      AAnswer.Held := TJSONObject(mJson).GetValue<Boolean>('held', False);
+      AAnswer.Reason := TJSONObject(mJson).GetValue<string>('reason', '');
+    end;
+  finally
+    mJson.Free;
+  end;
+  try
+    TFile.Delete(AFileName);
+  except
+    // lsp-ignore: catch-all-without-raise -- Austauschdatei mit der IDE nach Kräften
+    on Exception do
+      ;
+  end;
+end;
+
+{ TMcpIdeEdit }
+
+class function TMcpIdeEdit.Make(const AFileName, AExpected, AText: string): TMcpIdeEdit;
+begin
+  Result.FileName := AFileName;
+  Result.Expected := AExpected;
+  Result.Text := AText;
+  Result.Hold := False;
+end;
+
+function RequestText(const AEdit: TMcpIdeEdit): string;
+var
+  mJson: TJSONObject;
+begin
+  mJson := TJSONObject.Create;
+  try
+    mJson.AddPair('file', AEdit.FileName);
+    mJson.AddPair('expected', AEdit.Expected);
+    mJson.AddPair('text', AEdit.Text);
+    if AEdit.Hold then
+    begin
+      mJson.AddPair('hold', TJSONBool.Create(True));
+    end;
+    Result := mJson.ToJSON;
+  finally
+    mJson.Free;
+  end;
+end;
+
+/// <summary>Wartet höchstens AMs Millisekunden auf AAnswer; True, wenn sie da ist.</summary>
+function AwaitAnswer(const AAnswer: string; AMs: Int64; const AWait: TProc; const AClock: TFunc<Int64>): Boolean;
+var
+  mStarted: Int64;
+begin
+  mStarted := AClock();
+  while (AClock() - mStarted < AMs) and not FileExists(AAnswer) do
+  begin
+    AWait();
+  end;
+  Result := FileExists(AAnswer);
+end;
+
+/// <summary>Ergebnis aus der Antwortdatei des Plugins.</summary>
+function OutcomeOf(const AAnswer: string; out AReason: string): TMcpIdeEditOutcome;
+var
+  mAnswer: TIdeEditAnswer;
+begin
+  AReason := '';
+  if not ReadAnswer(AAnswer, mAnswer) then
+  begin
+    AReason := cTexts[TIdeEditsText.AnswerOfTheIDENot].Text;
+    Exit(TMcpIdeEditOutcome.Failed);
+  end;
+  AReason := mAnswer.Reason;
+  if mAnswer.Applied then
+  begin
+    Result := TMcpIdeEditOutcome.Applied;
+  end
+  else if mAnswer.Held then
+  begin
+    Result := TMcpIdeEditOutcome.Held;
+  end
+  else if mAnswer.NotOpen then
+  begin
+    Result := TMcpIdeEditOutcome.WriteYourself;
+  end
+  else
+  begin
+    Result := TMcpIdeEditOutcome.Failed;
+  end;
+end;
+
+class function TMcpIdeEdits.Send(const AInbox: string; const AEdit: TMcpIdeEdit; const AWait: TProc;
+  const AClock: TFunc<Int64>; out AReason: string): TMcpIdeEditOutcome;
+var
+  mId, mRequest, mAnswer: string;
+begin
+  AReason := '';
+  mId := TGUID.NewGuid.ToString.Replace('{', '').Replace('}', '');
+  mRequest := TPath.Combine(AInbox, mId + '.json');
+  mAnswer := TPath.Combine(AInbox, mId + '.result.json');
+  ForceDirectories(AInbox);
+  TFile.WriteAllText(mRequest + '.tmp', RequestText(AEdit), TEncoding.UTF8);
+  TFile.Move(mRequest + '.tmp', mRequest);
+  if not AwaitAnswer(mAnswer, cAnswerMs, AWait, AClock) then
+  begin
+    // Nicht übernommen: zurückziehen und selbst schreiben.
+    if DeleteFile(mRequest) then
+    begin
+      Exit(TMcpIdeEditOutcome.WriteYourself);
+    end;
+    // Übernommen, aber noch nicht fertig.
+    if not AwaitAnswer(mAnswer, cTakenMs, AWait, AClock) then
+    begin
+      AReason := cTexts[TIdeEditsText.TheIDEAcceptedTheChange].Text;
+      Exit(TMcpIdeEditOutcome.Failed);
+    end;
+  end;
+  Result := OutcomeOf(mAnswer, AReason);
+end;
+
+initialization
+  TAtlasTextTables.Add('Mcp.IdeEdits', cTexts);
+
+end.

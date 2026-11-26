@@ -61,7 +61,7 @@ ABGELEITET = [
     ('Packages/Atlas.Plugin/Source/Settings/Atlas.Plugin.Settings.ProfileData.pas', 'config'),
     ('Packages/Atlas.Common/Source/Configuration/Internals/Atlas.Common.Configuration.Internals.ScopeData.pas',
      'config'),
-    ('Packages/Atlas.Common/Source/Mcp/Atlas.Common.Mcp.DocsIndexData.pas', 'config'),
+    ('Application/Source/Features/Mcp/Mcp.DocsIndexData.pas', 'config'),
     ('docs/Regeln.md', 'rules'),
     ('docs/en/Rules.md', 'rules'),
     ('Application/Source/Features/Rules/Rules.Catalog.Data*.pas', 'rules'),

@@ -23,7 +23,7 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Common.Mcp.EditTools,
+  Mcp.EditTools,
   Shell.Mcp.RefactorSources;
 
 function NewFolder: string;

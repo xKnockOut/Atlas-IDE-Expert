@@ -9,8 +9,8 @@ interface
 uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Mcp.Server,
-  Atlas.Common.Mcp.Prompts,
+  Mcp.Server,
+  Mcp.Prompts,
   Shell.Mcp.Services;
 
 /// <summary>Abgeschaltete Werkzeuge: mcp.disabledTools und die Werkzeuge abgeschalteter Funktionen (#227).</summary>
@@ -30,16 +30,16 @@ uses
   Atlas.Common.Index.Providers.DiskFileSystem,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.CurrentRequest,
-  Atlas.Common.Mcp.Freshness,
-  Atlas.Common.Mcp.Paths,
-  Atlas.Common.Mcp.BatchTool,
+  Mcp.Freshness,
+  Mcp.Paths,
+  Mcp.BatchTool,
   Atlas.Common.Localization.Texts,
   Core.Workspace,
-  Core.Mcp.Context,
+  Mcp.Tools.Context,
   Shell.Mcp.RefactorSources,
-  Core.Mcp.Tools,
-  Core.Mcp.Changes,
-  Core.Mcp.Conventions;
+  Mcp.Tools,
+  Mcp.Tools.Changes,
+  Mcp.Tools.Conventions;
 
 type
 {$SCOPEDENUMS ON}

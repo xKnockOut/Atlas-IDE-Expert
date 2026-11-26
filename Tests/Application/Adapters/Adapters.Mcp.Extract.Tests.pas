@@ -21,7 +21,7 @@ implementation
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Mcp.Contract.Extract,
+  Mcp.Contract.Extract,
   Atlas.Common.Editing.Contract.Extract,
   Adapters.Mcp.Extract;
 

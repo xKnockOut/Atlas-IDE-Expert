@@ -15,7 +15,7 @@
 //   {"ok": false, "reason": "…"}
 // "build" hat das Format der build-*.json des Servers (get_last_build);
 // Zeilen und Spalten sind 1-basiert, Info-Meldungen bleiben weg.
-// Gegenstück im MCP-Server: Atlas.Common.Mcp.IdeBuilds. Die Gründe einer
+// Gegenstück im MCP-Server: Mcp.IdeBuilds. Die Gründe einer
 // Ablehnung kommen in der Sprache der Oberfläche als TAtlasBuildInboxTexts
 // herein (#1458; Core kennt die Texttabellen nicht).
 // Finden, Übernehmen und Antworten teilt er mit dem anderen Eingang

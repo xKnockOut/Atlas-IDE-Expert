@@ -3,7 +3,7 @@
 // Laufzeitberichte eines Programms (#74): Leckbericht (Atlas.Text.LeakReport) oder Absturzbericht
 // (Atlas.Text.CrashReport) als eine Folge von Stapeln mit Stelle im Projekt. Stapelzeilen ohne
 // Debug-Informationen ergänzt die Map-Datei des Moduls (TReportSymbols), die Datei im Projekt liefert der
-// Aufrufer (TReportUnitFileFunc). Gemeinsame Grundlage der MCP-Werkzeuge (Atlas.Common.Mcp.ReportTools) und des
+// Aufrufer (TReportUnitFileFunc). Gemeinsame Grundlage der MCP-Werkzeuge (Mcp.ReportTools) und des
 // Befehls atlas.server.runtimeReport (Atlas.Common.Lsp.RuntimeReport).
 
 interface

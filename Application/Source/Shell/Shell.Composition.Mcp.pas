@@ -1,6 +1,6 @@
 ﻿unit Shell.Composition.Mcp;
 
-// Host-Adapter der MCP-Werkzeuge: verbindet die SPIs im Mcp-Contract (Atlas.Common.Mcp.Contract.*) mit den
+// Host-Adapter der MCP-Werkzeuge: verbindet die SPIs im Mcp-Contract (Mcp.Contract.*) mit den
 // Schnittstellen der liefernden Features. Nur hier entstehen die Adapter.
 
 interface
@@ -9,15 +9,15 @@ uses
   Atlas.Common.Index.Contract,
   Rules.Contract,
   Rules.Checker,
-  Atlas.Common.Mcp.Contract.BoundaryCases,
-  Atlas.Common.Mcp.Contract.BulkFix,
-  Atlas.Common.Mcp.Contract.CompilerFixes,
-  Atlas.Common.Mcp.Contract.Conventions,
-  Atlas.Common.Mcp.Contract.DeadCode,
-  Atlas.Common.Mcp.Contract.Extract,
-  Atlas.Common.Mcp.Contract.Formatting,
-  Atlas.Common.Mcp.Contract.RuleDocs,
-  Atlas.Common.Mcp.Contract.TextChecks,
+  Mcp.Contract.BoundaryCases,
+  Mcp.Contract.BulkFix,
+  Mcp.Contract.CompilerFixes,
+  Mcp.Contract.Conventions,
+  Mcp.Contract.DeadCode,
+  Mcp.Contract.Extract,
+  Mcp.Contract.Formatting,
+  Mcp.Contract.RuleDocs,
+  Mcp.Contract.TextChecks,
   Atlas.Common.Checks.Contract,
   Atlas.Common.Projects.Contract.Group,
   Atlas.Common.Pascal.Contract;

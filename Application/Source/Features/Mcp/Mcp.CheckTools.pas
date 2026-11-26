@@ -1,0 +1,279 @@
+﻿unit Mcp.CheckTools;
+
+// MCP-Werkzeuge, die Dateien mit den Prüfregeln und Kennzahlen durchgehen
+// (#48, #66, #68): get_diagnostics, hook_check, get_metrics und get_todos.
+// Befunde kommen aus AScope.Checks: Der Host prüft mit den Symbolen des
+// Projekts und dessen Include-Dateien (#860), wie der Editor, und gibt den
+// Regeln den Symbolindex und die Projektdienste mit (#1112). Regeln und
+// overrides aus atlas.json gelten für den Pfad relativ zum Arbeitsordner.
+
+interface
+
+uses
+  System.SysUtils,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Findings.Contract,
+  Atlas.Common.Todos.Contract,
+  Mcp.Contract,
+  Atlas.Common.Semantics.References;
+
+type
+  TMcpCheckTools = class
+  public const
+    cMaxFindings = 200;
+  public
+    /// <summary>Befunde der Prüfregeln aus AScope.Checks und Syntaxfehler je Datei; AScope.Root für relative
+    /// Pfade.</summary>
+    class function Diagnostics(const AScope: TMcpRuleScope; const AFiles: TArray<string>;
+      const AReadText: TReferenceReadText): string; static;
+    /// <summary>hook_check: Befunde ab ASeverity (Warning: Warnungen und Fehler) einer gerade bearbeiteten
+    /// Datei als Ausgabe eines PostToolUse-Hooks von Claude Code: JSON mit
+    /// hookSpecificOutput.additionalContext, damit Claude die Befunde sofort sieht. Leer, wenn die Datei
+    /// kein Pascal-Quelltext ist (.pas, .dpr, .dpk, .inc), sich nicht lesen lässt oder keine Befunde hat;
+    /// leere Hook-Ausgabe ändert nichts. Geprüft wie bei get_diagnostics über AScope.Checks.</summary>
+    class function HookDiagnostics(const AScope: TMcpRuleScope; const AFileName: string;
+      const AReadText: TReferenceReadText; ASeverity: TRuleSeverity): string; static;
+    /// <summary>Schwelle für hook_check aus "error", "warning" (Vorgabe bei leerem Text), "information" oder
+    /// "hint"; EMcpToolError bei anderem Text.</summary>
+    class function ParseHookSeverity(const AText: string): TRuleSeverity; static;
+    /// <summary>get_metrics (#66): Kennzahlen je Methode mit den Grenzwerten aus ASettings; Markdown-Bericht
+    /// oder mit AJson die Metrikdaten. Pfade relativ zu ARoot.</summary>
+    class function Metrics(const ASettings: TServerSettings; const ARoot: string; const AFiles: TArray<string>;
+      const AReadText: TReferenceReadText; AJson: Boolean): string; static;
+    /// <summary>get_todos (#68): TODO-Einträge der Dateien AFiles mit den Marken aus ASettings (Option keywords
+    /// der Regel todo-comment), gefiltert nach AFilter; Markdown-Übersicht oder mit AJson die Daten. Pfade relativ
+    /// zu ARoot.</summary>
+    class function Todos(const ASettings: TServerSettings; const ARoot: string; const AFiles: TArray<string>;
+      const AReadText: TReferenceReadText; const AFilter: TTodoFilter; AJson: Boolean): string; static;
+    /// <summary>Befund als "Zeile:Spalte: Schwere [Regel] [Konfidenz …] Meldung" (Zeilen und Spalten ab 1).
+    /// </summary>
+    class function FindingLine(const AFinding: TRuleFinding): string; static;
+  end;
+
+implementation
+
+uses
+  System.Classes,
+  System.StrUtils,
+  Atlas.Text.Json,
+  Mcp.Server,
+  Atlas.Common.Metrics.Contract,
+  Atlas.Common.Metrics.Collector,
+  Atlas.Common.Metrics.Report,
+  Atlas.Common.Metrics.Limits,
+  Atlas.Common.Todos.Scanner,
+  Atlas.Common.Todos.Report,
+  Atlas.Common.Todos.Keywords,
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCheckToolsText = (NotReadable, AtlasFound1FindingsIn, FixTheCauseInThe, SeverityIsErrorWarningInformation,
+    FindingsInFiles, Confidence, MoreFindings);
+
+const
+  cTexts: array[TCheckToolsText] of TAtlasText = (
+    (De: '%s: nicht lesbar'; En: '%s: not readable'),
+    (De: 'Atlas hat in %s nach der Änderung %d Befunde gefunden (Zeile:Spalte):';
+     En: 'Atlas found %1:d findings in %0:s after the change (line:column):'),
+    (De: #10 + '%s' + #10 + 'Ursache im Code beheben; Erklärung mit explain_finding, Korrektur mit apply_code_action.';
+     En: #10 + '%s' + #10 + 'Fix the cause in the code; explanation with explain_finding, fix with apply_code_action.'),
+    (De: '"severity" ist error, warning, information oder hint';
+     En: '"severity" is error, warning, information or hint'),
+    (De: '%d Befunde in %d Dateien.'; En: '%d findings in %d files.'),
+    (De: '%d:%d: %s [%s] [Konfidenz %s] %s'; En: '%d:%d: %s [%s] [confidence %s] %s'),
+    (De: '… %d weitere Befunde'; En: '… %d more findings'));
+
+{$SCOPEDENUMS OFF}
+
+{ TMcpCheckTools }
+
+class function TMcpCheckTools.ParseHookSeverity(const AText: string): TRuleSeverity;
+begin
+  if (AText = '') or SameText(AText, 'warning') then
+  begin
+    Result := TRuleSeverity.Warning;
+  end
+  else if SameText(AText, 'error') then
+  begin
+    Result := TRuleSeverity.Error;
+  end
+  else if SameText(AText, 'information') then
+  begin
+    Result := TRuleSeverity.Information;
+  end
+  else if SameText(AText, 'hint') then
+  begin
+    Result := TRuleSeverity.Hint;
+  end
+  else
+  begin
+    raise EMcpToolError.Create(cTexts[TCheckToolsText.SeverityIsErrorWarningInformation].Text);
+  end;
+end;
+
+class function TMcpCheckTools.Metrics(const ASettings: TServerSettings; const ARoot: string;
+  const AFiles: TArray<string>; const AReadText: TReferenceReadText; AJson: Boolean): string;
+var
+  mCollector: TMetricsCollector;
+  mFiles: TArray<TFileMetrics>;
+  mLimits: TMetricLimits;
+begin
+  mLimits := TMetricSettings.Limits(ASettings);
+  mCollector := TMetricsCollector.Create;
+  try
+    mFiles := mCollector.Collect(AFiles, ARoot,
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        Result := Assigned(AReadText) and AReadText(AFileName, AText);
+      end);
+  finally
+    mCollector.Free;
+  end;
+  if AJson then
+  begin
+    Result := TMetricsReport.Json(mFiles, mLimits);
+  end
+  else
+  begin
+    Result := TMetricsReport.Markdown(mFiles, mLimits, ExtractFileName(ExcludeTrailingPathDelimiter(ARoot)));
+  end;
+end;
+
+class function TMcpCheckTools.Todos(const ASettings: TServerSettings; const ARoot: string;
+  const AFiles: TArray<string>; const AReadText: TReferenceReadText; const AFilter: TTodoFilter;
+  AJson: Boolean): string;
+var
+  mFiles: TArray<TFileTodos>;
+begin
+  mFiles := TTodoScanner.Filter(TTodoScanner.Collect(AFiles, ARoot,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := Assigned(AReadText) and AReadText(AFileName, AText);
+    end, TTodoKeywords.FromSettings(ASettings)), AFilter);
+  if AJson then
+  begin
+    Result := TTodoReport.Json(mFiles);
+  end
+  else
+  begin
+    Result := TTodoReport.Markdown(mFiles, ExtractFileName(ExcludeTrailingPathDelimiter(ARoot)));
+  end;
+end;
+
+/// <summary>Befunde aus AScope.Checks in AText (Inhalt von AFileName).</summary>
+function FileFindings(const AScope: TMcpRuleScope; const AFileName, AText: string): TArray<TRuleFinding>;
+begin
+  Result := AScope.Checks.Check(AFileName, TTextNames.RelativeTo(AScope.Root, AFileName), AText, AScope.Settings);
+end;
+
+class function TMcpCheckTools.Diagnostics(const AScope: TMcpRuleScope; const AFiles: TArray<string>;
+  const AReadText: TReferenceReadText): string;
+var
+  mLines: TStringList;
+  mFileName, mText: string;
+  mFinding: TRuleFinding;
+  mCount, mChecked: Integer;
+begin
+  mLines := TStringList.Create;
+  try
+    mCount := 0;
+    mChecked := 0;
+    for mFileName in AFiles do
+    begin
+      if not AReadText(mFileName, mText) then
+      begin
+        mLines.Add(cTexts[TCheckToolsText.NotReadable].Fmt([mFileName]));
+        Continue;
+      end;
+      Inc(mChecked);
+      for mFinding in FileFindings(AScope, mFileName, mText) do
+      begin
+        Inc(mCount);
+        if mCount <= cMaxFindings then
+        begin
+          mLines.Add(mFileName + ':' + FindingLine(mFinding));
+        end;
+      end;
+    end;
+    if mCount > cMaxFindings then
+    begin
+      mLines.Add(cTexts[TCheckToolsText.MoreFindings].Fmt([mCount - cMaxFindings]));
+    end;
+    mLines.Insert(0, cTexts[TCheckToolsText.FindingsInFiles].Fmt([mCount, mChecked]));
+    Result := TrimRight(mLines.Text);
+  finally
+    mLines.Free;
+  end;
+end;
+
+/// <summary>Befunde ab ASeverity als Zeilen "Zeile:Spalte: Schwere [Regel] Meldung", höchstens MaxFindings, und
+/// ihre Zahl.</summary>
+function HookFindings(const AFindings: TArray<TRuleFinding>; ASeverity: TRuleSeverity;
+  out ACount: Integer): string;
+var
+  mFinding: TRuleFinding;
+begin
+  Result := '';
+  ACount := 0;
+  for mFinding in AFindings do
+  begin
+    if mFinding.Severity < ASeverity then
+    begin
+      Continue;
+    end;
+    Inc(ACount);
+    if ACount <= TMcpCheckTools.cMaxFindings then
+    begin
+      Result := Result + Format('%d:%d: %s [%s] %s', [mFinding.Range.StartPos.Line + 1,
+        mFinding.Range.StartPos.Character + 1, SeverityName(mFinding.Severity), mFinding.RuleId,
+        mFinding.Message]) + #10;
+    end;
+  end;
+  if ACount > TMcpCheckTools.cMaxFindings then
+  begin
+    Result := Result + cTexts[TCheckToolsText.MoreFindings].Fmt([ACount - TMcpCheckTools.cMaxFindings]) + #10;
+  end;
+  Result := TrimRight(Result);
+end;
+
+class function TMcpCheckTools.HookDiagnostics(const AScope: TMcpRuleScope; const AFileName: string;
+  const AReadText: TReferenceReadText; ASeverity: TRuleSeverity): string;
+const
+  cPascalExtensions: array[0..3] of string = ('.pas', '.dpr', '.dpk', '.inc');
+var
+  mText, mFindings, mContext: string;
+  mCount: Integer;
+begin
+  Result := '';
+  if not MatchText(ExtractFileExt(AFileName), cPascalExtensions) or
+    not (Assigned(AReadText) and AReadText(AFileName, mText)) then
+  begin
+    Exit;
+  end;
+  // Wie get_diagnostics: Regeln und overrides aus atlas.json gelten für den Pfad relativ zum Projekt.
+  mFindings := HookFindings(FileFindings(AScope, AFileName, mText), ASeverity, mCount);
+  if mCount = 0 then
+  begin
+    Exit;
+  end;
+  mContext := cTexts[TCheckToolsText.AtlasFound1FindingsIn].Fmt([AFileName, mCount]) +
+    cTexts[TCheckToolsText.FixTheCauseInThe].Fmt([mFindings]);
+  Result := '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":' +
+    TJsonText.Quote(mContext) + '}}';
+end;
+
+class function TMcpCheckTools.FindingLine(const AFinding: TRuleFinding): string;
+begin
+  Result := cTexts[TCheckToolsText.Confidence].Fmt([AFinding.Range.StartPos.Line + 1,
+    AFinding.Range.StartPos.Character + 1, SeverityName(AFinding.Severity), AFinding.RuleId,
+    ConfidenceText(AFinding.Confidence), AFinding.Message]);
+end;
+
+initialization
+  TAtlasTextTables.Add('Mcp.CheckTools', cTexts);
+
+end.

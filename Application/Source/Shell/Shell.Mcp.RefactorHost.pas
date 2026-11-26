@@ -16,8 +16,8 @@ uses
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Editing.Contract.CodeActions,
-  Atlas.Common.Mcp.EditTools,
-  Atlas.Common.Mcp.RefactorTools,
+  Mcp.EditTools,
+  Mcp.RefactorTools,
   Shell.Composition.Refactorings.Services,
   Shell.Composition.Refactorings,
   Atlas.Common.Semantics.References;
@@ -83,7 +83,7 @@ uses
   Adapters.Lsp.RuleActions,
   Adapters.Lsp.SourceActions,
   Atlas.Common.Editing.Composition,
-  Atlas.Common.Mcp.Server,
+  Mcp.Server,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Semantics.Contract;
 

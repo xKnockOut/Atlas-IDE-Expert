@@ -13,7 +13,7 @@
 //   TAtlasTrackerDetails, das keins hat; Anhänge und ihre (signierten)
 //   Adressen kommen nicht hinein.
 // - Der MCP-Server liest die Datei für get_current_issue und gibt sie als Text
-//   oder JSON aus (Core.Mcp.IssueText).
+//   oder JSON aus (Mcp.Tools.IssueText).
 
 interface
 

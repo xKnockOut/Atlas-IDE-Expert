@@ -21,7 +21,7 @@ implementation
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Mcp.Contract.DeadCode,
+  Mcp.Contract.DeadCode,
   Rules.Contract.Api,
   Adapters.Mcp.DeadCode;
 

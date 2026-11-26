@@ -87,7 +87,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.ReferenceConfidence,
-  Atlas.Common.Mcp.CodeTools,
+  Mcp.CodeTools,
   Atlas.Common.Semantics.References;
 
 const
