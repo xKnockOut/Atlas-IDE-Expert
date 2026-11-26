@@ -14,7 +14,7 @@ Zurück zum [README](../../../README_DE.md)
 
 - **Gehe zu** auch Implementierung und Typdefinition
 - **Sprung zum Gegenstück** (begin ⇄ end, try → finally → end, `{$IFDEF}` → `{$ENDIF}`)
-- projektweite **Symbolsuche**
+- projektweite **Symbolsuche**, auch nach lokalen Prozeduren und Funktionen der Projekt-Units
 - **Navigationsverlauf** über Dateien hinweg; die Zurück- und Vor-Taste der Maus blättern darin wie Alt+←/Alt+→, im Code-Editor und im Formular-Designer. Über der Issue-Vorschau blättern sie in deren Verlauf (`navigation.mouseButtons`)
 
 ## Leisten
@@ -38,7 +38,7 @@ Zurück zum [README](../../../README_DE.md)
 
 ### Editorleiste
 
-- mit Symbolen: Sprung zum interface- bzw. implementation-Teil (und zurück mit „↩ 214“), Methode suchen, Navigationsverlauf und beliebige Palettenbefehle
+- mit Symbolen: Sprung zum interface- bzw. implementation-Teil (und zurück mit „↩ 214“), Methode suchen (auch lokale Prozeduren und Funktionen in Methoden, als „TFoo.Bar › Lokal“ direkt hinter ihrer Methode), Navigationsverlauf und beliebige Palettenbefehle
 - „Zur uses-Klausel“ wechselt aus einer uses-Klausel zur anderen (interface ↔ implementation); fehlt sie, springt der Knopf zum Schlüsselwort `implementation` bzw. `interface`, ein weiterer Klick führt zurück. Der Tooltip nennt das Ziel, der Rücksprung führt zur Zeile vor dem ersten Klick
 - Überlaufmenü, frei belegbar, auch rechts in der Brotkrumenzeile
 
@@ -66,7 +66,7 @@ Unten in jedem Editorfenster (Zustandsfarben für helles und dunkles Design eige
 
 ### Weitere Ansichten
 
-- <a id="window-atlasoutline"></a>**Gliederung** als andockbares Fenster mit Filter
+- <a id="window-atlasoutline"></a>**Gliederung** als andockbares Fenster mit Filter; lokale Prozeduren und Funktionen stehen unter ihrer Methode
 - **Übersichtsleiste** an der Scrollleiste mit Fehlern, Treffern und Änderungen
 - **Minimap** *(experimentell)*
 - **mitlaufender Kopf** der umgebenden Klasse, Routine und großen Blöcke, je Art abschaltbar *(experimentell)*

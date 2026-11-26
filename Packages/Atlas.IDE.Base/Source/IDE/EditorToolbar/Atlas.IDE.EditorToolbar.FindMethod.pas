@@ -1,9 +1,11 @@
 ﻿unit Atlas.IDE.EditorToolbar.FindMethod;
 
 // „Methode suchen“ der Editorleiste (#1101): Atlas-Popup mit den Routinen der
-// Datei aus der Gliederung (TAtlasIdeOutlineCache), ohne Eingabe in
-// Quelltextreihenfolge mit der Methode am Caret vorgewählt; Enter springt zur
-// Implementierung, Umschalt+Enter zur Deklaration. Nur im Hauptthread.
+// Datei aus der Gliederung (TAtlasIdeOutlineCache), lokale Routinen als
+// „TFoo.Bar › Lokal“ hinter ihrer Routine; ohne Eingabe in
+// Quelltextreihenfolge mit der innersten Routine am Caret vorgewählt; Enter
+// springt zur Implementierung, Umschalt+Enter zur Deklaration. Nur im
+// Hauptthread.
 
 interface
 
@@ -29,7 +31,6 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.Breadcrumbs,
-  Atlas.Core.EditorToolbar.ReturnPoint,
   Atlas.UI.EditorToolbar.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -38,7 +39,8 @@ uses
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Foundation.Host;
 
-/// <summary>Ein Eintrag je Routine: Kennung ist der Knoten, Text der qualifizierte Name.</summary>
+/// <summary>Ein Eintrag je Routine: Kennung ist der Knoten, Text der qualifizierte Name (lokale Routinen mit ihrer
+/// Routine davor).</summary>
 function RoutineCommands(const ANodes: TAtlasOutlineNodes; const ARoutines: TArray<Integer>): TArray<TAtlasCommand>;
 var
   mNode: Integer;
@@ -49,7 +51,7 @@ begin
   begin
     mCommand := Default(TAtlasCommand);
     mCommand.Id := IntToStr(mNode);
-    mCommand.Caption := TAtlasBreadcrumbs.QualifiedName(ANodes, mNode);
+    mCommand.Caption := TAtlasBreadcrumbs.RoutineName(ANodes, mNode);
     mCommand.Path := ANodes[mNode].Detail;
     Result := Result + [mCommand];
   end;
@@ -105,9 +107,7 @@ var
   mView: IOTAEditView;
   mSnapshot: TAtlasOutlineSnapshot;
   mRoutines: TArray<Integer>;
-  mCommand: TAtlasCommand;
-  mLine, mCharacter: Integer;
-  mCurrent: string;
+  mLine, mCharacter, mCurrent: Integer;
   mCommands: TArray<TAtlasCommand>;
   mWindow: TAtlasPaletteWindow;
 begin
@@ -128,23 +128,20 @@ begin
     Exit;
   end;
   // Kopien: Das Popup lebt länger als der aktuelle Stand.
-  mCurrent := '';
+  mCurrent := -1;
   if CaretOf(mView, mLine, mCharacter) then
   begin
-    mCurrent := TAtlasReturnPoints.ContextAt(mSnapshot.Nodes, mLine);
+    mCurrent := TAtlasBreadcrumbs.RoutineAt(mSnapshot.Nodes, mRoutines, mLine);
   end;
   mCommands := RoutineCommands(mSnapshot.Nodes, mRoutines);
   mWindow := TAtlasPaletteWindow.CreatePalette(Application, mCommands, nil, TAtlasIdeStyle.Colors);
   mWindow.Prompt := Format(TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.FindMethodPrompt),
     [ExtractFileName(mSnapshot.FileName)]);
-  // Ohne Eingabe in Quelltextreihenfolge, die Methode am Caret vorgewählt.
+  // Ohne Eingabe in Quelltextreihenfolge, die innerste Routine am Caret vorgewählt.
   mWindow.KeepOrder := True;
-  for mCommand in mCommands do
+  if mCurrent >= 0 then
   begin
-    if (mCurrent <> '') and SameText(mCommand.Caption, mCurrent) then
-    begin
-      mWindow.InitialId := mCommand.Id;
-    end;
+    mWindow.InitialId := IntToStr(mCurrent);
   end;
   mWindow.OnExecuteShift := GoToRoutine(mSnapshot.FileName, mSnapshot.Nodes);
   mWindow.ShowOver(TAtlasIdeHost.PopupArea);
