@@ -9,7 +9,7 @@
 // Atlas.Common.Pascal.Signatures. Neue Parameter bekommen nie einen
 // Standardwert; vorhandene bleiben, wo sie stehen. Was zur Routine gehört
 // (Vorfahren, Nachfahren, Interfaces, Aufrufer), sammelt
-// Atlas.Common.Lsp.ChangeSignature.
+// Atlas.Common.Editing.ChangeSignature.Protocol.
 
 interface
 

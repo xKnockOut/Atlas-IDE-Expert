@@ -26,7 +26,7 @@
 //   - Aufrufe: UseOf ordnet eine Verwendung ein, CallEdit stellt sie um
 //     (X.GetCaption → X.Caption, X.SetCaption(V) → X.Caption := V,
 //     X.GetItem(I) → X.Items[I]). Die Suche über das Projekt und die
-//     Typprüfung bei unklaren Fällen macht Atlas.Common.Lsp.PropertyFromAccessors.
+//     Typprüfung bei unklaren Fällen macht Atlas.Common.Editing.PropertyFromAccessors.Protocol.
 
 interface
 

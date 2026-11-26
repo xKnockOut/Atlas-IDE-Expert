@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.PropertyFromAccessors;
+﻿unit Atlas.Common.Editing.PropertyFromAccessors.Protocol;
 
 // „Property aus Getter und Setter“ über das Protokoll (#682):
 //   - Code-Aktionen auf der Deklaration einer Zugriffsmethode („Property X
@@ -42,7 +42,7 @@ type
     ReplaceCalls: Boolean;
   end;
 
-  TLspPropertyFromAccessors = class
+  TPropertyFromAccessorsProtocol = class
   public const
     cClientCommand = 'atlas.propertyFromAccessors';
     cApplyCommand = 'atlas.server.propertyFromAccessors';
@@ -71,11 +71,9 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Semantics.TypeKinds;
 
 {$SCOPEDENUMS ON}
@@ -115,14 +113,14 @@ type
   TUnclearResult = (Value, Pointer_, Unknown);
   {$SCOPEDENUMS OFF}
 
-  TSourceFile = class(TLspSourceFile)
+  TSourceFile = class(TParsedFile)
   public
     Edits: TArray<TTextEdit>;
   end;
 
 function Fail(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, AMessage);
+  Result := EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, AMessage);
 end;
 
 function Where(const AFileName: string; const APosition: TTextPosition): string;
@@ -167,9 +165,9 @@ begin
   Result := mFound;
 end;
 
-{ TLspPropertyFromAccessors }
+{ TPropertyFromAccessorsProtocol }
 
-class function TLspPropertyFromAccessors.Actions(ATree: TSyntaxTree; const AText, AUri: string;
+class function TPropertyFromAccessorsProtocol.Actions(ATree: TSyntaxTree; const AText, AUri: string;
   const APosition: TTextPosition; const AOptions: TPropertyFromAccessorsOptions;
   AReplaceCalls: TReplaceCalls): TArray<TJSONObject>;
 
@@ -362,7 +360,7 @@ begin
     mItem := TJSONObject.Create;
     mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
     mItem.AddPair('newText', mEdit.NewText);
-    mItem.AddPair('annotationId', TLspPropertyFromAccessors.cAnnotationId);
+    mItem.AddPair('annotationId', TPropertyFromAccessorsProtocol.cAnnotationId);
     mItems.AddElement(mItem);
   end;
   Result := TJSONObject.Create;
@@ -412,7 +410,7 @@ begin
   mAnnotation.AddPair('description', cTexts[TPropertyFromAccessorsText.PropertiesCallsUpdatedFiles].Fmt([
     APropertyCount, ACalls, AFileCount]));
   Result := TJSONObject.Create;
-  Result.AddPair(TLspPropertyFromAccessors.cAnnotationId, mAnnotation);
+  Result.AddPair(TPropertyFromAccessorsProtocol.cAnnotationId, mAnnotation);
 end;
 
 type
@@ -728,9 +726,9 @@ begin
   Result.AddPair('edits', TJSONNumber.Create(FEditCount));
 end;
 
-{ TLspPropertyFromAccessors }
+{ TPropertyFromAccessorsProtocol }
 
-class function TLspPropertyFromAccessors.Execute(AResolver: TNameResolver; ATree: TSyntaxTree;
+class function TPropertyFromAccessorsProtocol.Execute(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName, AText: string; const APosition: TTextPosition;
   const AContext: TPropertyFromAccessorsContext): TJSONObject;
 var
@@ -753,6 +751,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.PropertyFromAccessors', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.PropertyFromAccessors.Protocol', cTexts);
 
 end.

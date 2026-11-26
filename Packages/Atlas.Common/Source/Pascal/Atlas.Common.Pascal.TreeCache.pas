@@ -115,6 +115,18 @@ type
     class function EstimatedBytes(ATree: TSyntaxTree): Int64; static;
   end;
 
+type
+  /// <summary>Datei einer Umbaurechnung mit Text und Baum; den Baum gibt sie nur mit OwnsTree frei (sonst gehört
+  /// er dem Dokumentspeicher).</summary>
+  TParsedFile = class
+  public
+    FileName: string;
+    Text: string;
+    Tree: TSyntaxTree;
+    OwnsTree: Boolean;
+    destructor Destroy; override;
+  end;
+
 implementation
 
 uses
@@ -553,6 +565,17 @@ begin
   begin
     Result := 0;
   end;
+end;
+
+{ TParsedFile }
+
+destructor TParsedFile.Destroy;
+begin
+  if OwnsTree then
+  begin
+    Tree.Free;
+  end;
+  inherited;
 end;
 
 initialization

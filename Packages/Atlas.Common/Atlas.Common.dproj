@@ -346,8 +346,8 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Commands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ApplyEdit.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DfmPropertyRules.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ChangeSignature.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ChangeSignature.Collector.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ChangeSignature.Protocol.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ChangeSignature.Collector.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MoveClass.Protocol.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UnitRename.Protocol.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SmartPaste.Protocol.pas"/>
@@ -441,7 +441,7 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.OwnedFields.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.OwnedFields.Types.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PropertyFromAccessors.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.PropertyFromAccessors.Protocol.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Common.Documents.TextChanges.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ClassLayout.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Destructors.pas"/>
@@ -462,7 +462,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.InvertBoolean.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DisableWarning.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CompilerFixes.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InvertBoolean.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.InvertBoolean.Protocol.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Unwrap.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Unwrap.Protocol.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StepTargets.pas"/>

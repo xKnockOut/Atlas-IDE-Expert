@@ -50,7 +50,6 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.StepTargets,
   Atlas.Common.Lsp.StepFilter,
   Atlas.Common.Lsp.DebugVariables,
@@ -166,7 +165,7 @@ begin
   // Nach F7 steht der Halt oft in einer Datei, die der Editor erst jetzt öffnet: selbst lesen.
   if not ReadText(TDocumentUris.ToPath(AUri), mText) then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed, cTexts[TSteppingText.Unreadable].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, cTexts[TSteppingText.Unreadable].Text);
   end;
   mTree := TSyntaxTreeCache.Parse(mText);
   try

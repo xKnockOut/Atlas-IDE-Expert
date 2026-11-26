@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.InvertBoolean;
+﻿unit Atlas.Common.Editing.InvertBoolean.Protocol;
 
 // „Boolean umkehren“ über das Protokoll (#715):
 //   - Code-Aktion „Bedeutung umkehren (X → Y)“ auf einer Boolean-Variablen,
@@ -51,7 +51,7 @@ type
     NewName: string;
   end;
 
-  TLspInvertBoolean = class
+  TInvertBooleanProtocol = class
   public const
     cClientCommand = 'atlas.invertBoolean';
     cApplyCommand = 'atlas.server.invertBoolean';
@@ -86,23 +86,21 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.InvertBoolean,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.ChangeSignature,
+  Atlas.Common.Editing.ChangeSignature.Protocol,
   Atlas.Common.Semantics.Renames,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Names,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Text.Arrays,
-  Atlas.Common.Lsp.References;
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TLspInvertBooleanText = (IsAnAccessorOfA, CannotBeRead, IsAnAccessorOfThe, StartsWithFalsePleaseSet,
+  TInvertBooleanProtocolText = (IsAnAccessorOfA, CannotBeRead, IsAnAccessorOfThe, StartsWithFalsePleaseSet,
     HasNoConstructorInStarts, StartsWithFalsePleaseDeclare, IsAnAccessorOfA2, IsAnAccessorOfThe2, IsBoundToAnEvent,
     TheRoutineForTheParameter, IsBoundToAnEvent2, TheParameterIsNotIn, IsAParameterTheCaller,
     TheDeclarationOfIsMissing, IsPublishedFormsStillStore, IsPublishedFormsOutsideThe, IsStoredAsBinaryAnd,
@@ -110,7 +108,7 @@ type
     PlacesInFiles, Line, InvertMeaning, InvertBoolean, Line2);
 
 const
-  cTexts: array[TLspInvertBooleanText] of TAtlasText = (
+  cTexts: array[TInvertBooleanProtocolText] of TAtlasText = (
     (De: '%s: %s ist Zugriff einer Property. Bitte die Property umkehren.';
      En: '%s: %s is an accessor of a property. Please invert the property.'),
     (De: '%s lässt sich nicht lesen.'; En: '%s cannot be read.'),
@@ -160,7 +158,7 @@ const
   cFormExtensions: array[0..1] of string = ('.dfm', '.fmx');
 
 type
-  TSourceFile = class(TLspSourceFile)
+  TSourceFile = class(TParsedFile)
   public
     Lines: TLineTable;
     Targets: TInvertTargets;
@@ -173,7 +171,7 @@ type
 
 { TSourceFile }
 
-/// <summary>Ansatz für TLspChangeSignature.Family an APosition, ohne Abbruch.</summary>
+/// <summary>Ansatz für TChangeSignatureProtocol.Family an APosition, ohne Abbruch.</summary>
 function FamilySource(AResolver: TNameResolver; const AContext: TInvertBooleanContext; ATree: TSyntaxTree;
   const AFileName: string; const APosition: TTextPosition): TChangeSignatureSource;
 begin
@@ -219,7 +217,7 @@ begin
     begin
       for mCandidate in Resolver.ResolveAll(Tree, FileName, mTokens[mIndex].StartPos) do
       begin
-        mModifier := TLspInvertBoolean.ParameterModifier(mCandidate.Signature, AArgument);
+        mModifier := TInvertBooleanProtocol.ParameterModifier(mCandidate.Signature, AArgument);
         if (mModifier = 'var') or (mModifier = 'out') then
         begin
           Exit(True);
@@ -232,12 +230,12 @@ end;
 
 function Fail(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, AMessage);
+  Result := EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, AMessage);
 end;
 
 function Where(const AFileName: string; const APosition: TTextPosition): string;
 begin
-  Result := cTexts[TLspInvertBooleanText.Line].Fmt([ExtractFileName(AFileName), APosition.Line + 1]);
+  Result := cTexts[TInvertBooleanProtocolText.Line].Fmt([ExtractFileName(AFileName), APosition.Line + 1]);
 end;
 
 function IsBooleanType(const ATypeName: string): Boolean;
@@ -301,9 +299,9 @@ begin
   end;
 end;
 
-{ TLspInvertBoolean }
+{ TInvertBooleanProtocol }
 
-class function TLspInvertBoolean.Actions(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
+class function TInvertBooleanProtocol.Actions(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
   AUri: string; const APosition: TTextPosition; const AContext: TInvertBooleanContext): TArray<TJSONObject>;
 var
   mSymbol: TResolvedSymbol;
@@ -317,7 +315,7 @@ begin
     Exit;
   end;
   mSuggested := TInvertBoolean.Suggest(mSymbol.Name, AContext.Antonyms, AContext.Prefix);
-  mTitle := cTexts[TLspInvertBooleanText.InvertMeaning].Fmt([mSymbol.Name, mSuggested]);
+  mTitle := cTexts[TInvertBooleanProtocolText.InvertMeaning].Fmt([mSymbol.Name, mSuggested]);
   mArguments := TJSONArray.Create;
   mArguments.Add(AUri);
   mArguments.AddElement(TLspPositions.PositionToJson(APosition));
@@ -447,7 +445,7 @@ begin
   end;
 end;
 
-class function TLspInvertBoolean.Target(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+class function TInvertBooleanProtocol.Target(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const APosition: TTextPosition; const AFiles: TArray<string>; out ASymbol: TResolvedSymbol): Boolean;
 begin
   Result := False;
@@ -466,7 +464,7 @@ begin
     (IndexText(ASymbol.FileName, AFiles) >= 0);
 end;
 
-class function TLspInvertBoolean.ParameterModifier(const ASignature: string; AIndex: Integer): string;
+class function TInvertBooleanProtocol.ParameterModifier(const ASignature: string; AIndex: Integer): string;
 var
   mList, mPart, mNames, mModifier: string;
   mCount: Integer;
@@ -507,7 +505,7 @@ begin
     mItem := TJSONObject.Create;
     mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
     mItem.AddPair('newText', mEdit.NewText);
-    mItem.AddPair('annotationId', TLspInvertBoolean.cAnnotationId);
+    mItem.AddPair('annotationId', TInvertBooleanProtocol.cAnnotationId);
     mItems.AddElement(mItem);
   end;
   Result := TJSONObject.Create;
@@ -754,7 +752,7 @@ begin
     mOwner := AccessingProperty(ASymbol.FileName, ASymbol.Container, ASymbol.Name);
     if mOwner <> '' then
     begin
-      raise Fail(cTexts[TLspInvertBooleanText.IsAnAccessorOfThe].Fmt([ASymbol.Name, mOwner]));
+      raise Fail(cTexts[TInvertBooleanProtocolText.IsAnAccessorOfThe].Fmt([ASymbol.Name, mOwner]));
     end;
   end;
   AddReferences(ASymbol.FileName, ASymbol.SelectionRange.StartPos, ANewName, True, AAccessorCheck);
@@ -771,7 +769,7 @@ begin
   mPrevious := PreviousCode(mTokens, AToken);
   if (mPrevious >= 0) and MatchText(mTokens[mPrevious].Text, ['read', 'write']) then
   begin
-    raise Fail(cTexts[TLspInvertBooleanText.IsAnAccessorOfA].Fmt([Where(ALocation.FileName, ALocation.Range.StartPos),
+    raise Fail(cTexts[TInvertBooleanProtocolText.IsAnAccessorOfA].Fmt([Where(ALocation.FileName, ALocation.Range.StartPos),
       mTokens[AToken].Text]));
   end;
 end;
@@ -809,14 +807,14 @@ var
   mToken: Integer;
 begin
   mOrigin := ReadableSource(AFileName);
-  mFamily := TLspChangeSignature.Family(FamilySource(FResolver, FContext, mOrigin.Tree, AFileName, APosition));
+  mFamily := TChangeSignatureProtocol.Family(FamilySource(FResolver, FContext, mOrigin.Tree, AFileName, APosition));
   if AAccessorCheck then
   begin
     CheckFunctionAccessor(mFamily, mOrigin, APosition);
   end;
   if mFamily.BoundEvent <> '' then
   begin
-    raise Fail(cTexts[TLspInvertBooleanText.IsBoundToAnEvent].Fmt([mFamily.Name, mFamily.BoundEvent]));
+    raise Fail(cTexts[TInvertBooleanProtocolText.IsBoundToAnEvent].Fmt([mFamily.Name, mFamily.BoundEvent]));
   end;
   WarnAll(mFamily.Warnings);
   for mHeader in mFamily.Headers do
@@ -858,9 +856,9 @@ begin
   mOrigin := Source(AFileName);
   if (mOrigin = nil) or (mOrigin.Tree = nil) then
   begin
-    raise Fail(cTexts[TLspInvertBooleanText.CannotBeRead].Fmt([ExtractFileName(AFileName)]));
+    raise Fail(cTexts[TInvertBooleanProtocolText.CannotBeRead].Fmt([ExtractFileName(AFileName)]));
   end;
-  mFamily := TLspChangeSignature.Family(FamilySource(FResolver, FContext, mOrigin.Tree, AFileName, APosition));
+  mFamily := TChangeSignatureProtocol.Family(FamilySource(FResolver, FContext, mOrigin.Tree, AFileName, APosition));
   mLast := -1;
   for mHeader in mFamily.Headers do
   begin
@@ -1061,7 +1059,7 @@ begin
   end;
   if (ASymbol.SymbolKind = TIndexSymbolKind.Variable) and not AddVariableStart(mUnit, mToken) then
   begin
-    Warn(cTexts[TLspInvertBooleanText.StartsWithFalsePleaseDeclare].Fmt([Where(ASymbol.FileName,
+    Warn(cTexts[TInvertBooleanProtocolText.StartsWithFalsePleaseDeclare].Fmt([Where(ASymbol.FileName,
       ASymbol.SelectionRange.StartPos), ASymbol.Name, ANewName]));
   end
   else if ASymbol.SymbolKind = TIndexSymbolKind.Field then
@@ -1090,7 +1088,7 @@ begin
       begin
         if (mToken.Kind = TPascalTokenKind.StringLiteral) and SameText(mToken.Text, '''' + AOld + '''') then
         begin
-          Warn(cTexts[TLspInvertBooleanText.StringRTTIOrStreamingStays].Fmt([Where(mFileName, mToken.StartPos),
+          Warn(cTexts[TInvertBooleanProtocolText.StringRTTIOrStreamingStays].Fmt([Where(mFileName, mToken.StartPos),
             mToken.Text]));
         end;
       end;
@@ -1110,7 +1108,7 @@ begin
   Result := Source(AFileName);
   if (Result = nil) or (Result.Tree = nil) then
   begin
-    raise Fail(cTexts[TLspInvertBooleanText.CannotBeRead].Fmt([ExtractFileName(AFileName)]));
+    raise Fail(cTexts[TInvertBooleanProtocolText.CannotBeRead].Fmt([ExtractFileName(AFileName)]));
   end;
 end;
 
@@ -1205,7 +1203,7 @@ begin
   end;
   if mNameToken < 0 then
   begin
-    raise Fail(cTexts[TLspInvertBooleanText.TheRoutineForTheParameter].Fmt([ASymbol.Name]));
+    raise Fail(cTexts[TInvertBooleanProtocolText.TheRoutineForTheParameter].Fmt([ASymbol.Name]));
   end;
   Result := mTokens[mNameToken].StartPos;
 end;
@@ -1249,17 +1247,17 @@ var
 begin
   if AFamily.BoundEvent <> '' then
   begin
-    raise Fail(cTexts[TLspInvertBooleanText.IsBoundToAnEvent2].Fmt([AFamily.Name,
+    raise Fail(cTexts[TInvertBooleanProtocolText.IsBoundToAnEvent2].Fmt([AFamily.Name,
       AFamily.BoundEvent]));
   end;
   if AParameter < 0 then
   begin
-    raise Fail(cTexts[TLspInvertBooleanText.TheParameterIsNotIn].Fmt([ASymbol.Name, AFamily.Name]));
+    raise Fail(cTexts[TInvertBooleanProtocolText.TheParameterIsNotIn].Fmt([ASymbol.Name, AFamily.Name]));
   end;
   mModifier := LowerCase(Trim(AFamily.Headers[0].Parameters[AParameter].Modifier));
   if EndsText('var', mModifier) or EndsText('out', mModifier) then
   begin
-    raise Fail(cTexts[TLspInvertBooleanText.IsAParameterTheCaller].Fmt([ASymbol.Name, mModifier]));
+    raise Fail(cTexts[TInvertBooleanProtocolText.IsAParameterTheCaller].Fmt([ASymbol.Name, mModifier]));
   end;
 end;
 
@@ -1288,7 +1286,7 @@ var
   mCall: TRoutineFamilyCall;
 begin
   mOrigin := ReadableSource(ASymbol.FileName);
-  mFamily := TLspChangeSignature.Family(FamilySource(FResolver, FContext, mOrigin.Tree, ASymbol.FileName,
+  mFamily := TChangeSignatureProtocol.Family(FamilySource(FResolver, FContext, mOrigin.Tree, ASymbol.FileName,
     ParameterRoutine(mOrigin, ASymbol)));
   mParameter := -1;
   if mFamily.BoundEvent = '' then
@@ -1321,7 +1319,7 @@ begin
   mTypeDecl := NodeAt(AUnit.Tree, TSyntaxKind.TypeDecl, AUnit.Tree.Tokens[AToken].Offset);
   if (mTypeDecl = nil) or (mTypeDecl.FindChild(TSyntaxKind.ClassType) = nil) then
   begin
-    Warn(cTexts[TLspInvertBooleanText.StartsWithFalsePleaseSet].Fmt([Where(ASymbol.FileName,
+    Warn(cTexts[TInvertBooleanProtocolText.StartsWithFalsePleaseSet].Fmt([Where(ASymbol.FileName,
       ASymbol.SelectionRange.StartPos), ASymbol.Name, ANewName]));
     Exit;
   end;
@@ -1333,7 +1331,7 @@ begin
   end;
   if mConstructors = nil then
   begin
-    Warn(cTexts[TLspInvertBooleanText.HasNoConstructorInStarts].Fmt([mClassName, ExtractFileName(ASymbol.FileName),
+    Warn(cTexts[TInvertBooleanProtocolText.HasNoConstructorInStarts].Fmt([mClassName, ExtractFileName(ASymbol.FileName),
       ASymbol.Name, ANewName]));
   end;
 end;
@@ -1377,7 +1375,7 @@ begin
   end;
   if Result = nil then
   begin
-    raise Fail(cTexts[TLspInvertBooleanText.TheDeclarationOfIsMissing].Fmt([ASymbol.Name]));
+    raise Fail(cTexts[TInvertBooleanProtocolText.TheDeclarationOfIsMissing].Fmt([ASymbol.Name]));
   end;
 end;
 
@@ -1423,7 +1421,7 @@ var
 begin
   if AFamily.Accessors <> nil then
   begin
-    raise Fail(cTexts[TLspInvertBooleanText.IsAnAccessorOfA2].Fmt([AFamily.Name, AFamily.Accessors[0]]));
+    raise Fail(cTexts[TInvertBooleanProtocolText.IsAnAccessorOfA2].Fmt([AFamily.Name, AFamily.Accessors[0]]));
   end;
   mOwner := ResolveAt(FResolver, AOrigin.Tree, AOrigin.FileName, APosition);
   mProperty := '';
@@ -1433,7 +1431,7 @@ begin
   end;
   if mProperty <> '' then
   begin
-    raise Fail(cTexts[TLspInvertBooleanText.IsAnAccessorOfThe2].Fmt([mOwner.Name, mProperty]));
+    raise Fail(cTexts[TInvertBooleanProtocolText.IsAnAccessorOfThe2].Fmt([mOwner.Name, mProperty]));
   end;
 end;
 
@@ -1558,9 +1556,9 @@ begin
   end
   else
   begin
-    Warn(cTexts[TLspInvertBooleanText.IsPublishedFormsStillStore].Fmt([ASymbol.Name, ASymbol.Name]));
+    Warn(cTexts[TInvertBooleanProtocolText.IsPublishedFormsStillStore].Fmt([ASymbol.Name, ASymbol.Name]));
   end;
-  Warn(cTexts[TLspInvertBooleanText.IsPublishedFormsOutsideThe].Fmt([ASymbol.Name]));
+  Warn(cTexts[TInvertBooleanProtocolText.IsPublishedFormsOutsideThe].Fmt([ASymbol.Name]));
 end;
 
 procedure TInvertPlan.AddForm(const AForm: string; const AClasses: TArray<string>; const AOld, ANew: string);
@@ -1577,13 +1575,13 @@ begin
   end;
   if TFileEncoding.IsBinaryFormFile(AForm) then
   begin
-    Warn(cTexts[TLspInvertBooleanText.IsStoredAsBinaryAnd].Fmt([ExtractFileName(AForm)]));
+    Warn(cTexts[TInvertBooleanProtocolText.IsStoredAsBinaryAnd].Fmt([ExtractFileName(AForm)]));
     Exit;
   end;
   mEdits := TInvertBoolean.DfmEdits(mText, AClasses, AOld, ANew, mFound);
   for mWarning in mFound do
   begin
-    Warn(cTexts[TLspInvertBooleanText.Line2].Fmt([ExtractFileName(AForm), mWarning.Position.Line + 1, mWarning.Text]));
+    Warn(cTexts[TInvertBooleanProtocolText.Line2].Fmt([ExtractFileName(AForm), mWarning.Position.Line + 1, mWarning.Text]));
   end;
   if mEdits <> nil then
   begin
@@ -1622,7 +1620,7 @@ begin
   try
     if Length(mTree.Diagnostics) > Length(AUnit.Tree.Diagnostics) then
     begin
-      raise Fail(cTexts[TLspInvertBooleanText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AUnit.FileName),
+      raise Fail(cTexts[TInvertBooleanProtocolText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AUnit.FileName),
         mTree.Diagnostics[0].StartPos.Line + 1, mTree.Diagnostics[0].Message]));
     end;
   finally
@@ -1693,11 +1691,11 @@ var
   mWarning: string;
 begin
   mAnnotation := TJSONObject.Create;
-  mAnnotation.AddPair('label', cTexts[TLspInvertBooleanText.InvertBoolean].Text);
+  mAnnotation.AddPair('label', cTexts[TInvertBooleanProtocolText.InvertBoolean].Text);
   mAnnotation.AddPair('needsConfirmation', TJSONBool.Create(True));
   mAnnotation.AddPair('description', ADescription);
   mAnnotations := TJSONObject.Create;
-  mAnnotations.AddPair(TLspInvertBoolean.cAnnotationId, mAnnotation);
+  mAnnotations.AddPair(TInvertBooleanProtocol.cAnnotationId, mAnnotation);
   mEdit := TJSONObject.Create;
   mEdit.AddPair('documentChanges', AChanges);
   mEdit.AddPair('changeAnnotations', mAnnotations);
@@ -1713,9 +1711,9 @@ begin
   Result.AddPair('files', TJSONNumber.Create(AFiles));
 end;
 
-{ TLspInvertBoolean }
+{ TInvertBooleanProtocol }
 
-class function TLspInvertBoolean.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
+class function TInvertBooleanProtocol.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
   AText: string; const APosition: TTextPosition; const AContext: TInvertBooleanContext): TJSONObject;
 var
   mSymbol: TResolvedSymbol;
@@ -1727,15 +1725,15 @@ begin
   if not TPascalLexer.IsIdentifierName(AContext.NewName) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TLspInvertBooleanText.IsNotAValidIdentifier].Fmt([AContext.NewName]));
+      cTexts[TInvertBooleanProtocolText.IsNotAValidIdentifier].Fmt([AContext.NewName]));
   end;
   if not Target(AResolver, ATree, AFileName, APosition, AContext.Files, mSymbol) then
   begin
-    raise Fail(cTexts[TLspInvertBooleanText.ThereIsNoBooleanOf].Text);
+    raise Fail(cTexts[TInvertBooleanProtocolText.ThereIsNoBooleanOf].Text);
   end;
   if SameText(AContext.NewName, mSymbol.Name) then
   begin
-    raise Fail(cTexts[TLspInvertBooleanText.TheNewNameIsThe].Text);
+    raise Fail(cTexts[TInvertBooleanProtocolText.TheNewNameIsThe].Text);
   end;
   mPlan := TInvertPlan.Create(AResolver, ATree, AFileName, AText, AContext);
   try
@@ -1745,12 +1743,12 @@ begin
   finally
     mPlan.Free;
   end;
-  Result := Answer(mChanges, cTexts[TLspInvertBooleanText.PlacesInFiles].Fmt([mSymbol.Name, AContext.NewName, mPlaces,
+  Result := Answer(mChanges, cTexts[TInvertBooleanProtocolText.PlacesInFiles].Fmt([mSymbol.Name, AContext.NewName, mPlaces,
     mFiles]), mWarnings, mPlaces, mFiles);
 end;
 
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.InvertBoolean', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.InvertBoolean.Protocol', cTexts);
 
 end.

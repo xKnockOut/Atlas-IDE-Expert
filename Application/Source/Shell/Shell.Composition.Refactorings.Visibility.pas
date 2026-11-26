@@ -28,7 +28,6 @@ uses
   // Inline-Funktionen von TJSONArray (H2443).
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.JsonRpc.Positions,
@@ -73,7 +72,7 @@ begin
   mName := AArguments.Items[2].Value;
   if not ReadText(TDocumentUris.ToPath(mUri), mText) then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed, cTexts[TVisibilityRefactoringText.NotReadable].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, cTexts[TVisibilityRefactoringText.NotReadable].Text);
   end;
   mAnswer := TRaiseVisibilityProtocol.Execute(mUri, mText, TLspPositions.ReadPosition(AArguments.Items[1]), mName);
   Log(Format('Mitglied-Aktionen: %d', [mAnswer.Count]));

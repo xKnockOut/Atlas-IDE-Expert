@@ -38,7 +38,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.InvertBoolean,
+  Atlas.Common.Editing.InvertBoolean.Protocol,
   Atlas.Common.Editing.PromoteVariable.Protocol,
   Atlas.Common.Editing.AnonymousMethods.Protocol,
   Atlas.Common.Editing.MethodWithoutSelf.Protocol,
@@ -68,7 +68,7 @@ end;
 
 procedure TShellConversionRefactorings.Register(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspInvertBoolean.cApplyCommand, InvertBoolean);
+  ACommands.Register(TInvertBooleanProtocol.cApplyCommand, InvertBoolean);
   ACommands.Register(TPromoteVariableProtocol.cApplyCommand, PromoteVariable);
   ACommands.Register(TAnonymousMethodsProtocol.cApplyCommand, AnonymousMethod);
   ACommands.Register(TMethodWithoutSelfProtocol.cApplyCommand, MethodKind);
@@ -101,7 +101,7 @@ begin
   mContext.Files := ProjectFiles;
   mResolver := NewResolver;
   try
-    Result := TLspInvertBoolean.Actions(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+    Result := TInvertBooleanProtocol.Actions(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(AUri), AUri, APosition, mContext);
   finally
     mResolver.Free;
@@ -130,7 +130,7 @@ begin
   mContext.NewName := Trim(AArguments.Items[2].Value);
   mResolver := NewResolver;
   try
-    mAnswer := TLspInvertBoolean.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+    mAnswer := TInvertBooleanProtocol.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;

@@ -24,7 +24,6 @@ type
   TLspErrorCode = record
   public const
     cServerNotInitialized = -32002;
-    cRequestFailed = -32803;
     cServerCancelled = -32802;
   end;
 
