@@ -17,7 +17,8 @@ uses
   Atlas.Common.Lsp.Refactorings,
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.Completion.Hooks,
-  Atlas.Common.Lsp.ExpressionCompletion;
+  Atlas.Common.Lsp.ExpressionCompletion,
+  Atlas.Common.Completion.Request;
 
 type
   TShellCompletionRefactoringFunc = reference to function(const AUri: string): TRefactoringSettings;
@@ -32,7 +33,7 @@ type
     Documents: IDocumentStore;
     Index: ISymbolIndex;
     EnsureUnit: TEnsureUnitFunc;
-    ReadText: TCompletionReadText;
+    ReadText: TDocumentReadText;
     /// <summary>Abschnitt für Interface-Methoden (#466), Typumwandlung von Sender (#480), Abgleich.</summary>
     CompletionSettingsFor: TCompletionSettingsFunc;
     RefactoringSettingsFor: TShellCompletionRefactoringFunc;

@@ -8,7 +8,7 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Completion.Contract;
 
 type
   [TestFixture]
@@ -45,7 +45,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.Completion.Context,
-  Atlas.Common.Lsp.Completion.InheritedCalls;
+  Atlas.Common.Lsp.Completion.InheritedCalls,
+  Atlas.Common.Completion.Request;
 
 const
   cBasisFile = 'C:\P\Basis.pas';
@@ -133,10 +134,13 @@ var
   mIncomplete: Boolean;
 begin
   mText := StringReplace(cUnitHaupt, AFind, AReplace, []);
-  mTree := TPascalParser.Parse(mText);
-  mResolver := TNameResolver.Create(FIndex);
-  mRequest := TCompletionRequest.Create(mText, cHauptFile, PositionAfter(mText, AReplace));
+  mTree := nil;
+  mResolver := nil;
+  mRequest := nil;
   try
+    mTree := TPascalParser.Parse(mText);
+    mResolver := TNameResolver.Create(FIndex);
+    mRequest := TCompletionRequest.Create(mText, cHauptFile, PositionAfter(mText, AReplace));
     mRequest.Tree := mTree;
     mRequest.Resolver := mResolver;
     mRequest.Index := FIndex;

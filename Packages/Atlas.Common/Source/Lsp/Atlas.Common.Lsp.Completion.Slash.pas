@@ -11,7 +11,8 @@ uses
   Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.ConditionalSymbols,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Completion.Request,
+  Atlas.Common.Completion.Contract;
 
 type
   TCompletionSlash = class

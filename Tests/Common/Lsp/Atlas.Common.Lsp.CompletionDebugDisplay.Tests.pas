@@ -31,8 +31,9 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.CompletionRequest,
-  Atlas.Common.Lsp.CompletionDebugDisplay;
+  Atlas.Common.Lsp.CompletionDebugDisplay,
+  Atlas.Common.Completion.Contract,
+  Atlas.Common.Completion.Request;
 
 const
   cSource =

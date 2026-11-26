@@ -58,7 +58,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.Definitions,
-  Atlas.Common.Lsp.Completion;
+  Atlas.Common.Lsp.Completion,
+  Atlas.Common.Completion.Contract;
 
 const
   cMainFile = 'C:\P\Main.pas';

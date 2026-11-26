@@ -10,7 +10,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Completion;
+  Atlas.Common.Lsp.Completion,
+  Atlas.Common.Completion.Contract;
 
 type
   [TestFixture]
@@ -59,7 +60,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.CompletionRequest,
+  Atlas.Common.Completion.Request,
   Atlas.Common.Lsp.CompletionAttributes,
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Lsp.Completion.TestSupport,

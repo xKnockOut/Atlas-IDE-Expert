@@ -8,7 +8,7 @@
 // Reihenfolge der Gültigkeitsbereiche; passende Einträge zum erwarteten Typ (#417) kommen zuerst.
 // Gestaffelt (#616) gibt SendStage den bisherigen Stand an den Aufrufer weiter.
 //
-// Root-Unit statt Internals: Der Sammler braucht TCompletionItem aus Atlas.Common.Lsp.CompletionRequest,
+// Root-Unit statt Internals: Der Sammler braucht TCompletionItem aus Atlas.Common.Completion.Request,
 // und Internals dürfen das eigene Root nicht importieren (docs/Architektur.md, Importregeln).
 
 interface
@@ -23,7 +23,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Completion.Request,
+  Atlas.Common.Completion.Contract;
 
 const
   // CompletionItemKind
@@ -173,7 +174,6 @@ function PrefixFilter(const APrefix: string; AMatching: TCompletionMatching): TC
 implementation
 
 uses
-  Atlas.Common.Lsp.Contract,
   System.Math,
   System.StrUtils,
   Atlas.Common.Pascal.Lexer,

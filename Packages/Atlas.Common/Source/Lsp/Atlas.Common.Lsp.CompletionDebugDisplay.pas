@@ -10,7 +10,8 @@
 interface
 
 uses
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Completion.Request,
+  Atlas.Common.Completion.Contract;
 
 type
   {$SCOPEDENUMS ON}

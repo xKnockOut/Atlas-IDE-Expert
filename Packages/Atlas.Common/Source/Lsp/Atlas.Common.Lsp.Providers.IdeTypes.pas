@@ -18,7 +18,8 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Dispatcher,
-  Atlas.Common.Lsp.Contract;
+  Atlas.Common.Lsp.Contract,
+  Atlas.Common.Completion.Contract;
 
 type
   /// <summary>Typen der laufenden IDE; threadsicher. Inhalt ersetzt Replace.</summary>

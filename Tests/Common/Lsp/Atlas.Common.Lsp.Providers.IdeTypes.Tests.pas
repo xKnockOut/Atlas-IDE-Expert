@@ -32,7 +32,7 @@ uses
   System.JSON,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Lsp.Providers.IdeTypes,
-  Atlas.Common.Lsp.Contract;
+  Atlas.Common.Completion.Contract;
 
 const
   cSample = '{"units":[{"unit":"Vendor.Grid","types":[{"name":"TVendorGrid","parent":"Vcl.Controls.TCustomControl"},' +

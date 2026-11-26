@@ -7,7 +7,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Completion.Contract;
 
 type
   [TestFixture]
@@ -46,7 +46,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.CompletionCollector,
-  Atlas.Common.Lsp.Completion.TestSupport;
+  Atlas.Common.Lsp.Completion.TestSupport,
+  Atlas.Common.Completion.Request;
 
 { TCompletionCollectorTests }
 
@@ -65,9 +66,11 @@ var
   mItems: TArray<TCompletionItem>;
   mIncomplete: Boolean;
 begin
-  mRequest := TCompletionRequest.Create('', 'C:\P\Haupt.pas', TTextPosition.Create(0, 0));
-  mCollector := TCompletionCollector.Create(mRequest, ScopeContext(''), '', nil);
+  mRequest := nil;
+  mCollector := nil;
   try
+    mRequest := TCompletionRequest.Create('', 'C:\P\Haupt.pas', TTextPosition.Create(0, 0));
+    mCollector := TCompletionCollector.Create(mRequest, ScopeContext(''), '', nil);
     mImport := Default(TResolvedSymbol);
     mImport.Name := 'ShowMessage';
     mImport.MaxArgs := 1;
@@ -102,8 +105,9 @@ begin
   // Nur nach dem Anfang: alle Namen haben dieselbe Punktzahl, es entscheiden die Strafen.
   mRequest := TCompletionRequest.Create('', 'C:\P\Haupt.pas', TTextPosition.Create(0, 0));
   mRequest.Matching := TCompletionMatching.Prefix;
-  mCollector := TCompletionCollector.Create(mRequest, ScopeContext('We'), '', nil);
+  mCollector := nil;
   try
+    mCollector := TCompletionCollector.Create(mRequest, ScopeContext('We'), '', nil);
     mCollector.Add('WertU', '', cKindVariable, cPenaltyUnavailable, Default(TResolvedSymbol));
     mCollector.Add('WertB', '', cKindVariable, cPenaltyLibraryImport, Default(TResolvedSymbol));
     mCollector.Add('WertP', '', cKindVariable, cPenaltyProjectImport, Default(TResolvedSymbol));
@@ -123,9 +127,11 @@ var
   mIncomplete: Boolean;
   mItems: TArray<TCompletionItem>;
 begin
-  mRequest := TCompletionRequest.Create('', '', TTextPosition.Create(0, 0));
-  mCollector := TCompletionCollector.Create(mRequest, ScopeContext('zae'), '', nil);
+  mRequest := nil;
+  mCollector := nil;
   try
+    mRequest := TCompletionRequest.Create('', '', TTextPosition.Create(0, 0));
+    mCollector := TCompletionCollector.Create(mRequest, ScopeContext('zae'), '', nil);
     Assert.IsFalse(mCollector.Add('Rechne', '', cKindFunction, Default(TResolvedSymbol)));
     // Unscharf: Teilwort trifft, filterText ist das Getippte.
     Assert.IsTrue(mCollector.Add('Zaehler', '', cKindField, Default(TResolvedSymbol)));
@@ -146,13 +152,15 @@ var
   mSent: TArray<TCompletionItem>;
 begin
   mSent := nil;
-  mRequest := TCompletionRequest.Create('', '', TTextPosition.Create(0, 0));
-  mCollector := TCompletionCollector.Create(mRequest, ScopeContext(''), '',
-    procedure(const AItems: TArray<TCompletionItem>)
-    begin
-      mSent := mSent + AItems;
-    end);
+  mRequest := nil;
+  mCollector := nil;
   try
+    mRequest := TCompletionRequest.Create('', '', TTextPosition.Create(0, 0));
+    mCollector := TCompletionCollector.Create(mRequest, ScopeContext(''), '',
+      procedure(const AItems: TArray<TCompletionItem>)
+      begin
+        mSent := mSent + AItems;
+      end);
     mCollector.Add('Lokal', '', cKindVariable, Default(TResolvedSymbol));
     mCollector.Add('Feld', '', cKindField, Default(TResolvedSymbol));
     mCollector.SendStage;
@@ -288,10 +296,13 @@ const
     mText := cHead + ALine + cTail;
     mIndex := TSymbolIndex.Create;
     mIndex.AddUnit(TIndexExtractor.ExtractText(mText, cFileName, nil));
-    mTree := TPascalParser.Parse(mText);
-    mResolver := TNameResolver.Create(mIndex);
-    mRequest := TCompletionRequest.Create(mText, cFileName, TTextPosition.Create(22, 2 + Length(ALine)));
+    mTree := nil;
+    mResolver := nil;
+    mRequest := nil;
     try
+      mTree := TPascalParser.Parse(mText);
+      mResolver := TNameResolver.Create(mIndex);
+      mRequest := TCompletionRequest.Create(mText, cFileName, TTextPosition.Create(22, 2 + Length(ALine)));
       mRequest.Tree := mTree;
       mRequest.Resolver := mResolver;
       mRequest.Index := mIndex;

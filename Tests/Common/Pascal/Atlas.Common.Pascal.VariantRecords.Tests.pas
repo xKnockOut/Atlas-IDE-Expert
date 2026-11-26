@@ -46,7 +46,9 @@ uses
   Atlas.Common.Lsp.CompletionJson,
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.DocumentSymbols;
+  Atlas.Common.Lsp.DocumentSymbols,
+  Atlas.Common.Completion.Contract,
+  Atlas.Common.Completion.Request;
 
 const
   cUnitRect =
@@ -259,12 +261,36 @@ begin
   end;
 end;
 
-procedure TVariantRecordsTests.CompletionAfterDotShowsLeft;
+/// <summary>Vervollständigung in cUnitMain an Zeile 8, Zeichen 4, mit AIndex.</summary>
+function MainItems(const AIndex: ISymbolIndex): TCompletionItems;
 var
-  mIndex: ISymbolIndex;
   mResolver: TNameResolver;
   mRequest: TCompletionRequest;
   mTree: TSyntaxTree;
+begin
+  mTree := nil;
+  mResolver := nil;
+  mRequest := nil;
+  try
+    mTree := TPascalParser.Parse(cUnitMain);
+    mResolver := TNameResolver.Create(AIndex);
+    mRequest := TCompletionRequest.Create(cUnitMain, cMainFile, TTextPosition.Create(8, 4));
+    mRequest.Tree := mTree;
+    mRequest.Resolver := mResolver;
+    mRequest.Index := AIndex;
+    mRequest.Matching := TCompletionMatching.Prefix;
+    mRequest.Settings := TCompletionSettings.Default;
+    Result := TCompletionLists.Collect(mRequest, TPostfixOptions.Default, nil);
+  finally
+    mRequest.Free;
+    mResolver.Free;
+    mTree.Free;
+  end;
+end;
+
+procedure TVariantRecordsTests.CompletionAfterDotShowsLeft;
+var
+  mIndex: ISymbolIndex;
   mItems: TCompletionItems;
   mItem: TCompletionItem;
   mJson: TJSONArray;
@@ -274,21 +300,7 @@ var
 begin
   mIndex := TSymbolIndex.Create;
   mIndex.AddUnit(TIndexExtractor.ExtractText(cUnitRect, 'C:\P\U6.pas', nil));
-  mTree := TPascalParser.Parse(cUnitMain);
-  mResolver := TNameResolver.Create(mIndex);
-  mRequest := TCompletionRequest.Create(cUnitMain, cMainFile, TTextPosition.Create(8, 4));
-  try
-    mRequest.Tree := mTree;
-    mRequest.Resolver := mResolver;
-    mRequest.Index := mIndex;
-    mRequest.Matching := TCompletionMatching.Prefix;
-    mRequest.Settings := TCompletionSettings.Default;
-    mItems := TCompletionLists.Collect(mRequest, TPostfixOptions.Default, nil);
-  finally
-    mRequest.Free;
-    mResolver.Free;
-    mTree.Free;
-  end;
+  mItems := MainItems(mIndex);
   mListed := '';
   mPosition := -1;
   for mItem in mItems.Items do

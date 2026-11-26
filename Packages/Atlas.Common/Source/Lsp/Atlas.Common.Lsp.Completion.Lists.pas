@@ -15,8 +15,9 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.CompletionRequest,
-  Atlas.Common.Lsp.Completion.Postfix;
+  Atlas.Common.Completion.Request,
+  Atlas.Common.Lsp.Completion.Postfix,
+  Atlas.Common.Completion.Contract;
 
 type
   TCompletionLists = class

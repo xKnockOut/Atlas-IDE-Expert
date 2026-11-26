@@ -23,11 +23,11 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Pascal.XmlDoc;
+  Atlas.Common.Pascal.XmlDoc,
+  Atlas.Common.Documents.Contract;
 
 type
   /// <summary>Liefert den Text einer Datei; False, wenn sie nicht lesbar ist.</summary>
-  TDocReadText = reference to function(const AFileName: string; out AText: string): Boolean;
 
   /// <summary>Einstellungen "hints" für das Dokument AUri (#654).</summary>
   TDocHintsProvider = reference to function(const AUri: string): THintSettings;
@@ -50,7 +50,7 @@ type
     TLoader = class
     private
       FResolver: TNameResolver;
-      FReadText: TDocReadText;
+      FReadText: TDocumentReadText;
       FLines: TDictionary<string, TArray<string>>;
       function LinesOf(const AFileName: string; out ALines: TArray<string>): Boolean;
       function DocOf(const ASymbol: TResolvedSymbol; ADepth: Integer): TXmlDoc;
@@ -59,7 +59,7 @@ type
       function AncestorDoc(const ASymbol: TResolvedSymbol; ADepth: Integer): TXmlDoc;
       function Resolve(const ASymbol: TResolvedSymbol; const ADoc: TXmlDoc; ADepth: Integer): TXmlDoc;
     public
-      constructor Create(AResolver: TNameResolver; const AReadText: TDocReadText);
+      constructor Create(AResolver: TNameResolver; const AReadText: TDocumentReadText);
       destructor Destroy; override;
     end;
   public
@@ -67,7 +67,7 @@ type
     /// &lt;inheritdoc/&gt; im Kommentar, kommt die Doku des Vorfahren bzw. des cref-Ziels dazu; AReadText
     /// liest deren Dateien.</summary>
     class function Load(AResolver: TNameResolver; const ASymbol: TResolvedSymbol; const ALines: TArray<string>;
-      ALine: Integer; const AReadText: TDocReadText): TXmlDoc; static;
+      ALine: Integer; const AReadText: TDocumentReadText): TXmlDoc; static;
     /// <summary>Fundorte aller cref in ADoc (Verweise und Exceptions), von AFromUnit bzw. AContainer aus
     /// aufgelöst; nicht auflösbare fehlen.</summary>
     class function Targets(AResolver: TNameResolver; const AFromUnit: TUnitIndex; const AContainer: string;
@@ -78,7 +78,7 @@ type
     class function HintsJson(const AHints: THintSettings): TJSONObject; static;
     /// <summary>Liest AOwnFile aus AOwnText (Editorinhalt, auch ungespeichert), andere Dateien über
     /// AReadText.</summary>
-    class function Reader(const AOwnFile, AOwnText: string; const AReadText: TDocReadText): TDocReadText; static;
+    class function Reader(const AOwnFile, AOwnText: string; const AReadText: TDocumentReadText): TDocumentReadText; static;
     /// <summary>Text in Zeilen (CRLF, LF oder CR); wie TTextLines.SplitLines.</summary>
     class function SplitLines(const AText: string): TArray<string>; static;
   end;
@@ -91,7 +91,7 @@ uses
 
 { TLspDocumentation.TLoader }
 
-constructor TLspDocumentation.TLoader.Create(AResolver: TNameResolver; const AReadText: TDocReadText);
+constructor TLspDocumentation.TLoader.Create(AResolver: TNameResolver; const AReadText: TDocumentReadText);
 begin
   inherited Create;
   FResolver := AResolver;
@@ -247,7 +247,7 @@ end;
 { TLspDocumentation }
 
 class function TLspDocumentation.Load(AResolver: TNameResolver; const ASymbol: TResolvedSymbol;
-  const ALines: TArray<string>; ALine: Integer; const AReadText: TDocReadText): TXmlDoc;
+  const ALines: TArray<string>; ALine: Integer; const AReadText: TDocumentReadText): TXmlDoc;
 var
   mLoader: TLoader;
 begin
@@ -329,7 +329,7 @@ begin
 end;
 
 class function TLspDocumentation.Reader(const AOwnFile, AOwnText: string;
-  const AReadText: TDocReadText): TDocReadText;
+  const AReadText: TDocumentReadText): TDocumentReadText;
 begin
   Result :=
     function(const AName: string; out AText: string): Boolean

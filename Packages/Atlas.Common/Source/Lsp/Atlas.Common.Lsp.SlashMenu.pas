@@ -30,7 +30,8 @@ uses
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.SlashMenu,
-  Atlas.Common.Lsp.Completion;
+  Atlas.Common.Lsp.Completion,
+  Atlas.Common.Completion.Contract;
 
 type
   /// <summary>Delphi-Version (BDS-Nummer) je Dokument; '' = unbekannt.</summary>
@@ -82,7 +83,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.CompletionRequest,
+  Atlas.Common.Completion.Request,
   Atlas.Common.Lsp.Completion.Declarations,
   System.Generics.Collections,
   Atlas.Text.Lines,

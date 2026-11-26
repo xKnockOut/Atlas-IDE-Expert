@@ -48,22 +48,17 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Internals.FormCache,
-  Atlas.Common.Lsp.CompletionRequest,
+  Atlas.Common.Completion.Request,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.Completion.Names,
   Atlas.Common.Lsp.Completion.Postfix,
   Atlas.Common.Lsp.Completion.Hooks,
-  Atlas.Common.Lsp.Completion.Cases;
+  Atlas.Common.Lsp.Completion.Cases,
+  Atlas.Common.Completion.Contract;
 
 type
-  // Typen der Vervollständigung stehen in Atlas.Common.Lsp.CompletionRequest und den
-  // Completion-Units; hier weiter unter ihrem Namen, damit Aufrufer ohne Änderung übersetzen.
-  TCompletionContextKind = Atlas.Common.Lsp.CompletionRequest.TCompletionContextKind;
-  TCompletionContext = Atlas.Common.Lsp.CompletionRequest.TCompletionContext;
-  TCompletionItem = Atlas.Common.Lsp.CompletionRequest.TCompletionItem;
-  TCompletionItems = Atlas.Common.Lsp.CompletionRequest.TCompletionItems;
-  TCompletionReadText = Atlas.Common.Lsp.CompletionRequest.TCompletionReadText;
-  TCompletionRequest = Atlas.Common.Lsp.CompletionRequest.TCompletionRequest;
+  // Typen der Teil-Units der Vervollständigung; hier weiter unter ihrem Namen, damit Aufrufer ohne Änderung
+  // übersetzen. Die gemeinsamen Werte (Eintrag, Kontext, Anfrage) stehen in Atlas.Common.Completion.
   TPostfixOptions = Atlas.Common.Lsp.Completion.Postfix.TPostfixOptions;
   TCompletionNamingFunc = Atlas.Common.Lsp.Completion.Names.TCompletionNamingFunc;
   TCompletionNotifyProc = Atlas.Common.Lsp.Completion.Hooks.TCompletionNotifyProc;

@@ -49,7 +49,8 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.Completion,
-  Atlas.Common.Lsp.Completion.TestSupport;
+  Atlas.Common.Lsp.Completion.TestSupport,
+  Atlas.Common.Completion.Contract;
 
 const
   cBasisFile = 'C:\P\Basis.pas';

@@ -51,7 +51,7 @@ uses
 
 type
   /// <summary>Liefert den Text einer Datei; False, wenn sie nicht lesbar ist.</summary>
-  THoverReadText = TDocReadText;
+  THoverReadText = TDocumentReadText;
   /// <summary>Delphi-Version des Dokuments AUri (z. B. "23.0"); '' = unbekannt.</summary>
   THoverVersionProvider = reference to function(const AUri: string): string;
   /// <summary>Einstellungen der Begründungen für das Dokument AUri (#1123).</summary>

@@ -14,8 +14,7 @@ uses
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Semantics.NameResolver;
 
 type
   TEnumValueCommands = class
@@ -24,7 +23,7 @@ type
   public
     /// <summary>Befehl atlas.server.enumValues mit den Argumenten URI und Position {line, character}.</summary>
     class function Execute(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-      const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AReadText: TCompletionReadText;
+      const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AReadText: TDocumentReadText;
       const AArguments: TJSONArray): TJSONValue; static;
   end;
 
@@ -55,7 +54,7 @@ const
 { TEnumValueCommands }
 
 class function TEnumValueCommands.Execute(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-  const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AReadText: TCompletionReadText;
+  const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AReadText: TDocumentReadText;
   const AArguments: TJSONArray): TJSONValue;
 var
   mUri, mValue: string;

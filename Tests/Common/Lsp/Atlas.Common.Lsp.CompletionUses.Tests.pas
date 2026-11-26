@@ -9,7 +9,7 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Completion.Contract;
 
 type
   [TestFixture]
@@ -65,7 +65,8 @@ uses
   Atlas.Common.Lsp.CompletionJson,
   Atlas.Common.Lsp.CompletionUses,
   Atlas.Common.Lsp.Completion.TestSupport,
-  Atlas.Tests.SourceText;
+  Atlas.Tests.SourceText,
+  Atlas.Common.Completion.Request;
 
 const
   cHauptFile = 'C:\P\Haupt.pas';

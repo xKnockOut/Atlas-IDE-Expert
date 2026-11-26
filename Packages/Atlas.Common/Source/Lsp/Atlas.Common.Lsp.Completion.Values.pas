@@ -13,7 +13,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Completion.Request,
+  Atlas.Common.Completion.Contract;
 
 type
   /// <summary>Was die Auflösung von Aufzählungstypen braucht: Auflöser, Index, Baum und Text der Datei und das
@@ -24,7 +25,7 @@ type
     Tree: TSyntaxTree;
     Text: string;
     FileName: string;
-    ReadText: TCompletionReadText;
+    ReadText: TDocumentReadText;
     class function FromRequest(ARequest: TCompletionRequest): TEnumLookup; static;
   end;
 

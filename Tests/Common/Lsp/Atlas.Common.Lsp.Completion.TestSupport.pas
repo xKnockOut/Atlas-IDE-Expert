@@ -14,8 +14,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Lsp.CompletionRequest,
-  Atlas.Common.Lsp.Completion.Values;
+  Atlas.Common.Completion.Request,
+  Atlas.Common.Lsp.Completion.Values,
+  Atlas.Common.Completion.Contract;
 
 const
   cHauptFile = 'C:\P\Haupt.pas';
@@ -100,7 +101,7 @@ function CollectWith(const AIndex: ISymbolIndex; const AText, AMarker: string;
 function WithCode(const ACode: string): string;
 /// <summary>Was TCompletionValues aus der Datei HauptFile braucht.</summary>
 function LookupOf(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree; const AText: string;
-  const AReadText: TCompletionReadText): TEnumLookup;
+  const AReadText: TDocumentReadText): TEnumLookup;
 /// <summary>Anfrage an APosition mit Auflöser, Index, Baum und Lesen aus ALookup; der Aufrufer gibt sie frei.
 /// </summary>
 function RequestOf(const ALookup: TEnumLookup; const APosition: TTextPosition): TCompletionRequest;
@@ -226,10 +227,13 @@ begin
       mPosition := TTextPosition.Create(mLine, Pos(AMarker, mLines[mLine]) - 1 + Length(AMarker));
     end;
   end;
-  mTree := TSyntaxTreeCache.Parse(AText);
-  mResolver := TNameResolver.Create(AIndex);
-  mRequest := TCompletionRequest.Create(AText, cHauptFile, mPosition);
+  mTree := nil;
+  mResolver := nil;
+  mRequest := nil;
   try
+    mTree := TSyntaxTreeCache.Parse(AText);
+    mResolver := TNameResolver.Create(AIndex);
+    mRequest := TCompletionRequest.Create(AText, cHauptFile, mPosition);
     mRequest.Tree := mTree;
     mRequest.Resolver := mResolver;
     mRequest.Index := AIndex;
@@ -251,7 +255,7 @@ end;
 
 /// <summary>Was TCompletionValues aus der Datei HauptFile braucht.</summary>
 function LookupOf(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree; const AText: string;
-  const AReadText: TCompletionReadText): TEnumLookup;
+  const AReadText: TDocumentReadText): TEnumLookup;
 begin
   Result.Resolver := AResolver;
   Result.Index := AIndex;

@@ -87,13 +87,13 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Lsp.Contract,
   System.IOUtils,
   System.Generics.Collections,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.CacheDirectory,
   Mcp.BuildTools,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Common.Completion.Contract;
 
 { TShellIde }
 

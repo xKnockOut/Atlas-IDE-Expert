@@ -83,7 +83,8 @@ uses
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.Extract,
   Atlas.Common.Editing.NestedRoutines,
-  Atlas.Common.Lsp.Completion;
+  Atlas.Common.Lsp.Completion,
+  Atlas.Common.Completion.Request;
 
 const
   cHauptFile = 'C:\P\Haupt.pas';

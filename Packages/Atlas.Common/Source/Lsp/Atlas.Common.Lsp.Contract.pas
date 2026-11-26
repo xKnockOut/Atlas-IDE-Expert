@@ -16,7 +16,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Semantics.Contract;
+  Atlas.Common.Semantics.Contract,
+  Atlas.Common.Completion.Contract;
 
 type
   /// <summary>Zusätzliche Fehlercodes des Language Server Protocol.</summary>
@@ -96,14 +97,6 @@ type
 
   /// <summary>Liefert die Capabilities für die Antwort auf initialize; der Aufrufer übernimmt das Objekt.</summary>
   TLspCapabilitiesFactory = reference to function: TJSONObject;
-
-  /// <summary>Ein Typ, den die IDE kennt, mit seiner Unit.</summary>
-  TIdeTypeEntry = record
-    Name: string;
-    UnitName: string;
-    /// <summary>Direkter Vorfahr einer Klasse mit Unit (Vcl.Controls.TCustomControl); '' ohne Angabe.</summary>
-    Parent: string;
-  end;
 
   /// <summary>Vererbungstiefe der Klassen einer Datei (#980) für Code Lens und atlas.server.metrics; der Host
   /// rechnet sie wie die Regel metric-inheritance-depth.</summary>

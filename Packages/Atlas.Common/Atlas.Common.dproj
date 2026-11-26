@@ -230,7 +230,8 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionDebugDisplay.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionInherited.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionSameNames.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionRequest.pas"/>
+        <DCCReference Include="Source\Completion\Atlas.Common.Completion.Contract.pas"/>
+        <DCCReference Include="Source\Completion\Atlas.Common.Completion.Request.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionCollector.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.TypeConversions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionJson.pas"/>

@@ -96,11 +96,11 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.CompletionRequest,
+  Atlas.Common.Completion.Request,
   Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Lsp.Completion.Lists,
   Atlas.Common.Lsp.Completion.Values,
-  Atlas.Common.Lsp.Contract;
+  Atlas.Common.Completion.Contract;
 
 /// <summary>Eintrag, der jedes Datenfeld belegt.</summary>
 function FullDataItem: TCompletionItem;
