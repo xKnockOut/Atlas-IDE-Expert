@@ -724,20 +724,8 @@ begin
 end;
 
 function RangeText(const ALines: TArray<string>; const ARange: TTextRange): string;
-var
-  mIndex: Integer;
 begin
-  if ARange.StartPos.Line = ARange.EndPos.Line then
-  begin
-    Exit(Copy(ALines[ARange.StartPos.Line], ARange.StartPos.Character + 1,
-      ARange.EndPos.Character - ARange.StartPos.Character));
-  end;
-  Result := Copy(ALines[ARange.StartPos.Line], ARange.StartPos.Character + 1, MaxInt);
-  for mIndex := ARange.StartPos.Line + 1 to ARange.EndPos.Line - 1 do
-  begin
-    Result := Result + ' ' + ALines[mIndex];
-  end;
-  Result := Result + ' ' + Copy(ALines[ARange.EndPos.Line], 1, ARange.EndPos.Character);
+  Result := ARange.TextIn(ALines);
 end;
 
 /// <summary>Unit der Klasse AClassName aus einer anderen Unit über den Index; False ohne.</summary>

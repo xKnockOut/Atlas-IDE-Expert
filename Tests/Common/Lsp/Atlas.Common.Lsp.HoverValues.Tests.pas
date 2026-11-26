@@ -26,6 +26,12 @@ type
     procedure ReadsSetTypes;
     [Test]
     procedure FindsDeprecationDirectives;
+    /// <summary>Aus "A, B: Integer" nur der gefragte Name mit Typ und Wörtern davor.</summary>
+    [Test]
+    procedure ReducesNameListToOneName;
+    /// <summary>Routinen, Typen, Konstanten, Properties und fremde Namen bleiben unberührt.</summary>
+    [Test]
+    procedure KeepsOtherDeclarations;
   end;
 
 implementation
@@ -122,6 +128,43 @@ begin
   Assert.AreEqual('**Experimentell**', THoverValues.Deprecation('TFoo = class end experimental;'));
   Assert.AreEqual('', THoverValues.Deprecation('procedure Foo(Platform: string);'));
   Assert.AreEqual('', THoverValues.Deprecation('Text = ''deprecated'';'));
+end;
+
+procedure TLspHoverValuesTests.ReducesNameListToOneName;
+var
+  mResult: string;
+begin
+  Assert.IsTrue(THoverValues.NameDeclaration('mTest1, mTest2, mTest3: string;', 'mTest2', mResult));
+  Assert.AreEqual('mTest2: string;', mResult);
+  Assert.IsTrue(THoverValues.NameDeclaration('Zaehler: Integer;', 'Zaehler', mResult));
+  Assert.AreEqual('Zaehler: Integer;', mResult);
+  Assert.IsTrue(THoverValues.NameDeclaration('const C, D: string', 'D', mResult));
+  Assert.AreEqual('const D: string', mResult);
+  Assert.IsTrue(THoverValues.NameDeclaration('class var A, B: TList<Integer>;', 'a', mResult));
+  Assert.AreEqual('class var a: TList<Integer>;', mResult);
+  Assert.IsTrue(THoverValues.NameDeclaration('A { erste }, B: Integer = 1', 'B', mResult));
+  Assert.AreEqual('B: Integer = 1', mResult);
+  // out ist hier der erste Name, kein Wort davor.
+  Assert.IsTrue(THoverValues.NameDeclaration('out, B: Integer', 'B', mResult));
+  Assert.AreEqual('B: Integer', mResult);
+  Assert.IsTrue(THoverValues.NameDeclaration('out X, Y: Integer', 'X', mResult));
+  Assert.AreEqual('out X: Integer', mResult);
+  Assert.IsTrue(THoverValues.NameDeclaration('&Type, B: Integer;', '&Type', mResult));
+  Assert.AreEqual('&Type: Integer;', mResult);
+end;
+
+procedure TLspHoverValuesTests.KeepsOtherDeclarations;
+var
+  mResult: string;
+begin
+  Assert.IsFalse(THoverValues.NameDeclaration('function Summe(A, B: Integer): Integer;', 'A', mResult));
+  Assert.AreEqual('', mResult);
+  Assert.IsFalse(THoverValues.NameDeclaration('TFoo = class', 'TFoo', mResult));
+  Assert.IsFalse(THoverValues.NameDeclaration('Max = 10;', 'Max', mResult));
+  Assert.IsFalse(THoverValues.NameDeclaration('property Count: Integer read FCount;', 'Count', mResult));
+  Assert.IsFalse(THoverValues.NameDeclaration('A, B: Integer;', 'C', mResult));
+  Assert.IsFalse(THoverValues.NameDeclaration('A, B', 'A', mResult));
+  Assert.IsFalse(THoverValues.NameDeclaration('', 'A', mResult));
 end;
 
 initialization

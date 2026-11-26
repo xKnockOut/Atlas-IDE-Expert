@@ -19,6 +19,8 @@ type
     [Test]
     procedure OneLineInJoinsLines;
     [Test]
+    procedure TextInStopsAtEnd;
+    [Test]
     procedure TextOrEmptyWithoutFile;
   end;
 
@@ -78,6 +80,17 @@ begin
   Assert.AreEqual('Foo( 1, 2);', TTextRange.Create(0, 7, 2, 6).OneLineIn(mLines));
   Assert.AreEqual('Rest', TTextRange.Create(3, 0, 9, 0).OneLineIn(mLines), 'hinter dem Ende abgeschnitten');
   Assert.AreEqual('', TTextRange.Create(7, 0, 8, 0).OneLineIn(mLines));
+  mLines := nil;
+end;
+
+procedure TTextRangeTests.TextInStopsAtEnd;
+var
+  mLines: TArray<string>;
+begin
+  mLines := TArray<string>.Create('  A, B: Integer; // Kommentar', '  C,', '    D: string;');
+  Assert.AreEqual('A, B: Integer;', TTextRange.Create(0, 2, 0, 16).TextIn(mLines));
+  Assert.AreEqual('B', TTextRange.Create(0, 5, 0, 6).TextIn(mLines));
+  Assert.AreEqual('C,     D: string;', TTextRange.Create(1, 2, 2, 14).TextIn(mLines));
   mLines := nil;
 end;
 

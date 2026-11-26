@@ -34,6 +34,9 @@ type
     /// <summary>Text des Bereichs in ALines in einer Zeile: die erste Zeile ab StartPos, die weiteren getrimmt
     /// mit einem Leerzeichen angehängt (bis EndPos.Line, ohne die Spalte zu beachten).</summary>
     function OneLineIn(const ALines: TArray<string>): string;
+    /// <summary>Genau der Text des Bereichs in ALines (bis EndPos ausschließlich), Zeilen mit einem Leerzeichen
+    /// verbunden.</summary>
+    function TextIn(const ALines: TArray<string>): string;
     /// <summary>Umschließt einer der Bereiche ARanges APosition (Encloses)?</summary>
     class function AnyEncloses(const ARanges: TArray<TTextRange>; const APosition: TTextPosition): Boolean; static;
   end;
@@ -189,6 +192,22 @@ begin
       Result := Result + ' ' + Trim(ALines[mLine]);
     end;
   end;
+end;
+
+function TTextRange.TextIn(const ALines: TArray<string>): string;
+var
+  mIndex: Integer;
+begin
+  if StartPos.Line = EndPos.Line then
+  begin
+    Exit(Copy(ALines[StartPos.Line], StartPos.Character + 1, EndPos.Character - StartPos.Character));
+  end;
+  Result := Copy(ALines[StartPos.Line], StartPos.Character + 1, MaxInt);
+  for mIndex := StartPos.Line + 1 to EndPos.Line - 1 do
+  begin
+    Result := Result + ' ' + ALines[mIndex];
+  end;
+  Result := Result + ' ' + Copy(ALines[EndPos.Line], 1, EndPos.Character);
 end;
 
 function TTextRange.Encloses(const APosition: TTextPosition): Boolean;

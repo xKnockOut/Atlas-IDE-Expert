@@ -219,6 +219,12 @@ begin
   end;
   // Umschalten und Rückgängig: wie der Dialog umsetzen (Typpräfix, Hochkommas), sonst unverändert.
   mCheck := TAtlasEditValue.Check(AInfo, mNew);
+  // Umschalten einer nur lesbaren Eigenschaft: Der Dialog sagt das selbst, hier die Meldung statt eines Versuchs.
+  if TAtlasEditValueFlow.Refused(APlace.Direct, mCheck) then
+  begin
+    MessageDlg(TAtlasEditValueDialog.ProblemText(mCheck), mtWarning, [mbOK], 0);
+    Exit;
+  end;
   mNew := TAtlasEditValueFlow.Final(APlace.Direct, mNew, mCheck);
   if TAtlasIdeDebugValues.StoppedThread = nil then
   begin
@@ -413,22 +419,37 @@ begin
   end;
 end;
 
-/// <summary>ANew über den Setter in AInfo setzen (Aufruf mit Nebenwirkungen); AResult: Fehlertext.</summary>
+/// <summary>ANew über den Setter in AInfo setzen: der Aufruf ausgewertet vom Debugger der IDE (IOTAThread.Evaluate
+/// mit Nebenwirkungen, wie „Auswerten“ in Auswerten/Ändern). AResult: danach gelesener Wert bzw. Fehlertext.</summary>
 function CallSetter(const AInfo: TAtlasEditInfo; const AFileName: string; ALine: Integer; const ANew: string;
   out AResult: string): Boolean;
 var
   mValues: TAtlasIdeDebugValues;
-  mValue: TAtlasDebugValue;
+  mValue, mNow: TAtlasDebugValue;
 begin
+  AResult := '';
   mValues := TAtlasIdeDebugValues.Create;
   try
     // Eine verzögerte Antwort (LLDB) zeigt sich beim nächsten Auswerten.
     mValue := mValues.Evaluate(TAtlasEditValue.SetterCall(AInfo, ANew), AFileName, ALine, True, nil);
+    Result := mValue.State <> TAtlasDebugValueState.Failed;
+    if not Result then
+    begin
+      AResult := mValue.Text;
+      Exit;
+    end;
+    // Der Aufruf einer Prozedur liefert keinen Wert: Was der Setter gesetzt hat, zeigt erst das Lesen danach.
+    if mValue.State = TAtlasDebugValueState.Value then
+    begin
+      mNow := mValues.Evaluate(AInfo.Expression, AFileName, ALine, True, nil);
+      if mNow.State = TAtlasDebugValueState.Value then
+      begin
+        AResult := mNow.Text;
+      end;
+    end;
   finally
     mValues.Free;
   end;
-  AResult := mValue.Text;
-  Result := mValue.State <> TAtlasDebugValueState.Failed;
 end;
 
 function TAtlasIdeDebugEditValue.Apply(const APlace: TPlace; const AInfo: TAtlasEditInfo; const ANew: string): Boolean;
