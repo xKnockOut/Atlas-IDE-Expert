@@ -29,6 +29,9 @@ type
     function Contains(const APosition: TTextPosition): Boolean;
     /// <summary>Liegt APosition in einem der Bereiche ARanges (etwa den inaktiven Zweigen einer Unit)?</summary>
     class function AnyContains(const ARanges: TArray<TTextRange>; const APosition: TTextPosition): Boolean; static;
+    /// <summary>Genau der Text des Bereichs in ALines (bis EndPos ausschließlich), Zeilen mit einem Leerzeichen
+    /// verbunden.</summary>
+    function TextIn(const ALines: TArray<string>): string;
   end;
 
   /// <summary>Textänderung: Bereich Range ersetzen durch NewText (früher TRuleEdit in Rules.Contract).</summary>
@@ -149,6 +152,22 @@ begin
     end;
   end;
   Result := False;
+end;
+
+function TTextRange.TextIn(const ALines: TArray<string>): string;
+var
+  mIndex: Integer;
+begin
+  if StartPos.Line = EndPos.Line then
+  begin
+    Exit(Copy(ALines[StartPos.Line], StartPos.Character + 1, EndPos.Character - StartPos.Character));
+  end;
+  Result := Copy(ALines[StartPos.Line], StartPos.Character + 1, MaxInt);
+  for mIndex := StartPos.Line + 1 to EndPos.Line - 1 do
+  begin
+    Result := Result + ' ' + ALines[mIndex];
+  end;
+  Result := Result + ' ' + Copy(ALines[EndPos.Line], 1, EndPos.Character);
 end;
 
 { TTextEdit }

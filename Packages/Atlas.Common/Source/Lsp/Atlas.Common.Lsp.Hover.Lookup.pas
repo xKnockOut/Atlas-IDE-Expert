@@ -419,9 +419,27 @@ begin
   FInfo.Documentation := '`' + FTarget.FileName + '`';
 end;
 
+/// <summary>Kommentar hinter ARange in derselben Zeile ("FAnzahl: Integer; // Zähler"); '' ohne oder wenn dort
+/// weiterer Code steht (folgende Parameter).</summary>
+function TrailingComment(const ALines: TArray<string>; const ARange: TTextRange): string;
+var
+  mTail: string;
+begin
+  mTail := Copy(ALines[ARange.EndPos.Line], ARange.EndPos.Character + 1, MaxInt);
+  if TrimLeft(mTail).StartsWith('//') or TrimLeft(mTail).StartsWith('{') or TrimLeft(mTail).StartsWith('(*') then
+  begin
+    Result := mTail;
+  end
+  else
+  begin
+    Result := '';
+  end;
+end;
+
 function THoverLookupRun.ReadDeclaration: Boolean;
 var
   mStart: TTextPosition;
+  mOwn: string;
 begin
   if SameText(FTarget.FileName, FFileName) then
   begin
@@ -441,6 +459,13 @@ begin
     Exit;
   end;
   FInfo.Declaration := TrimRight(Copy(FLines[mStart.Line], mStart.Character + 1, MaxInt));
+  // Mehrere Namen in einer Deklaration (A, B: Integer): Der Bereich gilt für die ganze Liste, gezeigt wird nur
+  // der gehoverte Name mit seinem Typ, bei Parametern ohne die folgenden.
+  if (FTarget.Range.EndPos.Line <= High(FLines)) and THoverValues.NameDeclaration(FTarget.Range.TextIn(FLines),
+    FTarget.SelectionRange.TextIn(FLines), mOwn) then
+  begin
+    FInfo.Declaration := TrimRight(mOwn + TrailingComment(FLines, FTarget.Range));
+  end;
   FInfo.Doc := TXmlDoc.Parse(TXmlDoc.CommentAbove(FLines, mStart.Line));
   FInfo.Documentation := FInfo.Doc.ToMarkdown;
   FInfo.Deprecation := THoverValues.Deprecation(DeclarationText(FLines, FTarget.Range));

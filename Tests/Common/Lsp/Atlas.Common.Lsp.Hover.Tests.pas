@@ -73,6 +73,10 @@ type
     /// <summary>Neu zugewiesene Namen nennen Ziel, Zahl und Zeilen der Zuweisungen (#712).</summary>
     [Test]
     procedure ReassignedNamesInAtlasPart;
+    /// <summary>Mehrere Namen in einer Deklaration (A, B: Integer) zeigen nur den gehoverten Namen mit seinem
+    /// Typ: Variablen, Felder, Parameter, lokale Variablen, an der Deklaration und an der Verwendung.</summary>
+    [Test]
+    procedure ShowsOnlyHoveredNameOfGroup;
   end;
 
 implementation
@@ -205,6 +209,48 @@ begin
 end;
 
 { TLspHoverTests }
+
+const
+  cUnitGruppen =
+    'unit Gruppen;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TPunkt = class'#10 +
+    '    FLinks, FOben: Integer; // Ecke'#10 +
+    '  end;'#10 +
+    'var'#10 +
+    '  mTest1, mTest2, mTest3: string;'#10 +
+    'implementation'#10 +
+    'procedure Teile(A, B: Integer; const C, D: string);'#10 +
+    'var'#10 +
+    '  mErster, mZweiter: TPunkt;'#10 +
+    'begin'#10 +
+    '  mTest2 := C + D;'#10 +
+    '  mZweiter.FOben := A + B;'#10 +
+    'end;'#10 +
+    'end.';
+
+function GroupInfoAt(const AMarker: string; AOccurrence: Integer): THoverInfo;
+var
+  mIndex: ISymbolIndex;
+  mResolver: TNameResolver;
+  mTree: TSyntaxTree;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cUnitGruppen, 'C:\P\Gruppen.pas', nil));
+  mResolver := TNameResolver.Create(mIndex);
+  try
+    mTree := TPascalParser.Parse(cUnitGruppen);
+    try
+      Result := TLspHover.InfoAt(THoverSource.Create(mResolver, mIndex, nil), mTree, cUnitGruppen,
+        'C:\P\Gruppen.pas', PositionOf(cUnitGruppen, AMarker, AOccurrence));
+    finally
+      mTree.Free;
+    end;
+  finally
+    mResolver.Free;
+  end;
+end;
 
 function TLspHoverTests.InfoAt(const AMarker: string): THoverInfo;
 begin
@@ -713,6 +759,25 @@ begin
   finally
     mTree.Free;
   end;
+end;
+
+procedure TLspHoverTests.ShowsOnlyHoveredNameOfGroup;
+begin
+  // Deklaration wie im Editor gehovert (#mTest1 in der Zeile der Deklaration).
+  Assert.AreEqual('mTest1: string;', GroupInfoAt('mTest1', 1).Declaration);
+  Assert.AreEqual('mTest2: string;', GroupInfoAt('mTest2', 1).Declaration);
+  Assert.AreEqual('mTest3: string;', GroupInfoAt('mTest3', 1).Declaration);
+  // An der Verwendung.
+  Assert.AreEqual('mTest2: string;', GroupInfoAt('mTest2 :=', 1).Declaration);
+  // Felder mit Kommentar dahinter.
+  Assert.AreEqual('FLinks: Integer; // Ecke', GroupInfoAt('FLinks', 1).Declaration);
+  Assert.AreEqual('FOben: Integer; // Ecke', GroupInfoAt('FOben :=', 1).Declaration);
+  // Parameter mit und ohne Modifizierer.
+  Assert.AreEqual('A: Integer', GroupInfoAt('A + B', 1).Declaration);
+  Assert.AreEqual('B: Integer', GroupInfoAt('B;', 1).Declaration);
+  Assert.AreEqual('const D: string', GroupInfoAt('D;', 1).Declaration);
+  // Lokale Variablen.
+  Assert.AreEqual('mZweiter: TPunkt;', GroupInfoAt('mZweiter.', 1).Declaration);
 end;
 
 initialization
