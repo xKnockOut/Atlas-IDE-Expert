@@ -3,7 +3,7 @@
 // Tests für das Fenster „Atlas-Struktur“ (#609): Art nach Klasse und
 // Vorfahren, Baum der Steuerelemente, Gruppen nach Klasse und nach Art,
 // Verknüpfungen und Befunde auf einer Fixture-DFM, Filter, freie Stelle am
-// unteren Rand.
+// unteren Rand, Schritte zum Ausblenden der Symbole auf der Formularfläche.
 
 interface
 
@@ -43,6 +43,14 @@ type
     procedure OccupiedOnlyNonVisual;
     [Test]
     procedure DesignInfoRoundTrip;
+    [Test]
+    procedure HideWaitsForSettledDesigner;
+    [Test]
+    procedure HideExecutesOnlyWhenEnabled;
+    [Test]
+    procedure HideKeepsUserChoice;
+    [Test]
+    procedure HideNothingWhenReached;
   end;
 
 implementation
@@ -378,6 +386,55 @@ begin
   Assert.AreEqual(-16, mPoint.X);
   Assert.AreEqual(-3, mPoint.Y);
   Assert.AreEqual($00300078, TAtlasStructureModel.DesignInfoOf(Point(120, 48)));
+end;
+
+function HideState(AWanted, AHid, ASettled, AChecked, AEnabled: Boolean): TAtlasStructureHideState;
+begin
+  Result := Default(TAtlasStructureHideState);
+  Result.Wanted := AWanted;
+  Result.Hid := AHid;
+  Result.Settled := ASettled;
+  Result.Checked := AChecked;
+  Result.Enabled := AEnabled;
+end;
+
+procedure TAtlasStructureTests.HideWaitsForSettledDesigner;
+begin
+  // Kein fertiges visuelles Formular (Datenmodul, Formularwechsel, Bauen): die Umgebungsoption nicht umschalten.
+  Assert.AreEqual<TAtlasStructureHideStep>(TAtlasStructureHideStep.Wait,
+    TAtlasStructureHide.Step(HideState(True, False, False, False, True)));
+  Assert.AreEqual<TAtlasStructureHideStep>(TAtlasStructureHideStep.Wait,
+    TAtlasStructureHide.Step(HideState(False, True, False, True, True)));
+  Assert.AreEqual<TAtlasStructureHideStep>(TAtlasStructureHideStep.Execute,
+    TAtlasStructureHide.Step(HideState(True, False, True, False, True)));
+  Assert.AreEqual<TAtlasStructureHideStep>(TAtlasStructureHideStep.Execute,
+    TAtlasStructureHide.Step(HideState(False, True, True, True, True)));
+end;
+
+procedure TAtlasStructureTests.HideExecutesOnlyWhenEnabled;
+begin
+  Assert.AreEqual<TAtlasStructureHideStep>(TAtlasStructureHideStep.Wait,
+    TAtlasStructureHide.Step(HideState(True, False, True, False, False)));
+  Assert.AreEqual<TAtlasStructureHideStep>(TAtlasStructureHideStep.Wait,
+    TAtlasStructureHide.Step(HideState(False, True, True, True, False)));
+end;
+
+procedure TAtlasStructureTests.HideKeepsUserChoice;
+begin
+  // Vom Benutzer schon ausgeblendet: nichts tun (und später nichts zurückstellen).
+  Assert.AreEqual<TAtlasStructureHideStep>(TAtlasStructureHideStep.None,
+    TAtlasStructureHide.Step(HideState(True, False, True, True, True)));
+  // Vom Benutzer selbst wieder eingeblendet: eigenes Ausblenden vergessen, nicht erneut umschalten.
+  Assert.AreEqual<TAtlasStructureHideStep>(TAtlasStructureHideStep.Forget,
+    TAtlasStructureHide.Step(HideState(False, True, True, False, True)));
+end;
+
+procedure TAtlasStructureTests.HideNothingWhenReached;
+begin
+  Assert.AreEqual<TAtlasStructureHideStep>(TAtlasStructureHideStep.None,
+    TAtlasStructureHide.Step(HideState(False, False, False, False, False)));
+  Assert.AreEqual<TAtlasStructureHideStep>(TAtlasStructureHideStep.None,
+    TAtlasStructureHide.Step(HideState(True, True, False, True, False)));
 end;
 
 initialization
