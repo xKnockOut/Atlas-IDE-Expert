@@ -73,9 +73,8 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.Documents.Providers.DocumentStore,
-  Atlas.Common.Lsp.ChangeSignature,
+  Atlas.Common.Editing.ChangeSignature.Protocol,
   Atlas.Common.Editing.SafeDelete.Protocol,
   Atlas.Common.Editing.TypeAlias.Protocol,
   Atlas.Common.Editing.DisableWarning.Protocol,
@@ -163,7 +162,7 @@ begin
   finally
     mCapability.Free;
   end;
-  Assert.IsTrue(Pos(TLspChangeSignature.cPrepareCommand, mText) > 0, 'Aufbau');
+  Assert.IsTrue(Pos(TChangeSignatureProtocol.cPrepareCommand, mText) > 0, 'Aufbau');
   Assert.IsTrue(Pos(TSafeDeleteProtocol.cApplyCommand, mText) > 0, 'Aufbau');
   Assert.IsTrue(Pos(TTypeAliasProtocol.cInlineApplyCommand, mText) > 0, 'Typen');
   Assert.IsTrue(Pos(TDisableWarningProtocol.cApplyCommand, mText) > 0, 'Korrekturen');
@@ -189,7 +188,7 @@ var
 begin
   FDocuments.Open(cUri, 'pascal', 1, cSource);
   mMessage := ErrorOf(TSafeDeleteProtocol.cPrepareCommand, '["' + cUri + '", {"line": 3, "character": 11}]', mCode);
-  Assert.AreEqual(TLspErrorCode.cRequestFailed, mCode);
+  Assert.AreEqual(TJsonRpcErrorCode.cRequestFailed, mCode);
   Assert.IsTrue(Pos('refactoring.safeDelete', mMessage) > 0, mMessage);
 end;
 
@@ -197,7 +196,7 @@ procedure TShellRefactoringsTests.MissingArgumentsAreInvalidParams;
 var
   mCode: Integer;
 begin
-  ErrorOf(TLspChangeSignature.cApplyCommand, '["' + cUri + '"]', mCode);
+  ErrorOf(TChangeSignatureProtocol.cApplyCommand, '["' + cUri + '"]', mCode);
   Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode);
   ErrorOf(TLspStepFilter.cCommand, '["' + cUri + '", "eins"]', mCode);
   Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode, 'Zeile keine Zahl');
@@ -212,7 +211,7 @@ var
 begin
   FSettings.SafeDelete := True;
   mMessage := ErrorOf(TSafeDeleteProtocol.cPrepareCommand, '["' + cUri + '", {"line": 3, "character": 11}]', mCode);
-  Assert.AreEqual(TLspErrorCode.cRequestFailed, mCode);
+  Assert.AreEqual(TJsonRpcErrorCode.cRequestFailed, mCode);
   Assert.AreEqual('Die Datei ist nicht geöffnet.', mMessage);
 end;
 
@@ -312,7 +311,7 @@ begin
   ErrorOf(TRaiseVisibilityProtocol.cCommand, '["' + cUri + '", {"line": 5, "character": 4}]', mCode);
   Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode, 'Name fehlt');
   ErrorOf(TRaiseVisibilityProtocol.cCommand, '["' + cUri + '", {"line": 5, "character": 4}, "FName"]', mCode);
-  Assert.AreEqual(TLspErrorCode.cRequestFailed, mCode, 'nicht lesbar');
+  Assert.AreEqual(TJsonRpcErrorCode.cRequestFailed, mCode, 'nicht lesbar');
 end;
 
 initialization

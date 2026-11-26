@@ -9,6 +9,7 @@
 interface
 
 uses
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Lsp.DataFlow.Types,
   Atlas.Common.Lsp.DataFlow.Base,
@@ -32,6 +33,14 @@ type
       ANode: TSyntaxNode);
     /// <summary>Name des Setters einer Property; leer bei write FFeld und für andere Symbole.</summary>
     function SetterOf(const ASymbol: TDataFlowSymbol): string;
+    /// <summary>Stelle des Namens hinter AKeyword (read/write) der Property ASymbol: in ihrer Deklaration oder, bei
+    /// einer Neudeklaration ohne diesen Zugriff (TButton: property Enabled;), in der der Vorfahren. ATree und
+    /// AFileName gehören zu dieser Deklaration; False ohne Zugriff.</summary>
+    function AccessorAt(const ASymbol: TDataFlowSymbol; const AKeyword: string; out ATree: TSyntaxTree;
+      out AFileName: string; out APosition: TTextPosition): Boolean;
+    /// <summary>Gleichnamige Property der Vorfahren zur Neudeklaration ADeclaration der Property ASymbol.</summary>
+    function InheritedProperty(ATree: TSyntaxTree; ADeclaration: TSyntaxNode; const ASymbol: TDataFlowSymbol;
+      out AInherited: TDataFlowSymbol): Boolean;
     procedure IndirectWrite(const ASymbol: TDataFlowSymbol; ATree: TSyntaxTree; const ALocation: TReferenceLocation;
       ANode: TSyntaxNode; const AUnsafeReason: string);
     /// <summary>X: T absolute Y: Jede Zuweisung an X ändert Y.</summary>
@@ -63,12 +72,15 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.Definitions,
   Atlas.Common.Lsp.DataFlow.Syntax,
   Atlas.Text.Names;
+
+const
+  /// <summary>So viele Stufen von Neudeklarationen folgt AccessorAt höchstens.</summary>
+  cMaxRedeclarations = 16;
 
 function IsInputCall(const AName: string; AArgument: Integer): Boolean;
 begin
@@ -353,26 +365,79 @@ end;
 function TDataFlowSources.SetterOf(const ASymbol: TDataFlowSymbol): string;
 var
   mTree: TSyntaxTree;
-  mDeclaration: TSyntaxNode;
+  mFileName: string;
   mPosition: TTextPosition;
   mSetter: TResolvedSymbol;
 begin
   Result := '';
-  mTree := nil;
-  if ASymbol.SymbolKind = TIndexSymbolKind.Property_ then
-  begin
-    mTree := FFiles.TreeOf(ASymbol.FileName);
-  end;
-  if mTree = nil then
-  begin
-    Exit;
-  end;
-  mDeclaration := TDataFlowSyntax.NodeAt(mTree.Root, ASymbol.Position);
-  if (mDeclaration.Kind = TSyntaxKind.PropertyDecl) and
-    TDataFlowSyntax.Accessor(mTree, mDeclaration, 'write', mPosition) and
-    ResolvedAt(mTree, ASymbol.FileName, mPosition, mSetter) and (mSetter.SymbolKind in cRoutineKinds) then
+  if (ASymbol.SymbolKind = TIndexSymbolKind.Property_) and AccessorAt(ASymbol, 'write', mTree, mFileName, mPosition)
+    and ResolvedAt(mTree, mFileName, mPosition, mSetter) and (mSetter.SymbolKind in cRoutineKinds) then
   begin
     Result := mSetter.Name;
+  end;
+end;
+
+function TDataFlowSources.InheritedProperty(ATree: TSyntaxTree; ADeclaration: TSyntaxNode;
+  const ASymbol: TDataFlowSymbol; out AInherited: TDataFlowSymbol): Boolean;
+var
+  mTypeDecl: TSyntaxNode;
+  mTypePosition: TTextPosition;
+  mOwner, mAncestor, mFound: TResolvedSymbol;
+begin
+  AInherited := Default(TDataFlowSymbol);
+  mTypeDecl := ADeclaration.Parent;
+  while (mTypeDecl <> nil) and (mTypeDecl.Kind <> TSyntaxKind.TypeDecl) do
+  begin
+    mTypeDecl := mTypeDecl.Parent;
+  end;
+  // Vorfahren über den Typ der Neudeklaration; DeclaredMember sieht auch protected-Properties anderer Units.
+  Result := (mTypeDecl <> nil) and TDataFlowSyntax.NameInNode(ATree, mTypeDecl, mTypeDecl.Name, mTypePosition) and
+    ResolvedAt(ATree, ASymbol.FileName, mTypePosition, mOwner) and FResolver.AncestorOf(mOwner, mAncestor) and
+    FResolver.DeclaredMember(mAncestor, ASymbol.Name, mFound) and
+    (mFound.SymbolKind = TIndexSymbolKind.Property_) and (mFound.FileName <> '');
+  if Result then
+  begin
+    AInherited.Name := mFound.Name;
+    AInherited.FileName := mFound.FileName;
+    AInherited.Position := mFound.SelectionRange.StartPos;
+    AInherited.SymbolKind := mFound.SymbolKind;
+  end;
+end;
+
+function TDataFlowSources.AccessorAt(const ASymbol: TDataFlowSymbol; const AKeyword: string;
+  out ATree: TSyntaxTree; out AFileName: string; out APosition: TTextPosition): Boolean;
+var
+  mCurrent, mInherited: TDataFlowSymbol;
+  mDeclaration: TSyntaxNode;
+  mDepth: Integer;
+begin
+  Result := False;
+  APosition := Default(TTextPosition);
+  mCurrent := ASymbol;
+  // Neudeklarationen stehen über mehrere Stufen (TControl, TButtonControl, TButton).
+  for mDepth := 0 to cMaxRedeclarations do
+  begin
+    ATree := FFiles.TreeOf(mCurrent.FileName);
+    AFileName := mCurrent.FileName;
+    if ATree = nil then
+    begin
+      Exit;
+    end;
+    mDeclaration := TDataFlowSyntax.NodeAt(ATree.Root, mCurrent.Position);
+    if (mDeclaration = nil) or (mDeclaration.Kind <> TSyntaxKind.PropertyDecl) then
+    begin
+      Exit;
+    end;
+    if TDataFlowSyntax.Accessor(ATree, mDeclaration, AKeyword, APosition) then
+    begin
+      Exit(True);
+    end;
+    // Eigene Variable: AInherited ist ein out-Parameter und würde ASymbol beim Aufruf leeren.
+    if not InheritedProperty(ATree, mDeclaration, mCurrent, mInherited) then
+    begin
+      Exit;
+    end;
+    mCurrent := mInherited;
   end;
 end;
 
@@ -636,18 +701,15 @@ end;
 procedure TDataFlowSources.PropertyReads(const ASymbol: TDataFlowSymbol);
 var
   mTree: TSyntaxTree;
-  mDeclaration: TSyntaxNode;
+  mFileName: string;
   mPosition: TTextPosition;
   mReader: TDataFlowSymbol;
 begin
-  // Der gelesene Wert kommt aus dem Feld bzw. Getter hinter read.
-  mTree := FFiles.TreeOf(ASymbol.FileName);
-  mDeclaration := TDataFlowSyntax.NodeAt(mTree.Root, ASymbol.Position);
-  if (mDeclaration.Kind = TSyntaxKind.PropertyDecl) and
-    TDataFlowSyntax.Accessor(mTree, mDeclaration, 'read', mPosition) and
-    ResolveSymbol(mTree, ASymbol.FileName, mPosition, mReader) then
+  // Der gelesene Wert kommt aus dem Feld bzw. Getter hinter read, bei einer Neudeklaration aus dem der Vorfahren.
+  if AccessorAt(ASymbol, 'read', mTree, mFileName, mPosition) and
+    ResolveSymbol(mTree, mFileName, mPosition, mReader) then
   begin
-    AddTargetNode(TDataFlowSpot.Create(TDataFlowKind.PropertyRead, ASymbol.FileName, mPosition), mReader,
+    AddTargetNode(TDataFlowSpot.Create(TDataFlowKind.PropertyRead, mFileName, mPosition), mReader,
       TDataFlowEdge.Create('read ' + mReader.Name, '', ''));
   end;
 end;

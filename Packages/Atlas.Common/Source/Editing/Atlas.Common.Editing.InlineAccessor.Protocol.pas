@@ -112,12 +112,8 @@ type
   TAccessorGroups = TList<TArray<TTrivialAccessor>>;
 
   /// <summary>Eine Datei mit den Klassen, deren Zugriffsmethoden ersetzt werden.</summary>
-  TAccessorUnit = class
+  TAccessorUnit = class(TParsedFile)
   public
-    FileName: string;
-    Text: string;
-    Tree: TSyntaxTree;
-    OwnsTree: Boolean;
     Layouts: TObjectList<TClassLayout>;
     Accessors: TAccessorGroups;
     constructor Create;
@@ -138,10 +134,6 @@ begin
   Accessors.Free;
   // Die Layouts verweisen auf den Baum: zuerst freigeben.
   Layouts.Free;
-  if OwnsTree then
-  begin
-    Tree.Free;
-  end;
   inherited;
 end;
 

@@ -28,7 +28,7 @@ uses
   System.JSON,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.SlashMenu;
+  Atlas.Common.Editing.SlashMenu.Protocol;
 
 function NewServices: TShellEditingServices;
 begin
@@ -57,9 +57,9 @@ begin
     finally
       mCapability.Free;
     end;
-    Assert.IsTrue(Pos('"' + TLspSlashMenu.cMenuCommand + '"', mText) > 0, TLspSlashMenu.cMenuCommand);
-    Assert.IsTrue(Pos('"' + TLspSlashMenu.cChoicesCommand + '"', mText) > 0, TLspSlashMenu.cChoicesCommand);
-    Assert.IsTrue(Pos('"' + TLspSlashMenu.cRunCommand + '"', mText) > 0, TLspSlashMenu.cRunCommand);
+    Assert.IsTrue(Pos('"' + TSlashMenuProtocol.cMenuCommand + '"', mText) > 0, TSlashMenuProtocol.cMenuCommand);
+    Assert.IsTrue(Pos('"' + TSlashMenuProtocol.cChoicesCommand + '"', mText) > 0, TSlashMenuProtocol.cChoicesCommand);
+    Assert.IsTrue(Pos('"' + TSlashMenuProtocol.cRunCommand + '"', mText) > 0, TSlashMenuProtocol.cRunCommand);
   finally
     mCommands.Free;
     mEditing.Free;

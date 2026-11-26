@@ -20,6 +20,8 @@ type
     [Test]
     procedure DirectValueTakesCheckedText;
     [Test]
+    procedure DirectValueRefusedWhenReadOnly;
+    [Test]
     procedure UndoSetsOldValue;
     [Test]
     procedure ChangePrefersDebuggerOutcome;
@@ -75,6 +77,15 @@ begin
   Assert.AreEqual('x', TAtlasEditValueFlow.Final('x', 'x', Check(TAtlasEditProblem.NotInteger, '')));
   // Aus dem Dialog: schon umgesetzt.
   Assert.AreEqual('150', TAtlasEditValueFlow.Final('', '150', Check(TAtlasEditProblem.None, '$96')));
+end;
+
+procedure TAtlasEditValueFlowTests.DirectValueRefusedWhenReadOnly;
+begin
+  Assert.IsTrue(TAtlasEditValueFlow.Refused('False', Check(TAtlasEditProblem.ReadOnly, '')));
+  // Andere Ablehnungen setzen den Wert unverändert, der Dialog (ohne Direct) prüft selbst.
+  Assert.IsFalse(TAtlasEditValueFlow.Refused('x', Check(TAtlasEditProblem.NotInteger, '')));
+  Assert.IsFalse(TAtlasEditValueFlow.Refused('', Check(TAtlasEditProblem.ReadOnly, '')));
+  Assert.IsFalse(TAtlasEditValueFlow.Refused('False', Check(TAtlasEditProblem.None, 'False')));
 end;
 
 procedure TAtlasEditValueFlowTests.UndoSetsOldValue;

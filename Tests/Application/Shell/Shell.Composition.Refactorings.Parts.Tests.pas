@@ -31,7 +31,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.ChangeSignature,
+  Atlas.Common.Editing.ChangeSignature.Protocol,
   Atlas.Common.Editing.SafeDelete.Protocol,
   Atlas.Common.Editing.TypeAlias.Protocol,
   Atlas.Common.Editing.DisableWarning.Protocol,
@@ -96,7 +96,7 @@ var
   mText: string;
 begin
   mText := CommandsOf(TShellStructureRefactorings.Create(FServices));
-  Assert.IsTrue(Pos(TLspChangeSignature.cApplyCommand, mText) > 0, 'Aufbau');
+  Assert.IsTrue(Pos(TChangeSignatureProtocol.cApplyCommand, mText) > 0, 'Aufbau');
   Assert.IsFalse(Pos(TLspStepFilter.cCommand, mText) > 0, 'Aufbau ohne Debugger');
   mText := CommandsOf(TShellConversionRefactorings.Create(FServices));
   Assert.IsFalse(Pos(TSafeDeleteProtocol.cApplyCommand, mText) > 0, 'Umwandlungen ohne Sicher löschen');

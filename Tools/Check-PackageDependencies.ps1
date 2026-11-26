@@ -434,8 +434,8 @@ $TokenAllowedLocal = @{
     'Atlas.Common.Index.Extractor.Tokens:TIndexTokenReader.NextCode'      = 'Methode des Lesers über seinen eigenen Token-Ausschnitt'
     'Atlas.Common.Index.Extractor.Tokens:TIndexTokenReader.PreviousCode'  = 'schließt AIndex ein'
     'Atlas.Common.Lsp.Completion.Cases:TokenAt'                           = 'sucht nach Zeile und Spalte (TTextPosition), nicht nach Offset'
-    'Atlas.Common.Lsp.InvertBoolean:TokenAt'                              = 'Methodendeklaration von TSourceFile, sucht nach TTextPosition'
-    'Atlas.Common.Lsp.InvertBoolean:TSourceFile.TokenAt'                  = 'Methode der Unit-Sicht: rechnet die Position in den Offset um und leitet an TokenExactly weiter'
+    'Atlas.Common.Editing.InvertBoolean.Protocol:TokenAt'               = 'Methodendeklaration von TSourceFile, sucht nach TTextPosition'
+    'Atlas.Common.Editing.InvertBoolean.Protocol:TSourceFile.TokenAt'   = 'Methode der Unit-Sicht: rechnet die Position in den Offset um und leitet an TokenExactly weiter'
     'Atlas.Common.Lsp.SelectionRanges:TokenAt'                            = 'Token im Syntaxbaum mit out-Parameter, sucht das umschließende Token'
     'Atlas.Common.Pascal.SyntaxTree:TSyntaxTree.IdentifierAt'             = 'Methode des Baums: ein #13-Teil einer Zeichenkonstante (IsControlCharPart) gilt nicht als Bezeichner'
     'Atlas.Common.Editing.InvertBoolean:IdentifierAt'                     = 'Methodendeklaration von TSourceTokens'
@@ -460,9 +460,9 @@ $AllowedJsonFormLocal = @{
     'Atlas.Common.Lsp.Baseline.Tests:NumberAt'                           = 'Pfad mit Punkten (FindValue), prüft den Typ mit Assert'
     'Atlas.Common.Lsp.Baseline.Tests:TextAt'                             = 'Pfad mit Punkten (FindValue), prüft den Typ mit Assert'
     'Atlas.Common.Editing.BoundaryCases.Protocol.Tests:Count'                         = 'Test: fehlendes Array soll als Ausnahme auffallen'
-    'Atlas.Common.Lsp.SlashMenu.Tests:Field'                             = 'Test: fehlender Wert soll als Ausnahme auffallen'
-    'Atlas.Common.Lsp.SlashMenu.Tests:Flag'                              = 'Test: fehlender Wert soll als Ausnahme auffallen'
-    'Atlas.Common.Lsp.SlashMenu.Tests:List'                              = 'Test: fehlender Wert soll als Ausnahme auffallen'
+    'Atlas.Common.Editing.SlashMenu.Protocol.Tests:Field'                             = 'Test: fehlender Wert soll als Ausnahme auffallen'
+    'Atlas.Common.Editing.SlashMenu.Protocol.Tests:Flag'                              = 'Test: fehlender Wert soll als Ausnahme auffallen'
+    'Atlas.Common.Editing.SlashMenu.Protocol.Tests:List'                              = 'Test: fehlender Wert soll als Ausnahme auffallen'
     'Atlas.Common.Editing.SafeDelete.Protocol.Tests:Items'                            = 'Test: setzt die Einträge eines Arrays zu einer Vergleichszeile zusammen'
 }
 

@@ -120,6 +120,11 @@ type
     /// Ausdruck (#538); ohne Auslöser und ohne Staffelung.</summary>
     function Complete(const ADocument: ITextDocument; const AUri: string; const APosition: TTextPosition;
       const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+    /// <summary>Fehlende Interface-Methoden der Klasse an APosition in AText als Einträge, alle auf einmal (#466,
+    /// „Interface implementieren“ im Erzeugen-Menü), mit Namespaces, Dateien lesen und Einstellungen der Hooks.
+    /// False ohne Index oder ohne fehlende Methoden.</summary>
+    function InterfaceItemsAt(const AUri, AText: string; const APosition: TTextPosition;
+      out AItems: TArray<TCompletionItem>): Boolean;
     /// <summary>completionProvider mit Punkt als Auslöser.</summary>
     class function Capability: TJSONObject; static;
     /// <summary>Meldet der Client textDocument.completion.completionItem.snippetSupport?</summary>
@@ -147,6 +152,8 @@ uses
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Lsp.Completion.Declarations,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.CompletionJson,
   Atlas.Common.Lsp.CompletionSyntax,
@@ -451,6 +458,49 @@ begin
   ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
   ADispatcher.RegisterConcurrentRequest(cResolveMethod, HandleResolve);
   ADispatcher.RegisterNotification(cPostfixTemplatesMethod, HandlePostfixTemplates);
+end;
+
+function TLspCompletion.InterfaceItemsAt(const AUri, AText: string; const APosition: TTextPosition;
+  out AItems: TArray<TCompletionItem>): Boolean;
+var
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mSettings: TCompletionSettings;
+  mBatch: Boolean;
+  mRequest: TCompletionRequest;
+begin
+  AItems := nil;
+  if FIndex = nil then
+  begin
+    Exit(False);
+  end;
+  mSettings := TCompletionSettings.Default;
+  if Assigned(FHooks.SettingsFor) then
+  begin
+    mSettings := FHooks.SettingsFor(AUri);
+  end;
+  // Über den Cache: TSyntaxTreeCacheTests.NoParserCallsOutsideCache.
+  mTree := TSyntaxTreeCache.Parse(AText);
+  mResolver := nil;
+  mRequest := nil;
+  try
+    mResolver := TNameResolver.Create(FIndex);
+    mResolver.Namespaces := FHooks.Namespaces;
+    mRequest := TCompletionRequest.Create(AText, TDocumentUris.ToPath(AUri), APosition);
+    mRequest.Tree := mTree;
+    mRequest.Resolver := mResolver;
+    mRequest.ReadText := FHooks.ReadText;
+    mRequest.Settings := mSettings;
+    Result := TCompletionDeclarations.InterfaceItems(mRequest, AItems, mBatch) and mBatch;
+  finally
+    mRequest.Free;
+    mResolver.Free;
+    mTree.Free;
+  end;
+  if not Result then
+  begin
+    AItems := nil;
+  end;
 end;
 
 function TLspCompletion.Complete(const ADocument: ITextDocument; const AUri: string; const APosition: TTextPosition;

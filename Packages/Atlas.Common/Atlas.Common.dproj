@@ -346,8 +346,8 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Commands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ApplyEdit.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DfmPropertyRules.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ChangeSignature.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ChangeSignature.Collector.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ChangeSignature.Protocol.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ChangeSignature.Collector.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MoveClass.Protocol.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UnitRename.Protocol.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SmartPaste.Protocol.pas"/>
@@ -441,7 +441,7 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.OwnedFields.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.OwnedFields.Types.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PropertyFromAccessors.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.PropertyFromAccessors.Protocol.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Common.Documents.TextChanges.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ClassLayout.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Destructors.pas"/>
@@ -462,13 +462,13 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.InvertBoolean.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DisableWarning.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CompilerFixes.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InvertBoolean.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.InvertBoolean.Protocol.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Unwrap.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Unwrap.Protocol.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StepTargets.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.InterfaceStubs.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StringLiteralCommands.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SlashMenu.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.SlashMenu.Protocol.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.DocWiki.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerDirectives.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ConditionalSymbols.pas"/>
@@ -648,7 +648,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.HoverValues.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LinkedEditing.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlineValues.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Formatting.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatting.Protocol.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SmartIndent.Protocol.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.LearnedSuggestions.Protocol.pas"/>
         <DCCReference Include="Source\Completion\Atlas.Common.Completion.FuzzyMatch.pas"/>

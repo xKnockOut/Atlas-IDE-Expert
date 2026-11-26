@@ -21,7 +21,7 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Common.Lsp.TextDocumentSync,
-  Atlas.Common.Lsp.Formatting,
+  Atlas.Common.Editing.Formatting.Protocol,
   Atlas.Common.Semantics.Renames,
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.SignatureHelp,
@@ -56,7 +56,7 @@ begin
   Result.AddPair('linkedEditingRangeProvider', TJSONBool.Create(True));
   Result.AddPair('documentFormattingProvider', TJSONBool.Create(True));
   // Nur für den Schnellbefehl /uses (#254); Blockabschluss (#179) übernimmt die IDE.
-  Result.AddPair('documentOnTypeFormattingProvider', TLspFormatting.OnTypeCapability);
+  Result.AddPair('documentOnTypeFormattingProvider', TFormattingProtocol.OnTypeCapability);
   Result.AddPair('documentRangeFormattingProvider', TJSONBool.Create(True));
   Result.AddPair('selectionRangeProvider', TJSONBool.Create(True));
   Result.AddPair('definitionProvider', TJSONBool.Create(True));

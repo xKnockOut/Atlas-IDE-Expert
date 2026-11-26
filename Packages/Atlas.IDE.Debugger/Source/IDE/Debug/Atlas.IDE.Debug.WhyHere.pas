@@ -431,6 +431,11 @@ begin
   begin
     Exit;
   end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasDebugLineEnd.Covered(Rect, Context) then
+  begin
+    Exit;
+  end;
   try
     mLine := Context.LogicalLineNum - 1;
     FForecast.PaintDimmed(Rect, Context);

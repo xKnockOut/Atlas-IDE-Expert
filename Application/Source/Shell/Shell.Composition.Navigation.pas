@@ -80,6 +80,8 @@ type
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>Lesezeichen aller Projektdateien; geöffnete Dateien nach Version, sonst nach Änderungszeit.</summary>
     function CollectBookmarks: TArray<TBookmarkHit>;
+    /// <summary>Die Lesezeichen als benannte Stellen für die Symbolsuche (#306).</summary>
+    function CollectPlaces: TArray<TWorkspacePlace>;
     /// <summary>Namensräume des Projekts an alle Navigationen, die Namen auflösen.</summary>
     procedure SetNamespaces(const ANamespaces: TArray<string>);
     /// <summary>Zuletzt gesetzte Namensräume.</summary>
@@ -147,7 +149,7 @@ begin
   FHover.SymbolsFor := FServices.ConditionalContextFor;
   FWorkspaceSymbols := TLspWorkspaceSymbols.Create(FServices.Index);
   FBookmarks := TBookmarkStore.Create;
-  FWorkspaceSymbols.BookmarksFor := CollectBookmarks;
+  FWorkspaceSymbols.PlacesFor := CollectPlaces;
   FReferences := TLspReferences.Create(FServices.Documents, FServices.Index, ReadText, ProjectFiles,
     FServices.EnsureUnit);
   FReferences.SettingsFor := FServices.ReferenceSettingsFor;
@@ -210,6 +212,22 @@ begin
   end;
   FBookmarks.Retain(mFiles);
   Result := FBookmarks.All;
+end;
+
+function TShellNavigation.CollectPlaces: TArray<TWorkspacePlace>;
+var
+  mHits: TArray<TBookmarkHit>;
+  mIndex: Integer;
+begin
+  mHits := CollectBookmarks;
+  Result := nil;
+  SetLength(Result, Length(mHits));
+  for mIndex := 0 to High(mHits) do
+  begin
+    Result[mIndex].Name := mHits[mIndex].Bookmark.Name;
+    Result[mIndex].FileName := mHits[mIndex].FileName;
+    Result[mIndex].Range := mHits[mIndex].Bookmark.Range;
+  end;
 end;
 
 procedure TShellNavigation.SetNamespaces(const ANamespaces: TArray<string>);

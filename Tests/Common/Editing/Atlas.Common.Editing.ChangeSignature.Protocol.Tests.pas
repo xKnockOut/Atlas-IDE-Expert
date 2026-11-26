@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.ChangeSignature.Tests;
+﻿unit Atlas.Common.Editing.ChangeSignature.Protocol.Tests;
 
 // Tests für „Signatur ändern“ im Projekt (#100): Überschreibungen, Interfaces,
 // Aufrufer in anderen Units, gebundene Handler, Abbruch- und Warnfälle.
@@ -12,12 +12,12 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.SignatureChanges,
-  Atlas.Common.Lsp.ChangeSignature,
-  Atlas.Common.Lsp.ChangeSignature.Collector;
+  Atlas.Common.Editing.ChangeSignature.Protocol,
+  Atlas.Common.Editing.ChangeSignature.Collector;
 
 type
   [TestFixture]
-  TLspChangeSignatureTests = class
+  TChangeSignatureProtocolTests = class
   private
     FIndex: ISymbolIndex;
     FTexts: TArray<string>;
@@ -224,9 +224,9 @@ begin
   end;
 end;
 
-{ TLspChangeSignatureTests }
+{ TChangeSignatureProtocolTests }
 
-procedure TLspChangeSignatureTests.AddFile(const AFileName, AText: string);
+procedure TChangeSignatureProtocolTests.AddFile(const AFileName, AText: string);
 begin
   FFiles := FFiles + [AFileName];
   FTexts := FTexts + [AText];
@@ -236,7 +236,7 @@ begin
   end;
 end;
 
-function TLspChangeSignatureTests.TextOf(const AFileName: string): string;
+function TChangeSignatureProtocolTests.TextOf(const AFileName: string): string;
 var
   mIndex: Integer;
 begin
@@ -250,7 +250,7 @@ begin
   Result := '';
 end;
 
-function TLspChangeSignatureTests.SourceAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+function TChangeSignatureProtocolTests.SourceAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const APosition: TTextPosition): TChangeSignatureSource;
 begin
   Result := Default(TChangeSignatureSource);
@@ -268,7 +268,7 @@ begin
     end;
 end;
 
-function TLspChangeSignatureTests.Info(const AFileName, AMarker: string): TChangeSignatureInfo;
+function TChangeSignatureProtocolTests.Info(const AFileName, AMarker: string): TChangeSignatureInfo;
 var
   mResolver: TNameResolver;
   mTree: TSyntaxTree;
@@ -278,20 +278,20 @@ begin
   mResolver := TNameResolver.Create(FIndex);
   mTree := TPascalParser.Parse(mText);
   try
-    Result := TLspChangeSignature.Prepare(SourceAt(mResolver, mTree, AFileName, TTestSource.PositionOf(mText, AMarker)));
+    Result := TChangeSignatureProtocol.Prepare(SourceAt(mResolver, mTree, AFileName, TTestSource.PositionOf(mText, AMarker)));
   finally
     mTree.Free;
     mResolver.Free;
   end;
 end;
 
-function TLspChangeSignatureTests.Run(const AFileName, AMarker: string; const AChanges: TArray<TParameterChange>;
+function TChangeSignatureProtocolTests.Run(const AFileName, AMarker: string; const AChanges: TArray<TParameterChange>;
   AMode: TNewParameterMode): TChangeSignatureOutcome;
 begin
   Result := Run(AFileName, AMarker, AChanges, AMode, False);
 end;
 
-function TLspChangeSignatureTests.Run(const AFileName, AMarker: string; const AChanges: TArray<TParameterChange>;
+function TChangeSignatureProtocolTests.Run(const AFileName, AMarker: string; const AChanges: TArray<TParameterChange>;
   AMode: TNewParameterMode; AVirtual: Boolean): TChangeSignatureOutcome;
 var
   mResolver: TNameResolver;
@@ -306,7 +306,7 @@ begin
   mResolver := TNameResolver.Create(FIndex);
   mTree := TPascalParser.Parse(mText);
   try
-    Result := TLspChangeSignature.Execute(SourceAt(mResolver, mTree, AFileName, TTestSource.PositionOf(mText, AMarker)), mRequest,
+    Result := TChangeSignatureProtocol.Execute(SourceAt(mResolver, mTree, AFileName, TTestSource.PositionOf(mText, AMarker)), mRequest,
       function(const AName: string): Boolean
       begin
         Result := SameText(AName, FReadOnly);
@@ -317,7 +317,7 @@ begin
   end;
 end;
 
-function TLspChangeSignatureTests.Error(const AFileName, AMarker: string;
+function TChangeSignatureProtocolTests.Error(const AFileName, AMarker: string;
   const AChanges: TArray<TParameterChange>): string;
 begin
   Result := '';
@@ -329,7 +329,7 @@ begin
   end;
 end;
 
-function TLspChangeSignatureTests.Applied(const AOutcome: TChangeSignatureOutcome; const AFileName: string): string;
+function TChangeSignatureProtocolTests.Applied(const AOutcome: TChangeSignatureOutcome; const AFileName: string): string;
 var
   mEdits: TArray<TTextEdit>;
   mEdit: TRenameEdit;
@@ -345,7 +345,7 @@ begin
   Result := TTextChanges.Apply(TextOf(AFileName), mEdits);
 end;
 
-procedure TLspChangeSignatureTests.AssertParses(const AOutcome: TChangeSignatureOutcome);
+procedure TChangeSignatureProtocolTests.AssertParses(const AOutcome: TChangeSignatureOutcome);
 var
   mTree: TSyntaxTree;
   mFileName: string;
@@ -365,13 +365,13 @@ begin
   end;
 end;
 
-procedure TLspChangeSignatureTests.LoadProject;
+procedure TChangeSignatureProtocolTests.LoadProject;
 begin
   AddFile(cBasisFile, cUnitBasis);
   AddFile(cHauptFile, cUnitHaupt);
 end;
 
-procedure TLspChangeSignatureTests.Setup;
+procedure TChangeSignatureProtocolTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   FTexts := nil;
@@ -379,7 +379,7 @@ begin
   FReadOnly := '';
 end;
 
-procedure TLspChangeSignatureTests.TearDown;
+procedure TChangeSignatureProtocolTests.TearDown;
 begin
   FIndex := nil;
   FTexts := nil;
@@ -387,7 +387,7 @@ begin
   FReadOnly := '';
 end;
 
-procedure TLspChangeSignatureTests.PrepareListsParametersAndMembers;
+procedure TChangeSignatureProtocolTests.PrepareListsParametersAndMembers;
 var
   mFound: TChangeSignatureInfo;
 begin
@@ -403,7 +403,7 @@ begin
   Assert.IsFalse(mFound.InterfaceMethod);
 end;
 
-procedure TLspChangeSignatureTests.OverloadKeepsOldSignature;
+procedure TChangeSignatureProtocolTests.OverloadKeepsOldSignature;
 var
   mOutcome: TChangeSignatureOutcome;
   mBasis: string;
@@ -427,7 +427,7 @@ begin
   AssertParses(mOutcome);
 end;
 
-procedure TLspChangeSignatureTests.VirtualOverloadOnRequest;
+procedure TChangeSignatureProtocolTests.VirtualOverloadOnRequest;
 var
   mOutcome: TChangeSignatureOutcome;
 begin
@@ -438,7 +438,7 @@ begin
   Assert.Contains(Applied(mOutcome, cBasisFile), 'procedure Zeige(const Text: string; Anzahl: Integer); overload; virtual;');
 end;
 
-procedure TLspChangeSignatureTests.UpdateCallersPassesValue;
+procedure TChangeSignatureProtocolTests.UpdateCallersPassesValue;
 var
   mOutcome: TChangeSignatureOutcome;
   mBasis, mHaupt: string;
@@ -457,7 +457,7 @@ begin
   AssertParses(mOutcome);
 end;
 
-procedure TLspChangeSignatureTests.ReorderChangesCallersInAllUnits;
+procedure TChangeSignatureProtocolTests.ReorderChangesCallersInAllUnits;
 var
   mOutcome: TChangeSignatureOutcome;
   mHaupt: string;
@@ -473,7 +473,7 @@ begin
   AssertParses(mOutcome);
 end;
 
-procedure TLspChangeSignatureTests.RemovesUnusedParameter;
+procedure TChangeSignatureProtocolTests.RemovesUnusedParameter;
 var
   mOutcome: TChangeSignatureOutcome;
 begin
@@ -485,14 +485,14 @@ begin
   AssertParses(mOutcome);
 end;
 
-procedure TLspChangeSignatureTests.RejectsRemovingUsedParameter;
+procedure TChangeSignatureProtocolTests.RejectsRemovingUsedParameter;
 begin
   LoadProject;
   Assert.Contains(Error(cBasisFile, 'Teile(A, B: Integer): Integer;'#10'    procedure', [TParameterChange.Kept(0, 'A')]),
     'Zeile 26');
 end;
 
-procedure TLspChangeSignatureTests.RenamesParameterEverywhere;
+procedure TChangeSignatureProtocolTests.RenamesParameterEverywhere;
 var
   mOutcome: TChangeSignatureOutcome;
   mBasis: string;
@@ -509,7 +509,7 @@ begin
   AssertParses(mOutcome);
 end;
 
-procedure TLspChangeSignatureTests.InterfaceForcesUpdateCallers;
+procedure TChangeSignatureProtocolTests.InterfaceForcesUpdateCallers;
 var
   mOutcome: TChangeSignatureOutcome;
   mBasis: string;
@@ -526,7 +526,7 @@ begin
   AssertParses(mOutcome);
 end;
 
-procedure TLspChangeSignatureTests.StartsFromOverrideOrCall;
+procedure TChangeSignatureProtocolTests.StartsFromOverrideOrCall;
 begin
   LoadProject;
   // Von der Überschreibung, vom Rumpf und vom Aufruf aus dieselbe Kette.
@@ -535,7 +535,7 @@ begin
   Assert.AreEqual(2, Info(cHauptFile, 'Zeige(''y''').Members);
 end;
 
-procedure TLspChangeSignatureTests.RejectsLibraryEventHandler;
+procedure TChangeSignatureProtocolTests.RejectsLibraryEventHandler;
 var
   mOutcome: TChangeSignatureOutcome;
   mFound: TChangeSignatureInfo;
@@ -554,7 +554,7 @@ begin
   Assert.Contains(Applied(mOutcome, cMaskeFile), 'procedure TMaske.Button1Click(Quelle: TObject);');
 end;
 
-procedure TLspChangeSignatureTests.ChangesProjectEventType;
+procedure TChangeSignatureProtocolTests.ChangesProjectEventType;
 var
   mOutcome: TChangeSignatureOutcome;
   mMaske: string;
@@ -573,7 +573,7 @@ begin
   AssertParses(mOutcome);
 end;
 
-procedure TLspChangeSignatureTests.RejectsCollidingOverload;
+procedure TChangeSignatureProtocolTests.RejectsCollidingOverload;
 var
   mText: string;
 begin
@@ -586,7 +586,7 @@ begin
     TParameterChange.Kept(1, 'B'), TParameterChange.Added('C', 'Integer', '', '0')]), 'kollidiert');
 end;
 
-procedure TLspChangeSignatureTests.WarnsAboutPointersAndReadOnlyCallers;
+procedure TChangeSignatureProtocolTests.WarnsAboutPointersAndReadOnlyCallers;
 var
   mOutcome: TChangeSignatureOutcome;
   mText: string;
@@ -606,7 +606,7 @@ begin
     TParameterChange.Kept(0, 'A')]), 'Basis.pas');
 end;
 
-procedure TLspChangeSignatureTests.RoutineWithoutDeclaration;
+procedure TChangeSignatureProtocolTests.RoutineWithoutDeclaration;
 const
   cUnitHilfe =
     'unit Hilfe;'#10 +
@@ -636,7 +636,7 @@ begin
   AssertParses(mOutcome);
 end;
 
-procedure TLspChangeSignatureTests.OffersActionOnlyWhenEnabled;
+procedure TChangeSignatureProtocolTests.OffersActionOnlyWhenEnabled;
 var
   mResolver: TNameResolver;
   mTree: TSyntaxTree;
@@ -647,21 +647,21 @@ begin
   mResolver := TNameResolver.Create(FIndex);
   mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    mActions := TLspChangeSignature.Actions(True, mResolver, mTree, cHauptFile, 'file:///C:/P/Haupt.pas',
+    mActions := TChangeSignatureProtocol.Actions(True, mResolver, mTree, cHauptFile, 'file:///C:/P/Haupt.pas',
       TTestSource.PositionOf(cUnitHaupt, 'Teile(6'));
     Assert.AreEqual(1, Integer(Length(mActions)));
     try
-      Assert.AreEqual(TLspChangeSignature.cClientCommand, mActions[0].GetValue<string>('command.command'));
+      Assert.AreEqual(TChangeSignatureProtocol.cClientCommand, mActions[0].GetValue<string>('command.command'));
     finally
       for mAction in mActions do
       begin
         mAction.Free;
       end;
     end;
-    Assert.AreEqual(0, Integer(Length(TLspChangeSignature.Actions(False, mResolver, mTree, cHauptFile, 'x',
+    Assert.AreEqual(0, Integer(Length(TChangeSignatureProtocol.Actions(False, mResolver, mTree, cHauptFile, 'x',
       TTestSource.PositionOf(cUnitHaupt, 'Teile(6')))));
     // Auf einer Variablen gibt es die Aktion nicht.
-    Assert.AreEqual(0, Integer(Length(TLspChangeSignature.Actions(True, mResolver, mTree, cHauptFile, 'x',
+    Assert.AreEqual(0, Integer(Length(TChangeSignatureProtocol.Actions(True, mResolver, mTree, cHauptFile, 'x',
       TTestSource.PositionOf(cUnitHaupt, 'B: TBasis')))));
   finally
     mTree.Free;
@@ -669,7 +669,7 @@ begin
   end;
 end;
 
-procedure TLspChangeSignatureTests.ReadsRequestJson;
+procedure TChangeSignatureProtocolTests.ReadsRequestJson;
 var
   mValue: TJSONValue;
   mRequest: TChangeSignatureRequest;
@@ -679,7 +679,7 @@ begin
   mValue := TJSONObject.ParseJSONValue('{"parameters": [{"origin": 1, "name": "B"}, {"origin": -1, "name": "C", ' +
     '"type": "Integer", "modifier": "const", "value": "0"}], "newParameter": "updateCallers"}');
   try
-    mRequest := TLspChangeSignature.ReadRequest(mValue, TNewParameterMode.Overload, True);
+    mRequest := TChangeSignatureProtocol.ReadRequest(mValue, TNewParameterMode.Overload, True);
   finally
     mValue.Free;
   end;
@@ -690,7 +690,7 @@ begin
   Assert.IsTrue(mRequest.VirtualOverload);
   mOutcome := Default(TChangeSignatureOutcome);
   mOutcome.Warnings := ['W'];
-  mAnswer := TLspChangeSignature.OutcomeToJson(mOutcome);
+  mAnswer := TChangeSignatureProtocol.OutcomeToJson(mOutcome);
   try
     Assert.AreEqual('overload', mAnswer.GetValue<string>('newParameter'));
     Assert.IsNotNull(mAnswer.GetValue('edit'));

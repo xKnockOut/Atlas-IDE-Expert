@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.SlashMenu.Tests;
+﻿unit Atlas.Common.Editing.SlashMenu.Protocol.Tests;
 
 // Tests für die Befehle des Erzeugen-Menüs (#719): passende Schnellbefehle
 // an der Stelle, Auswahl möglicher Argumente, Ausführen mit Änderungen bzw.
@@ -11,14 +11,14 @@ uses
   DUnitX.TestFramework,
   System.JSON,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.SlashMenu;
+  Atlas.Common.Editing.SlashMenu.Protocol;
 
 type
   [TestFixture]
-  TLspSlashMenuTests = class
+  TSlashMenuProtocolTests = class
   private
     FStore: IDocumentStore;
-    FMenu: TLspSlashMenu;
+    FMenu: TSlashMenuProtocol;
     FEnabled: Boolean;
     FDisabled: TArray<string>;
     function Arguments(ALine, AEndLine: Integer): TJSONArray; overload;
@@ -51,6 +51,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Completion.Contract,
   System.Generics.Collections,
   System.SysUtils,
   Atlas.Common.JsonRpc.Contract,
@@ -94,9 +95,9 @@ begin
   Result := AValue.GetValue<TJSONArray>(AName);
 end;
 
-{ TLspSlashMenuTests }
+{ TSlashMenuProtocolTests }
 
-function TLspSlashMenuTests.Arguments(ALine, AEndLine: Integer): TJSONArray;
+function TSlashMenuProtocolTests.Arguments(ALine, AEndLine: Integer): TJSONArray;
 var
   mPosition: TJSONObject;
 begin
@@ -109,19 +110,19 @@ begin
   Result.Add(AEndLine);
 end;
 
-function TLspSlashMenuTests.Arguments(ALine, AEndLine: Integer; const AName: string): TJSONArray;
+function TSlashMenuProtocolTests.Arguments(ALine, AEndLine: Integer; const AName: string): TJSONArray;
 begin
   Result := Arguments(ALine, AEndLine);
   Result.Add(AName);
 end;
 
-function TLspSlashMenuTests.Arguments(ALine, AEndLine: Integer; const AName, AArgument: string): TJSONArray;
+function TSlashMenuProtocolTests.Arguments(ALine, AEndLine: Integer; const AName, AArgument: string): TJSONArray;
 begin
   Result := Arguments(ALine, AEndLine, AName);
   Result.Add(AArgument);
 end;
 
-function TLspSlashMenuTests.Names(AResult: TJSONValue): string;
+function TSlashMenuProtocolTests.Names(AResult: TJSONValue): string;
 var
   mItem: TJSONValue;
 begin
@@ -133,13 +134,13 @@ begin
   Result := Result + ',';
 end;
 
-procedure TLspSlashMenuTests.Setup;
+procedure TSlashMenuProtocolTests.Setup;
 begin
   FStore := TDocumentStore.Create;
   FStore.Open(TDocumentUris.FromPath(cFileName), 'pascal', 1, cText);
   FEnabled := True;
   FDisabled := nil;
-  FMenu := TLspSlashMenu.Create(FStore);
+  FMenu := TSlashMenuProtocol.Create(FStore);
   FMenu.SlashCommandsFor :=
     function(const AUri: string; out ADisabled: TArray<string>): Boolean
     begin
@@ -148,7 +149,7 @@ begin
     end;
 end;
 
-procedure TLspSlashMenuTests.TearDown;
+procedure TSlashMenuProtocolTests.TearDown;
 begin
   FMenu.Free;
   FStore := nil;
@@ -156,7 +157,7 @@ begin
   FDisabled := nil;
 end;
 
-procedure TLspSlashMenuTests.MenuInClassOffersGenerateCommands;
+procedure TSlashMenuProtocolTests.MenuInClassOffersGenerateCommands;
 var
   mArgs: TJSONArray;
   mAnswer: TJSONValue;
@@ -188,7 +189,7 @@ begin
   end;
 end;
 
-procedure TLspSlashMenuTests.MenuWithSelectionOffersSurround;
+procedure TSlashMenuProtocolTests.MenuWithSelectionOffersSurround;
 var
   mArgs: TJSONArray;
   mAnswer: TJSONValue;
@@ -205,7 +206,7 @@ begin
   end;
 end;
 
-procedure TLspSlashMenuTests.MenuLeavesOutDisabledCommands;
+procedure TSlashMenuProtocolTests.MenuLeavesOutDisabledCommands;
 var
   mArgs: TJSONArray;
   mAnswer: TJSONValue;
@@ -222,7 +223,7 @@ begin
   end;
 end;
 
-procedure TLspSlashMenuTests.MenuWhenSlashCommandsOff;
+procedure TSlashMenuProtocolTests.MenuWhenSlashCommandsOff;
 var
   mArgs: TJSONArray;
   mAnswer: TJSONValue;
@@ -248,7 +249,7 @@ begin
   end;
 end;
 
-procedure TLspSlashMenuTests.ChoicesListFields;
+procedure TSlashMenuProtocolTests.ChoicesListFields;
 var
   mArgs: TJSONArray;
   mAnswer: TJSONValue;
@@ -264,7 +265,7 @@ begin
   end;
 end;
 
-procedure TLspSlashMenuTests.RunReturnsEditsOrReason;
+procedure TSlashMenuProtocolTests.RunReturnsEditsOrReason;
 var
   mArgs: TJSONArray;
   mAnswer: TJSONValue;
@@ -299,7 +300,7 @@ begin
   end;
 end;
 
-procedure TLspSlashMenuTests.UnknownDocumentFails;
+procedure TSlashMenuProtocolTests.UnknownDocumentFails;
 var
   mArgs: TJSONArray;
 begin
@@ -319,7 +320,7 @@ begin
 end;
 
 /// <summary>Führt „implementieren“ mit AArgs aus und prüft, dass IFlush.Flush in TExporter landet.</summary>
-procedure AssertImplementsFlush(AMenu: TLspSlashMenu; AArgs: TJSONArray);
+procedure AssertImplementsFlush(AMenu: TSlashMenuProtocol; AArgs: TJSONArray);
 var
   mAnswer, mItem: TJSONValue;
   mEdits: TJSONArray;
@@ -365,7 +366,17 @@ const
     'implementation'#10 +                                // 8
     'end.';
 
-procedure TLspSlashMenuTests.ImplementsMissingInterfaceMethods;
+/// <summary>Fehlende Interface-Methoden aus ACompletion, wie die Komposition sie dem Menü reicht.</summary>
+function InterfaceItemsOf(ACompletion: TLspCompletion): TSlashInterfaceItemsFunc;
+begin
+  Result :=
+    function(const AUri, AText: string; const APosition: TTextPosition; out AItems: TArray<TCompletionItem>): Boolean
+    begin
+      Result := ACompletion.InterfaceItemsAt(AUri, AText, APosition, AItems);
+    end;
+end;
+
+procedure TSlashMenuProtocolTests.ImplementsMissingInterfaceMethods;
 var
   mIndex: ISymbolIndex;
   mCompletion: TLspCompletion;
@@ -386,7 +397,7 @@ begin
         Result := SameText(AFileName, 'C:\P\Basis.pas');
       end;
     FMenu.Index := mIndex;
-    FMenu.Completion := mCompletion;
+    FMenu.InterfaceItemsFor := InterfaceItemsOf(mCompletion);
     mSpot := TJSONObject.Create;
     mSpot.AddPair('line', TJSONNumber.Create(6));
     mSpot.AddPair('character', TJSONNumber.Create(4));
@@ -405,7 +416,7 @@ begin
       end;
       mArgs := TJSONArray(mPosition.Clone);
       try
-        mArgs.Add(TLspSlashMenu.cImplementName);
+        mArgs.Add(TSlashMenuProtocol.cImplementName);
         mAnswer := FMenu.ExecuteChoices(mArgs);
         try
           Assert.AreEqual(1, Integer(TJSONArray(mAnswer).Count));
@@ -422,12 +433,12 @@ begin
       mPosition.Free;
     end;
   finally
-    FMenu.Completion := nil;
+    FMenu.InterfaceItemsFor := nil;
     mCompletion.Free;
   end;
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspSlashMenuTests);
+  TDUnitX.RegisterTestFixture(TSlashMenuProtocolTests);
 
 end.

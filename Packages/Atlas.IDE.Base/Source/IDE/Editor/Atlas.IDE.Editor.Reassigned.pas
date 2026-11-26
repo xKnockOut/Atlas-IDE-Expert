@@ -401,6 +401,11 @@ begin
   begin
     Exit;
   end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
+  begin
+    Exit;
+  end;
   try
     // Nur, wenn die Zeile im Editor dem gefragten Stand entspricht (sonst kommt nach der Tipp-Pause eine neue
     // Antwort).

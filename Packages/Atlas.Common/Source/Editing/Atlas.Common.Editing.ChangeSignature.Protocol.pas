@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.ChangeSignature;
+﻿unit Atlas.Common.Editing.ChangeSignature.Protocol;
 
 // „Signatur ändern“ (#100): Parameter hinzufügen, entfernen, umsortieren und
 // umbenennen samt aller Aufrufer, Überschreibungen in Vor- und Nachfahren,
@@ -34,7 +34,7 @@ uses
   Atlas.Common.Pascal.Signatures,
   Atlas.Common.Pascal.SignatureChanges,
   Atlas.Common.Semantics.Renames,
-  Atlas.Common.Lsp.ChangeSignature.Collector;
+  Atlas.Common.Editing.ChangeSignature.Collector;
 
 type
   {$SCOPEDENUMS ON}
@@ -79,7 +79,7 @@ type
     Mode: TNewParameterMode;
   end;
 
-  /// <summary>Kopf einer Routine aus TLspChangeSignature.Family: Name und Parameternamen mit Position.</summary>
+  /// <summary>Kopf einer Routine aus TChangeSignatureProtocol.Family: Name und Parameternamen mit Position.</summary>
   TRoutineFamilyHeader = record
     FileName: string;
     NamePos: TTextPosition;
@@ -108,7 +108,7 @@ type
     BoundEvent: string;
   end;
 
-  TLspChangeSignature = class
+  TChangeSignatureProtocol = class
   public const
     cClientCommand = 'atlas.changeSignature';
     cPrepareCommand = 'atlas.server.changeSignature.prepare';
@@ -168,13 +168,13 @@ uses
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TLspChangeSignatureText = (TheChangesInOverlapLine, TheMethodIsBoundTo, TheMethodIsAnAccessor,
+  TChangeSignatureProtocolText = (TheChangesInOverlapLine, TheMethodIsBoundTo, TheMethodIsAnAccessor,
     TheParameterIsStillUsed, InterfaceMethodsAndBoundHandlers, TheNewSignatureCollidesWith, ThereIsNoPlaceFor,
     AfterTheChangeNoLonger, IsReadOnlyOrNot, IsReadOnlyOrNot2, AccessorOfAPropertyParameters,
     TheNewSignatureIsMissing, FieldParametersMissing, ChangeSignature);
 
 const
-  cTexts: array[TLspChangeSignatureText] of TAtlasText = (
+  cTexts: array[TChangeSignatureProtocolText] of TAtlasText = (
     (De: 'Die Änderungen in %s überschneiden sich (Zeile %d).'; En: 'The changes in %s overlap (line %d).'),
     (De: 'Die Methode ist in einer Formulardatei an %s gebunden; der Ereignistyp stammt nicht aus dem Projekt. Die ' +
       'Parameter lassen sich nur umbenennen.';
@@ -206,11 +206,11 @@ const
 
 {$SCOPEDENUMS OFF}
 
-{ TLspChangeSignature }
+{ TChangeSignatureProtocol }
 
-class function TLspChangeSignature.Title: string;
+class function TChangeSignatureProtocol.Title: string;
 begin
-  Result := cTexts[TLspChangeSignatureText.ChangeSignature].Text;
+  Result := cTexts[TChangeSignatureProtocolText.ChangeSignature].Text;
 end;
 
 type
@@ -571,7 +571,7 @@ begin
     begin
       if Overlaps(AEdits[mIndex].Range, AEdits[mOther].Range) then
       begin
-        raise SignatureError(cTexts[TLspChangeSignatureText.TheChangesInOverlapLine].Fmt([ExtractFileName(AName),
+        raise SignatureError(cTexts[TChangeSignatureProtocolText.TheChangesInOverlapLine].Fmt([ExtractFileName(AName),
           AEdits[mIndex].Range.StartPos.Line + 1]));
       end;
     end;
@@ -694,11 +694,11 @@ begin
   begin
     if FCollector.EventFixed then
     begin
-      mError := cTexts[TLspChangeSignatureText.TheMethodIsBoundTo].Fmt([FCollector.BoundEvent]);
+      mError := cTexts[TChangeSignatureProtocolText.TheMethodIsBoundTo].Fmt([FCollector.BoundEvent]);
     end
     else if Length(FCollector.Accessors) > 0 then
     begin
-      mError := cTexts[TLspChangeSignatureText.TheMethodIsAnAccessor].Fmt([FCollector.Accessors[0]]);
+      mError := cTexts[TChangeSignatureProtocolText.TheMethodIsAnAccessor].Fmt([FCollector.Accessors[0]]);
     end;
   end;
   if mError <> '' then
@@ -724,7 +724,7 @@ begin
     mFound := BodyUses(mUnit, AMember, AMember.Decl.Parameters[mIndex].Name);
     if Length(mFound) > 0 then
     begin
-      raise SignatureError(cTexts[TLspChangeSignatureText.TheParameterIsStillUsed].Fmt([
+      raise SignatureError(cTexts[TChangeSignatureProtocolText.TheParameterIsStillUsed].Fmt([
         AMember.Decl.Parameters[mIndex].Name, ExtractFileName(AMember.FileName),
         mUnit.Tokens[mFound[0]].StartPos.Line + 1]));
     end;
@@ -738,7 +738,7 @@ begin
   begin
     FUseOverload := False;
     FCollector.Warnings := FCollector.Warnings +
-      [cTexts[TLspChangeSignatureText.InterfaceMethodsAndBoundHandlers].Text];
+      [cTexts[TChangeSignatureProtocolText.InterfaceMethodsAndBoundHandlers].Text];
   end;
   FOutcome.Mode := TNewParameterMode.UpdateCallers;
   if FUseOverload then
@@ -761,7 +761,7 @@ begin
       SameText(mSymbol.Name, FRoot.Name) and TTextNames.SameTypes(mSymbol.ParamTypes, mNewTypes) and
       not TTextNames.SameTypes(mSymbol.ParamTypes, FRoot.Decl.ParamTypes) then
     begin
-      raise SignatureError(cTexts[TLspChangeSignatureText.TheNewSignatureCollidesWith].Fmt([FRoot.Name,
+      raise SignatureError(cTexts[TChangeSignatureProtocolText.TheNewSignatureCollidesWith].Fmt([FRoot.Name,
         mSymbol.SelectionRange.StartPos.Line + 1]));
     end;
   end;
@@ -917,7 +917,7 @@ begin
   end
   else
   begin
-    raise SignatureError(cTexts[TLspChangeSignatureText.ThereIsNoPlaceFor].Fmt([FRoot.Name]));
+    raise SignatureError(cTexts[TChangeSignatureProtocolText.ThereIsNoPlaceFor].Fmt([FRoot.Name]));
   end;
 end;
 
@@ -1008,7 +1008,7 @@ begin
     if Length(mTree.Diagnostics) > Length(AUnit.Tree.Diagnostics) then
     begin
       mDiagnostic := mTree.Diagnostics[0];
-      raise SignatureError(cTexts[TLspChangeSignatureText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AName),
+      raise SignatureError(cTexts[TChangeSignatureProtocolText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AName),
         mDiagnostic.StartPos.Line + 1, mDiagnostic.Message]));
     end;
   finally
@@ -1033,9 +1033,9 @@ begin
   begin
     if HasHeaderEdit(mFinal) then
     begin
-      raise SignatureError(cTexts[TLspChangeSignatureText.IsReadOnlyOrNot].Fmt([ExtractFileName(mName)]));
+      raise SignatureError(cTexts[TChangeSignatureProtocolText.IsReadOnlyOrNot].Fmt([ExtractFileName(mName)]));
     end;
-    FOutcome.Warnings := FOutcome.Warnings + [cTexts[TLspChangeSignatureText.IsReadOnlyOrNot2].Fmt([
+    FOutcome.Warnings := FOutcome.Warnings + [cTexts[TChangeSignatureProtocolText.IsReadOnlyOrNot2].Fmt([
       ExtractFileName(mName), Length(mFinal)])];
     Exit;
   end;
@@ -1090,9 +1090,9 @@ begin
   Result := FOutcome;
 end;
 
-{ TLspChangeSignature }
+{ TChangeSignatureProtocol }
 
-class function TLspChangeSignature.IsOffered(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+class function TChangeSignatureProtocol.IsOffered(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const APosition: TTextPosition): Boolean;
 var
   mToken: Integer;
@@ -1120,7 +1120,7 @@ begin
   Result := (mResolved.Kind = TResolvedKind.Symbol) and (mResolved.SymbolKind in cSignatureRoutineKinds);
 end;
 
-class function TLspChangeSignature.ActionJson(const AUri: string; const APosition: TTextPosition): TJSONObject;
+class function TChangeSignatureProtocol.ActionJson(const AUri: string; const APosition: TTextPosition): TJSONObject;
 var
   mCommand: TJSONObject;
   mArguments: TJSONArray;
@@ -1138,7 +1138,7 @@ begin
   Result.AddPair('command', mCommand);
 end;
 
-class function TLspChangeSignature.Actions(AEnabled: Boolean; AResolver: TNameResolver; ATree: TSyntaxTree;
+class function TChangeSignatureProtocol.Actions(AEnabled: Boolean; AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName, AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
 begin
   Result := nil;
@@ -1148,7 +1148,7 @@ begin
   end;
 end;
 
-class function TLspChangeSignature.Prepare(const ASource: TChangeSignatureSource): TChangeSignatureInfo;
+class function TChangeSignatureProtocol.Prepare(const ASource: TChangeSignatureSource): TChangeSignatureInfo;
 var
   mCollector: TSignatureCollector;
   mRoot: TMember;
@@ -1170,7 +1170,7 @@ begin
     Result.Warnings := mCollector.Warnings;
     if Length(mCollector.Accessors) > 0 then
     begin
-      Result.Warnings := Result.Warnings + [cTexts[TLspChangeSignatureText.AccessorOfAPropertyParameters].Fmt([
+      Result.Warnings := Result.Warnings + [cTexts[TChangeSignatureProtocolText.AccessorOfAPropertyParameters].Fmt([
         mCollector.Accessors[0]])];
     end;
   finally
@@ -1178,7 +1178,7 @@ begin
   end;
 end;
 
-class function TLspChangeSignature.Execute(const ASource: TChangeSignatureSource;
+class function TChangeSignatureProtocol.Execute(const ASource: TChangeSignatureSource;
   const ARequest: TChangeSignatureRequest; const AIsReadOnly: TChangeSignatureReadOnly): TChangeSignatureOutcome;
 var
   mCollector: TSignatureCollector;
@@ -1197,7 +1197,7 @@ begin
     mCollector.Free;
   end;
 end;
-class function TLspChangeSignature.Family(const ASource: TChangeSignatureSource): TRoutineFamily;
+class function TChangeSignatureProtocol.Family(const ASource: TChangeSignatureSource): TRoutineFamily;
 var
   mCollector: TSignatureCollector;
   mMember: TMember;
@@ -1240,7 +1240,7 @@ begin
   end;
 end;
 
-class function TLspChangeSignature.InfoToJson(const AInfo: TChangeSignatureInfo; AMode: TNewParameterMode;
+class function TChangeSignatureProtocol.InfoToJson(const AInfo: TChangeSignatureInfo; AMode: TNewParameterMode;
   AVirtualOverload: Boolean): TJSONObject;
 var
   mParameters, mWarnings: TJSONArray;
@@ -1280,7 +1280,7 @@ begin
   end;
 end;
 
-class function TLspChangeSignature.ReadRequest(const AValue: TJSONValue; ADefaultMode: TNewParameterMode;
+class function TChangeSignatureProtocol.ReadRequest(const AValue: TJSONValue; ADefaultMode: TNewParameterMode;
   ADefaultVirtual: Boolean): TChangeSignatureRequest;
 var
   mItem: TJSONValue;
@@ -1295,7 +1295,7 @@ begin
   if not (AValue is TJSONObject) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TLspChangeSignatureText.TheNewSignatureIsMissing].Text);
+      cTexts[TChangeSignatureProtocolText.TheNewSignatureIsMissing].Text);
   end;
   if TJSONObject(AValue).TryGetValue<string>('newParameter', mText) then
   begin
@@ -1310,7 +1310,7 @@ begin
   if mItems = nil then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TLspChangeSignatureText.FieldParametersMissing].Text);
+      cTexts[TChangeSignatureProtocolText.FieldParametersMissing].Text);
   end;
   for mItem in mItems do
   begin
@@ -1328,7 +1328,7 @@ begin
   end;
 end;
 
-class function TLspChangeSignature.OutcomeToJson(const AOutcome: TChangeSignatureOutcome): TJSONObject;
+class function TChangeSignatureProtocol.OutcomeToJson(const AOutcome: TChangeSignatureOutcome): TJSONObject;
 var
   mChanges, mEdit: TJSONObject;
   mList, mWarnings: TJSONArray;
@@ -1364,7 +1364,7 @@ begin
   Result.AddPair('newParameter', ModeName(AOutcome.Mode));
 end;
 
-class function TLspChangeSignature.ModeName(AMode: TNewParameterMode): string;
+class function TChangeSignatureProtocol.ModeName(AMode: TNewParameterMode): string;
 begin
   if AMode = TNewParameterMode.UpdateCallers then
   begin
@@ -1376,7 +1376,7 @@ begin
   end;
 end;
 
-class function TLspChangeSignature.ModeOf(const AName: string; ADefault: TNewParameterMode): TNewParameterMode;
+class function TChangeSignatureProtocol.ModeOf(const AName: string; ADefault: TNewParameterMode): TNewParameterMode;
 begin
   if SameText(AName, 'updateCallers') then
   begin
@@ -1393,6 +1393,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.ChangeSignature', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.ChangeSignature.Protocol', cTexts);
 
 end.
