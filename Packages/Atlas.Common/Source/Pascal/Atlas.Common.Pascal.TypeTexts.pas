@@ -3,7 +3,7 @@
 // Typtexte, wie sie im Quelltext stehen, ohne Index: Elementtyp von Arrays und
 // Mengen, Familien eingebauter Typen (String, Boolean, Zeiger) und das
 // Einsetzen generischer Bindungen ("T=TKunde"). Gemeinsam für Vervollständigung,
-// Inlay Hints, Signaturhilfe und Postfix-Vorlagen.
+// Inlay Hints, Signaturhilfe, Postfix-Vorlagen und Namensvorschläge (NameFromType).
 
 interface
 
@@ -22,6 +22,9 @@ type
     class function SubstituteWords(const AText: string; const ABindings: TArray<string>): string; static;
     /// <summary>"IComparer&lt;TKunde&gt;" aus Container und Bindungen; ohne Bindungen der Container.</summary>
     class function GenericName(const AContainer: string; const ABindings: TArray<string>): string; static;
+    /// <summary>Name aus dem Typ (#452): ohne T- bzw. I-Präfix, Unit und Typargumente; Text, Ch, Flag bzw. Value
+    /// für eingebaute Typen und Platzhalter in geschweiften Klammern.</summary>
+    class function NameFromType(const ATypeName: string): string; static;
   end;
 
 implementation
@@ -108,6 +111,39 @@ begin
     mValues := mValues + [Copy(mBinding, Pos('=', mBinding) + 1, MaxInt)];
   end;
   Result := Result + '<' + string.Join(', ', mValues) + '>';
+end;
+
+class function TPascalTypeTexts.NameFromType(const ATypeName: string): string;
+begin
+  Result := ATypeName;
+  if Pos('<', Result) > 0 then
+  begin
+    Result := Copy(Result, 1, Pos('<', Result) - 1);
+  end;
+  Result := Result.Substring(Result.LastIndexOf('.') + 1);
+  if (Length(Result) > 1) and CharInSet(Result[1], ['T', 'I']) and CharInSet(Result[2], ['A'..'Z']) then
+  begin
+    Result := Copy(Result, 2, MaxInt);
+  end;
+  if MatchText(Result, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString', 'UTF8String',
+    'ShortString']) then
+  begin
+    Result := 'Text';
+  end
+  else if MatchText(Result, ['Char', 'WideChar', 'AnsiChar']) then
+  begin
+    Result := 'Ch';
+  end
+  else if SameText(Result, 'Boolean') then
+  begin
+    Result := 'Flag';
+  end
+  else if MatchText(Result, ['Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt', 'Byte', 'Word',
+    'SmallInt', 'ShortInt', 'LongInt', 'LongWord', 'Double', 'Single', 'Extended', 'Real', 'Currency', 'Comp',
+    'Variant', 'Pointer', '']) or StartsStr('{', Result) then
+  begin
+    Result := 'Value';
+  end;
 end;
 
 end.

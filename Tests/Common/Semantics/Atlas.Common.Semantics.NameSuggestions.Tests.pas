@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.NameSuggestions.Tests;
+﻿unit Atlas.Common.Semantics.NameSuggestions.Tests;
 
 // Tests für die Namensvorschläge aus dem Typ (#452) und die Zählung der
 // Präfixe im Index.
@@ -43,7 +43,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.NameSuggestions,
+  Atlas.Common.Semantics.NameSuggestions,
   Atlas.Tests.SourceText;
 
 /// <summary>Namensposition am "|" in AMarked als "Art Typ" ("field TCustomerList", "global …"); '-' ohne.</summary>

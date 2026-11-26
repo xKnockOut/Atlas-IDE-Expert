@@ -98,8 +98,6 @@ type
     class function LiteralType(const ATokens: TArray<TPascalToken>; const AArgument: TCallArgument): string; static;
     /// <summary>Name aus dem Argument; '' wenn es keinen hergibt (dann aus dem Typ).</summary>
     class function ArgumentName(const ATokens: TArray<TPascalToken>; const AArgument: TCallArgument): string; static;
-    /// <summary>Name aus dem Typ (#452): ohne T- bzw. I-Präfix und Typargumente; Value, wenn nichts bleibt.</summary>
-    class function NameFromType(const ATypeName: string): string; static;
     /// <summary>const für Strings, Records und Interfaces.</summary>
     class function WantsConst(const ATypeName: string; AIsRecord, AIsInterface: Boolean): Boolean; static;
     /// <summary>ANames eindeutig gemacht (Value, Value2 …), ohne Groß-/Kleinschreibung.</summary>
@@ -125,7 +123,8 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.RoutineBody,
-  Atlas.Common.Editing.ClassCompletion;
+  Atlas.Common.Editing.ClassCompletion,
+  Atlas.Common.Pascal.TypeTexts;
 
 /// <summary>Vor diesem Token beginnt eine Anweisung.</summary>
 function StartsStatementAfter(const AToken: TPascalToken): Boolean;
@@ -528,7 +527,7 @@ var
   mValue: Double;
   mSettings: TFormatSettings;
 begin
-  Result := TCreateMethod.NameFromType(ALiteral);
+  Result := TPascalTypeTexts.NameFromType(ALiteral);
   mSettings := TFormatSettings.Invariant;
   if (ALiteral = 'Double') and TryStrToFloat(ATokens[AArgument.Last].Text, mValue, mSettings) and (mValue > 0) and
     (mValue < 1) and not ATokens[AArgument.First].IsSymbol('-') then
@@ -584,7 +583,7 @@ begin
   // Typumwandlung TKunde(X): Name aus dem Typ.
   if (mLast = AFirst) and LooksLikeTypeName(ATokens[mLast].Text) then
   begin
-    Result := TCreateMethod.NameFromType(ATokens[mLast].Text);
+    Result := TPascalTypeTexts.NameFromType(ATokens[mLast].Text);
   end
   else
   begin
@@ -661,39 +660,6 @@ begin
   else
   begin
     Result := ChainName(ATokens, mFirst, AArgument.Last);
-  end;
-end;
-
-class function TCreateMethod.NameFromType(const ATypeName: string): string;
-begin
-  Result := ATypeName;
-  if Pos('<', Result) > 0 then
-  begin
-    Result := Copy(Result, 1, Pos('<', Result) - 1);
-  end;
-  Result := Result.Substring(Result.LastIndexOf('.') + 1);
-  if (Length(Result) > 1) and CharInSet(Result[1], ['T', 'I']) and CharInSet(Result[2], ['A'..'Z']) then
-  begin
-    Result := Copy(Result, 2, MaxInt);
-  end;
-  if MatchText(Result, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString', 'UTF8String',
-    'ShortString']) then
-  begin
-    Result := 'Text';
-  end
-  else if MatchText(Result, ['Char', 'WideChar', 'AnsiChar']) then
-  begin
-    Result := 'Ch';
-  end
-  else if SameText(Result, 'Boolean') then
-  begin
-    Result := 'Flag';
-  end
-  else if MatchText(Result, ['Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt', 'Byte', 'Word',
-    'SmallInt', 'ShortInt', 'LongInt', 'LongWord', 'Double', 'Single', 'Extended', 'Real', 'Currency', 'Comp',
-    'Variant', 'Pointer', '']) or StartsStr('{', Result) then
-  begin
-    Result := 'Value';
   end;
 end;
 

@@ -39,7 +39,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.NameSuggestions,
+  Atlas.Common.Semantics.NameSuggestions,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Text.Lines;
 

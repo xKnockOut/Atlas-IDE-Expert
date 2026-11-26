@@ -142,7 +142,8 @@ uses
   Atlas.Common.Editing.NestedRoutines,
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Semantics.InferredTypes;
+  Atlas.Common.Semantics.InferredTypes,
+  Atlas.Common.Pascal.TypeTexts;
 
 {$SCOPEDENUMS ON}
 
@@ -469,7 +470,7 @@ begin
   Result.Name := TCreateMethod.ArgumentName(FTokens, AArgument);
   if Result.Name = '' then
   begin
-    Result.Name := TCreateMethod.NameFromType(Result.TypeName);
+    Result.Name := TPascalTypeTexts.NameFromType(Result.TypeName);
   end;
   // Präfix der Namensregel (APreis statt Preis), sonst meldet naming-prefix die neue Methode gleich.
   Result.Name := FContext.NewNames.Parameter(Result.Name);

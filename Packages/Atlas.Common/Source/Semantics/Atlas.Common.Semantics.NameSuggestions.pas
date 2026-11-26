@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.NameSuggestions;
+﻿unit Atlas.Common.Semantics.NameSuggestions;
 
 // Namensvorschläge für Variablen (#452, ARG-054), Teil ohne Namensauflösung:
 //   - Site: Namensposition einer Deklaration, deren Typ rechts vom Caret
@@ -74,10 +74,10 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.CreateMethod,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
-  Atlas.Common.Pascal.SyntaxNodes;
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Common.Pascal.TypeTexts;
 
 const
   cListWords: array[0..5] of string = ('List', 'Array', 'Collection', 'Queue', 'Stack', 'Set');
@@ -494,7 +494,7 @@ begin
   begin
     Exit;
   end;
-  AContainer := TCreateMethod.NameFromType(Copy(ATypeText, 1, mOpen - 1));
+  AContainer := TPascalTypeTexts.NameFromType(Copy(ATypeText, 1, mOpen - 1));
   if not MatchText(TNameSuggestions.LastWord(AContainer), cListWords) then
   begin
     Exit;
@@ -515,7 +515,7 @@ begin
   begin
     Exit(True);
   end;
-  mBase := TCreateMethod.NameFromType(ATypeText);
+  mBase := TPascalTypeTexts.NameFromType(ATypeText);
   Result := (Pos('<', ATypeText) = 0) and MatchText(LastWord(mBase), cListWords) and (LastWord(mBase) <> mBase);
 end;
 
@@ -547,14 +547,14 @@ begin
   mElement := ElementType(ATypeText, mContainer);
   if mElement <> '' then
   begin
-    mElement := TCreateMethod.NameFromType(mElement);
+    mElement := TPascalTypeTexts.NameFromType(mElement);
     Add(Plural(mElement));
     Add(mElement + LastWord(mContainer));
     Add(LastWord(mContainer));
   end
   else
   begin
-    mBase := TCreateMethod.NameFromType(ATypeText);
+    mBase := TPascalTypeTexts.NameFromType(ATypeText);
     if IsListType(ATypeText) then
     begin
       Add(Plural(Copy(mBase, 1, Length(mBase) - Length(LastWord(mBase)))));
