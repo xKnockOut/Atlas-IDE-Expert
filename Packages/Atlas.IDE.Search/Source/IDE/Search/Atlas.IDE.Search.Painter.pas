@@ -48,6 +48,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.IDE.Foundation.EditorRefresh,
   Winapi.Windows,
   Vcl.Graphics,
   ToolsAPI,
@@ -115,6 +116,11 @@ var
   mLine: Integer;
 begin
   if TAtlasGuard.Disabled(TAtlasFeature.Search) then
+  begin
+    Exit;
+  end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
   begin
     Exit;
   end;

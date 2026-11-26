@@ -453,6 +453,11 @@ begin
   begin
     Exit;
   end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
+  begin
+    Exit;
+  end;
   try
     mLine := Context.LogicalLineNum - 1;
     // Was jetzt in dieser Zeile steht (#1818); weggerückte oder gelöschte Zeilen tragen keine Marke.

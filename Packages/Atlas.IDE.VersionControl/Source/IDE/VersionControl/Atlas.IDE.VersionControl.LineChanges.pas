@@ -93,6 +93,7 @@ implementation
 
 uses
   Atlas.Core.VersionControl.Contract,
+  Atlas.IDE.Foundation.EditorRefresh,
   System.Classes,
   System.Types,
   System.Math,
@@ -618,6 +619,11 @@ var
   mEntry: Integer;
   mUnsaved: Boolean;
 begin
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
+  begin
+    Exit;
+  end;
   try
     if not BlameWanted(Stage, BeforeEvent, Context) or (Context.LineState = nil) or
       TAtlasIdeElements.FileHidden(TAtlasDrawnElement.GitBlame, Context.FileName) then
