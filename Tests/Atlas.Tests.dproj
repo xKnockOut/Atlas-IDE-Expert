@@ -424,6 +424,8 @@
         <DCCReference Include="Application\Features\Rules\Builtin\Rules.Builtin.Database.Statements.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Builtin\Rules.Builtin.DllExports.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Builtin\Rules.Builtin.Files.Tests.pas"/>
+        <DCCReference Include="Application\Features\Rules\Builtin\Rules.Builtin.Texts.Shared.Tests.pas"/>
+        <DCCReference Include="Application\Features\Rules\Builtin\Rules.Builtin.Texts.Concat.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Builtin\Rules.Builtin.Directives.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Builtin\Rules.Builtin.Units.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Builtin\Rules.Builtin.Properties.Tests.pas"/>
@@ -2678,6 +2680,8 @@
         <DCCReference Include="..\Application\Source\Features\Rules\Builtin\Rules.Builtin.FormFields.pas"/>
         <DCCReference Include="..\Application\Source\Features\Rules\Builtin\Rules.Builtin.FormReferences.pas"/>
         <DCCReference Include="..\Application\Source\Features\Rules\Builtin\Rules.Builtin.FormatArgs.pas"/>
+        <DCCReference Include="..\Application\Source\Features\Rules\Builtin\Rules.Builtin.Texts.Shared.pas"/>
+        <DCCReference Include="..\Application\Source\Features\Rules\Builtin\Rules.Builtin.Texts.Concat.pas"/>
         <DCCReference Include="..\Application\Source\Features\Rules\Builtin\Rules.Builtin.Forms.pas"/>
         <DCCReference Include="..\Application\Source\Features\Rules\Builtin\Rules.Builtin.ForwardDeclarations.pas"/>
         <DCCReference Include="..\Application\Source\Features\Rules\Builtin\Rules.Builtin.FreeFields.pas"/>

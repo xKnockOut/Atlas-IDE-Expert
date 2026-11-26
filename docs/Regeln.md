@@ -8,7 +8,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 91 |
+| [Fehler finden](#gruppe-find-bugs) | 92 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 18 |
 | [Datenbank](#gruppe-database) | 5 |
@@ -60,6 +60,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`float-equality`](#float-equality) | Gleitkommavergleich mit = oder <> | Bug | Hinweis |
 | [`constructor-on-instance`](#constructor-on-instance) | Konstruktor auf einer Instanz aufgerufen | Bug | Warnung |
 | [`format-args`](#format-args) | Formatstring passt nicht zu den Argumenten | Bug | Fehler |
+| [`text-concat-without-space`](#text-concat-without-space) | Text ohne Leerzeichen zusammengesetzt | Bug | Hinweis |
 | [`unresolved-identifier`](#unresolved-identifier) | Nicht deklarierter Bezeichner | Bug | Warnung |
 | [`type-used-before-declaration`](#type-used-before-declaration) | Typ vor seiner Deklaration benutzt | Bug | Fehler |
 | [`field-not-freed`](#field-not-freed) | Feld erzeugt, aber nie freigegeben | Bug | Warnung |
@@ -2681,6 +2682,30 @@ Richtig:
 
 ```pascal
 Result := Format('%d orders for %s', [ACustomer.OrderCount, ACustomer.Name]);
+```
+
+<a id="text-concat-without-space"></a>
+### text-concat-without-space
+
+**Text ohne Leerzeichen zusammengesetzt** · Bug · Hinweis · Gruppe Fehler finden
+
+Zwei String-Literale werden mit + verkettet, und an der Naht steht weder ein Leerzeichen noch ein Trenner: 'Bli Bla Blubb' + 'Bla Bla Bla' ergibt Bli Bla BlubbBla Bla Bla. Gemeldet, wenn Buchstabe oder Ziffer auf Buchstabe oder Ziffer trifft oder , ; : ! ? auf einen Großbuchstaben. Still, wenn der zusammengesetzte Text nicht nach Text für Menschen aussieht (Bezeichner, Klassennamen; nötig sind mindestens drei Buchstaben und ein Leerzeichen), wenn das Wort an der Naht ein Pfad, eine URL, eine Mailadresse, ein Bezeichner mit _ oder Markup ist, wenn der linke Text mit einem Format-Platzhalter endet (%s kann selbst der Trenner sein) und bei langen, von einem Werkzeug umbrochenen Texten (linkes Literal mit mindestens wrapLength Zeichen, meist mitten im Wort getrennt). Ein Punkt gilt als Teil eines Namens: Er ist nie eine Naht ('System.' + 'SysUtils'), und ein Wort an der Naht mit Punkt darin (Unit.Klasse, Unit1.pas, 1.2) bleibt still. SQL ist nicht ausgenommen: 'SELECT a FROM t' + 'WHERE x' ist ein echter Fehler. Mittlere Konfidenz. Die Option expressions (standardmäßig aus, niedrige Konfidenz) meldet auch ein Literal neben einem Ausdruck ('Lade ' + Name ist richtig, 'Lade' + Name nicht); Trenner wie sLineBreak, PathDelim oder QuotedStr(…) bleiben still. Schnellkorrektur: ein Leerzeichen ans Ende des linken Textes (mit einem Ausdruck links an den Anfang des rechten).
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `wrapLength` | integer | `120` | Linke Literale mit mindestens so vielen Zeichen gelten als von einem Werkzeug umbrochen und bleiben still. 0 meldet auch sie. |
+| `expressions` | boolean | `false` | Auch ein Text-Literal ohne Leerzeichen neben einem Ausdruck melden ('Fehler in' + FileName, Name + 'wurde gelöscht'), mit niedriger Konfidenz. |
+
+Mit Treffer:
+
+```pascal
+ShowMessage('Bli Bla Blubb' + 'Bla Bla Bla');
+```
+
+Richtig:
+
+```pascal
+ShowMessage('Bli Bla Blubb ' + 'Bla Bla Bla');
 ```
 
 <a id="generic-exception-raised"></a>

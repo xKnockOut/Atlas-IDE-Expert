@@ -28,7 +28,8 @@ uses
   Rules.Builtin.Conditions,
   Rules.Builtin.Idioms,
   Rules.Builtin.Inlining,
-  Rules.Builtin.FormatArgs;
+  Rules.Builtin.FormatArgs,
+  Rules.Builtin.Texts.Concat;
 
 procedure RegisterBuiltinStatementRules(const ARegistry: TRuleRegistry);
 begin
@@ -46,6 +47,7 @@ begin
   RegisterIdiomRules(ARegistry);
   RegisterInliningRules(ARegistry);
   RegisterFormatArgsRules(ARegistry);
+  RegisterTextRules(ARegistry);
 end;
 
 end.
