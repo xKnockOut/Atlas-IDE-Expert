@@ -100,6 +100,8 @@ Atlas.Common.Semantics.ConditionalExpression.Tests
 Atlas.Common.Editing.Conditions.Tests
 Atlas.Common.Editing.BoundaryCases.Tests
 Atlas.Common.Editing.CreateMethod.Tests
+Atlas.Common.Editing.Completion.CreateMethod.Tests
+Atlas.Common.Completion.Answer.Tests
 Atlas.Common.Dfm.DataFieldNames.Tests
 Atlas.Common.Pascal.DeclareUnknown.Tests
 Atlas.Common.Editing.DisableWarning.Tests

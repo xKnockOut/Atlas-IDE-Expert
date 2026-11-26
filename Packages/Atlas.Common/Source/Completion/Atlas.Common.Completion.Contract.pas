@@ -2,7 +2,8 @@
 
 // Contract des Features Completion: die Werte der Vervollständigung, die Sprachserver (Atlas.Common.Lsp.Completion)
 // und Editing (Quellen der Vervollständigung) teilen: Kontext am Cursor, Eintrag, Liste, Teilergebnisse und die
-// Typen aus den Packages der IDE. Die Anfrage selbst ist Atlas.Common.Completion.Request.
+// Typen aus den Packages der IDE, Ergebnis eines Falls und die Stellen der Quellen. Die Anfrage ist
+// Atlas.Common.Completion.Request, die Antwort im Aufbau Atlas.Common.Completion.Answer.
 
 interface
 
@@ -10,6 +11,24 @@ interface
 
 uses
   Atlas.Common.Documents.Contract;
+
+const
+  /// <summary>Arten der Einträge (CompletionItemKind des LSP) für TCompletionItem.Kind.</summary>
+  cKindMethod = 2;
+  cKindFunction = 3;
+  cKindConstructor = 4;
+  cKindField = 5;
+  cKindVariable = 6;
+  cKindClass = 7;
+  cKindInterface = 8;
+  cKindModule = 9;
+  cKindProperty = 10;
+  cKindEnum = 13;
+  cKindEnumMember = 20;
+  cKindConstant = 21;
+  cKindStruct = 22;
+  cKindKeyword = 14;
+  cKindSnippet = 15;
 
 type
   /// <summary>Ein Typ, den die IDE kennt, mit seiner Unit.</summary>
@@ -271,6 +290,16 @@ type
 
   /// <summary>Teilergebnis einer gestaffelten Vervollständigung (#616), in Anzeigereihenfolge.</summary>
   TCompletionPartialProc = reference to procedure(const AItems: TArray<TCompletionItem>);
+
+  /// <summary>Ergebnis eines Falls oder einer Quelle der Vervollständigung: weiter mit dem nächsten Fall oder
+  /// fertig mit TCompletionAnswer.Exclusive.</summary>
+  TCompletionOutcome = (Next, Answered);
+
+  /// <summary>Stelle in der festen Reihenfolge der Fälle, an der angemeldete Quellen laufen. Die Reihenfolge
+  /// selbst führt der Sprachserver; eine Quelle nennt nur ihre Stelle.</summary>
+  TCompletionSlot = (
+    /// <summary>Methode aus Aufruf anlegen (#472): nach "(" allein, sonst oben in der Liste.</summary>
+    CreateMethod);
 
 implementation
 

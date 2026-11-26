@@ -49,6 +49,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Internals.FormCache,
   Atlas.Common.Completion.Request,
+  Atlas.Common.Completion.Answer,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.Completion.Names,
   Atlas.Common.Lsp.Completion.Postfix,
@@ -90,6 +91,8 @@ type
     // Fälle von textDocument/completion in fester Reihenfolge: ohne und mit Syntaxbaum.
     FTextCases: TArray<TCompletionCase>;
     FTreeCases: TArray<TCompletionCase>;
+    // Quellen anderer Features an ihren Stellen in den Fällen; angemeldet von der Komposition.
+    FSources: TCompletionSources;
     procedure HandlePostfixTemplates(const AParams: TJSONValue);
     function ReadCached(const AFileName: string; out AText: string): Boolean;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -100,9 +103,9 @@ type
     /// <summary>Antwort im Aufbau mit Formularen, Rückrufen und partialResultToken aus AParams (darf nil sein).
     /// </summary>
     function NewAnswer(const AParams: TJSONObject; const ACancellation: IJsonRpcCancellationToken):
-      TCompletionAnswer;
+      TLspCompletionAnswer;
     /// <summary>Die Fälle mit Baum und Resolver und die Liste daraus; ARequest hat den Baum schon.</summary>
-    function TreeAnswer(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer;
+    function TreeAnswer(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer;
       const AWatch: TStopwatch): TJSONValue;
     function HandleResolve(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
@@ -127,6 +130,9 @@ type
     /// <summary>Rückrufe und Schalter, die die Komposition setzt (Einstellungen je Dokument, Lesen, Melden,
     /// Namensräume, eigene Postfix-Vorlagen).</summary>
     property Hooks: TCompletionHooks read FHooks;
+    /// <summary>Quellen anderer Features (etwa Editing); die Komposition meldet sie vor der ersten Anfrage an.
+    /// </summary>
+    property Sources: TCompletionSources read FSources;
   end;
 
 implementation
@@ -196,6 +202,7 @@ begin
   FForms := TFormSnapshotCache.Create;
   FTextCases := TCompletionCases.TextCases;
   FTreeCases := TCompletionCases.TreeCases;
+  FSources := TCompletionSources.Create;
 end;
 
 constructor TLspCompletion.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex);
@@ -205,6 +212,7 @@ end;
 
 destructor TLspCompletion.Destroy;
 begin
+  FSources.Free;
   FForms.Free;
   FCacheLock.Free;
   FHooks.Free;
@@ -280,7 +288,7 @@ var
   mCancellation: IPascalCancellation;
   mTrigger: string;
   mRequest: TCompletionRequest;
-  mAnswer: TCompletionAnswer;
+  mAnswer: TLspCompletionAnswer;
   mShared: ISharedSyntaxTree;
 begin
   mWatch := TStopwatch.StartNew;
@@ -317,10 +325,11 @@ begin
 end;
 
 function TLspCompletion.NewAnswer(const AParams: TJSONObject; const ACancellation: IJsonRpcCancellationToken):
-  TCompletionAnswer;
+  TLspCompletionAnswer;
 begin
-  Result := TCompletionAnswer.Create;
+  Result := TLspCompletionAnswer.Create;
   Result.Hooks := FHooks;
+  Result.Sources := FSources;
   Result.Cancellation := ACancellation;
   // Formulare über den Zwischenspeicher der Instanz.
   Result.Forms := TCompletionForms.Cached(FStore, FHooks.ReadText, FForms);
@@ -330,7 +339,7 @@ begin
   end;
 end;
 
-function TLspCompletion.TreeAnswer(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer;
+function TLspCompletion.TreeAnswer(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer;
   const AWatch: TStopwatch): TJSONValue;
 var
   mParseMs: Int64;

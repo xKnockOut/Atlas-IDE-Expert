@@ -41,10 +41,6 @@ type
   /// <summary>„with auflösen“ über Strg+Leer auf with (#50): Änderungen für die with-Anweisung am Cursor; False
   /// ohne Angebot.</summary>
   TCompletionWithFunc = reference to function(ARequest: TCompletionRequest; out AEdits: TArray<TTextEdit>): Boolean;
-  /// <summary>„Methode aus Aufruf anlegen“ (#472): Titel, Kopf und Änderungen für den Aufruf am Cursor; False ohne
-  /// Angebot (bekannter Name, kein Aufruf, abgeschaltet).</summary>
-  TCompletionCreateFunc = reference to function(ARequest: TCompletionRequest; out ATitle, ADetail: string;
-    out AEdits: TArray<TTextEdit>): Boolean;
 
   /// <summary>Typen aus den Packages der IDE (atlas/ideTypes) für die Vervollständigung.</summary>
   TCompletionIdeTypesFunc = reference to function: TArray<TIdeTypeEntry>;
@@ -79,8 +75,6 @@ type
     PostfixFor: TPostfixOptionsFunc;
     /// <summary>„with auflösen“ auf dem Wort with (#50); ohne Zuweisung kein Eintrag.</summary>
     WithFor: TCompletionWithFunc;
-    /// <summary>„Methode aus Aufruf anlegen“ (#472); ohne Zuweisung kein Eintrag.</summary>
-    CreateFor: TCompletionCreateFunc;
     /// <summary>Präfix der Namensvorschläge (#452); ohne gilt NamingPrefix über den Index der Anfrage.</summary>
     NamingFor: TCompletionNamingFunc;
     /// <summary>Anzeige von XMLDoc (#654) als data.atlas.xmlDoc; ohne Zuweisung fehlt das Feld.</summary>

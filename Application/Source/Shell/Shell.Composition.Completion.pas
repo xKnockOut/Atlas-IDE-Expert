@@ -85,6 +85,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Completion.Contract,
+  Atlas.Common.Editing.Completion.CreateMethod,
   Atlas.Common.Pascal.LanguageFeatures,
   Rules.Contract.Api,
   Rules.Providers.CatalogInfo,
@@ -175,7 +177,7 @@ begin
   // with auflösen über Strg+Leer auf with (#50), abschaltbar mit refactoring.resolveWith.
   FCompletion.Hooks.WithFor := WithEdits;
   // Methode aus Aufruf anlegen nach "(" bzw. mit Strg+Leer (#472), abschaltbar mit refactoring.createMethod.
-  FCompletion.Hooks.CreateFor := CreateMethod;
+  FCompletion.Sources.Add(TCompletionSlot.CreateMethod, TEditingCreateMethodCompletion.Source(CreateMethod));
   FCompletion.Hooks.NamingFor := FServices.NamingFor;
   FCompletion.Hooks.IdeTypesFor := FServices.IdeTypesFor;
   FCompletion.Hooks.HintsFor := FServices.HintsFor;
