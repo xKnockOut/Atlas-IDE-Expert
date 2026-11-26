@@ -231,6 +231,7 @@ Atlas.Core.Debug.ExceptionRules.Tests
 Atlas.Common.Lsp.CompactJson.Tests
 Atlas.Common.Lsp.CompilerBaseline.Tests
 Atlas.Common.Lsp.CompilerSwitches.Tests
+Atlas.Common.Lsp.CodeActions.Tests
 Atlas.Common.Lsp.Completion.FormProposals.Tests
 Atlas.Common.Lsp.Completion.HiddenMembers.Tests
 Atlas.Common.Lsp.Completion.TypeConversions.Tests
@@ -901,6 +902,7 @@ Atlas.Core.Editor.Pairs.Tests
 Adapters.Checks.IdeTypes.Tests
 Adapters.Checks.Refactorings.Tests
 Atlas.Common.Editing.Providers.ClassActions.Tests
+Atlas.Common.Editing.Providers.CodeActions.Tests
 Atlas.Common.Editing.Providers.MethodWithoutSelf.Tests
 Atlas.Common.Editing.Providers.ClassCompletion.Tests
 Atlas.Common.Editing.Providers.MethodOrder.Tests
@@ -909,6 +911,7 @@ Adapters.Lsp.InheritanceDepths.Tests
 Adapters.Lsp.OwnershipReport.Tests
 Adapters.Lsp.RuleDiagnostics.Tests
 Adapters.Lsp.RuleActions.Tests
+Adapters.Lsp.SourceActions.Tests
 Adapters.Lsp.RuleCatalog.Tests
 Adapters.Lsp.FindingsPrompt.Tests
 Adapters.Lsp.BulkFix.Tests

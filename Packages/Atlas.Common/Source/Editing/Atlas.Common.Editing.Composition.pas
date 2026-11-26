@@ -8,6 +8,7 @@ interface
 uses
   Atlas.Common.Editing.Contract.BoundaryCases,
   Atlas.Common.Editing.Contract.ClassActions,
+  Atlas.Common.Editing.Contract.CodeActions,
   Atlas.Common.Editing.Contract.ClassCompletion,
   Atlas.Common.Editing.Contract.CompilerFixes,
   Atlas.Common.Editing.Contract.Extract,
@@ -22,6 +23,8 @@ type
     class function ClassActions: IEditingClassActions; static;
     /// <summary>Klassenvervollständigung: Zuordnung von Deklarationen und Rümpfen samt Korrekturen.</summary>
     class function ClassCompletion: IEditingClassCompletion; static;
+    /// <summary>Code-Aktionen des Sprachservers aus Editing (Klasse, Anweisung, uses, Deklarationen).</summary>
+    class function CodeActions(const ASettings: TEditingCodeActionSettings): IEditingCodeActions; static;
     /// <summary>„Methode extrahieren“.</summary>
     class function Extract: IEditingExtract; static;
     /// <summary>Bedingung auslagern, Konstante einführen (Korrekturen der Prüfregeln).</summary>
@@ -46,6 +49,7 @@ uses
   Atlas.Common.Editing.Providers.BoundaryCases,
   Atlas.Common.Editing.Providers.ClassActions,
   Atlas.Common.Editing.Providers.ClassCompletion,
+  Atlas.Common.Editing.Providers.CodeActions,
   Atlas.Common.Editing.Providers.CompilerFixes,
   Atlas.Common.Editing.Providers.Extract,
   Atlas.Common.Editing.Providers.Formatting,
@@ -63,6 +67,11 @@ end;
 class function TEditingComposition.ClassCompletion: IEditingClassCompletion;
 begin
   Result := TEditingClassCompletionProvider.Create;
+end;
+
+class function TEditingComposition.CodeActions(const ASettings: TEditingCodeActionSettings): IEditingCodeActions;
+begin
+  Result := TEditingCodeActionsProvider.Create(ASettings);
 end;
 
 class function TEditingComposition.Extract: IEditingExtract;

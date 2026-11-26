@@ -56,10 +56,6 @@ uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.Extract.Shared;
 
-const
-  /// <summary>Art der Extrahieren-Aktionen (LSP).</summary>
-  cExtractKind = cExtractKind;
-
 type
   /// <summary>Typ eines Ausdrucks laut Namensauflösung (Typ aus Extract.Shared).</summary>
   TProbedType = Atlas.Common.Editing.Extract.Shared.TProbedType;

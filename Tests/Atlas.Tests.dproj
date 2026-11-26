@@ -660,6 +660,7 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TryFinallyGolden.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.ClassActions.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.CodeActions.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.MethodWithoutSelf.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.ClassCompletion.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.MethodOrder.Tests.pas"/>
@@ -3066,6 +3067,8 @@
         <DCCReference Include="Application\Adapters\Adapters.Lsp.RuleDiagnostics.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.RuleActions.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Lsp.RuleActions.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.SourceActions.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Lsp.SourceActions.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.RuleCatalog.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Lsp.RuleCatalog.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.FindingsPrompt.pas"/>

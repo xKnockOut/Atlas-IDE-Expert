@@ -15,6 +15,7 @@ uses
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Findings.Contract;
 
 type
@@ -184,6 +185,38 @@ type
     function Prompt(const AFinding: TRuleFinding; const AFileName, AText: string): string;
     /// <summary>Index des Umfelds; nil ohne.</summary>
     function Index: ISymbolIndex;
+  end;
+
+  /// <summary>Stelle einer Anfrage textDocument/codeAction für ILspSourceActions; der Baum geht nur als
+  /// IPascalSyntaxTree über die Grenze.</summary>
+  TLspCodeActionSite = record
+    Uri: string;
+    Text: string;
+    /// <summary>Baum zu Text; der Aufrufer hält ihn am Leben, solange die Anfrage läuft.</summary>
+    Tree: IPascalSyntaxTree;
+    Range: TTextRange;
+    /// <summary>Index aus dem Umfeld der Prüfregeln; nil ohne.</summary>
+    Index: ISymbolIndex;
+    Style: TFormatStyle;
+    Refactoring: TRefactoringSettings;
+    /// <summary>Die Prüfregeln bieten in der Zeile von Range schon „Feld im Destruktor freigeben“ an.</summary>
+    RuleFreesField: Boolean;
+    /// <summary>Der Client fragt Schnellkorrekturen und Umbauten an (quickfix, refactor.*).</summary>
+    WantsEditing: Boolean;
+    /// <summary>Der Client fragt ausdrücklich source.removeUnusedImports an (#284).</summary>
+    WantsRemoveUnused: Boolean;
+  end;
+
+  /// <summary>Code-Aktionen, die nicht aus Prüfregeln kommen (Klasse, Anweisung, uses, Deklarationen, #42); der
+  /// Host steuert sie bei. Die Gruppen stehen in der Reihenfolge der Antwort auf textDocument/codeAction.</summary>
+  ILspSourceActions = interface
+    ['{60AF43CB-300A-4E2C-9BAE-898C0F82BBB1}']
+    function Structure(const ASite: TLspCodeActionSite): TArray<TCodeAction>;
+    function MissingBodies(const ASite: TLspCodeActionSite; out AAction: TCodeAction): Boolean;
+    function Statements(const ASite: TLspCodeActionSite): TArray<TCodeAction>;
+    function UsesActions(const ASite: TLspCodeActionSite): TArray<TCodeAction>;
+    function Declarations(const ASite: TLspCodeActionSite): TArray<TCodeAction>;
+    function OrganizeImports(const ASite: TLspCodeActionSite; out AAction: TCodeAction): Boolean;
   end;
 
   /// <summary>Prüfregeln der Code-Aktionen je Dokument; ohne Anbieter gibt es keine Aktionen zu Treffern.</summary>
