@@ -20,52 +20,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Pascal.SyntaxTree;
+  Atlas.Common.Formatting.Outcome;
 
 type
-  /// <summary>Zeilen First bis Last (0-basiert, einschließlich).</summary>
-  TFormatLineSpan = record
-    First: Integer;
-    Last: Integer;
-    class function Create(AFirst, ALast: Integer): TFormatLineSpan; static;
-  end;
-
-  /// <summary>Ganze Datei oder nur die Zeilen der Bereiche (leer = nichts formatieren).</summary>
-  TFormatScope = record
-    WholeFile: Boolean;
-    Spans: TArray<TFormatLineSpan>;
-    class function All: TFormatScope; static;
-    class function Lines(const ASpans: TArray<TFormatLineSpan>): TFormatScope; static;
-  end;
-
-  {$SCOPEDENUMS ON}
-  TFormatDeviationKind = (Indent, IndentChars, KeywordCase, SpaceAssignment, SpaceComma, TrailingWhitespace,
-    Alignment, LineBreaks, EndOfLine, FinalNewline);
-  {$SCOPEDENUMS OFF}
-
-  TFormatDeviation = record
-    /// <summary>Zeile im Original, 0-basiert.</summary>
-    Line: Integer;
-    Kind: TFormatDeviationKind;
-    Message: string;
-    class function Create(ALine: Integer; AKind: TFormatDeviationKind; const AMessage: string): TFormatDeviation;
-      static;
-  end;
-
-  TFormatOutcome = record
-    Original: string;
-    /// <summary>Ergebnis; bei Syntaxfehlern gleich Original.</summary>
-    Formatted: string;
-    Deviations: TArray<TFormatDeviation>;
-    HasSyntaxError: Boolean;
-    /// <summary>Erster Syntaxfehler, nur mit HasSyntaxError.</summary>
-    SyntaxError: TSyntaxDiagnostic;
-    /// <summary>Ein zweiter Lauf auf Formatted ändert nichts mehr.</summary>
-    Stable: Boolean;
-    /// <summary>Formatted weicht von Original ab.</summary>
-    function Changed: Boolean;
-  end;
-
   TFormatCheck = class
   public
     /// <summary>Änderungen des Formatierers für AScope, wie „Dokument formatieren“ bzw. „Auswahl formatieren“.
@@ -82,8 +39,6 @@ type
     /// Abweichungen und prüft die Stabilität.</summary>
     class function Run(const AText: string; const AStyle: TFormatStyle; const AScope: TFormatScope;
       const AOptions: TPreprocessorOptions): TFormatOutcome; static;
-    /// <summary>Kennung für JSON, z. B. "indent".</summary>
-    class function KindName(AKind: TFormatDeviationKind): string; static;
   end;
 
 implementation
@@ -96,6 +51,7 @@ uses
   Atlas.Text.Diff,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.Formatter,
   Atlas.Common.Documents.TextChanges,
@@ -133,47 +89,6 @@ const
     (De: 'Zeilenenden %s statt %s'; En: 'Line endings %s instead of %s'));
 
 {$SCOPEDENUMS OFF}
-
-{ TFormatLineSpan }
-
-class function TFormatLineSpan.Create(AFirst, ALast: Integer): TFormatLineSpan;
-begin
-  Result.First := AFirst;
-  Result.Last := ALast;
-end;
-
-{ TFormatScope }
-
-class function TFormatScope.All: TFormatScope;
-begin
-  Result.WholeFile := True;
-  Result.Spans := nil;
-end;
-
-class function TFormatScope.Lines(const ASpans: TArray<TFormatLineSpan>): TFormatScope;
-begin
-  Result.WholeFile := False;
-  Result.Spans := ASpans;
-end;
-
-{ TFormatDeviation }
-
-class function TFormatDeviation.Create(ALine: Integer; AKind: TFormatDeviationKind;
-  const AMessage: string): TFormatDeviation;
-begin
-  Result.Line := ALine;
-  Result.Kind := AKind;
-  Result.Message := AMessage;
-end;
-
-{ TFormatOutcome }
-
-function TFormatOutcome.Changed: Boolean;
-begin
-  Result := Formatted <> Original;
-end;
-
-{ TFormatCheck }
 
 /// <summary>Bereiche aufsteigend; überlappende und nebeneinanderliegende zusammengefasst.</summary>
 function MergedSpans(const ASpans: TArray<TFormatLineSpan>): TArray<TFormatLineSpan>;
@@ -621,32 +536,6 @@ begin
   else
   begin
     Result.Stable := FormatText(Result.Formatted, AStyle, AScope) = Result.Formatted;
-  end;
-end;
-
-class function TFormatCheck.KindName(AKind: TFormatDeviationKind): string;
-begin
-  case AKind of
-    TFormatDeviationKind.Indent:
-      Result := 'indent';
-    TFormatDeviationKind.IndentChars:
-      Result := 'indentChars';
-    TFormatDeviationKind.KeywordCase:
-      Result := 'keywordCase';
-    TFormatDeviationKind.SpaceAssignment:
-      Result := 'spaceAroundAssignment';
-    TFormatDeviationKind.SpaceComma:
-      Result := 'spaceAfterComma';
-    TFormatDeviationKind.TrailingWhitespace:
-      Result := 'trailingWhitespace';
-    TFormatDeviationKind.Alignment:
-      Result := 'alignment';
-    TFormatDeviationKind.LineBreaks:
-      Result := 'lineBreaks';
-    TFormatDeviationKind.EndOfLine:
-      Result := 'endOfLine';
-  else
-    Result := 'finalNewline';
   end;
 end;
 

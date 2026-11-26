@@ -67,7 +67,7 @@
 // .editorconfig über den Vorgaben (ohne die Einrückung der IDE-Optionen).
 // Geschrieben wird atomar über eine Nachbardatei; Kodierung und Zeilenenden
 // bleiben, außer format.endOfLine verlangt andere. Exit-Codes in
-// Atlas.Common.Editing.FormatOutput.
+// Atlas.Common.Formatting.Output.
 // Wortgleiche Rümpfe (Kopien-Prüfung): --check-duplicates statt der Regeln, siehe Core.Linter.Duplicates.
 
 interface
@@ -139,6 +139,10 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.Preprocessor,
+  Atlas.Common.Formatting.Outcome,
+  Atlas.Common.Editing.FormatCheck,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Logging.Providers.Logger,
@@ -193,6 +197,13 @@ begin
   Result.Refactorings := TShellCheckRefactorings.Create;
 end;
 
+/// <summary>Formatierer von Editing für --format-check und --format-write.</summary>
+function FormatText(const AText: string; const AStyle: TFormatStyle; const AScope: TFormatScope;
+  const ASource: TPascalSource): TFormatOutcome;
+begin
+  Result := TFormatCheck.Run(AText, AStyle, AScope, TPascalPreprocessor.SourceOptions(ASource));
+end;
+
 function InstalledVersions: TArray<string>;
 begin
   Result := TDelphiInstallation.Versions;
@@ -234,6 +245,7 @@ begin
   Result.NewGroup := NewGroup;
   Result.Instructions := WriteInstructions;
   Result.Rules := TShellLinterRules.Create;
+  Result.Formatter := FormatText;
 end;
 
 class function TLinterShell.Run(const AOptions: TCommandLineOptions): Integer;

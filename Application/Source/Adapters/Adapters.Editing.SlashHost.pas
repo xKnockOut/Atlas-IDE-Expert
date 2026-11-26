@@ -1,6 +1,9 @@
-﻿unit Core.SlashHost;
+﻿unit Adapters.Editing.SlashHost;
 
-// Host-Rolle Core: Projekt- und Editorzugriff für Schnellbefehle wie
+// Host-Adapter für Editing: implementiert ISlashHost (Projekt- und Editorzugriff für Schnellbefehle wie
+// /define, /config und /dfm, #301) aus dem Vertrag von Editing. Erzeugt nur in Shell.Composition.Slash.
+//
+// Projekt- und Editorzugriff für Schnellbefehle wie
 // /define, /config und /dfm (#301). Schreibt die .dproj in ihrer Kodierung
 // zurück, lädt den Ordner neu und schickt window/showDocument an den Editor.
 // Kann der Client workspace/applyEdit (das Plugin, #397), geht die Änderung
@@ -43,7 +46,7 @@ type
 
   /// <summary>Woher der Host Ordner, Dateien und Einstellungen bekommt. WorkspaceOf, ReadText und
   /// HeaderTemplate sind Pflicht; die übrigen dürfen fehlen (siehe Eigenschaften des Hosts).</summary>
-  TCoreSlashSources = record
+  TSlashHostSources = record
     WorkspaceOf: TWorkspaceOfFunc;
     ReadText: TReadTextFunc;
     HeaderTemplate: THeaderTemplateFunc;
@@ -54,12 +57,12 @@ type
     FindingsOf: TSlashFindingsFunc;
     /// <summary>Quellen mit den drei Pflichtfunktionen, die übrigen leer.</summary>
     class function New(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
-      const AHeaderTemplate: THeaderTemplateFunc): TCoreSlashSources; static;
+      const AHeaderTemplate: THeaderTemplateFunc): TSlashHostSources; static;
   end;
 
-  TCoreSlashHost = class(TInterfacedObject, ISlashHost)
+  TSlashHostAdapter = class(TInterfacedObject, ISlashHost)
   private
-    FSources: TCoreSlashSources;
+    FSources: TSlashHostSources;
     FTransport: IJsonRpcTransport;
     FLogger: ILogger;
     FRequestId: Integer;
@@ -77,13 +80,13 @@ type
     procedure InLoop(const AWork: TProc);
   public
     /// <summary>ADispatcher und AClientAppliesEdits dürfen nil sein; dann schreibt der Host selbst.</summary>
-    constructor Create(const ASources: TCoreSlashSources; const ATransport: IJsonRpcTransport;
+    constructor Create(const ASources: TSlashHostSources; const ATransport: IJsonRpcTransport;
       const ALogger: ILogger; ADispatcher: TJsonRpcDispatcher; const AClientAppliesEdits: TFunc<Boolean>); overload;
     /// <summary>Wie oben mit AClientAppliesEdits = nil.</summary>
-    constructor Create(const ASources: TCoreSlashSources; const ATransport: IJsonRpcTransport;
+    constructor Create(const ASources: TSlashHostSources; const ATransport: IJsonRpcTransport;
       const ALogger: ILogger; ADispatcher: TJsonRpcDispatcher); overload;
     /// <summary>Wie oben mit ADispatcher = nil und AClientAppliesEdits = nil.</summary>
-    constructor Create(const ASources: TCoreSlashSources; const ATransport: IJsonRpcTransport;
+    constructor Create(const ASources: TSlashHostSources; const ATransport: IJsonRpcTransport;
       const ALogger: ILogger); overload;
     function Project(const AUri: string; out AProject: TProjectInfo): Boolean;
     function ReadFile(const AFileName: string; out AText: string): Boolean;
@@ -141,20 +144,20 @@ const
     (De: 'Die Unit für resourcestrings'; En: 'The unit for resourcestrings'),
     (De: 'Testunits sind hier nicht verfügbar'; En: 'Test units are not available here'));
 
-{ TCoreSlashSources }
+{ TSlashHostSources }
 
-class function TCoreSlashSources.New(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
-  const AHeaderTemplate: THeaderTemplateFunc): TCoreSlashSources;
+class function TSlashHostSources.New(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
+  const AHeaderTemplate: THeaderTemplateFunc): TSlashHostSources;
 begin
-  Result := Default(TCoreSlashSources);
+  Result := Default(TSlashHostSources);
   Result.WorkspaceOf := AWorkspaceOf;
   Result.ReadText := AReadText;
   Result.HeaderTemplate := AHeaderTemplate;
 end;
 
-{ TCoreSlashHost }
+{ TSlashHostAdapter }
 
-constructor TCoreSlashHost.Create(const ASources: TCoreSlashSources; const ATransport: IJsonRpcTransport;
+constructor TSlashHostAdapter.Create(const ASources: TSlashHostSources; const ATransport: IJsonRpcTransport;
   const ALogger: ILogger; ADispatcher: TJsonRpcDispatcher; const AClientAppliesEdits: TFunc<Boolean>);
 begin
   inherited Create;
@@ -165,29 +168,29 @@ begin
   FClientAppliesEdits := AClientAppliesEdits;
 end;
 
-constructor TCoreSlashHost.Create(const ASources: TCoreSlashSources; const ATransport: IJsonRpcTransport;
+constructor TSlashHostAdapter.Create(const ASources: TSlashHostSources; const ATransport: IJsonRpcTransport;
   const ALogger: ILogger; ADispatcher: TJsonRpcDispatcher);
 begin
   Create(ASources, ATransport, ALogger, ADispatcher, nil);
 end;
 
-constructor TCoreSlashHost.Create(const ASources: TCoreSlashSources; const ATransport: IJsonRpcTransport;
+constructor TSlashHostAdapter.Create(const ASources: TSlashHostSources; const ATransport: IJsonRpcTransport;
   const ALogger: ILogger);
 begin
   Create(ASources, ATransport, ALogger, nil, nil);
 end;
 
-function TCoreSlashHost.ClientWrites: Boolean;
+function TSlashHostAdapter.ClientWrites: Boolean;
 begin
   Result := (FDispatcher <> nil) and Assigned(FClientAppliesEdits) and FClientAppliesEdits();
 end;
 
-procedure TCoreSlashHost.SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc);
+procedure TSlashHostAdapter.SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc);
 begin
   SendEdit(AUri, ADescription, AEdit, AAfter, True);
 end;
 
-function TCoreSlashHost.WriteThroughClient(const AUri, AFileName, AText: string): Boolean;
+function TSlashHostAdapter.WriteThroughClient(const AUri, AFileName, AText: string): Boolean;
 var
   mOldText: string;
   mFileFormat: TFileFormat;
@@ -226,7 +229,7 @@ begin
   end;
 end;
 
-procedure TCoreSlashHost.InLoop(const AWork: TProc);
+procedure TSlashHostAdapter.InLoop(const AWork: TProc);
 begin
   if Assigned(FRunInLoop) then
   begin
@@ -238,7 +241,7 @@ begin
   end;
 end;
 
-function TCoreSlashHost.Project(const AUri: string; out AProject: TProjectInfo): Boolean;
+function TSlashHostAdapter.Project(const AUri: string; out AProject: TProjectInfo): Boolean;
 var
   mWorkspace: TCoreWorkspace;
 begin
@@ -317,7 +320,7 @@ begin
     end;
 end;
 
-procedure TCoreSlashHost.SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc;
+procedure TSlashHostAdapter.SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc;
   AReload: Boolean);
 var
   mId: string;
@@ -346,17 +349,17 @@ begin
   end;
 end;
 
-function TCoreSlashHost.ReadFile(const AFileName: string; out AText: string): Boolean;
+function TSlashHostAdapter.ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := FSources.ReadText(AFileName, AText);
 end;
 
-function TCoreSlashHost.DirectoryExists(const APath: string): Boolean;
+function TSlashHostAdapter.DirectoryExists(const APath: string): Boolean;
 begin
   Result := System.SysUtils.DirectoryExists(APath);
 end;
 
-procedure TCoreSlashHost.WriteProject(const AUri, AText: string);
+procedure TSlashHostAdapter.WriteProject(const AUri, AText: string);
 var
   mWorkspace: TCoreWorkspace;
   mInfo: TProjectInfo;
@@ -404,7 +407,7 @@ begin
     end);
 end;
 
-procedure TCoreSlashHost.SelectBuild(const AUri, AConfig, APlatform: string);
+procedure TSlashHostAdapter.SelectBuild(const AUri, AConfig, APlatform: string);
 var
   mWorkspaceOf: TWorkspaceOfFunc;
   mLogger: ILogger;
@@ -431,17 +434,17 @@ begin
     end);
 end;
 
-procedure TCoreSlashHost.ShowDocument(const AFileName: string; const ASelection: TTextRange);
+procedure TSlashHostAdapter.ShowDocument(const AFileName: string; const ASelection: TTextRange);
 begin
   SendShowDocument(FTransport, AFileName, ASelection);
 end;
 
-function TCoreSlashHost.HeaderTemplate(const AUri: string): string;
+function TSlashHostAdapter.HeaderTemplate(const AUri: string): string;
 begin
   Result := FSources.HeaderTemplate(AUri);
 end;
 
-function TCoreSlashHost.Setting(const AUri, AName: string): string;
+function TSlashHostAdapter.Setting(const AUri, AName: string): string;
 begin
   Result := '';
   if Assigned(FSources.SettingOf) then
@@ -450,7 +453,7 @@ begin
   end;
 end;
 
-function TCoreSlashHost.TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
+function TSlashHostAdapter.TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
 begin
   ATarget := Default(TSlashTestUnit);
   if not Assigned(FSources.TestUnitOf) then
@@ -461,7 +464,7 @@ begin
   Result := FSources.TestUnitOf(AUri, AText, ATarget);
 end;
 
-procedure TCoreSlashHost.Notify(const AUri, AMessage: string);
+procedure TSlashHostAdapter.Notify(const AUri, AMessage: string);
 var
   mTransport: IJsonRpcTransport;
   mText: string;
@@ -486,7 +489,7 @@ begin
     end);
 end;
 
-procedure TCoreSlashHost.MoveCursor(const AUri: string; const APosition: TTextPosition);
+procedure TSlashHostAdapter.MoveCursor(const AUri: string; const APosition: TTextPosition);
 var
   mTransport: IJsonRpcTransport;
   mFileName: string;
@@ -503,26 +506,26 @@ begin
     end);
 end;
 
-function TCoreSlashHost.RuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
+function TSlashHostAdapter.RuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
 begin
   AIds := nil;
   Result := Assigned(FSources.RuleIdsOf) and FSources.RuleIdsOf(AUri, AText, ALine, AIds);
 end;
 
-function TCoreSlashHost.UsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
+function TSlashHostAdapter.UsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
 begin
   AContext := Default(TUsesContext);
   Result := Assigned(FSources.UsesContextOf) and FSources.UsesContextOf(AUri, AContext);
 end;
 
-function TCoreSlashHost.FindingsAt(const AUri, AText: string; ALine: Integer;
+function TSlashHostAdapter.FindingsAt(const AUri, AText: string; ALine: Integer;
   out AFindings: TArray<TSlashFinding>): Boolean;
 begin
   AFindings := nil;
   Result := Assigned(FSources.FindingsOf) and FSources.FindingsOf(AUri, AText, ALine, AFindings);
 end;
 
-procedure TCoreSlashHost.EditFile(const AUri, AFileName, ANewText: string; const AEdit: TTextEdit);
+procedure TSlashHostAdapter.EditFile(const AUri, AFileName, ANewText: string; const AEdit: TTextEdit);
 var
   mFileFormat: TFileFormat;
 begin
@@ -663,7 +666,7 @@ begin
     end;
 end;
 
-procedure TCoreSlashHost.WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
+procedure TSlashHostAdapter.WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
 var
   mDescription: string;
 begin
@@ -689,6 +692,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Core.SlashHost', cTexts);
+  TAtlasTextTables.Add('Adapters.Editing.SlashHost', cTexts);
 
 end.

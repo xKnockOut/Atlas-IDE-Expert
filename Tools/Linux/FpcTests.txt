@@ -532,7 +532,8 @@ Rules.Providers.DocumentActions.Tests
 Rules.Providers.CatalogInfo.Tests
 Rules.SettingsCatalog.Tests
 Rules.CheckContext.Tests
-Atlas.Common.Editing.FormatOutput.Tests
+Atlas.Common.Formatting.Outcome.Tests
+Atlas.Common.Formatting.Output.Tests
 Rules.LibrarySources.Tests
 Atlas.Common.Compiler.MessageCatalog.Tests
 Atlas.Common.Compiler.Releases.Tests
