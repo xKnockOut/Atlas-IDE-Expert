@@ -121,15 +121,14 @@ type
     class function IsLibraryFile(const AFileName, ARoot: string): Boolean; static;
     /// <summary>'TKunde' bzw. TKunde aus der Auswertung ohne Hochkommas.</summary>
     class function Unquote(const AValue: string): string; static;
-    /// <summary>Letzter Namensteil eines Typs (TAussen.TInnen → TInnen, Unit.TKunde → TKunde).</summary>
-    class function ShortName(const ATypeName: string): string; static;
   end;
 
 implementation
 
 uses
   System.StrUtils,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Names;
 
 { TAtlasStepRow }
 
@@ -209,7 +208,7 @@ begin
   Result := False;
   for mTarget in ACall.Targets do
   begin
-    if SameText(ShortName(mTarget.Container), ShortName(AName)) then
+    if SameText(TTextNames.BareTypeName(mTarget.Container), TTextNames.BareTypeName(AName)) then
     begin
       ATarget := mTarget;
       Exit(True);
@@ -457,23 +456,6 @@ begin
   if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
   begin
     Result := Copy(Result, 2, Length(Result) - 2);
-  end;
-end;
-
-class function TAtlasStepInto.ShortName(const ATypeName: string): string;
-var
-  mAngle, mDot: Integer;
-begin
-  Result := Trim(ATypeName);
-  mAngle := Pos('<', Result);
-  if mAngle > 0 then
-  begin
-    Result := Copy(Result, 1, mAngle - 1);
-  end;
-  mDot := LastDelimiter('.', Result);
-  if mDot > 0 then
-  begin
-    Result := Copy(Result, mDot + 1, MaxInt);
   end;
 end;
 

@@ -22,7 +22,6 @@ type
   private
     FAllowMainThread: Boolean;
     FCancelled: TFunc<Boolean>;
-    function IsCancelled: Boolean;
     /// <summary>Ok, wenn der Lauf beginnen darf; sonst warum nicht.</summary>
     function StartOutcome(const AExecutable: string): TAtlasVcsOutcome;
   public
@@ -39,7 +38,8 @@ uses
   System.Classes,
   Pipes,
   Process,
-  Atlas.VersionControl.Repository.ServerAccess;
+  Atlas.VersionControl.Repository.ServerAccess,
+  Atlas.VersionControl.Repository.Tools;
 
 const
   cSliceMs = 10;
@@ -152,15 +152,6 @@ begin
   FCancelled := ACancelled;
 end;
 
-function TLinuxVcsRunner.IsCancelled: Boolean;
-begin
-  Result := not TThread.CurrentThread.ExternalThread and TThread.CheckTerminated;
-  if not Result and Assigned(FCancelled) then
-  begin
-    Result := FCancelled();
-  end;
-end;
-
 function TLinuxVcsRunner.StartOutcome(const AExecutable: string): TAtlasVcsOutcome;
 begin
   Result := TAtlasVcsOutcome.Ok;
@@ -172,7 +163,7 @@ begin
   begin
     Result := TAtlasVcsOutcome.ToolMissing;
   end
-  else if IsCancelled then
+  else if TAtlasVcsCancellation.Requested(FCancelled) then
   begin
     Result := TAtlasVcsOutcome.Cancelled;
   end;
@@ -189,7 +180,7 @@ begin
   while AChild.Running do
   begin
     ACaptured.DrainFrom(AChild);
-    if ARunner.IsCancelled then
+    if TAtlasVcsCancellation.Requested(ARunner.FCancelled) then
     begin
       Result := TAtlasVcsOutcome.Cancelled;
     end

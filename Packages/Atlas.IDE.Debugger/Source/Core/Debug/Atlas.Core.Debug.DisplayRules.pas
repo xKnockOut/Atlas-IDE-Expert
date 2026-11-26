@@ -83,8 +83,6 @@ type
     function Count: Integer;
     /// <summary>Namen der Regeln aus der Projektdatei (für die Erben über den Server).</summary>
     function ProjectNames: TArray<string>;
-    /// <summary>Letzter Namensteil ohne Typargumente.</summary>
-    class function ShortName(const ATypeName: string): string; static;
   end;
 
   TAtlasDisplayRender = class
@@ -112,7 +110,8 @@ uses
   Atlas.Core.Debug.Visualizers.Format,
   Atlas.Plugin.Settings.VisualizerKinds,
   Atlas.Text.Json,
-  Atlas.Text.Arrays;
+  Atlas.Text.Arrays,
+  Atlas.Text.Names;
 
 { TAtlasDisplayRule }
 
@@ -144,7 +143,7 @@ end;
 function TAtlasDisplayRules.Lookup(const AName: string; out AIndex: Integer): Boolean;
 begin
   Result := FByName.TryGetValue(LowerCase(Trim(AName)), AIndex) or
-    FByName.TryGetValue(LowerCase(ShortName(AName)), AIndex);
+    FByName.TryGetValue(LowerCase(TTextNames.BareTypeName(AName)), AIndex);
 end;
 
 procedure TAtlasDisplayRules.MapName(const AKey: string; AIndex: Integer);
@@ -204,7 +203,7 @@ begin
   mRule.TypeName := Trim(mRule.TypeName);
   if mRule.Name = '' then
   begin
-    mRule.Name := ShortName(mRule.TypeName);
+    mRule.Name := TTextNames.BareTypeName(mRule.TypeName);
   end;
   if (mRule.TypeName = '') or (not mRule.HasTemplate and (mRule.Children = nil)) then
   begin
@@ -213,7 +212,7 @@ begin
   mIndex := FRules.Add(mRule);
   MapName(LowerCase(mRule.TypeName), mIndex);
   MapName(LowerCase(mRule.Name), mIndex);
-  MapName(LowerCase(ShortName(mRule.TypeName)), mIndex);
+  MapName(LowerCase(TTextNames.BareTypeName(mRule.TypeName)), mIndex);
 end;
 
 /// <summary>Eine Regel aus einem Eintrag von "rules".</summary>
@@ -270,7 +269,7 @@ begin
   begin
     Exit;
   end;
-  for mName in TArray<string>.Create(Trim(ATypeName), ShortName(ATypeName)) do
+  for mName in TArray<string>.Create(Trim(ATypeName), TTextNames.BareTypeName(ATypeName)) do
   begin
     if not FInherits.ContainsKey(LowerCase(mName)) or (mName = Trim(ATypeName)) then
     begin
@@ -307,7 +306,7 @@ begin
   ARule := Default(TAtlasDisplayRule);
   Result := Lookup(ATypeName, mIndex);
   if not Result and (FInherits.TryGetValue(LowerCase(Trim(ATypeName)), mFrom) or
-    FInherits.TryGetValue(LowerCase(ShortName(ATypeName)), mFrom)) then
+    FInherits.TryGetValue(LowerCase(TTextNames.BareTypeName(ATypeName)), mFrom)) then
   begin
     Result := Lookup(mFrom, mIndex);
   end;
@@ -345,7 +344,7 @@ begin
     for mRule in FRules do
     begin
       TTextArrays.AddUniqueText(Result, mSeen, mRule.TypeName);
-      TTextArrays.AddUniqueText(Result, mSeen, ShortName(mRule.TypeName));
+      TTextArrays.AddUniqueText(Result, mSeen, TTextNames.BareTypeName(mRule.TypeName));
     end;
     for mName in FInherits.Keys do
     begin
@@ -380,23 +379,6 @@ begin
     begin
       Result := Result + [mRule.TypeName];
     end;
-  end;
-end;
-
-class function TAtlasDisplayRules.ShortName(const ATypeName: string): string;
-var
-  mAngle, mDot: Integer;
-begin
-  Result := Trim(ATypeName);
-  mAngle := Pos('<', Result);
-  if mAngle > 0 then
-  begin
-    Result := Copy(Result, 1, mAngle - 1);
-  end;
-  mDot := LastDelimiter('.', Result);
-  if mDot > 0 then
-  begin
-    Result := Copy(Result, mDot + 1, MaxInt);
   end;
 end;
 

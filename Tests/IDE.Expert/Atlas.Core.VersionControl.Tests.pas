@@ -32,6 +32,9 @@ type
     procedure DetectionHonoursProvider;
     [Test]
     procedure LocatesProgramInPathAndKnownDirs;
+    /// <summary>Abbruch der Prozessläufer: beendeter eigener Thread oder die Abfrage des Aufrufers.</summary>
+    [Test]
+    procedure CancellationFollowsThreadAndCallback;
     [Test]
     procedure GitProviderRunsExpectedCommands;
     [Test]
@@ -106,6 +109,16 @@ uses
   Atlas.Core.VersionControl.TestSupport;
 
 type
+  /// <summary>Beendet sich selbst und fragt danach, ob abzubrechen ist.</summary>
+  TCancelProbe = class(TThread)
+  public
+    Seen: Boolean;
+    /// <summary>Meldung einer Ausnahme im Thread, sonst ''.</summary>
+    Failure: string;
+  protected
+    procedure Execute; override;
+  end;
+
   /// <summary>Antwortet je Unterbefehl (erstes Argument, das nicht mit "-" beginnt und nicht auf -c folgt).</summary>
   TFakeRunner = class(TInterfacedObject, IAtlasVcsRunner)
   public
@@ -144,6 +157,21 @@ function Utf8Bytes(const AText: string): TBytes;
 begin
   Result := TEncoding.UTF8.GetBytes(AText);
 end;
+{ TCancelProbe }
+
+procedure TCancelProbe.Execute;
+begin
+  try
+    Terminate;
+    Seen := TAtlasVcsCancellation.Requested(nil);
+  except
+    on E: Exception do
+    begin
+      Failure := E.Message;
+    end;
+  end;
+end;
+
 { TFakeRunner }
 
 procedure TFakeRunner.Answer(const ACommand, AText: string);
@@ -418,6 +446,33 @@ begin
   mFound := TAtlasVcsDetection.Find(Under('lib/fremd'), TAtlasVcsProvider.Off, mDirExists, mFileExists_);
   Assert.AreEqual<TAtlasVcsKind>(TAtlasVcsKind.None, mFound.Kind, 'off sucht nicht');
 end;
+/// <summary>Meldet immer AValue.</summary>
+function Always(AValue: Boolean): TFunc<Boolean>;
+begin
+  Result :=
+    function: Boolean
+    begin
+      Result := AValue;
+    end;
+end;
+
+procedure TAtlasVcsTests.CancellationFollowsThreadAndCallback;
+var
+  mProbe: TCancelProbe;
+begin
+  Assert.IsFalse(TAtlasVcsCancellation.Requested(nil));
+  Assert.IsTrue(TAtlasVcsCancellation.Requested(Always(True)));
+  Assert.IsFalse(TAtlasVcsCancellation.Requested(Always(False)));
+  mProbe := TCancelProbe.Create(False);
+  try
+    mProbe.WaitFor;
+    Assert.AreEqual('', mProbe.Failure);
+    Assert.IsTrue(mProbe.Seen);
+  finally
+    mProbe.Free;
+  end;
+end;
+
 procedure TAtlasVcsTests.LocatesProgramInPathAndKnownDirs;
 var
   mExe, mPathText: string;
