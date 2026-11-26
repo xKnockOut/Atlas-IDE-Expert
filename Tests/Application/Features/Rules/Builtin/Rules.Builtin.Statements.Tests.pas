@@ -68,6 +68,9 @@ type
     procedure CountNamesOption;
     [Test]
     procedure LoopOffByOneOffAndExclude;
+    /// <summary>Der Rumpf behandelt den Durchlauf mit I = Grenze eigens: kein Zugriff hinter das Ende.</summary>
+    [Test]
+    procedure LoopOffByOneGuardedLastPass;
     [Test]
     procedure DeleteInForwardLoopIsReportedWithFix;
     [Test]
@@ -564,6 +567,17 @@ begin
     '{"rules": {"loop-off-by-one": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Kunden.pas'))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TLoopOffByOneRule.Create, ListBody(cSource),
     '{"rules": {"loop-off-by-one": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Kunden.pas'))));
+end;
+
+procedure TStatementRulesTests.LoopOffByOneGuardedLastPass;
+begin
+  TRuleAssert.Silent(TLoopOffByOneRule.Create, ListBody('  for I := 0 to Kunden.Count do'#10 +
+    '    if (I = Kunden.Count) or (Kunden[I].Name = '''') then'#10'      Ausgabe('''');'#10));
+  TRuleAssert.Silent(TLoopOffByOneRule.Create, ListBody('  for I := 0 to Kunden.Count do'#10'  begin'#10 +
+    '    if I < Kunden.Count then'#10'      Ausgabe(Kunden[I].Name);'#10'  end;'#10));
+  // Vergleich mit einer anderen Grenze schützt nicht.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TLoopOffByOneRule.Create, ListBody(
+    '  for I := 0 to Kunden.Count do'#10'    if I < FKunden.Count then'#10'      Ausgabe(Kunden[I].Name);'#10)))));
 end;
 
 procedure TStatementRulesTests.DeleteInForwardLoopIsReportedWithFix;

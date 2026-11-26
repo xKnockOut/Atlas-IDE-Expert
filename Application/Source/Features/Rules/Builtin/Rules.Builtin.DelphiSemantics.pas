@@ -367,10 +367,81 @@ begin
   Result := True;
 end;
 
+/// <summary>Schreibt ARoutine ein Element von Result (Result[X] := Wert ohne Result)?</summary>
+function WritesElement(ARoutine: TSyntaxNode): Boolean;
+var
+  mAssign, mTarget: TSyntaxNode;
+begin
+  for mAssign in BodyNodes(ARoutine, [TSyntaxKind.AssignStatement]) do
+  begin
+    if mAssign.ChildCount <> 2 then
+    begin
+      Continue;
+    end;
+    mTarget := mAssign[0];
+    while (mTarget.Kind = TSyntaxKind.MemberAccess) and (mTarget.ChildCount > 0) do
+    begin
+      mTarget := mTarget[0];
+    end;
+    if (mTarget.Kind = TSyntaxKind.IndexAccess) and IsName(mTarget[0], 'Result') and not MentionsResult(mAssign[1])
+      then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Zählt ARoutine den Namen AName mit Inc hoch?</summary>
+function CountsUp(ARoutine: TSyntaxNode; const AName: string): Boolean;
+var
+  mCall: TSyntaxNode;
+begin
+  for mCall in BodyNodes(ARoutine, [TSyntaxKind.Call]) do
+  begin
+    if (mCall.ChildCount >= 2) and IsName(mCall[0], 'Inc') and IsName(mCall[1], AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Füllt ARoutine Result dicht von vorn? Muster: SetLength(Result, Anzahl), Elemente schreiben und dabei
+/// einen Zähler N mit Inc hochzählen, am Ende SetLength(Result, N) (Doppelte auslassen, Hotkeys entfernen,
+/// einsortieren). Elemente, die sie liest (Result[J] mit J &lt; N, Result[N] nach dem Kürzen), sind dann ihre
+/// eigenen Werte, nicht die des Aufrufers.</summary>
+function FillsElements(ARoutine: TSyntaxNode): Boolean;
+var
+  mCall: TSyntaxNode;
+begin
+  if not WritesElement(ARoutine) then
+  begin
+    Exit(False);
+  end;
+  for mCall in BodyNodes(ARoutine, [TSyntaxKind.Call]) do
+  begin
+    if (mCall.ChildCount = 3) and IsName(mCall[0], 'SetLength') and IsName(mCall[1], 'Result') and
+      (mCall[2].Kind = TSyntaxKind.Identifier) and CountsUp(ARoutine, mCall[2].Name) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Ist ANode die Zahl 0?</summary>
+function IsZero(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.Literal) and (Trim(ANode.Name) = '0');
+end;
+
 type
   /// <summary>Durchgang über die Vorkommen von Result in einer Funktion.</summary>
   TResultScan = record
     State: TResultState;
+    /// <summary>Die Funktion füllt Result dicht von vorn (FillsElements).</summary>
+    FillsItself: Boolean;
     Sized: TSyntaxNode;
     Reader: TSyntaxNode;
     /// <summary>Wertet das nächste Vorkommen AResult aus; False = fertig.</summary>
@@ -420,6 +491,12 @@ begin
   Result := True;
   if SameText(ACallee, 'SetLength') and (ACall[1] = AResult) then
   begin
+    // SetLength(Result, 0) leert wie Result := nil bzw. ''.
+    if (State = TResultState.Unset) and (ACall.ChildCount = 3) and IsZero(ACall[2]) then
+    begin
+      State := TResultState.Done;
+      Exit(False);
+    end;
     // SetLength(Result, Length(Result) + 1) hängt an den Wert des Aufrufers an.
     if (State = TResultState.Unset) and (ACall.ChildCount > 2) and MentionsResult(ACall[2]) then
     begin
@@ -471,6 +548,10 @@ begin
     end;
     Exit(False);
   end;
+  if FillsItself then
+  begin
+    Exit(True);
+  end;
   Result := Read(AElement);
 end;
 
@@ -498,6 +579,7 @@ begin
       Continue;
     end;
     mScan := Default(TResultScan);
+    mScan.FillsItself := FillsElements(mRoutine);
     for mResult in BodyNodes(mRoutine, [TSyntaxKind.Identifier]) do
     begin
       if IsName(mResult, 'Result') and not mScan.Step(mResult) then
@@ -1135,9 +1217,52 @@ begin
   end;
 end;
 
-/// <summary>Läuft die Multiplikation AProduct sicher über: FNV-64 immer, FNV-32 ohne Erweiterung auf 64 Bit?
-/// </summary>
-function OverflowingHash(ARoot, AProduct: TSyntaxNode): Boolean;
+/// <summary>Variablen und Parameter von ARoutine mit 64-Bit-Typ (Int64, UInt64, QWord).</summary>
+function Wide64Names(ARoutine: TSyntaxNode): TArray<string>;
+var
+  mNames: TArray<string>;
+begin
+  mNames := nil;
+  ARoutine.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    var
+      mIndex: Integer;
+    begin
+      Result := (ANode = ARoutine) or not (ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]);
+      if (ANode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.InlineVar]) and
+        (ANode.Name <> '') then
+      begin
+        for mIndex := 0 to ANode.ChildCount - 1 do
+        begin
+          if (ANode[mIndex].Kind = TSyntaxKind.TypeReference) and MatchText(ANode[mIndex].Name,
+            ['Int64', 'UInt64', 'QWord', 'System.Int64', 'System.UInt64']) then
+          begin
+            mNames := mNames + [ANode.Name];
+          end;
+        end;
+      end;
+    end);
+  Result := mNames;
+end;
+
+/// <summary>Rechnet ANode in 64 Bit: UInt64(...)/Int64(...) oder ein Operand aus AWide (H: Int64; (H xor B) *
+/// 16777619)?</summary>
+function IsWide64(ANode: TSyntaxNode; const AWide: TArray<string>): Boolean;
+begin
+  Result := IsWidened(ANode) or ((AWide <> nil) and (ANode.Search(
+    function(AChild: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if (AChild.Kind = TSyntaxKind.Identifier) and MatchText(AChild.Name, AWide) then
+      begin
+        Exit(TSyntaxSearchStep.Found);
+      end;
+      Result := TSyntaxSearchStep.Descend;
+    end) <> nil));
+end;
+
+/// <summary>Läuft die Multiplikation AProduct sicher über: FNV-64 immer, FNV-32 ohne Erweiterung auf 64 Bit
+/// (Umwandlung oder Operand mit 64-Bit-Typ aus AWide)?</summary>
+function OverflowingHash(ARoot, AProduct: TSyntaxNode; const AWide: TArray<string>): Boolean;
 var
   mSide, mBits: Integer;
 begin
@@ -1149,7 +1274,7 @@ begin
     begin
       Exit(True);
     end;
-    if (mBits = cHashBits32) and not IsWidened(AProduct[1 - mSide]) then
+    if (mBits = cHashBits32) and not IsWide64(AProduct[1 - mSide], AWide) then
     begin
       Exit(True);
     end;
@@ -1159,6 +1284,7 @@ end;
 procedure THashOverflowCheckedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mRoutine, mProduct: TSyntaxNode;
+  mWide: TArray<string>;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not (ContainsStr(AContext.Text, '16777619') or
     ContainsText(AContext.Text, '1099511628211') or ContainsText(AContext.Text, '100000001B3') or
@@ -1168,9 +1294,11 @@ begin
   end;
   for mRoutine in Routines(AContext) do
   begin
+    mWide := Wide64Names(mRoutine);
     for mProduct in BodyNodes(mRoutine, [TSyntaxKind.BinaryExpr]) do
     begin
-      if (mProduct.Name = '*') and (mProduct.ChildCount = 2) and OverflowingHash(AContext.Tree.Root, mProduct) and
+      if (mProduct.Name = '*') and (mProduct.ChildCount = 2) and
+        OverflowingHash(AContext.Tree.Root, mProduct, mWide) and
         OverflowCheckedAt(AContext.Tree.Tokens, mProduct.StartOffset) then
       begin
         AReport.Add(TTextRange.Create(mProduct.StartPos, mProduct.EndPos), cTexts[TSemanticsText.OverflowMessage].Fmt(

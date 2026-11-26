@@ -7,7 +7,8 @@
 //                     bzw. TObjectDictionary mit doOwnsValues das Element selbst freigibt: bei Delete, Remove,
 //                     Clear, einer Zuweisung an Liste[I] oder spätestens beim Freigeben der Liste. Besitzend ist
 //                     eine Liste, wenn sie in der Unit so erzeugt wird (TObjectList ohne False, TObjectDictionary
-//                     mit doOwnsValues) bzw. ohne Erzeugung als TObjectList deklariert ist, und kein
+//                     mit doOwnsValues) bzw. ohne Erzeugung als TObjectList deklariert ist (nicht als Parameter:
+//                     dessen Liste erzeugt der Aufrufer, OwnsObjects ist unbekannt), und kein
 //                     "OwnsObjects := False" folgt. Extract in derselben Routine lässt die Regel schweigen.
 //                     Korrekturen: Free entfernen, Delete bzw. Remove statt Free, Extract statt Remove.
 //   create-without-assignment  "TStringList.Create;" als eigene Anweisung (#948): Das Objekt wird erzeugt, aber
@@ -198,7 +199,7 @@ type
     procedure CollectCreation(APosition: Integer);
     function IsOwnsObjectsFalse(APosition: Integer): Boolean;
     procedure CollectDeclared(APosition: Integer);
-    procedure CollectAt(APosition: Integer);
+    procedure CollectAt(APosition: Integer; AInParameters: Boolean);
     procedure CollectLists;
     function ListAt(APosition: Integer; out AList: TOwningList): Boolean;
     function ElementAccess(APosition: Integer; out AAfter: Integer; out AIndex: string): Boolean;
@@ -394,7 +395,9 @@ begin
   end;
 end;
 
-procedure TOwnedItemFreedScan.CollectAt(APosition: Integer);
+/// <summary>AInParameters: Die Position steht in einer Parameterliste. Dort deklarierte Listen erzeugt der
+/// Aufrufer; ob sie besitzen, ist unbekannt.</summary>
+procedure TOwnedItemFreedScan.CollectAt(APosition: Integer; AInParameters: Boolean);
 begin
   if IsSym(APosition + 1, ':=') then
   begin
@@ -404,28 +407,38 @@ begin
   begin
     FNotOwning := FNotOwning + [Token(APosition).Text];
   end
-  else if IsSym(APosition + 1, ':') and IsName(SkipUnitPrefix(APosition + 2), 'TObjectList') then
+  else if not AInParameters and IsSym(APosition + 1, ':') and
+    IsName(SkipUnitPrefix(APosition + 2), 'TObjectList') then
   begin
     CollectDeclared(APosition);
   end;
 end;
 
 /// <summary>Besitzende Listen der Unit: Erzeugungen, sonst Deklarationen als TObjectList; ohne
-/// OwnsObjects := False.</summary>
+/// OwnsObjects := False. Parameter zählen nicht als Deklaration.</summary>
 procedure TOwnedItemFreedScan.CollectLists;
 var
-  mPosition, mIndex: Integer;
+  mPosition, mIndex, mDepth: Integer;
   mName: string;
 begin
   FLists := nil;
   FCreated := nil;
   FNotOwning := nil;
   FDeclared := nil;
+  mDepth := 0;
   for mPosition := 0 to High(FCode) - 2 do
   begin
-    if IsWord(mPosition) then
+    if IsSym(mPosition, '(') then
     begin
-      CollectAt(mPosition);
+      Inc(mDepth);
+    end
+    else if IsSym(mPosition, ')') and (mDepth > 0) then
+    begin
+      Dec(mDepth);
+    end
+    else if IsWord(mPosition) then
+    begin
+      CollectAt(mPosition, mDepth > 0);
     end;
   end;
   for mName in FDeclared do

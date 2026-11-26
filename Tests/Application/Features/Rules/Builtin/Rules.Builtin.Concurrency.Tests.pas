@@ -296,6 +296,15 @@ begin
   TRuleAssert.Silent(TLockWithoutFinallyRule.Create, Routine('  TMonitor.Enter(FLock);',
     'class procedure TSharedWrites.Enter;'));
   TRuleAssert.Reports(TLockWithoutFinallyRule.Create, Routine('  TSharedWrites.Enter;'#10'  DoWork;'));
+  // Sperrmethode mit anderem Namen als die Sperre (LockCatalog/UnlockCatalog, XML-Inspector).
+  TRuleAssert.Silent(TLockWithoutFinallyRule.Create, Routine('  FLock.Acquire;', 'procedure TA.LockCatalog;'));
+  // Abschnitt ohne Sperre: im finally wieder sperren.
+  TRuleAssert.Silent(TLockWithoutFinallyRule.Create, Routine('  FLock.Enter;'#10'  try'#10'    FLock.Leave;'#10 +
+    '    try'#10'      DoWork;'#10'    finally'#10'      FLock.Enter;'#10'    end;'#10'  finally'#10'    FLock.Leave;'#10 +
+    '  end;'));
+  // Im finally ohne vorherige Freigabe bleibt es ein Befund.
+  TRuleAssert.Reports(TLockWithoutFinallyRule.Create, Routine('  try'#10'    DoWork;'#10'  finally'#10 +
+    '    FLock.Enter;'#10'    DoWork;'#10'  end;'));
   // Monitor vorab anlegen: Freigabe direkt danach.
   TRuleAssert.Silent(TLockWithoutFinallyRule.Create, Routine('  TMonitor.Enter(FLock);'#10'  TMonitor.Exit(FLock);'));
   // Freigabe mit eigenen Parametern in einem Ausdruck im finally.

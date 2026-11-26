@@ -56,7 +56,8 @@ type
     /// <summary>AFileName, wenn es die Datei gibt; sonst die Datei im selben Ordner, deren Name sich nur in der
     /// Groß-/Kleinschreibung unterscheidet; sonst AFileName unverändert.</summary>
     class function OnDisk(const AFileName: string): string; static;
-    /// <summary>Liest Dateien relativ zu AFolder; False, wenn sie fehlen oder nicht lesbar sind.</summary>
+    /// <summary>Liest Dateien relativ zu AFolder; False, wenn sie fehlen oder nicht lesbar sind. Namen mit "\" oder
+    /// "/" (in '..\Src\X.pas') gelten auf jedem System.</summary>
     class function Reader(const AFolder: string): TRuleFileReader; static;
     /// <summary>Prüft, ob es eine Datei relativ zu AFolder gibt (fehlende Dateien aus {$I} und {$R}, #1379).
     /// </summary>
@@ -132,6 +133,7 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding,
+  Atlas.Common.Projects.Paths,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.LanguageFeatures,
   Rules.Engine,
@@ -213,7 +215,7 @@ begin
     var
       mFileName: string;
     begin
-      mFileName := TRuleFolderFiles.OnDisk(TPath.Combine(AFolder, AName));
+      mFileName := TRuleFolderFiles.OnDisk(TProjectPaths.Combine(AFolder, AName));
       Result := TFile.Exists(mFileName);
       if Result then
       try
@@ -232,7 +234,7 @@ begin
   Result :=
     function(const AName: string): Boolean
     begin
-      Result := TFile.Exists(TRuleFolderFiles.OnDisk(TPath.Combine(AFolder, AName)));
+      Result := TFile.Exists(TRuleFolderFiles.OnDisk(TProjectPaths.Combine(AFolder, AName)));
     end;
 end;
 

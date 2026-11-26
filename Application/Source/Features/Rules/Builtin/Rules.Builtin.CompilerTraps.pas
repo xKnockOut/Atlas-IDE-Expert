@@ -389,11 +389,11 @@ begin
     (APosition.Character >= AAfter.Character);
 end;
 
-/// <summary>Nennt die Datei TBitmap hinter AAfter (dem Windows-Eintrag), außerhalb der uses-Listen und nicht nach
-/// einem Punkt? Davor gilt der Eintrag noch nicht: Das uses des implementation-Teils wirkt nicht auf den interface-
-/// Teil.</summary>
+/// <summary>Nennt die Datei TBitmap hinter AAfter (dem Windows-Eintrag), außerhalb der uses-Listen, nicht nach
+/// einem Punkt und nicht in einem inaktiven Zweig (AInactive)? Davor gilt der Eintrag noch nicht: Das uses des
+/// implementation-Teils wirkt nicht auf den interface-Teil.</summary>
 function NamesBitmap(const ATokens: TArray<TPascalToken>; const AClauses: TArray<TUsesClauseInfo>;
-  const AAfter: TTextPosition): Boolean;
+  const AAfter: TTextPosition; const AInactive: TArray<TTextRange>): Boolean;
 var
   mIndex: Integer;
 begin
@@ -401,7 +401,8 @@ begin
   begin
     if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[mIndex].Text, 'TBitmap') and
       NotBefore(ATokens[mIndex].StartPos, AAfter) and not AfterDot(ATokens, mIndex) and
-      not TPascalUses.InClause(ATokens, AClauses, ATokens[mIndex].Offset) then
+      not TPascalUses.InClause(ATokens, AClauses, ATokens[mIndex].Offset) and
+      not TTextRange.AnyContains(AInactive, ATokens[mIndex].StartPos) then
     begin
       Exit(True);
     end;
@@ -409,15 +410,18 @@ begin
   Result := False;
 end;
 
-/// <summary>Einträge der uses-Listen in Dateireihenfolge, ohne contains und requires.</summary>
-function UsesListEntries(const ATokens: TArray<TPascalToken>): TArray<TUsesReference>;
+/// <summary>Einträge der uses-Listen in Dateireihenfolge, ohne contains und requires und ohne Einträge in den
+/// inaktiven Zweigen AInactive ({$IFDEF FPC} Graphics {$ELSE} Winapi.Windows, Vcl.Graphics {$ENDIF}: dcc sieht nur
+/// den zweiten Zweig).</summary>
+function UsesListEntries(const ATokens: TArray<TPascalToken>; const AInactive: TArray<TTextRange>):
+  TArray<TUsesReference>;
 var
   mRef: TUsesReference;
 begin
   Result := nil;
   for mRef in TPascalUses.References(ATokens) do
   begin
-    if mRef.List = TUsesListKind.UsesList then
+    if (mRef.List = TUsesListKind.UsesList) and not TTextRange.AnyContains(AInactive, mRef.Range.StartPos) then
     begin
       Result := Result + [mRef];
     end;
@@ -476,11 +480,12 @@ begin
     Exit;
   end;
   mTokens := AContext.Tree.Tokens;
-  mUses := UsesListEntries(mTokens);
+  mUses := UsesListEntries(mTokens, AContext.InactiveRanges);
   mWindows := FirstEntryOf(mUses, cWindowsUnits);
   mGraphics := FirstEntryOf(mUses, cGraphicsUnits);
   if (mWindows < 0) or (mGraphics < 0) or (mWindows < mGraphics) or
-    not NamesBitmap(mTokens, TPascalUses.Clauses(mTokens), mUses[mWindows].Range.EndPos) then
+    not NamesBitmap(mTokens, TPascalUses.Clauses(mTokens), mUses[mWindows].Range.EndPos,
+    AContext.InactiveRanges) then
   begin
     Exit;
   end;
@@ -531,7 +536,7 @@ begin
   FReport := AReport;
   FTokens := AContext.Tree.Tokens;
   FClauses := TPascalUses.Clauses(FTokens);
-  FUses := UsesListEntries(FTokens);
+  FUses := UsesListEntries(FTokens, nil);
 end;
 
 /// <summary>Eintrag des implementation-uses, dessen Unit AName auf Unit-Ebene im interface deklariert.</summary>
