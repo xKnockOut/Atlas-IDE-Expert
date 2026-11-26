@@ -157,14 +157,14 @@ var
   mMarks: TArray<TAtlasFormatMark>;
   mLine: Integer;
 begin
-  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or (FByLine.Count = 0) or
-    TAtlasGuard.Disabled(TAtlasFeature.Signature) or TAtlasIdeEditorCover.Covers(Rect, Context) then
+    TAtlasGuard.Disabled(TAtlasFeature.Signature) then
   begin
     Exit;
   end;
   try
-    if not SameText(Context.FileName, FFileName) then
+    // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+    if not SameText(Context.FileName, FFileName) or TAtlasIdeEditorCover.Covers(Rect, Context) then
     begin
       Exit;
     end;
