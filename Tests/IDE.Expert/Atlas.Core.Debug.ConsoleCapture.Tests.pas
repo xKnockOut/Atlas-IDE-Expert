@@ -114,9 +114,9 @@ begin
     Feed(mBuffer, TAtlasConsoleStream.Output, 't'#10);
     Assert.AreEqual(3, Integer(mBuffer.Count));
     Assert.AreEqual('Hallo', mBuffer.Line(0).Text);
-    Assert.IsTrue(mBuffer.Line(0).Stream = TAtlasConsoleStream.Output);
+    Assert.AreEqual<TAtlasConsoleStream>(TAtlasConsoleStream.Output, mBuffer.Line(0).Stream);
     Assert.AreEqual('Fehler', mBuffer.Line(1).Text, 'stderr ist vor dem Ende der angefangenen Zeile fertig');
-    Assert.IsTrue(mBuffer.Line(1).Stream = TAtlasConsoleStream.Error);
+    Assert.AreEqual<TAtlasConsoleStream>(TAtlasConsoleStream.Error, mBuffer.Line(1).Stream);
     Assert.AreEqual('Welt', mBuffer.Line(2).Text);
     Assert.AreEqual(0, Integer(Length(mBuffer.PendingLines)));
     // Eingabe und Hinweis kommen nicht über Add.
@@ -140,7 +140,7 @@ begin
     mBuffer.AddInput('Marco');
     Assert.AreEqual(1, Integer(mBuffer.Count));
     Assert.AreEqual('Name: Marco', mBuffer.Line(0).Text);
-    Assert.IsTrue(mBuffer.Line(0).Stream = TAtlasConsoleStream.Input);
+    Assert.AreEqual<TAtlasConsoleStream>(TAtlasConsoleStream.Input, mBuffer.Line(0).Stream);
     Assert.AreEqual(6, mBuffer.Line(0).PromptLength);
     Assert.AreEqual(0, Integer(Length(mBuffer.PendingLines)), 'die Frage ist abgeschlossen');
     // Die Antwort des Programms beginnt eine eigene Zeile.
@@ -167,8 +167,8 @@ begin
     mBuffer.AddNote('Beendet');
     Assert.AreEqual(3, Integer(mBuffer.Count));
     Assert.AreEqual('ohne Ende', mBuffer.Line(0).Text);
-    Assert.IsTrue(mBuffer.Line(1).Stream = TAtlasConsoleStream.Error);
-    Assert.IsTrue(mBuffer.Line(2).Stream = TAtlasConsoleStream.Note);
+    Assert.AreEqual<TAtlasConsoleStream>(TAtlasConsoleStream.Error, mBuffer.Line(1).Stream);
+    Assert.AreEqual<TAtlasConsoleStream>(TAtlasConsoleStream.Note, mBuffer.Line(2).Stream);
     Assert.AreEqual('ohne Ende' + sLineBreak + 'auch' + sLineBreak + 'Beendet' + sLineBreak, mBuffer.Text);
   finally
     mBuffer.Free;
@@ -217,30 +217,31 @@ procedure TAtlasConsoleCaptureTests.ImageKindFromPeHeader;
 var
   mHeader: TBytes;
 begin
-  Assert.IsTrue(TAtlasConsoleImage.KindOf(Header(3)) = TAtlasImageKind.Console);
-  Assert.IsTrue(TAtlasConsoleImage.KindOf(Header(2)) = TAtlasImageKind.Gui);
-  Assert.IsTrue(TAtlasConsoleImage.KindOf(Header(10)) = TAtlasImageKind.Unknown, 'EFI');
-  Assert.IsTrue(TAtlasConsoleImage.KindOf(nil) = TAtlasImageKind.Unknown);
+  Assert.AreEqual<TAtlasImageKind>(TAtlasImageKind.Console, TAtlasConsoleImage.KindOf(Header(3)));
+  Assert.AreEqual<TAtlasImageKind>(TAtlasImageKind.Gui, TAtlasConsoleImage.KindOf(Header(2)));
+  Assert.AreEqual<TAtlasImageKind>(TAtlasImageKind.Unknown, TAtlasConsoleImage.KindOf(Header(10)), 'EFI');
+  Assert.AreEqual<TAtlasImageKind>(TAtlasImageKind.Unknown, TAtlasConsoleImage.KindOf(nil));
   mHeader := Header(3);
   mHeader[0] := Ord('X');
-  Assert.IsTrue(TAtlasConsoleImage.KindOf(mHeader) = TAtlasImageKind.Unknown, 'kein MZ');
+  Assert.AreEqual<TAtlasImageKind>(TAtlasImageKind.Unknown, TAtlasConsoleImage.KindOf(mHeader), 'kein MZ');
   mHeader := Header(3);
   mHeader[$81] := Ord('X');
-  Assert.IsTrue(TAtlasConsoleImage.KindOf(mHeader) = TAtlasImageKind.Unknown, 'kein PE');
+  Assert.AreEqual<TAtlasImageKind>(TAtlasImageKind.Unknown, TAtlasConsoleImage.KindOf(mHeader), 'kein PE');
   mHeader := Header(3);
   SetLength(mHeader, $80 + 24 + 68);
-  Assert.IsTrue(TAtlasConsoleImage.KindOf(mHeader) = TAtlasImageKind.Unknown, 'abgeschnitten');
+  Assert.AreEqual<TAtlasImageKind>(TAtlasImageKind.Unknown, TAtlasConsoleImage.KindOf(mHeader), 'abgeschnitten');
   mHeader := Header(3);
   mHeader[$3C] := $FF;
   mHeader[$3F] := $7F;
-  Assert.IsTrue(TAtlasConsoleImage.KindOf(mHeader) = TAtlasImageKind.Unknown, 'Verweis hinter das Ende');
+  Assert.AreEqual<TAtlasImageKind>(TAtlasImageKind.Unknown,
+    TAtlasConsoleImage.KindOf(mHeader), 'Verweis hinter das Ende');
 end;
 
 procedure TAtlasConsoleCaptureTests.ImageKindOfMissingFile;
 begin
-  Assert.IsTrue(TAtlasConsoleImage.KindOfFile('') = TAtlasImageKind.Unknown);
-  Assert.IsTrue(TAtlasConsoleImage.KindOfFile(IncludeTrailingPathDelimiter(GetCurrentDir) + 'fehlt-581.exe') =
-    TAtlasImageKind.Unknown);
+  Assert.AreEqual<TAtlasImageKind>(TAtlasImageKind.Unknown, TAtlasConsoleImage.KindOfFile(''));
+  Assert.AreEqual<TAtlasImageKind>(TAtlasImageKind.Unknown,
+    TAtlasConsoleImage.KindOfFile(IncludeTrailingPathDelimiter(GetCurrentDir) + 'fehlt-581.exe'));
 end;
 
 procedure TAtlasConsoleCaptureTests.LocationsInLines;
@@ -268,7 +269,7 @@ begin
   Assert.AreEqual(9, mLocation.Line);
   Assert.AreEqual(0, mLocation.Column);
   Assert.AreEqual(14, mLocation.Length);
-  Assert.IsTrue(TAtlasConsoleLocations.Find('"Test.pas"(5)', mLocation) = False, 'Anführungszeichen trennen');
+  Assert.IsFalse(TAtlasConsoleLocations.Find('"Test.pas"(5)', mLocation), 'Anführungszeichen trennen');
   Assert.IsTrue(TAtlasConsoleLocations.Find('Test.pas(5:8)', mLocation));
   Assert.AreEqual(8, mLocation.Column);
 end;
@@ -289,22 +290,22 @@ end;
 
 procedure TAtlasConsoleCaptureTests.LaunchChoice;
 begin
-  Assert.IsTrue(TAtlasConsoleLaunch.Choose(Facts(True, 'Win32', TAtlasImageKind.Console, '', False)) =
-    TAtlasConsoleLaunchChoice.Capture);
-  Assert.IsTrue(TAtlasConsoleLaunch.Choose(Facts(True, 'win64', TAtlasImageKind.Console, '', False)) =
-    TAtlasConsoleLaunchChoice.Capture);
-  Assert.IsTrue(TAtlasConsoleLaunch.Choose(Facts(True, 'Win64x', TAtlasImageKind.Console, '', True)) =
-    TAtlasConsoleLaunchChoice.Busy);
-  Assert.IsTrue(TAtlasConsoleLaunch.Choose(Facts(False, 'Win32', TAtlasImageKind.Console, '', False)) =
-    TAtlasConsoleLaunchChoice.Ide, 'aus');
-  Assert.IsTrue(TAtlasConsoleLaunch.Choose(Facts(True, 'Win32', TAtlasImageKind.Gui, '', False)) =
-    TAtlasConsoleLaunchChoice.Ide, 'Fensterprogramm');
-  Assert.IsTrue(TAtlasConsoleLaunch.Choose(Facts(True, 'Win32', TAtlasImageKind.Unknown, '', True)) =
-    TAtlasConsoleLaunchChoice.Ide, 'EXE fehlt');
-  Assert.IsTrue(TAtlasConsoleLaunch.Choose(Facts(True, 'Linux64', TAtlasImageKind.Console, '', False)) =
-    TAtlasConsoleLaunchChoice.Ide, 'fremde Plattform');
-  Assert.IsTrue(TAtlasConsoleLaunch.Choose(Facts(True, 'Win32', TAtlasImageKind.Console, 'C:\Host.exe', False)) =
-    TAtlasConsoleLaunchChoice.Ide, 'Host-Anwendung');
+  Assert.AreEqual<TAtlasConsoleLaunchChoice>(TAtlasConsoleLaunchChoice.Capture,
+    TAtlasConsoleLaunch.Choose(Facts(True, 'Win32', TAtlasImageKind.Console, '', False)));
+  Assert.AreEqual<TAtlasConsoleLaunchChoice>(TAtlasConsoleLaunchChoice.Capture,
+    TAtlasConsoleLaunch.Choose(Facts(True, 'win64', TAtlasImageKind.Console, '', False)));
+  Assert.AreEqual<TAtlasConsoleLaunchChoice>(TAtlasConsoleLaunchChoice.Busy,
+    TAtlasConsoleLaunch.Choose(Facts(True, 'Win64x', TAtlasImageKind.Console, '', True)));
+  Assert.AreEqual<TAtlasConsoleLaunchChoice>(TAtlasConsoleLaunchChoice.Ide,
+    TAtlasConsoleLaunch.Choose(Facts(False, 'Win32', TAtlasImageKind.Console, '', False)), 'aus');
+  Assert.AreEqual<TAtlasConsoleLaunchChoice>(TAtlasConsoleLaunchChoice.Ide,
+    TAtlasConsoleLaunch.Choose(Facts(True, 'Win32', TAtlasImageKind.Gui, '', False)), 'Fensterprogramm');
+  Assert.AreEqual<TAtlasConsoleLaunchChoice>(TAtlasConsoleLaunchChoice.Ide,
+    TAtlasConsoleLaunch.Choose(Facts(True, 'Win32', TAtlasImageKind.Unknown, '', True)), 'EXE fehlt');
+  Assert.AreEqual<TAtlasConsoleLaunchChoice>(TAtlasConsoleLaunchChoice.Ide,
+    TAtlasConsoleLaunch.Choose(Facts(True, 'Linux64', TAtlasImageKind.Console, '', False)), 'fremde Plattform');
+  Assert.AreEqual<TAtlasConsoleLaunchChoice>(TAtlasConsoleLaunchChoice.Ide,
+    TAtlasConsoleLaunch.Choose(Facts(True, 'Win32', TAtlasImageKind.Console, 'C:\Host.exe', False)), 'Host-Anwendung');
 end;
 
 procedure TAtlasConsoleCaptureTests.ExitCodeText;
@@ -317,12 +318,16 @@ end;
 
 procedure TAtlasConsoleCaptureTests.AttachSteps;
 begin
-  Assert.IsTrue(TAtlasConsoleAttach.Next(AttachFacts(10, False, True)) = TAtlasConsoleAttachStep.Wait);
-  Assert.IsTrue(TAtlasConsoleAttach.Next(AttachFacts(10, True, True)) = TAtlasConsoleAttachStep.Resume);
-  Assert.IsTrue(TAtlasConsoleAttach.Next(AttachFacts(1000, False, True)) = TAtlasConsoleAttachStep.ResumeLate);
-  Assert.IsTrue(TAtlasConsoleAttach.Next(AttachFacts(5000, True, True)) = TAtlasConsoleAttachStep.Resume,
-    'bereit geht vor der Wartezeit');
-  Assert.IsTrue(TAtlasConsoleAttach.Next(AttachFacts(10, True, False)) = TAtlasConsoleAttachStep.Gone);
+  Assert.AreEqual<TAtlasConsoleAttachStep>(TAtlasConsoleAttachStep.Wait,
+    TAtlasConsoleAttach.Next(AttachFacts(10, False, True)));
+  Assert.AreEqual<TAtlasConsoleAttachStep>(TAtlasConsoleAttachStep.Resume,
+    TAtlasConsoleAttach.Next(AttachFacts(10, True, True)));
+  Assert.AreEqual<TAtlasConsoleAttachStep>(TAtlasConsoleAttachStep.ResumeLate,
+    TAtlasConsoleAttach.Next(AttachFacts(1000, False, True)));
+  Assert.AreEqual<TAtlasConsoleAttachStep>(TAtlasConsoleAttachStep.Resume,
+    TAtlasConsoleAttach.Next(AttachFacts(5000, True, True)), 'bereit geht vor der Wartezeit');
+  Assert.AreEqual<TAtlasConsoleAttachStep>(TAtlasConsoleAttachStep.Gone,
+    TAtlasConsoleAttach.Next(AttachFacts(10, True, False)));
 end;
 
 procedure TAtlasConsoleCaptureTests.ColorsAreReadable;
@@ -349,8 +354,8 @@ begin
       Assert.IsTrue(TAtlasColorMath.Contrast(TAtlasConsoleColors.ForStream(mStream, mBackground, mText),
         mBackground) >= cMinContrast, 'lesbar');
     end;
-    Assert.IsTrue(TAtlasConsoleColors.ForStream(TAtlasConsoleStream.Note, mBackground, mText) <> mText,
-      'gedämpft');
+    Assert.AreNotEqual<TAtlasColor>(mText,
+      TAtlasConsoleColors.ForStream(TAtlasConsoleStream.Note, mBackground, mText), 'gedämpft');
   end;
 end;
 

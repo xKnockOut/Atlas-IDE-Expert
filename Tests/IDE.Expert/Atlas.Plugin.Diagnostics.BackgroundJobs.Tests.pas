@@ -135,7 +135,7 @@ begin
       end));
     // Erst stoppen, wenn die Arbeit läuft: Delphis ThreadProc überspringt Execute, wenn Terminate vor dem
     // Anlaufen des Threads kam; dann wäre der Thread sofort fertig und nichts überfällig (FPC startet trotzdem).
-    Assert.IsTrue(mStarted.WaitFor(5000) = wrSignaled, 'Arbeit läuft');
+    Assert.AreEqual<TWaitResult>(wrSignaled, mStarted.WaitFor(5000), 'Arbeit läuft');
     Assert.IsFalse(mWorker.Stop(50));
     Assert.AreEqual(0, mWorker.Pending);
     Assert.AreEqual(1, TAtlasOverdueThreads.Pending(cModule));

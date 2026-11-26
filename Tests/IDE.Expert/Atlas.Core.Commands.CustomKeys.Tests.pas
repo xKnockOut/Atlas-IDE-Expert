@@ -172,7 +172,7 @@ begin
   Assert.IsTrue(mRows[0].Custom, 'ohne eigene Einstellung');
   Assert.IsTrue(mRows[0].Assignable);
   Assert.IsFalse(mRows[1].Custom, 'Formatieren hat keys.format');
-  Assert.IsTrue(mRows[1].Func = TAtlasKeyFunction.FormatCode);
+  Assert.AreEqual<TAtlasKeyFunction>(TAtlasKeyFunction.FormatCode, mRows[1].Func);
   Assert.AreEqual('Methode suchen …', TAtlasKeyMap.CommandCaption(mCommands, 'atlas.findmethod'), 'ohne „Atlas: “');
   Assert.AreEqual('Unbekannt', TAtlasKeyMap.CommandCaption(mCommands, 'Unbekannt'));
 end;

@@ -143,16 +143,18 @@ jobs:
             Tools/Linux/Check-PluginPackages.sh Output/Linux64/Bin/AtlasServer
           fi
 
-      - name: Metrikregeln außerhalb der Plugin-Packages
+      - name: Metrikregeln und Syntax außerhalb der Plugin-Packages
         # Atlas.Common, Atlas.Windows, Application und Tests laufen mit der atlas.json im Wurzelordner. Dort sind
         # nur Methodenlänge und zyklomatische Komplexität eingeschaltet, mit atlas-baseline.json als Bestand, der nur
         # schrumpfen darf (Check-Baselines.ps1). Jede neue zu lange oder zu verzweigte Routine bricht ab, auch als
         # Hinweis (--fail-on kennt keine Hinweise, deshalb die Auswertung des JSON). Das Profil metriken (atlas.json)
         # lässt die teuren Regeln weg; --rules allein filtert nur die Ausgabe.
+        # Dazu jeder Syntaxfehler im ganzen Repository: Die Testunits des Plugins übersetzt in der CI niemand
+        # (nur Delphi), ein Fehler dort (etwa Code hinter initialization) fiele sonst erst beim Delphi-Bau auf.
         if: matrix.teil == 'repo'
         run: |
           Output/Linux64/Bin/AtlasServer --check . --no-index --profile metriken \
-            --rules metric-method-length,metric-cyclomatic-complexity --format json --fail-on never \
+            --rules metric-method-length,metric-cyclomatic-complexity,syntax --format json --fail-on never \
             --output "$RUNNER_TEMP/metriken.json"
           python3 - "$RUNNER_TEMP/metriken.json" <<'PY'
           import json, sys

@@ -334,7 +334,7 @@ begin
   end;
 end;
 
-/// <summary>Haken für Schritt 4, der „base:<HInstance>“ in ALog schreibt.</summary>
+/// <summary>Haken für Schritt 4, der „base:&lt;HInstance&gt;“ in ALog schreibt.</summary>
 function ReleasedInto(ALog: TLog): TProc<NativeUInt>;
 begin
   Result :=

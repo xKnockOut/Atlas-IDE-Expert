@@ -54,15 +54,15 @@ begin
   mOverlay := TAtlasDesignerOverlay.CreateOverlayWindow(nil, cOwnerWindow, TAtlasColors.Light,
     [TAtlasOverlayOption.Popup, TAtlasOverlayOption.KeyColor, TAtlasOverlayOption.ClickThrough]);
   try
-    Assert.IsTrue(mOverlay.BorderStyle = bsNone, 'rahmenlos');
+    Assert.AreEqual<TFormBorderStyle>(bsNone, mOverlay.BorderStyle, 'rahmenlos');
     Assert.IsTrue(mOverlay.TransparentColor, 'Schlüsselfarbe durchsichtig');
     Assert.IsTrue(mOverlay.DoubleBuffered);
     mParams := ParamsOf(mOverlay);
-    Assert.IsTrue(mParams.Style = WS_POPUP, 'Popup');
-    Assert.IsTrue(mParams.ExStyle and WS_EX_NOACTIVATE <> 0, 'nie aktiv');
-    Assert.IsTrue(mParams.ExStyle and WS_EX_TOOLWINDOW <> 0, 'nicht in der Taskleiste');
-    Assert.IsTrue(mParams.ExStyle and WS_EX_TRANSPARENT <> 0, 'Klicks gehen durch');
-    Assert.IsTrue(mParams.WndParent = cOwnerWindow, 'gehört dem Hauptfenster');
+    Assert.AreEqual<Cardinal>(WS_POPUP, mParams.Style, 'Popup');
+    Assert.AreNotEqual<Cardinal>(0, mParams.ExStyle and WS_EX_NOACTIVATE, 'nie aktiv');
+    Assert.AreNotEqual<Cardinal>(0, mParams.ExStyle and WS_EX_TOOLWINDOW, 'nicht in der Taskleiste');
+    Assert.AreNotEqual<Cardinal>(0, mParams.ExStyle and WS_EX_TRANSPARENT, 'Klicks gehen durch');
+    Assert.AreEqual<HWND>(cOwnerWindow, mParams.WndParent, 'gehört dem Hauptfenster');
   finally
     mOverlay.Free;
   end;
@@ -75,12 +75,12 @@ var
 begin
   mOverlay := TAtlasDesignerOverlay.CreateOverlayWindow(nil, 0, TAtlasColors.Light, []);
   try
-    Assert.IsFalse(mOverlay.BorderStyle = bsNone, 'mit Rahmen');
+    Assert.AreNotEqual<TFormBorderStyle>(bsNone, mOverlay.BorderStyle, 'mit Rahmen');
     Assert.IsFalse(mOverlay.TransparentColor);
     mParams := ParamsOf(mOverlay);
-    Assert.IsFalse(mParams.Style = WS_POPUP);
-    Assert.IsTrue(mParams.ExStyle and WS_EX_NOACTIVATE <> 0, 'nie aktiv');
-    Assert.IsTrue(mParams.ExStyle and WS_EX_TRANSPARENT = 0, 'nimmt Klicks an');
+    Assert.AreNotEqual<Cardinal>(WS_POPUP, mParams.Style);
+    Assert.AreNotEqual<Cardinal>(0, mParams.ExStyle and WS_EX_NOACTIVATE, 'nie aktiv');
+    Assert.AreEqual<Cardinal>(0, mParams.ExStyle and WS_EX_TRANSPARENT, 'nimmt Klicks an');
   finally
     mOverlay.Free;
   end;
