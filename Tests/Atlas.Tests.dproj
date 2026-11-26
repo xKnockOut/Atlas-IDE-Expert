@@ -153,6 +153,7 @@
         <DCCReference Include="Common\Index\Atlas.Common.Index.UsageCounts.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.Conditions.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.InlineRefs.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.LocalRoutines.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.Routines.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.ParamOwnership.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.Patterns.Tests.pas"/>

@@ -14,7 +14,7 @@ Zurück zum [README](../../../README_DE.md)
 
 - **Gehe zu** auch Implementierung und Typdefinition
 - **Sprung zum Gegenstück** (begin ⇄ end, try → finally → end, `{$IFDEF}` → `{$ENDIF}`)
-- projektweite **Symbolsuche**
+- projektweite **Symbolsuche**, auch nach lokalen Prozeduren und Funktionen der Projekt-Units
 - **Navigationsverlauf** über Dateien hinweg; die Zurück- und Vor-Taste der Maus blättern darin wie Alt+←/Alt+→, im Code-Editor und im Formular-Designer. Über der Issue-Vorschau blättern sie in deren Verlauf (`navigation.mouseButtons`)
 
 ## Leisten
@@ -66,7 +66,7 @@ Unten in jedem Editorfenster (Zustandsfarben für helles und dunkles Design eige
 
 ### Weitere Ansichten
 
-- <a id="window-atlasoutline"></a>**Gliederung** als andockbares Fenster mit Filter
+- <a id="window-atlasoutline"></a>**Gliederung** als andockbares Fenster mit Filter; lokale Prozeduren und Funktionen stehen unter ihrer Methode
 - **Übersichtsleiste** an der Scrollleiste mit Fehlern, Treffern und Änderungen
 - **Minimap** *(experimentell)*
 - **mitlaufender Kopf** der umgebenden Klasse, Routine und großen Blöcke, je Art abschaltbar *(experimentell)*

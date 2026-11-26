@@ -213,6 +213,10 @@ type
     /// getrennt von Symbols, damit Namensauflösung, Referenzen und Prüfregeln sie nicht sehen;
     /// nur die Vervollständigung zeigt sie abgeschwächt.</summary>
     Unavailable: TArray<TIndexSymbol>;
+    /// <summary>Lokale Routinen (im Rumpf einer Routine, auch verschachtelt) nur der Projekt-Units, Container ist
+    /// die umgebende Routine („TFoo.Bar“): getrennt von Symbols, damit Namensauflösung, Referenzen und
+    /// Prüfregeln sie nicht sehen; nur die Projekt-Symbolsuche (workspace/symbol) findet sie.</summary>
+    LocalRoutines: TArray<TIndexSymbol>;
     /// <summary>Verwendungen der Bezeichner (#492), nach Name sortiert; nur Projekt-Units und nur mit
     /// index.usages.</summary>
     Usages: TArray<TIndexUsage>;

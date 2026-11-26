@@ -30,7 +30,8 @@
 //   Texte:   Anzahl, je Text Bytelänge und UTF-8-Bytes (Nummer 0 = '')
 //   Units:   Anzahl, je Unit:
 //            Name Datei Zeitstempel Hash Merker uses(interface) uses(implementation)
-//            Include-Dateien Include-Zeitstempel Symbolzahl Zahl-nicht-verfügbar Blocklänge Block
+//            Include-Dateien Include-Zeitstempel Symbolzahl Zahl-nicht-verfügbar Zahl-lokale-Routinen Blocklänge
+//            Block
 //            Verwendungszahl Verwendungsblocklänge Verwendungsblock
 //            Merker: 1 = Bibliothek, 2 = kompakt, 4 = initialization/finalization,
 //                    8 = Verwendungen erfasst
@@ -61,6 +62,7 @@ type
     SymbolEnd: Integer;
     SymbolCount: Integer;
     UnavailableCount: Integer;
+    LocalRoutineCount: Integer;
     UsageOffset: Integer;
     UsageEnd: Integer;
     UsageCount: Integer;
@@ -97,7 +99,8 @@ type
     // 34: Typverweise in InlineRefs nennen das benutzte Mitglied (":TList<T>#Count", ":TList<T>#[]", #2309).
     // 35: Mitglieder von Parametern in InlineRefs (":TTextPosition#Line" bei A.Line, #2309).
     // 36: Besitz-Zusammenfassung je Parameter (ParamOwnership, Freigabe über Unit-Grenzen).
-    const cFormatVersion = 36;
+    // 37: Lokale Routinen der Projekt-Units (LocalRoutines, Projekt-Symbolsuche).
+    const cFormatVersion = 37;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;
@@ -509,12 +512,17 @@ var
 begin
   AWriter.WriteVar(Length(AUnit.Symbols));
   AWriter.WriteVar(Length(AUnit.Unavailable));
+  AWriter.WriteVar(Length(AUnit.LocalRoutines));
   ABlock.FLength := 0;
   for mSymbol in AUnit.Symbols do
   begin
     WriteSymbol(ABlock, ATable, mSymbol);
   end;
   for mSymbol in AUnit.Unavailable do
+  begin
+    WriteSymbol(ABlock, ATable, mSymbol);
+  end;
+  for mSymbol in AUnit.LocalRoutines do
   begin
     WriteSymbol(ABlock, ATable, mSymbol);
   end;
@@ -819,6 +827,7 @@ begin
   Result.Header := ReadUnitHeader(AReader, AStrings);
   Result.SymbolCount := AReader.ReadCount;
   Result.UnavailableCount := AReader.ReadCount;
+  Result.LocalRoutineCount := AReader.ReadCount;
   mSize := ReadBlockSize(AReader);
   Result.Data := AData;
   Result.Strings := AStrings;
@@ -923,6 +932,11 @@ begin
     for mIndex := 0 to AEntry.UnavailableCount - 1 do
     begin
       AUnit.Unavailable[mIndex] := ReadSymbol(mReader, AEntry.Strings);
+    end;
+    SetLength(AUnit.LocalRoutines, AEntry.LocalRoutineCount);
+    for mIndex := 0 to AEntry.LocalRoutineCount - 1 do
+    begin
+      AUnit.LocalRoutines[mIndex] := ReadSymbol(mReader, AEntry.Strings);
     end;
     Result := mReader.Position = mReader.Limit;
   except

@@ -120,6 +120,7 @@ contains
   Atlas.Common.Index.Extractor in 'Source\Index\Atlas.Common.Index.Extractor.pas',
   Atlas.Common.Index.Extractor.Conditions in 'Source\Index\Atlas.Common.Index.Extractor.Conditions.pas',
   Atlas.Common.Index.Extractor.InlineRefs in 'Source\Index\Atlas.Common.Index.Extractor.InlineRefs.pas',
+  Atlas.Common.Index.Extractor.LocalRoutines in 'Source\Index\Atlas.Common.Index.Extractor.LocalRoutines.pas',
   Atlas.Common.Index.Extractor.ParamOwnership in 'Source\Index\Atlas.Common.Index.Extractor.ParamOwnership.pas',
   Atlas.Common.Index.Extractor.Routines in 'Source\Index\Atlas.Common.Index.Extractor.Routines.pas',
   Atlas.Common.Index.Extractor.Patterns in 'Source\Index\Atlas.Common.Index.Extractor.Patterns.pas',

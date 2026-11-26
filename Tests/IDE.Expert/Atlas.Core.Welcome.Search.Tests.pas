@@ -178,6 +178,7 @@ begin
   PutVar(ABody, 300);
   PutVar(ABody, 2); // Symbolzahl
   PutVar(ABody, 1); // nicht verfügbar
+  PutVar(ABody, 1); // lokale Routinen
   PutVar(ABody, 200); // Blocklänge über ein Byte hinaus
   for mIndex := 1 to 200 do
   begin
