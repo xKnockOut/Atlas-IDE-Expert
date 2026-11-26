@@ -28,7 +28,8 @@ uses
   Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Completion.Request,
   Atlas.Common.Lsp.Completion.Directives,
-  Atlas.Common.Completion.Contract;
+  Atlas.Common.Completion.Contract,
+  Atlas.Common.Lsp.Completion.TestSupport;
 
 const
   cUnit =
@@ -52,17 +53,6 @@ begin
     TTextPosition.Create(cCodeLine, 2 + Length(ALine)));
 end;
 
-function Names(const AItems: TCompletionItems): TArray<string>;
-var
-  mItem: TCompletionItem;
-begin
-  Result := nil;
-  for mItem in AItems.Items do
-  begin
-    Result := Result + [mItem.Name];
-  end;
-end;
-
 { TCompletionDirectivesTests }
 
 procedure TCompletionDirectivesTests.DirectiveNamesWithText;
@@ -84,7 +74,7 @@ begin
         Assert.AreNotEqual('', mItem.Detail, 'Beschreibung');
       end;
     end;
-    Assert.IsTrue(mFound, string.Join(',', Names(mItems)));
+    Assert.IsTrue(mFound, ItemNames(mItems));
   finally
     mRequest.Free;
   end;
@@ -107,7 +97,7 @@ begin
   mRequest := RequestFor('{$IFDEF ');
   try
     Assert.IsTrue(TCompletionDirectives.SymbolItems(mRequest, mContext, mItems));
-    Assert.IsTrue(MatchText('MSWINDOWS', Names(mItems)), string.Join(',', Names(mItems)));
+    Assert.IsTrue(MatchText('MSWINDOWS', ItemNames(mItems).Split([' '])), ItemNames(mItems));
     mContext.CompletionEnabled := False;
     Assert.IsTrue(TCompletionDirectives.SymbolItems(mRequest, mContext, mItems));
     Assert.AreEqual(0, Integer(Length(mItems.Items)), 'abgeschaltet');
