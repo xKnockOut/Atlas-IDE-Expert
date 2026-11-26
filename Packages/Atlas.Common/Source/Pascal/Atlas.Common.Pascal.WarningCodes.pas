@@ -2,7 +2,7 @@
 
 // Zuordnung Meldungsnummer des Compilers → Bezeichner für {$WARN} (#531),
 // versioniert nach Delphi-Version (BDS-Nummer wie in #109). Grundlage für
-// „Warnung hier abschalten“ (Atlas.Common.Editing.DisableWarning).
+// „Warnung hier abschalten“ (Editing.DisableWarning).
 //
 // Die Tabelle enthält nur Nummern, deren Bezeichner sicher feststehen; jeder
 // Bezeichner steht auch in TDirectiveNames.Warnings. Fehlt eine Nummer (oder

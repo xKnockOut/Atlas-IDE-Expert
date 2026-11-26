@@ -13,9 +13,9 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.Contract,
+  Editing.Contract,
   Rules.CheckContext,
-  Atlas.Common.Editing.TestUnits.Protocol,
+  Editing.TestUnits.Protocol,
   Atlas.Common.Lsp.ResourceStringCommands,
   Adapters.Editing.SlashHost;
 

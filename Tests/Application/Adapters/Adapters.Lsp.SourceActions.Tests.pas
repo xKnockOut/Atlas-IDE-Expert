@@ -22,7 +22,7 @@ implementation
 uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Editing.Contract.CodeActions,
+  Editing.Contract.CodeActions,
   Adapters.Lsp.SourceActions,
   Atlas.Common.Semantics.Contract;
 

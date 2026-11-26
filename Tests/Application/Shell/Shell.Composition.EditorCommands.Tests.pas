@@ -48,15 +48,15 @@ uses
   Atlas.Common.Lsp.ExitPoints,
   Atlas.Common.Lsp.Reassigned,
   Atlas.Common.Lsp.ExpressionType,
-  Atlas.Common.Editing.MethodOrder.Protocol,
+  Editing.MethodOrder.Protocol,
   Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Lsp.InterfaceMethods,
   Atlas.Common.Semantics.QualifiedNames,
   Atlas.Common.Lsp.EnumValueCommands,
   Atlas.Common.Lsp.ResourceStringCommands,
   Atlas.Common.Lsp.StringLiteralCommands,
-  Atlas.Common.Editing.SmartIndent.Protocol,
-  Atlas.Common.Editing.LearnedSuggestions.Protocol;
+  Editing.SmartIndent.Protocol,
+  Editing.LearnedSuggestions.Protocol;
 
 { TShellEditorCommandsTests }
 

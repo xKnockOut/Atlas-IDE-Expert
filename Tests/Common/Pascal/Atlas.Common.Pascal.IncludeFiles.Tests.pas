@@ -51,7 +51,7 @@ uses
   Atlas.Common.Pascal.IncludeFiles,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.DocumentLinks,
+  Editing.DocumentLinks,
   Atlas.Common.Pascal.InactiveRegions,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Pascal.SyntaxTree,

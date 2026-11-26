@@ -40,7 +40,7 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
-  Atlas.Common.Editing.Bookmarks;
+  Editing.Bookmarks;
 
 const
   cFileName = '/tmp/atlas-navigation-tests/A.pas';

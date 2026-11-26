@@ -22,7 +22,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Mcp.Contract.Extract,
-  Atlas.Common.Editing.Contract.Extract,
+  Editing.Contract.Extract,
   Adapters.Mcp.Extract;
 
 type

@@ -11,7 +11,7 @@ uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Semantics.Contract,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Editing.Contract.CodeActions;
+  Editing.Contract.CodeActions;
 
 type
   /// <summary>ILspSourceActions über die API von Editing.</summary>

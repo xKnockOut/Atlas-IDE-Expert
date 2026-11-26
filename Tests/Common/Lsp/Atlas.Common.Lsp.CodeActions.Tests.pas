@@ -13,7 +13,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
-  Atlas.Common.Editing.Contract.CodeActions,
+  Editing.Contract.CodeActions,
   Atlas.Common.Lsp.CodeActions;
 
 type
@@ -58,7 +58,7 @@ uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Tests.LspRules,
   Atlas.Common.Semantics.Contract,
-  Atlas.Common.Editing.Composition,
+  Editing.Composition,
   Adapters.Lsp.SourceActions;
 
 const

@@ -1,0 +1,685 @@
+﻿unit Editing.TestUnits;
+
+// DUnitX-Testgerüst (#274) und Zuordnung zwischen Unit und Testunit (#189).
+// Die Namen folgen dem Muster "testUnits.pattern" ({unit} = Name der
+// getesteten Unit, Vorgabe "{unit}.Tests"). Das Gerüst enthält [TestFixture],
+// [Setup] und [TearDown] mit dem Objekt unter Test und einen [Test] je
+// öffentlicher Methode der Klasse (überladene durchnummeriert); ohne Klasse
+// einen Test je Routine im interface. Jeder Test schlägt fehl, bis er
+// geschrieben ist, damit kein leerer Test grün durchläuft.
+// Reine Textfunktionen; Dateien, Index und Testprojekt liefert der Aufrufer.
+
+interface
+
+uses
+  System.SysUtils,
+  Atlas.Common.Index.Contract;
+
+type
+  /// <summary>Ein Test des Gerüsts: Name der Testmethode und was er prüft.</summary>
+  TTestUnitMethod = record
+    /// <summary>Name der Testmethode, z. B. TestBerechne oder TestBerechne2.</summary>
+    Name: string;
+    /// <summary>Geprüfte Methode bzw. Routine, z. B. TKunde.Berechne.</summary>
+    Target: string;
+    /// <summary>Fertiger Rumpf samt Kopf (Entwurf aus #1226); '' = Assert.Fail, bis der Test geschrieben ist.
+    /// </summary>
+    Draft: string;
+  end;
+
+  /// <summary>Text einer Datei; '' wenn sie fehlt.</summary>
+  TTestUnitReadText = reference to function(const AFileName: string): string;
+
+  TTestUnits = class
+  public const
+    /// <summary>Platzhalter in testUnits.folder (#2800): Ordner der Unit unter dem Quellordner.</summary>
+    cPathPlaceholder = '{path}';
+    /// <summary>Platzhalter in testUnits.folder (#2800): Namensraum der Unit als Ordner.</summary>
+    cNamespacePlaceholder = '{namespace}';
+  public
+    /// <summary>Name der Fixture: TKunde wird TKundeTests; ohne Klasse der letzte Namensteil der
+    /// Unit (Kunden.Logik wird TLogikTests).</summary>
+    class function FixtureName(const AClassName, AUnitName: string): string; static;
+    /// <summary>Klasse an der Zeile (0-basiert): ihre Deklaration oder eine ihrer Methoden im
+    /// implementation-Teil; '' sonst.</summary>
+    class function ClassAt(const AUnit: TUnitIndex; ALine: Integer): string; static;
+    /// <summary>Erste Klasse im interface; '' ohne.</summary>
+    class function FirstClass(const AUnit: TUnitIndex): string; static;
+    /// <summary>Tests zu den public- und published-Methoden von AClassName (ohne Konstruktoren und
+    /// Destroy); bei leerem AClassName zu den Routinen im interface.</summary>
+    class function TestMethods(const AUnit: TUnitIndex; const AClassName: string): TArray<TTestUnitMethod>; static;
+    /// <summary>Bekommt das Gerüst zur Klasse ein Feld FSubject (nicht generisch)?</summary>
+    class function HasSubject(const AUnit: TUnitIndex; const AClassName: string): Boolean; static;
+    /// <summary>Ausdruck, der ein Objekt der Klasse erzeugt (TKunde.Create, TForm1.Create(nil));
+    /// '' wenn der Konstruktor Argumente braucht oder die Klasse generisch ist.</summary>
+    class function CreateExpression(const AUnit: TUnitIndex; const AClassName: string): string; static;
+    /// <summary>Text der Testunit. AClassName leer: Tests für die Routinen der Unit.</summary>
+    class function UnitText(const ATestUnitName: string; const AUnit: TUnitIndex; const AClassName: string;
+      const ALineBreak: string): string; overload; static;
+    /// <summary>Wie oben; ADrafts ersetzen gleichnamige Tests des Gerüsts, die übrigen kommen dazu (#1226).
+    /// </summary>
+    class function UnitText(const ATestUnitName: string; const AUnit: TUnitIndex; const AClassName: string;
+      const ALineBreak: string; const ADrafts: TArray<TTestUnitMethod>): string; overload; static;
+    /// <summary>Bindet die Programmdatei DUnitX oder DUnit ein?</summary>
+    class function IsTestProgram(const AText: string): Boolean; static;
+    /// <summary>Erstes Testprogramm (.dpr) unter ACandidates; '' ohne.</summary>
+    class function FindTestProgram(const ACandidates: TArray<string>;
+      const AReadText: TTestUnitReadText): string; static;
+    /// <summary>Pfad von AFileName relativ zum Ordner ABaseDir, mit \ wie in .dpr und .dproj;
+    /// AFileName unverändert, wenn es auf einem anderen Laufwerk liegt.</summary>
+    class function RelativePath(const ABaseDir, AFileName: string): string; static;
+    /// <summary>Ordner von AFileName unter dem längsten passenden Quellordner aus ASourceRoots (absolute Pfade),
+    /// mit PathDelim getrennt und ohne Trenner am Ende; '' direkt im Quellordner oder außerhalb aller (#2800).
+    /// </summary>
+    class function SourcePath(const ASourceRoots: TArray<string>; const AFileName: string): string; static;
+    /// <summary>Namensraum von AUnitName als Ordner: Atlas.Core.Net.Http ergibt Atlas\Core\Net; '' ohne Punkt.
+    /// </summary>
+    class function NamespacePath(const AUnitName: string): string; static;
+    /// <summary>Setzt {path} (ASourcePath) und {namespace} (aus AUnitName) in AFolder ein; Trenner werden zu
+    /// PathDelim, leere Platzhalter hinterlassen keine doppelten Trenner (#2800).</summary>
+    class function ExpandFolder(const AFolder, ASourcePath, AUnitName: string): string; static;
+  end;
+
+implementation
+
+uses
+  System.StrUtils,
+  System.Generics.Collections,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.UsesClauses,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingTestUnitsText = (IsGenericCreateTheObject, TestForStillMissing, NeedsArgumentsInTheConstructor);
+
+const
+  cTexts: array[TEditingTestUnitsText] of TAtlasText = (
+    (De: '  // %s ist generisch: Objekt mit konkreten Typargumenten im Test anlegen.';
+     En: '  // %s is generic: create the object with concrete type arguments in the test.'),
+    (De: 'Test für %s fehlt noch'; En: 'Test for %s still missing'),
+    (De: '  // %s braucht Argumente im Konstruktor: FSubject hier anlegen.';
+     En: '  // %s needs arguments in the constructor: create FSubject here.'));
+
+{$SCOPEDENUMS OFF}
+
+{ TTestUnits }
+
+class function TTestUnits.FixtureName(const AClassName, AUnitName: string): string;
+var
+  mName: string;
+  mDot: Integer;
+begin
+  if AClassName <> '' then
+  begin
+    mName := AClassName;
+    if (Length(mName) > 1) and CharInSet(mName[1], ['T', 't']) and CharInSet(mName[2], ['A'..'Z']) then
+    begin
+      mName := Copy(mName, 2, MaxInt);
+    end;
+  end
+  else
+  begin
+    mName := AUnitName;
+    mDot := mName.LastIndexOf('.');
+    if mDot >= 0 then
+    begin
+      mName := mName.Substring(mDot + 1);
+    end;
+  end;
+  Result := 'T' + mName + 'Tests';
+end;
+
+function IsClass(const ASymbol: TIndexSymbol): Boolean;
+begin
+  Result := (ASymbol.Kind = TIndexSymbolKind.ClassType) and (ASymbol.Container = '');
+end;
+
+/// <summary>Letzte Methode bzw. Routine im implementation-Teil, die vor ALine (oder dort) beginnt.</summary>
+function LastRoutineBefore(const AUnit: TUnitIndex; ALine: Integer; out ALast: TIndexSymbol): Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  Result := False;
+  ALast := Default(TIndexSymbol);
+  for mSymbol in AUnit.Symbols do
+  begin
+    if not mSymbol.InInterface and (mSymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_,
+      TIndexSymbolKind.Routine]) and (mSymbol.Range.StartPos.Line <= ALine) and
+      (not Result or (mSymbol.Range.StartPos.Line > ALast.Range.StartPos.Line)) then
+    begin
+      ALast := mSymbol;
+      Result := True;
+    end;
+  end;
+end;
+
+/// <summary>Name der Klasse AName in der Schreibweise der Deklaration; '' ohne.</summary>
+function ClassNamed(const AUnit: TUnitIndex; const AName: string): string;
+var
+  mSymbol: TIndexSymbol;
+begin
+  Result := '';
+  for mSymbol in AUnit.Symbols do
+  begin
+    if IsClass(mSymbol) and SameText(mSymbol.Name, AName) then
+    begin
+      Exit(mSymbol.Name);
+    end;
+  end;
+end;
+
+class function TTestUnits.ClassAt(const AUnit: TUnitIndex; ALine: Integer): string;
+var
+  mSymbol, mLast: TIndexSymbol;
+begin
+  Result := '';
+  for mSymbol in AUnit.Symbols do
+  begin
+    if IsClass(mSymbol) and (mSymbol.Range.StartPos.Line <= ALine) and (mSymbol.Range.EndPos.Line >= ALine) then
+    begin
+      Exit(mSymbol.Name);
+    end;
+  end;
+  // Im implementation-Teil: die letzte Routine, die vor der Zeile beginnt.
+  if LastRoutineBefore(AUnit, ALine, mLast) and (mLast.Kind <> TIndexSymbolKind.Routine) then
+  begin
+    Result := ClassNamed(AUnit, mLast.Container);
+  end;
+end;
+
+class function TTestUnits.FirstClass(const AUnit: TUnitIndex): string;
+var
+  mSymbol: TIndexSymbol;
+begin
+  Result := '';
+  for mSymbol in AUnit.Symbols do
+  begin
+    if IsClass(mSymbol) and mSymbol.InInterface then
+    begin
+      Exit(mSymbol.Name);
+    end;
+  end;
+end;
+
+class function TTestUnits.TestMethods(const AUnit: TUnitIndex; const AClassName: string): TArray<TTestUnitMethod>;
+var
+  mSymbol: TIndexSymbol;
+  mMethod: TTestUnitMethod;
+  mCount, mIndex: Integer;
+  mWanted: Boolean;
+begin
+  Result := nil;
+  for mSymbol in AUnit.Symbols do
+  begin
+    if not mSymbol.InInterface then
+    begin
+      Continue;
+    end;
+    if AClassName <> '' then
+    begin
+      mWanted := (mSymbol.Kind = TIndexSymbolKind.Method) and SameText(mSymbol.Container, AClassName) and
+        (mSymbol.Visibility in [TIndexVisibility.Public, TIndexVisibility.Published]) and
+        not SameText(mSymbol.Name, 'Destroy');
+    end
+    else
+    begin
+      mWanted := (mSymbol.Kind = TIndexSymbolKind.Routine) and (mSymbol.Container = '');
+    end;
+    if not mWanted then
+    begin
+      Continue;
+    end;
+    // Überladene Methoden: TestBerechne, TestBerechne2, …
+    mCount := 1;
+    for mIndex := 0 to High(Result) do
+    begin
+      if SameText(Result[mIndex].Target, mSymbol.QualifiedName) then
+      begin
+        Inc(mCount);
+      end;
+    end;
+    mMethod.Target := mSymbol.QualifiedName;
+    mMethod.Name := 'Test' + mSymbol.Name;
+    if mCount > 1 then
+    begin
+      mMethod.Name := mMethod.Name + IntToStr(mCount);
+    end;
+    Result := Result + [mMethod];
+  end;
+end;
+
+const
+  cComponentAncestors: array[0..8] of string = ('TComponent', 'TControl', 'TWinControl', 'TCustomControl',
+    'TGraphicControl', 'TForm', 'TFrame', 'TDataModule', 'TCustomForm');
+
+/// <summary>Ist ASymbol ein Konstruktor von AClassName im interface?</summary>
+function IsOwnConstructor(const ASymbol: TIndexSymbol; const AClassName: string): Boolean;
+begin
+  Result := (ASymbol.Kind = TIndexSymbolKind.Constructor_) and SameText(ASymbol.Container, AClassName) and
+    ASymbol.InInterface;
+end;
+
+/// <summary>Aufruf des öffentlichen Konstruktors ASymbol ohne Argumente bzw. mit nil als Owner; '' sonst.
+/// </summary>
+function ConstructorCall(const ASymbol: TIndexSymbol; const AClassName: string): string;
+begin
+  Result := '';
+  if not (ASymbol.Visibility in [TIndexVisibility.Public, TIndexVisibility.Published]) then
+  begin
+    Exit;
+  end;
+  if ASymbol.MinArgs = 0 then
+  begin
+    Result := AClassName + '.' + ASymbol.Name;
+  end
+  else if (ASymbol.MinArgs = 1) and (Length(ASymbol.ParamTypes) > 0) and
+    MatchText(ASymbol.ParamTypes[0], ['TComponent', 'TObject']) then
+  begin
+    Result := AClassName + '.' + ASymbol.Name + '(nil)';
+  end;
+end;
+
+/// <summary>Ist die Klasse AClassName generisch? AComponent: Sie stammt direkt von einer Komponente ab.</summary>
+function ClassTraits(const AUnit: TUnitIndex; const AClassName: string; out AComponent: Boolean): Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  Result := False;
+  AComponent := False;
+  for mSymbol in AUnit.Symbols do
+  begin
+    if IsClass(mSymbol) and SameText(mSymbol.Name, AClassName) then
+    begin
+      Result := Result or (mSymbol.TypeParams <> '');
+      AComponent := AComponent or ((Length(mSymbol.Ancestors) > 0) and
+        MatchText(mSymbol.Ancestors[0], cComponentAncestors));
+    end;
+  end;
+end;
+
+class function TTestUnits.HasSubject(const AUnit: TUnitIndex; const AClassName: string): Boolean;
+var
+  mComponent: Boolean;
+begin
+  Result := (AClassName <> '') and not ClassTraits(AUnit, AClassName, mComponent);
+end;
+
+class function TTestUnits.CreateExpression(const AUnit: TUnitIndex; const AClassName: string): string;
+var
+  mSymbol: TIndexSymbol;
+  mHasConstructor, mComponent: Boolean;
+begin
+  Result := '';
+  if ClassTraits(AUnit, AClassName, mComponent) then
+  begin
+    Exit;
+  end;
+  mHasConstructor := False;
+  for mSymbol in AUnit.Symbols do
+  begin
+    if IsOwnConstructor(mSymbol, AClassName) then
+    begin
+      mHasConstructor := True;
+      Result := ConstructorCall(mSymbol, AClassName);
+      if Result <> '' then
+      begin
+        Exit;
+      end;
+    end;
+  end;
+  // Ohne eigenen Konstruktor: der des Vorfahren; bei Komponenten mit Owner.
+  if mHasConstructor then
+  begin
+    Result := '';
+  end
+  else if mComponent then
+  begin
+    Result := AClassName + '.Create(nil)';
+  end
+  else
+  begin
+    Result := AClassName + '.Create';
+  end;
+end;
+
+type
+  /// <summary>Schreibt den Text der Testunit.</summary>
+  TTestUnitWriter = record
+    Builder: TStringBuilder;
+    LineBreak: string;
+    Fixture: string;
+    ClassName: string;
+    CreateText: string;
+    Generic: Boolean;
+    Methods: TArray<TTestUnitMethod>;
+    procedure Line(const AText: string);
+    /// <summary>Hat der Test ein Objekt unter Test (FSubject)?</summary>
+    function HasSubject: Boolean;
+    procedure WriteInterface(const ATestUnitName, AUnitName: string);
+    procedure WriteSetup;
+    procedure WriteTearDown;
+    procedure WriteTests;
+  end;
+
+{ TTestUnitWriter }
+
+procedure TTestUnitWriter.Line(const AText: string);
+begin
+  Builder.Append(AText).Append(LineBreak);
+end;
+
+function TTestUnitWriter.HasSubject: Boolean;
+begin
+  Result := (ClassName <> '') and not Generic;
+end;
+
+procedure TTestUnitWriter.WriteInterface(const ATestUnitName, AUnitName: string);
+var
+  mMethod: TTestUnitMethod;
+begin
+  Line('unit ' + ATestUnitName + ';');
+  Line('');
+  Line('interface');
+  Line('');
+  Line('uses');
+  Line('  DUnitX.TestFramework,');
+  Line('  ' + AUnitName + ';');
+  Line('');
+  Line('type');
+  Line('  [TestFixture]');
+  Line('  ' + Fixture + ' = class');
+  if HasSubject then
+  begin
+    Line('  private');
+    Line('    FSubject: ' + ClassName + ';');
+  end;
+  Line('  public');
+  Line('    [Setup]');
+  Line('    procedure Setup;');
+  Line('    [TearDown]');
+  Line('    procedure TearDown;');
+  for mMethod in Methods do
+  begin
+    Line('    [Test]');
+    Line('    procedure ' + mMethod.Name + ';');
+  end;
+  Line('  end;');
+  Line('');
+end;
+
+procedure TTestUnitWriter.WriteSetup;
+begin
+  Line('procedure ' + Fixture + '.Setup;');
+  Line('begin');
+  if HasSubject and (CreateText <> '') then
+  begin
+    Line('  FSubject := ' + CreateText + ';');
+  end
+  else if HasSubject then
+  begin
+    Line(cTexts[TEditingTestUnitsText.NeedsArgumentsInTheConstructor].Fmt([ClassName]));
+  end
+  else if Generic then
+  begin
+    Line(cTexts[TEditingTestUnitsText.IsGenericCreateTheObject].Fmt([ClassName]));
+  end;
+  Line('end;');
+  Line('');
+end;
+
+procedure TTestUnitWriter.WriteTearDown;
+begin
+  Line('procedure ' + Fixture + '.TearDown;');
+  Line('begin');
+  if HasSubject then
+  begin
+    Line('  FSubject.Free;');
+    Line('  FSubject := nil;');
+  end;
+  Line('end;');
+end;
+
+procedure TTestUnitWriter.WriteTests;
+var
+  mMethod: TTestUnitMethod;
+begin
+  for mMethod in Methods do
+  begin
+    Line('');
+    if mMethod.Draft <> '' then
+    begin
+      Line(mMethod.Draft);
+      Continue;
+    end;
+    Line('procedure ' + Fixture + '.' + mMethod.Name + ';');
+    Line('begin');
+    Line('  Assert.Fail(' + QuotedStr(cTexts[TEditingTestUnitsText.TestForStillMissing].Fmt([mMethod.Target])) + ');');
+    Line('end;');
+  end;
+end;
+
+class function TTestUnits.UnitText(const ATestUnitName: string; const AUnit: TUnitIndex;
+  const AClassName: string; const ALineBreak: string): string;
+begin
+  Result := UnitText(ATestUnitName, AUnit, AClassName, ALineBreak, nil);
+end;
+
+/// <summary>AMethods mit ADrafts: gleichnamige ersetzt, die übrigen angehängt.</summary>
+function WithDrafts(const AMethods, ADrafts: TArray<TTestUnitMethod>): TArray<TTestUnitMethod>;
+var
+  mList: TList<TTestUnitMethod>;
+  mDraft: TTestUnitMethod;
+  mIndex: Integer;
+  mFound: Boolean;
+begin
+  mList := TList<TTestUnitMethod>.Create;
+  try
+    mList.AddRange(AMethods);
+    for mDraft in ADrafts do
+    begin
+      mFound := False;
+      for mIndex := 0 to mList.Count - 1 do
+      begin
+        if SameText(mList[mIndex].Name, mDraft.Name) then
+        begin
+          mList[mIndex] := mDraft;
+          mFound := True;
+        end;
+      end;
+      if not mFound then
+      begin
+        mList.Add(mDraft);
+      end;
+    end;
+    Result := mList.ToArray;
+  finally
+    mList.Free;
+  end;
+end;
+
+class function TTestUnits.UnitText(const ATestUnitName: string; const AUnit: TUnitIndex;
+  const AClassName: string; const ALineBreak: string; const ADrafts: TArray<TTestUnitMethod>): string;
+var
+  mWriter: TTestUnitWriter;
+  mComponent: Boolean;
+begin
+  mWriter := Default(TTestUnitWriter);
+  mWriter.LineBreak := ALineBreak;
+  mWriter.Fixture := FixtureName(AClassName, AUnit.UnitName);
+  mWriter.ClassName := AClassName;
+  mWriter.Methods := WithDrafts(TestMethods(AUnit, AClassName), ADrafts);
+  mWriter.Generic := ClassTraits(AUnit, AClassName, mComponent);
+  if AClassName <> '' then
+  begin
+    mWriter.CreateText := CreateExpression(AUnit, AClassName);
+  end;
+  mWriter.Builder := TStringBuilder.Create;
+  try
+    mWriter.WriteInterface(ATestUnitName, AUnit.UnitName);
+    mWriter.Line('implementation');
+    mWriter.Line('');
+    mWriter.WriteSetup;
+    mWriter.WriteTearDown;
+    mWriter.WriteTests;
+    mWriter.Line('');
+    mWriter.Line('initialization');
+    mWriter.Line('  TDUnitX.RegisterTestFixture(' + mWriter.Fixture + ');');
+    mWriter.Line('');
+    mWriter.Line('end.');
+    Result := mWriter.Builder.ToString;
+  finally
+    mWriter.Builder.Free;
+  end;
+end;
+
+class function TTestUnits.IsTestProgram(const AText: string): Boolean;
+var
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
+begin
+  mTokens := TPascalLexer.Tokenize(AText);
+  Result := False;
+  for mIndex := 0 to High(mTokens) do
+  begin
+    if mTokens[mIndex].IsKeyword('program') then
+    begin
+      Exit(TPascalUses.IsTestUnit(mTokens));
+    end
+    else if mTokens[mIndex].IsKeyword('unit') or mTokens[mIndex].IsKeyword('library') or
+      mTokens[mIndex].IsKeyword('package') then
+    begin
+      Exit(False);
+    end;
+  end;
+end;
+
+class function TTestUnits.FindTestProgram(const ACandidates: TArray<string>;
+  const AReadText: TTestUnitReadText): string;
+var
+  mCandidate: string;
+begin
+  Result := '';
+  for mCandidate in ACandidates do
+  begin
+    if SameText(ExtractFileExt(mCandidate), '.dpr') and IsTestProgram(AReadText(mCandidate)) then
+    begin
+      Exit(mCandidate);
+    end;
+  end;
+end;
+
+function SplitPath(const APath: string): TArray<string>;
+var
+  mPart: string;
+begin
+  Result := nil;
+  for mPart in StringReplace(APath, '/', '\', [rfReplaceAll]).Split(['\']) do
+  begin
+    if (mPart <> '') and (mPart <> '.') then
+    begin
+      Result := Result + [mPart];
+    end;
+  end;
+end;
+
+class function TTestUnits.RelativePath(const ABaseDir, AFileName: string): string;
+var
+  mBase, mTarget: TArray<string>;
+  mCommon, mIndex: Integer;
+begin
+  mBase := SplitPath(ABaseDir);
+  mTarget := SplitPath(AFileName);
+  mCommon := 0;
+  while (mCommon < Length(mBase)) and (mCommon < Length(mTarget) - 1) and SameText(mBase[mCommon], mTarget[mCommon]) do
+  begin
+    Inc(mCommon);
+  end;
+  // Anderes Laufwerk (oder kein gemeinsamer Anfang bei absoluten Pfaden): vollständiger Pfad.
+  if (mCommon = 0) and (Length(mBase) > 0) and (Length(mTarget) > 0) and (Pos(':', mTarget[0]) > 0) then
+  begin
+    Exit(StringReplace(AFileName, '/', '\', [rfReplaceAll]));
+  end;
+  Result := '';
+  for mIndex := mCommon to High(mBase) do
+  begin
+    Result := Result + '..\';
+  end;
+  for mIndex := mCommon to High(mTarget) do
+  begin
+    Result := Result + mTarget[mIndex];
+    if mIndex < High(mTarget) then
+    begin
+      Result := Result + '\';
+    end;
+  end;
+end;
+
+/// <summary>Pfad mit PathDelim als Trenner.</summary>
+function NativePath(const APath: string): string;
+begin
+  Result := StringReplace(StringReplace(APath, '/', PathDelim, [rfReplaceAll]), '\', PathDelim, [rfReplaceAll]);
+end;
+
+class function TTestUnits.SourcePath(const ASourceRoots: TArray<string>; const AFileName: string): string;
+var
+  mDir, mEntry, mRoot, mBest: string;
+begin
+  mDir := ExtractFilePath(NativePath(AFileName));
+  mBest := '';
+  for mEntry in ASourceRoots do
+  begin
+    if mEntry = '' then
+    begin
+      Continue;
+    end;
+    mRoot := IncludeTrailingPathDelimiter(NativePath(mEntry));
+    // Längster Quellordner gewinnt: "Source" und "Source\Lib" zugleich ergeben für Lib den kürzeren Rest.
+    if StartsText(mRoot, mDir) and (Length(mRoot) > Length(mBest)) then
+    begin
+      mBest := mRoot;
+    end;
+  end;
+  if mBest = '' then
+  begin
+    Exit('');
+  end;
+  Result := ExcludeTrailingPathDelimiter(Copy(mDir, Length(mBest) + 1, MaxInt));
+end;
+
+class function TTestUnits.NamespacePath(const AUnitName: string): string;
+var
+  mDot: Integer;
+begin
+  mDot := LastDelimiter('.', AUnitName);
+  if mDot = 0 then
+  begin
+    Exit('');
+  end;
+  Result := StringReplace(Copy(AUnitName, 1, mDot - 1), '.', PathDelim, [rfReplaceAll]);
+end;
+
+class function TTestUnits.ExpandFolder(const AFolder, ASourcePath, AUnitName: string): string;
+var
+  mDouble: Integer;
+begin
+  Result := StringReplace(AFolder, cPathPlaceholder, NativePath(ASourcePath), [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, cNamespacePlaceholder, NamespacePath(AUnitName), [rfReplaceAll, rfIgnoreCase]);
+  Result := NativePath(Result);
+  // Leerer Platzhalter ("Tests/{path}/Unit" direkt im Quellordner): doppelten Trenner zusammenziehen, aber nicht
+  // am Anfang (UNC-Pfad \\Server).
+  mDouble := Pos(PathDelim + PathDelim, Result, 2);
+  while mDouble > 0 do
+  begin
+    Delete(Result, mDouble, 1);
+    mDouble := Pos(PathDelim + PathDelim, Result, 2);
+  end;
+end;
+
+initialization
+  TAtlasTextTables.Add('Editing.TestUnits', cTexts);
+
+end.

@@ -82,7 +82,7 @@ uses
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Semantics.UsesActions,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.CodeActions,
+  Editing.CodeActions,
   Atlas.Common.Pascal.InactiveRegions,
   Atlas.Tests.TextEdits,
   Atlas.Common.Semantics.Contract;

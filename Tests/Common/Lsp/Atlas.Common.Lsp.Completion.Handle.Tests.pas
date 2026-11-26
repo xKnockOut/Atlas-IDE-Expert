@@ -14,7 +14,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
-  Atlas.Common.Editing.Contract,
+  Editing.Contract,
   Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.Completion;
 
@@ -115,9 +115,9 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Completion.Contract,
-  Atlas.Common.Editing.Completion.Slash,
-  Atlas.Common.Editing.Completion.Declare,
-  Atlas.Common.Editing.Completion.Properties,
+  Editing.Completion.Slash,
+  Editing.Completion.Declare,
+  Editing.Completion.Properties,
   Atlas.Tests.LspRules;
 
 const

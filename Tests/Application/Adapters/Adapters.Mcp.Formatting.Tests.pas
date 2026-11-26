@@ -24,7 +24,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Mcp.Contract.Formatting,
-  Atlas.Common.Editing.Contract.Formatting,
+  Editing.Contract.Formatting,
   Adapters.Mcp.Formatting;
 
 type

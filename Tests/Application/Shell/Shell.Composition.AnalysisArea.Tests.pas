@@ -44,7 +44,7 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Semantics.Impact,
-  Atlas.Common.Editing.TestUnits.Protocol,
+  Editing.TestUnits.Protocol,
   Atlas.Common.Testing.AffectedTests;
 
 const

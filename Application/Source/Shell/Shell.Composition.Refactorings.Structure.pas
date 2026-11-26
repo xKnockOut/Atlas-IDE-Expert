@@ -12,9 +12,9 @@ uses
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Editing.ExtractInterface.Protocol,
-  Atlas.Common.Editing.ExtractSuperclass.Protocol,
-  Atlas.Common.Editing.MoveMember.Protocol,
+  Editing.ExtractInterface.Protocol,
+  Editing.ExtractSuperclass.Protocol,
+  Editing.MoveMember.Protocol,
   Shell.Composition.Refactorings.Services;
 
 type
@@ -62,14 +62,14 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Editing.ChangeSignature.Protocol,
+  Editing.ChangeSignature.Protocol,
   Atlas.Common.Lsp.SyntaxDiagnostics,
-  Atlas.Common.Editing.PropertyFromAccessors,
+  Editing.PropertyFromAccessors,
   Atlas.Common.Semantics.InlineAccessor,
-  Atlas.Common.Editing.MoveClass.Protocol,
-  Atlas.Common.Editing.PropertyFromAccessors.Protocol,
-  Atlas.Common.Editing.InlineAccessor.Protocol,
-  Atlas.Common.Editing.SafeDelete.Protocol,
+  Editing.MoveClass.Protocol,
+  Editing.PropertyFromAccessors.Protocol,
+  Editing.InlineAccessor.Protocol,
+  Editing.SafeDelete.Protocol,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Semantics.References,
   Atlas.Common.Semantics.Contract;

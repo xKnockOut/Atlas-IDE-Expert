@@ -53,7 +53,7 @@ uses
   Rules.Engine,
   Rules.Builtin,
   Atlas.Common.Logging.Providers.Logger,
-  Atlas.Common.Editing.SmartIndent;
+  Editing.SmartIndent;
 
 const
   cUri = 'file:///C:/Projekt/A.pas';

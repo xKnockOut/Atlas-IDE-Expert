@@ -41,17 +41,17 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ResolvedSignatures,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.CompilerFixes,
-  Atlas.Common.Editing.SuggestConst,
-  Atlas.Common.Editing.VarBlock,
+  Editing.CompilerFixes,
+  Editing.SuggestConst,
+  Editing.VarBlock,
   Atlas.Common.Projects.MissingUnit,
-  Atlas.Common.Editing.DisableWarning.Protocol,
-  Atlas.Common.Editing.CompilerFixes.Protocol,
+  Editing.DisableWarning.Protocol,
+  Editing.CompilerFixes.Protocol,
   Atlas.Common.Lsp.MissingUnit,
   Atlas.Common.Localization.Texts,
   Atlas.Common.CodeActions.Json,
   Atlas.Common.Semantics.InferredTypes,
-  Atlas.Common.Editing.ExplicitType,
+  Editing.ExplicitType,
   Atlas.Common.Semantics.Contract;
 
 type

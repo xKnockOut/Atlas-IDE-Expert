@@ -9,7 +9,7 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Configuration.Contract,
   Rules.CheckContext,
-  Atlas.Common.Editing.TestUnits.Protocol,
+  Editing.TestUnits.Protocol,
   Shell.Composition.Slash;
 
 type
@@ -36,7 +36,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.Contract;
+  Editing.Contract;
 
 { TShellSlashTests }
 

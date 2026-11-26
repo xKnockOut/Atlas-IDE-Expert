@@ -43,7 +43,7 @@ uses
   Atlas.UI.Rules.Strings;
 
 const
-  /// <summary>Kennung der Code-Aktion (RuleSuppressLineTag in Atlas.Common.Editing.CodeActions; das Plugin hängt
+  /// <summary>Kennung der Code-Aktion (RuleSuppressLineTag in Editing.CodeActions; das Plugin hängt
   /// nicht von Atlas.Common ab).</summary>
   cSuppressLineTag = 'rule.suppressLine';
 

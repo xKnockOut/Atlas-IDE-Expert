@@ -38,7 +38,7 @@
     "architecture-role-import": {
       "severity": "warning",
       "exclude": ["Tests/**"],
-      "hostedFeatures": ["Replay", "Monitor", "Update", "Rules", "Mcp"],
+      "hostedFeatures": ["Replay", "Monitor", "Update", "Rules", "Mcp", "Editing"],
       "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Plugin",
         "Atlas.Vcl", "Atlas.ToolsApi", "Atlas.VersionControl", "Atlas.IDE.Base", "Atlas.IDE.Analysis", "Atlas.IDE.Assistants",
         "Atlas.IDE.Bookmarks", "Atlas.IDE.Build", "Atlas.IDE.BuildPipeline", "Atlas.IDE.Debugger", "Atlas.IDE.Designer", "Atlas.IDE.Editor",
@@ -82,7 +82,7 @@
     "architecture-contract-content": {
       "severity": "warning",
       "exclude": ["Tests/**"],
-      "hostedFeatures": ["Replay", "Monitor", "Update", "Rules", "Mcp"],
+      "hostedFeatures": ["Replay", "Monitor", "Update", "Rules", "Mcp", "Editing"],
       "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Plugin",
         "Atlas.Vcl", "Atlas.ToolsApi", "Atlas.VersionControl", "Atlas.IDE.Base", "Atlas.IDE.Analysis", "Atlas.IDE.Assistants",
         "Atlas.IDE.Bookmarks", "Atlas.IDE.Build", "Atlas.IDE.BuildPipeline", "Atlas.IDE.Debugger", "Atlas.IDE.Designer", "Atlas.IDE.Editor",

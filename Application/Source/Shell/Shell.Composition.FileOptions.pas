@@ -11,10 +11,10 @@ uses
   System.JSON,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.SmartIndent,
-  Atlas.Common.Editing.MethodOrder,
-  Atlas.Common.Editing.LearnedSuggestions,
+  Editing.Contract,
+  Editing.SmartIndent,
+  Editing.MethodOrder,
+  Editing.LearnedSuggestions,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings;
 
@@ -72,7 +72,7 @@ uses
   Rules.Engine,
   Rules.Builtin,
   Atlas.Common.Projects.EditorConfig,
-  Atlas.Common.Editing.SmartIndent.Protocol,
+  Editing.SmartIndent.Protocol,
   Atlas.Common.Pascal.TypeComments,
   Core.Workspace;
 

@@ -43,7 +43,7 @@ uses
 
 const
   cMockupNames: array[0..5] of string = ('ctor', 'dtor', 'prop', 'override', 'implement', 'equals');
-  // Alle Schnellbefehle des Menükatalogs (Atlas.Common.Editing.SlashMenu) plus „implement“.
+  // Alle Schnellbefehle des Menükatalogs (Editing.SlashMenu) plus „implement“.
   cCatalogNames: array[0..51] of string = ('ctor', 'dtor', 'prop', 'override', 'implement', 'equals', 'impl', 'field',
     'encapsulate', 'clone', 'assign', 'json', 'msg', 'notify', 'changed', 'loaded', 'notification', 'singleton',
     'list', 'dict', 'dict!', 'operator', 'guid', 'var', 'const', 'const!', 'guard', 'raise', 'log', 'sql', 'params',

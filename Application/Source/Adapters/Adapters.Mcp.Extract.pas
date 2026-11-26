@@ -8,7 +8,7 @@ interface
 uses
   Atlas.Common.Documents.Contract,
   Mcp.Contract.Extract,
-  Atlas.Common.Editing.Contract.Extract;
+  Editing.Contract.Extract;
 
 type
   TMcpExtractAdapter = class(TInterfacedObject, IMcpExtract)

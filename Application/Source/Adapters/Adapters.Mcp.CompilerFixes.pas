@@ -7,7 +7,7 @@ interface
 
 uses
   Mcp.Contract.CompilerFixes,
-  Atlas.Common.Editing.Contract.CompilerFixes;
+  Editing.Contract.CompilerFixes;
 
 type
   TMcpCompilerFixesAdapter = class(TInterfacedObject, IMcpCompilerFixes)

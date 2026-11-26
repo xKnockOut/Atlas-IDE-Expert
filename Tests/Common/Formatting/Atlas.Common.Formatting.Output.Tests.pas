@@ -35,7 +35,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Formatting.Outcome,
-  Atlas.Common.Editing.FormatCheck,
+  Editing.FormatCheck,
   Atlas.Common.Findings.Output,
   Atlas.Common.Formatting.Output;
 

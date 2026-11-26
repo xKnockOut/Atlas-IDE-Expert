@@ -38,10 +38,10 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Editing.InvertBoolean.Protocol,
-  Atlas.Common.Editing.PromoteVariable.Protocol,
-  Atlas.Common.Editing.AnonymousMethods.Protocol,
-  Atlas.Common.Editing.MethodWithoutSelf.Protocol,
+  Editing.InvertBoolean.Protocol,
+  Editing.PromoteVariable.Protocol,
+  Editing.AnonymousMethods.Protocol,
+  Editing.MethodWithoutSelf.Protocol,
   Atlas.Common.Localization.Texts;
 
 type

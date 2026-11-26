@@ -52,7 +52,7 @@ uses
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Semantics.ClassBodies,
   Atlas.Common.Semantics.ClassCompletion,
-  Atlas.Common.Editing.MethodOrder,
+  Editing.MethodOrder,
   Atlas.Common.Pascal.BodySpacing;
 
 const

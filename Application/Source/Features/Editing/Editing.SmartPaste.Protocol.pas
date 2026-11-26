@@ -1,0 +1,147 @@
+﻿unit Editing.SmartPaste.Protocol;
+
+// Einfügen mit uses-Ergänzung (#515) über das Protokoll: Befehl
+// atlas.server.pasteUses.
+//   - [uri, range]: Was fehlt im eingefügten Bereich? Antwort {"units":
+//     [eindeutige Units], "choices": [{"name": Bezeichner, "units": [...]}],
+//     "interface": true, wenn die Einfügestelle im interface-Teil liegt}.
+//   - [uri, range, [Units]]: Edit dazu, {"edit": WorkspaceEdit oder null,
+//     "added": [eingetragene], "toImplementation": [wegen Kreisverweis ins
+//     implementation-uses verlegte]}.
+// Das Plugin schickt vorher den Puffer; die Logik liegt in
+// Editing.SmartPaste.
+
+interface
+
+uses
+  System.SysUtils,
+  System.JSON,
+  System.Generics.Collections,
+  Atlas.Common.Pascal.SyntaxTree,
+  Editing.SmartPaste,
+  Atlas.Common.Semantics.Contract;
+
+type
+  TSmartPasteProtocol = class
+  public const
+    cCommand = 'atlas.server.pasteUses';
+  public
+    /// <summary>Antwort auf AArguments für die Datei AUri mit Text AText und Baum ATree. Der Aufrufer übernimmt
+    /// das Objekt; ungültige Argumente ergeben EArgumentException.</summary>
+    class function Execute(const AArguments: TJSONArray; const AUri, AText: string; ATree: TSyntaxTree;
+      const AUses: TUsesContext; const AInterfaceUses: TInterfaceUsesFunc): TJSONObject; static;
+  end;
+
+implementation
+
+uses
+  Atlas.Text.Lines,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.JsonRpc.Positions,
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TSmartPasteText = (ArgumentsUriAndRangeMissing);
+
+const
+  cTexts: array[TSmartPasteText] of TAtlasText = (
+    (De: 'Argumente "uri" und "range" fehlen'; En: 'Arguments "uri" and "range" missing'));
+
+{$SCOPEDENUMS OFF}
+
+/// <summary>Was fehlt im eingefügten Bereich ARange? Eindeutige Units, mehrdeutige Namen und ob die Einfügestelle
+/// im interface-Teil liegt.</summary>
+procedure AddMissing(AResult: TJSONObject; const ATokens: TArray<TPascalToken>; ATree: TSyntaxTree;
+  const ARange: TTextRange; const AUses: TUsesContext);
+var
+  mNames: TArray<TSmartPasteName>;
+  mItem: TSmartPasteName;
+  mChoices: TJSONArray;
+  mChoice: TJSONObject;
+begin
+  mNames := TSmartPaste.Missing(ATokens, ATree, ARange, AUses.Declaring, AUses.Namespaces);
+  AResult.AddPair('units', TJsonBuild.Strings(TSmartPaste.Certain(mNames)));
+  mChoices := TJSONArray.Create;
+  for mItem in mNames do
+  begin
+    if Length(mItem.Units) > 1 then
+    begin
+      mChoice := TJSONObject.Create;
+      mChoice.AddPair('name', mItem.Name);
+      mChoice.AddPair('units', TJsonBuild.Strings(mItem.Units));
+      mChoices.AddElement(mChoice);
+    end;
+  end;
+  AResult.AddPair('choices', mChoices);
+  AResult.AddPair('interface', TJSONBool.Create(TSmartPaste.InInterface(ATokens, ARange.StartPos)));
+end;
+
+/// <summary>WorkspaceEdit mit AEdits für die Datei AUri.</summary>
+function WorkspaceEditJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;
+var
+  mList: TJSONArray;
+  mChange, mChanges: TJSONObject;
+  mEdit: TTextEdit;
+begin
+  mList := TJSONArray.Create;
+  for mEdit in AEdits do
+  begin
+    mChange := TJSONObject.Create;
+    mChange.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+    mChange.AddPair('newText', mEdit.NewText);
+    mList.AddElement(mChange);
+  end;
+  mChanges := TJSONObject.Create;
+  mChanges.AddPair(AUri, mList);
+  Result := TJSONObject.Create;
+  Result.AddPair('changes', mChanges);
+end;
+
+{ TSmartPasteProtocol }
+
+class function TSmartPasteProtocol.Execute(const AArguments: TJSONArray; const AUri, AText: string; ATree: TSyntaxTree;
+  const AUses: TUsesContext; const AInterfaceUses: TInterfaceUsesFunc): TJSONObject;
+var
+  mRange: TTextRange;
+  mTarget: TSmartPasteTarget;
+  mUses: TSmartPasteUses;
+begin
+  if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONObject) then
+  begin
+    raise EArgumentException.Create(cTexts[TSmartPasteText.ArgumentsUriAndRangeMissing].Text);
+  end;
+  mRange := TLspPositions.ReadRange(AArguments.Items[1]);
+  mTarget := Default(TSmartPasteTarget);
+  mTarget.Tokens := TPascalLexer.Tokenize(AText);
+  Result := TJSONObject.Create;
+  if (AArguments.Count < 3) or not (AArguments.Items[2] is TJSONArray) then
+  begin
+    AddMissing(Result, mTarget.Tokens, ATree, mRange, AUses);
+    Exit;
+  end;
+  mTarget.Position := mRange.StartPos;
+  mTarget.InterfaceUses := AInterfaceUses;
+  mTarget.Namespaces := AUses.Namespaces;
+  mTarget.LineBreak := TTextLines.LineBreakOf(AText);
+  if TSmartPaste.UsesEdits(mTarget, TJsonRead.Strings(TJSONArray(AArguments.Items[2])), mUses) then
+  begin
+    Result.AddPair('edit', WorkspaceEditJson(AUri, mUses.Edits));
+  end
+  else
+  begin
+    Result.AddPair('edit', TJSONNull.Create);
+  end;
+  Result.AddPair('added', TJsonBuild.Strings(mUses.Added));
+  Result.AddPair('toImplementation', TJsonBuild.Strings(mUses.ToImplementation));
+end;
+
+initialization
+  TAtlasTextTables.Add('Editing.SmartPaste.Protocol', cTexts);
+
+end.

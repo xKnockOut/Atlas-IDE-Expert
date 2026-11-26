@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Formatting.Outcome;
 
 // Ergebnis des Formatierens ohne Editor (#1358): Zeilenbereiche, Abweichungen je Zeile und das Ergebnis je Datei.
-// Gemeinsame Typen für den Formatierer (Atlas.Common.Editing.FormatCheck), die Ausgabe der Kommandozeile
+// Gemeinsame Typen für den Formatierer (Editing.FormatCheck), die Ausgabe der Kommandozeile
 // (Atlas.Common.Formatting.Output) und den Linter des Hosts (Core.Linter.Formatting).
 
 interface

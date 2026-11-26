@@ -30,7 +30,7 @@ uses
   System.JSON,
   Atlas.Common.JsonRpc.ApplyEdit,
   Atlas.Common.Index.IdeProject,
-  Atlas.Common.Editing.TestUnits.Protocol,
+  Editing.TestUnits.Protocol,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Pascal.FormatRoutines,
   Shell.Composition.Contract,

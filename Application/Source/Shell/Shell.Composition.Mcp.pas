@@ -65,7 +65,7 @@ uses
   Rules.Providers.FindingPrompts,
   Rules.Providers.RuleDocs,
   Rules.Providers.TextChecks,
-  Atlas.Common.Editing.Composition,
+  Editing.Composition,
   Adapters.Mcp.BoundaryCases,
   Adapters.Mcp.BulkFix,
   Adapters.Mcp.CompilerFixes,

@@ -85,7 +85,7 @@ type
     [Test]
     procedure UncertainArguments;
     /// <summary>string.Join mit einem Char-Literal im Array-Literal (E2251 nur unter Delphi 12), auch ohne Index;
-    /// Fall aus Atlas.Common.Editing.SmartIndent.Tests.</summary>
+    /// Fall aus Editing.SmartIndent.Tests.</summary>
     [Test]
     procedure JoinWithCharLiteral;
     [Test]

@@ -160,7 +160,7 @@ end;
 
 const
   cTickMs = 250;
-  /// <summary>Kennung der Code-Aktion (RuleFixTag in Atlas.Common.Editing.CodeActions; das Plugin hängt nicht von
+  /// <summary>Kennung der Code-Aktion (RuleFixTag in Editing.CodeActions; das Plugin hängt nicht von
   /// Atlas.Common ab).</summary>
   cFixTag = 'rule.fix';
 

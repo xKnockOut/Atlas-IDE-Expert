@@ -36,11 +36,11 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.TypeAlias,
+  Editing.TypeAlias,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Editing.TypeAlias.Protocol,
+  Editing.TypeAlias.Protocol,
   Atlas.Common.Lsp.EnumTables,
-  Atlas.Common.Editing.Overloads.Protocol,
+  Editing.Overloads.Protocol,
   Atlas.Common.Localization.Texts;
 
 type
