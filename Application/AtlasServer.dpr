@@ -322,6 +322,7 @@ uses
   Shell.Composition.Mcp in 'Source\Shell\Shell.Composition.Mcp.pas',
   Adapters.Mcp.Extract in 'Source\Adapters\Adapters.Mcp.Extract.pas',
   Adapters.Mcp.Formatting in 'Source\Adapters\Adapters.Mcp.Formatting.pas',
+  Adapters.Mcp.BoundaryCases in 'Source\Adapters\Adapters.Mcp.BoundaryCases.pas',
   Adapters.Mcp.CompilerFixes in 'Source\Adapters\Adapters.Mcp.CompilerFixes.pas',
   Adapters.Mcp.BulkFix in 'Source\Adapters\Adapters.Mcp.BulkFix.pas',
   Adapters.Mcp.TextChecks in 'Source\Adapters\Adapters.Mcp.TextChecks.pas',

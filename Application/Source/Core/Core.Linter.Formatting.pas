@@ -51,7 +51,6 @@ uses
   Atlas.Common.Findings.Output,
   Atlas.Common.Editing.FormatCheck,
   Atlas.Common.Editing.EditorConfig,
-  Atlas.Common.Lsp.Formatting,
   Platform.Server,
   Core.Linter.Output,
   Core.Linter.Settings,
@@ -181,7 +180,7 @@ begin
       Exit(False);
     end;
   end;
-  mStyle := TLspFormatting.Resolve(nil, AFileName, ARun.Settings.Formatting, ReadEditorConfigFunc());
+  mStyle := TFormatStyles.Resolve(nil, AFileName, ARun.Settings.Formatting, ReadEditorConfigFunc());
   AItem := TFormattedFile.Create(ARelativePath, TFormatCheck.Run(mText, mStyle, mScope,
     TPascalPreprocessor.SourceOptions(ARun.Sources(AFileName))));
   if ARun.Options.FormatWrite and AItem.Outcome.Changed then

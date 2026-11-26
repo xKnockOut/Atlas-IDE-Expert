@@ -41,7 +41,6 @@ uses
   Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Mutation.Report,
-  Atlas.Common.Lsp.BoundaryCases,
   Atlas.Common.Mcp.CompilerMessageTools,
   Atlas.Common.Mcp.IndexTools,
   Atlas.Common.Mcp.Paths,

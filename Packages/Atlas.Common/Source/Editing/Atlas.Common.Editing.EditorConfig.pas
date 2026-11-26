@@ -5,11 +5,13 @@
 // Dateien und spätere Abschnitte gewinnen. Ausgewertet werden indent_style,
 // indent_size, tab_width, end_of_line, trim_trailing_whitespace,
 // insert_final_newline und max_line_length (Zahl oder off). Abschnittsmuster: *, *.ext, *.{a,b}, Dateiname.
+// TFormatStyles legt Editor-Optionen, .editorconfig und atlas.json übereinander (Editor, Kommandozeile, MCP).
 
 interface
 
 uses
   System.SysUtils,
+  System.JSON,
   Atlas.Common.Configuration.Contract;
 
 type
@@ -28,6 +30,16 @@ type
       const ABase: TFormatStyle): TFormatStyle; static;
     /// <summary>Passt AFileName (nur der Name) auf das Abschnittsmuster APattern?</summary>
     class function Matches(const APattern, AFileName: string): Boolean; static;
+  end;
+
+  /// <summary>Formatregeln für eine Datei (#43) in drei Ebenen: die FormattingOptions des Editors (LSP), darüber
+  /// .editorconfig und darüber ausdrücklich gesetzte Werte aus "format" in atlas.json.</summary>
+  TFormatStyles = class
+  public
+    /// <summary>Einstellungen für AFileName aus Editor-Optionen AOptions (nil = keine), .editorconfig (AReadFile
+    /// nil = keine) und AConfigured.</summary>
+    class function Resolve(const AOptions: TJSONValue; const AFileName: string; const AConfigured: TFormatStyle;
+      const AReadFile: TEditorConfigReadFile): TFormatStyle; static;
   end;
 
 implementation
@@ -294,6 +306,105 @@ begin
     Exit(False);
   end;
   Result := MatchWildcard(mPattern, AFileName);
+end;
+
+/// <summary>Einstellungen aus den FormattingOptions des Editors (AOptions, nil = keine).</summary>
+function EditorStyle(const AOptions: TJSONValue): TFormatStyle;
+var
+  mSize: Integer;
+  mFlag: Boolean;
+begin
+  Result := TFormatStyle.Default;
+  if not (AOptions is TJSONObject) then
+  begin
+    Exit;
+  end;
+  if AOptions.TryGetValue<Integer>('tabSize', mSize) and (mSize >= 1) then
+  begin
+    Result.IndentSize := mSize;
+  end;
+  if AOptions.TryGetValue<Boolean>('insertSpaces', mFlag) then
+  begin
+    Result.UseTabs := not mFlag;
+  end;
+  if AOptions.TryGetValue<Boolean>('trimTrailingWhitespace', mFlag) then
+  begin
+    Result.TrimTrailingWhitespace := mFlag;
+  end;
+  if AOptions.TryGetValue<Boolean>('insertFinalNewline', mFlag) then
+  begin
+    Result.InsertFinalNewline := mFlag;
+  end;
+end;
+
+/// <summary>Übernimmt Einrückung, Schreibweise und Zeilenende-Leerraum, wenn AConfigured sie ausdrücklich setzt.
+/// </summary>
+procedure ApplyGivenLayout(var AStyle: TFormatStyle; const AConfigured: TFormatStyle);
+begin
+  if TFormatKey.IndentSize in AConfigured.Given then
+  begin
+    AStyle.IndentSize := AConfigured.IndentSize;
+  end;
+  if TFormatKey.UseTabs in AConfigured.Given then
+  begin
+    AStyle.UseTabs := AConfigured.UseTabs;
+  end;
+  if TFormatKey.KeywordCase in AConfigured.Given then
+  begin
+    AStyle.KeywordCase := AConfigured.KeywordCase;
+  end;
+  if TFormatKey.TrimTrailingWhitespace in AConfigured.Given then
+  begin
+    AStyle.TrimTrailingWhitespace := AConfigured.TrimTrailingWhitespace;
+  end;
+  if TFormatKey.InsertFinalNewline in AConfigured.Given then
+  begin
+    AStyle.InsertFinalNewline := AConfigured.InsertFinalNewline;
+  end;
+end;
+
+/// <summary>Übernimmt Abstände, Zeilenende und Zeilenlänge, wenn AConfigured sie ausdrücklich setzt.</summary>
+procedure ApplyGivenSpacing(var AStyle: TFormatStyle; const AConfigured: TFormatStyle);
+begin
+  if TFormatKey.SpaceAroundAssignment in AConfigured.Given then
+  begin
+    AStyle.SpaceAroundAssignment := AConfigured.SpaceAroundAssignment;
+  end;
+  if TFormatKey.SpaceAfterComma in AConfigured.Given then
+  begin
+    AStyle.SpaceAfterComma := AConfigured.SpaceAfterComma;
+  end;
+  if TFormatKey.EndOfLine in AConfigured.Given then
+  begin
+    AStyle.EndOfLine := AConfigured.EndOfLine;
+  end;
+  if TFormatKey.MaxLineLength in AConfigured.Given then
+  begin
+    AStyle.MaxLineLength := AConfigured.MaxLineLength;
+  end;
+end;
+
+{ TFormatStyles }
+
+class function TFormatStyles.Resolve(const AOptions: TJSONValue; const AFileName: string;
+  const AConfigured: TFormatStyle; const AReadFile: TEditorConfigReadFile): TFormatStyle;
+begin
+  Result := EditorStyle(AOptions);
+  if Assigned(AReadFile) and (AFileName <> '') then
+  begin
+    Result := TEditorConfig.ForFile(AFileName, AReadFile, Result);
+  end;
+  ApplyGivenLayout(Result, AConfigured);
+  ApplyGivenSpacing(Result, AConfigured);
+  // Diese Schalter kennt weder der Editor noch .editorconfig (#43).
+  Result.Reindent := AConfigured.Reindent;
+  Result.BeginPlacement := AConfigured.BeginPlacement;
+  Result.ElsePlacement := AConfigured.ElsePlacement;
+  Result.AlignAssignments := AConfigured.AlignAssignments;
+  Result.AlignDeclarations := AConfigured.AlignDeclarations;
+  Result.AlignComments := AConfigured.AlignComments;
+  Result.SortUses := AConfigured.SortUses;
+  Result.Given := AConfigured.Given;
 end;
 
 end.

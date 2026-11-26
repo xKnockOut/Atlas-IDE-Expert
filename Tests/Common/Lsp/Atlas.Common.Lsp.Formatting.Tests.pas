@@ -9,12 +9,6 @@ type
   [TestFixture]
   TLspFormattingTests = class
   public
-    [Test]
-    procedure EditorOptionsAreTheBase;
-    [Test]
-    procedure EditorConfigOverridesEditor;
-    [Test]
-    procedure ConfiguredKeysOverrideEditorConfig;
     /// <summary>Abgebrochen, bevor Schnellbefehle Projekt und Platte ändern.</summary>
     [Test]
     procedure OnTypeStopsBeforeSlashCommandsWhenCancelled;
@@ -42,7 +36,6 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
-  Atlas.Common.Editing.EditorConfig,
   Atlas.Common.Editing.MaintenanceCommands,
   Atlas.Common.Lsp.Formatting;
 
@@ -68,21 +61,6 @@ begin
   finally
     mRequest.Free;
   end;
-end;
-
-function Options: TJSONObject;
-begin
-  Result := TJSONObject.ParseJSONValue('{"tabSize": 4, "insertSpaces": false, "insertFinalNewline": true}') as TJSONObject;
-end;
-
-function ReadTabsConfig: TEditorConfigReadFile;
-begin
-  Result :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := SameText(AFileName, 'C:\P\.editorconfig');
-      AText := 'root = true'#10'[*.pas]'#10'indent_style = space'#10'indent_size = 3';
-    end;
 end;
 
 /// <summary>Anzahl der Bearbeitungen in der Antwort auf AJson (Anfrage mit id 1); -1 ohne result.</summary>
@@ -135,74 +113,6 @@ begin
 end;
 
 { TLspFormattingTests }
-
-procedure TLspFormattingTests.EditorOptionsAreTheBase;
-var
-  mJson: TJSONObject;
-  mStyle: TFormatStyle;
-begin
-  mJson := Options;
-  try
-    mStyle := TLspFormatting.Resolve(mJson, 'C:\P\Unit1.pas', TFormatStyle.Default, nil);
-    Assert.AreEqual(4, mStyle.IndentSize);
-    Assert.IsTrue(mStyle.UseTabs);
-    Assert.IsTrue(mStyle.InsertFinalNewline);
-  finally
-    mJson.Free;
-  end;
-end;
-
-procedure TLspFormattingTests.EditorConfigOverridesEditor;
-var
-  mJson: TJSONObject;
-  mStyle: TFormatStyle;
-begin
-  mJson := Options;
-  try
-    mStyle := TLspFormatting.Resolve(mJson, 'C:\P\Unit1.pas', TFormatStyle.Default, ReadTabsConfig());
-    Assert.AreEqual(3, mStyle.IndentSize);
-    Assert.IsFalse(mStyle.UseTabs);
-  finally
-    mJson.Free;
-  end;
-end;
-
-procedure TLspFormattingTests.ConfiguredKeysOverrideEditorConfig;
-var
-  mJson: TJSONObject;
-  mConfigured, mStyle: TFormatStyle;
-begin
-  mConfigured := TFormatStyle.Default;
-  mConfigured.IndentSize := 8;
-  mConfigured.KeywordCase := TKeywordCase.Upper;
-  mConfigured.Given := [TFormatKey.IndentSize];
-  mJson := Options;
-  try
-    mStyle := TLspFormatting.Resolve(mJson, 'C:\P\Unit1.pas', mConfigured, ReadTabsConfig());
-    Assert.AreEqual(8, mStyle.IndentSize);
-    // Nicht ausdrücklich gesetzt: bleibt beim Wert aus .editorconfig bzw. der Vorgabe.
-    Assert.IsFalse(mStyle.UseTabs);
-    Assert.AreEqual<TKeywordCase>(TKeywordCase.Preserve, mStyle.KeywordCase);
-  finally
-    mJson.Free;
-  end;
-  // Schalter ohne Gegenstück im Editor gelten immer; maxLineLength nur gesetzt vor .editorconfig (#43).
-  mConfigured := TFormatStyle.Default;
-  mConfigured.Reindent := False;
-  mConfigured.BeginPlacement := TBlockPlacement.NewLine;
-  mConfigured.AlignComments := True;
-  mConfigured.SortUses := True;
-  mConfigured.MaxLineLength := 90;
-  mStyle := TLspFormatting.Resolve(nil, 'C:\P\Unit1.pas', mConfigured, nil);
-  Assert.IsFalse(mStyle.Reindent);
-  Assert.AreEqual<TBlockPlacement>(TBlockPlacement.NewLine, mStyle.BeginPlacement);
-  Assert.IsTrue(mStyle.AlignComments);
-  Assert.IsTrue(mStyle.SortUses);
-  Assert.AreEqual(0, mStyle.MaxLineLength);
-  mConfigured.Given := [TFormatKey.MaxLineLength];
-  mStyle := TLspFormatting.Resolve(nil, 'C:\P\Unit1.pas', mConfigured, nil);
-  Assert.AreEqual(90, mStyle.MaxLineLength);
-end;
 
 procedure TLspFormattingTests.OnTypeStopsBeforeSlashCommandsWhenCancelled;
 var

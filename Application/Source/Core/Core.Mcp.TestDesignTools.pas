@@ -25,7 +25,7 @@ uses
   Atlas.Text.Json,
   Atlas.Common.Mutation.Contract,
   Atlas.Common.Mutation.Report,
-  Atlas.Common.Lsp.BoundaryCases,
+  Atlas.Common.Mcp.Contract.BoundaryCases,
   Atlas.Common.Localization.RequestTexts,
   Atlas.Common.Localization.Texts;
 
@@ -174,7 +174,7 @@ end;
 function ToolSuggestTestCases(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
   mFileName, mText, mFormat: string;
-  mRequest: TLspBoundaryRequest;
+  mRequest: TMcpBoundaryRequest;
 begin
   mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   mFormat := LowerCase(Trim(TMcpArgs.OptionalString(AArguments, 'format')));
@@ -186,7 +186,7 @@ begin
   begin
     raise EMcpToolError.Create(cTexts[TMcpTestDesignText.SourceUnreadable].Fmt([mFileName]));
   end;
-  mRequest := Default(TLspBoundaryRequest);
+  mRequest := Default(TMcpBoundaryRequest);
   if not AArguments.TryGetValue<Integer>('maxCases', mRequest.Max) then
   begin
     mRequest.Max := 0;
@@ -196,7 +196,7 @@ begin
   mRequest.Line := LineOf(AArguments, 'line');
   mRequest.Routine := TMcpArgs.OptionalString(AArguments, 'routine');
   mRequest.Json := mFormat = 'json';
-  if not TLspBoundaryCases.Report(mText, mRequest, Result) then
+  if not AContext.Adapters.BoundaryCases.Report(mText, mRequest, Result) then
   begin
     raise EMcpToolError.Create(cTexts[TMcpTestDesignText.SuggestNoRoutine].Fmt([mRequest.FileName]));
   end;

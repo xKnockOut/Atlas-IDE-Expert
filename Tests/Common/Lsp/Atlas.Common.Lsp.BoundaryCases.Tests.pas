@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.BoundaryCases.Tests;
 
-// Befehl atlas.server.boundaryCases und Markdown für MCP (#2173): Fälle als JSON mit Werten aller Parameter,
-// nil nicht als [TestCase], Höchstzahl, null ohne Routine, Routine nach Namen, Fehler ohne URI.
+// Befehl atlas.server.boundaryCases (#2173): Fälle als JSON mit Werten aller Parameter, nil nicht als [TestCase],
+// Höchstzahl, null ohne Routine, Fehler ohne URI.
 
 interface
 
@@ -20,12 +20,6 @@ type
     procedure NullOutsideRoutine;
     [Test]
     procedure InvalidArguments;
-    [Test]
-    procedure RoutineByName;
-    [Test]
-    procedure MarkdownTable;
-    [Test]
-    procedure ReportForMcp;
   end;
 
 implementation
@@ -35,9 +29,6 @@ uses
   System.JSON,
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.BoundaryCases,
   Atlas.Common.Lsp.BoundaryCases;
 
 const
@@ -155,73 +146,6 @@ begin
     begin
       Run('["file:///C:/P/Andere.pas",5]').Free;
     end, EJsonRpcError);
-end;
-
-procedure TLspBoundaryCasesTests.RoutineByName;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TSyntaxTreeCache.Parse(cText);
-  try
-    Assert.IsNotNull(TLspBoundaryCases.RoutineOf(mTree, -1, 'rabatt'));
-    Assert.IsNull(TLspBoundaryCases.RoutineOf(mTree, -1, 'Fehlt'));
-    Assert.IsNull(TLspBoundaryCases.RoutineOf(mTree, -1, ''));
-  finally
-    mTree.Free;
-  end;
-end;
-
-procedure TLspBoundaryCasesTests.MarkdownTable;
-var
-  mTree: TSyntaxTree;
-  mRoutine: TSyntaxNode;
-  mText: string;
-begin
-  mTree := TSyntaxTreeCache.Parse(cText);
-  try
-    mRoutine := TLspBoundaryCases.RoutineOf(mTree, 6, '');
-    mText := TLspBoundaryCases.ToMarkdown('Rabatt.pas', mRoutine.StartPos.Line,
-      TBoundaryCases.Find(mTree, mRoutine, 20));
-  finally
-    mTree.Free;
-  end;
-  Assert.Contains(mText, 'Rabatt.pas');
-  Assert.Contains(mText, 'ABetrag: Integer (0)');
-  Assert.Contains(mText, '| ABetrag | `100` |');
-  Assert.Contains(mText, '| 7 | `100, nil` |');
-  Assert.Contains(mText, '[TestCase]');
-end;
-
-procedure TLspBoundaryCasesTests.ReportForMcp;
-var
-  mReport: string;
-  mValue: TJSONValue;
-  mRequest: TLspBoundaryRequest;
-begin
-  mRequest := Default(TLspBoundaryRequest);
-  mRequest.FileName := 'Rabatt.pas';
-  mRequest.Line := -1;
-  mRequest.Routine := 'Rabatt';
-  mRequest.Json := True;
-  Assert.IsTrue(TLspBoundaryCases.Report(cText, mRequest, mReport));
-  mValue := TJSONObject.ParseJSONValue(mReport);
-  try
-    Assert.AreEqual(4, Count(mValue as TJSONObject, 'cases'));
-    Assert.AreEqual('Rabatt.pas', (mValue as TJSONObject).GetValue<string>('uri'));
-  finally
-    mValue.Free;
-  end;
-  mRequest.Line := 6;
-  mRequest.Routine := '';
-  mRequest.Max := 1;
-  mRequest.Json := False;
-  Assert.IsTrue(TLspBoundaryCases.Report(cText, mRequest, mReport));
-  Assert.Contains(mReport, 'maxCases');
-  mRequest.Line := 0;
-  Assert.IsFalse(TLspBoundaryCases.Report(cText, mRequest, mReport));
-  Assert.AreEqual(TBoundaryCases.cDefaultMax, TLspBoundaryCases.MaxCases(0));
-  Assert.AreEqual(TLspBoundaryCases.cMaxMax, TLspBoundaryCases.MaxCases(1000));
-  Assert.AreEqual(TLspBoundaryCases.cMinMax, TLspBoundaryCases.MaxCases(-5));
 end;
 
 end.

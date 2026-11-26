@@ -41,7 +41,8 @@ uses
   Core.Workspace,
   Shell.Composition.Refactorings.Services,
   Shell.Mcp.RefactorHost,
-  Adapters.Mcp.Workspace,
+  Atlas.Common.Mcp.Contract.Formatting,
+  Shell.Composition.Mcp,
   Atlas.Common.Mcp.RefactorTools;
 
 /// <summary>Neue Datei aus refactor (#2150): UTF-8 mit BOM und CRLF wie neue Units der IDE, Ordner wird angelegt.
@@ -139,12 +140,19 @@ begin
     end;
 end;
 
+/// <summary>Formatregeln wie im Editor: format.* über .editorconfig über den Vorgaben.</summary>
 function RefactorStyleOf(AGroup: TCoreWorkspaceGroup): TShellFormatStyleFunc;
+var
+  mFormatting: IMcpFormatting;
 begin
+  mFormatting := TMcpComposition.Formatting;
   Result :=
     function(const AUri: string): TFormatStyle
+    var
+      mFileName: string;
     begin
-      Result := FormatStyleOf(TMcpWorkspaceAdapter.ForGroup(AGroup), TDocumentUris.ToPath(AUri));
+      mFileName := TDocumentUris.ToPath(AUri);
+      Result := mFormatting.StyleOf(mFileName, AGroup.WorkspaceOf(mFileName).Configuration.Settings.Formatting);
     end;
 end;
 

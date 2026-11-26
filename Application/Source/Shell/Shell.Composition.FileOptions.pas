@@ -71,7 +71,7 @@ uses
   Rules.Contract,
   Rules.Engine,
   Rules.Builtin,
-  Atlas.Common.Lsp.Formatting,
+  Atlas.Common.Editing.EditorConfig,
   Atlas.Common.Editing.SmartIndent.Protocol,
   Atlas.Common.Pascal.TypeComments,
   Core.Workspace;
@@ -87,7 +87,7 @@ end;
 
 function TShellFileOptions.ResolvedFormatStyleWith(const AUri: string; const AEditorOptions: TJSONValue): TFormatStyle;
 begin
-  Result := TLspFormatting.Resolve(AEditorOptions, TDocumentUris.ToPath(AUri), FormatStyleFor(AUri),
+  Result := TFormatStyles.Resolve(AEditorOptions, TDocumentUris.ToPath(AUri), FormatStyleFor(AUri),
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := FileExists(AFileName);

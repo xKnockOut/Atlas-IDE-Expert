@@ -6,6 +6,7 @@
 interface
 
 uses
+  Atlas.Common.Editing.Contract.BoundaryCases,
   Atlas.Common.Editing.Contract.ClassActions,
   Atlas.Common.Editing.Contract.CodeActions,
   Atlas.Common.Editing.Contract.ClassCompletion,
@@ -38,11 +39,14 @@ type
     class function Formatting: IEditingFormatting; static;
     /// <summary>Schnellkorrekturen für Compilermeldungen.</summary>
     class function CompilerFixes: IEditingCompilerFixes; static;
+    /// <summary>Grenzfälle einer Routine als Bericht.</summary>
+    class function BoundaryCases: IEditingBoundaryCases; static;
   end;
 
 implementation
 
 uses
+  Atlas.Common.Editing.Providers.BoundaryCases,
   Atlas.Common.Editing.Providers.ClassActions,
   Atlas.Common.Editing.Providers.ClassCompletion,
   Atlas.Common.Editing.Providers.CodeActions,
@@ -103,6 +107,11 @@ end;
 class function TEditingComposition.CompilerFixes: IEditingCompilerFixes;
 begin
   Result := TEditingCompilerFixesProvider.Create;
+end;
+
+class function TEditingComposition.BoundaryCases: IEditingBoundaryCases;
+begin
+  Result := TEditingBoundaryCasesProvider.Create;
 end;
 
 end.

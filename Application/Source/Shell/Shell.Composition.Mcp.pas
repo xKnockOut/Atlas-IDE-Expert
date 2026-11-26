@@ -9,6 +9,7 @@ uses
   Atlas.Common.Index.Contract,
   Rules.Contract,
   Rules.Checker,
+  Atlas.Common.Mcp.Contract.BoundaryCases,
   Atlas.Common.Mcp.Contract.BulkFix,
   Atlas.Common.Mcp.Contract.CompilerFixes,
   Atlas.Common.Mcp.Contract.Conventions,
@@ -29,6 +30,8 @@ type
     class function Formatting: IMcpFormatting; static;
     /// <summary>Schnellkorrekturen für Compilermeldungen aus Editing.</summary>
     class function CompilerFixes: IMcpCompilerFixes; static;
+    /// <summary>Grenzfälle einer Routine aus Editing.</summary>
+    class function BoundaryCases: IMcpBoundaryCases; static;
     /// <summary>Sammelkorrektur aus Rules mit den eingebauten Regeln; AProject und ASource wie bei der Prüfung der
     /// MCP-Werkzeuge (nil = ohne Index bzw. Vordefinitionen).</summary>
     class function BulkFix(const AProject: TCheckProjectFunc; const ASource: TPascalSourceFunc): IMcpBulkFix; static;
@@ -63,6 +66,7 @@ uses
   Rules.Providers.RuleDocs,
   Rules.Providers.TextChecks,
   Atlas.Common.Editing.Composition,
+  Adapters.Mcp.BoundaryCases,
   Adapters.Mcp.BulkFix,
   Adapters.Mcp.CompilerFixes,
   Adapters.Mcp.Conventions,
@@ -87,6 +91,11 @@ end;
 class function TMcpComposition.CompilerFixes: IMcpCompilerFixes;
 begin
   Result := TMcpCompilerFixesAdapter.Create(TEditingComposition.CompilerFixes);
+end;
+
+class function TMcpComposition.BoundaryCases: IMcpBoundaryCases;
+begin
+  Result := TMcpBoundaryCasesAdapter.Create(TEditingComposition.BoundaryCases);
 end;
 
 class function TMcpComposition.BulkFix(const AProject: TCheckProjectFunc;

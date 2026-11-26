@@ -14,6 +14,8 @@ type
   public
     [Test]
     procedure PassesLinesAndOutcome;
+    [Test]
+    procedure PassesStyleRequest;
   end;
 
 implementation
@@ -30,7 +32,10 @@ type
   TFakeFormatting = class(TInterfacedObject, IEditingFormatting)
   public
     Request: TEditingFormatRequest;
+    StyleFile: string;
+    StyleConfigured: TFormatStyle;
     function Check(const ARequest: TEditingFormatRequest): TEditingFormatResult;
+    function StyleOf(const AFileName: string; const AConfigured: TFormatStyle): TFormatStyle;
   end;
 
 function TFakeFormatting.Check(const ARequest: TEditingFormatRequest): TEditingFormatResult;
@@ -46,6 +51,14 @@ begin
   Result.SyntaxErrorLine := 7;
   Result.SyntaxErrorMessage := 'Fehler';
   Result.Stable := True;
+end;
+
+function TFakeFormatting.StyleOf(const AFileName: string; const AConfigured: TFormatStyle): TFormatStyle;
+begin
+  StyleFile := AFileName;
+  StyleConfigured := AConfigured;
+  Result := TFormatStyle.Default;
+  Result.IndentSize := 5;
 end;
 
 { TMcpFormattingAdapterTests }
@@ -78,6 +91,25 @@ begin
   Assert.IsTrue(mOutcome.Stable);
   mAdapter.Format('alt', TFormatStyle.Default, TMcpFormatLines.All, TPascalSource.Default);
   Assert.IsTrue(mFake.Request.WholeFile);
+end;
+
+procedure TMcpFormattingAdapterTests.PassesStyleRequest;
+var
+  mFake: TFakeFormatting;
+  mEditing: IEditingFormatting;
+  mAdapter: IMcpFormatting;
+  mConfigured: TFormatStyle;
+begin
+  mFake := TFakeFormatting.Create;
+  mEditing := mFake;
+  mAdapter := TMcpFormattingAdapter.Create(mEditing);
+  mConfigured := TFormatStyle.Default;
+  mConfigured.IndentSize := 7;
+  mConfigured.Given := [TFormatKey.IndentSize];
+  Assert.AreEqual(5, mAdapter.StyleOf('C:\U.pas', mConfigured).IndentSize);
+  Assert.AreEqual('C:\U.pas', mFake.StyleFile);
+  Assert.AreEqual(7, mFake.StyleConfigured.IndentSize);
+  Assert.IsTrue(TFormatKey.IndentSize in mFake.StyleConfigured.Given);
 end;
 
 initialization
