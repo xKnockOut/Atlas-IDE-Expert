@@ -13,6 +13,10 @@
 //   FirstIn über den ganzen Abzug (#1989). Vorher zählte ein Hänger ohne
 //   Atlas-Rahmen unter den obersten 24 als „ohne Atlas“, etwa wenn Atlas eine
 //   lange Arbeit der IDE aufrief und deren Stapel tiefer war.
+//   Der Abzug ist roh: Neben Rücksprungadressen liegen dort Zeiger auf Daten
+//   (Klassen, Konstanten, Modul-Handles). Zählen dürfen nur Adressen im Code
+//   eines Moduls (CodeStart/CodeSize); sonst hieß „Atlas im Aufrufstapel“ oft
+//   nur, dass ein Zeiger in die Daten von Atlas auf dem Stapel lag.
 
 interface
 
@@ -59,18 +63,25 @@ type
     Name: string;
     Base: UInt64;
     Size: UInt64;
+    /// <summary>Ausführbarer Teil ab Base (Abschnitte mit Code); CodeSize 0 = ganzes Abbild.</summary>
+    CodeStart: UInt64;
+    CodeSize: UInt64;
+    /// <summary>Liegt AAddress im Abbild (für Modul+Offset)?</summary>
+    function Holds(AAddress: UInt64): Boolean;
+    /// <summary>Liegt AAddress im Code des Moduls? Nur solche Adressen können Rücksprungadressen sein.</summary>
+    function HoldsCode(AAddress: UInt64): Boolean;
   end;
 
   TAtlasStackScan = class
   public
-    /// <summary>Adressen, die in einem Modul liegen, als "Modul+Offset" (hex); höchstens AMax,
+    /// <summary>Adressen, die im Code eines Moduls liegen, als "Modul+Offset" (hex); höchstens AMax,
     /// gleiche Einträge direkt hintereinander nur einmal.</summary>
     class function Frames(const AAddresses: TArray<UInt64>; const AModules: TArray<TAtlasModuleRange>;
       AMax: Integer): TArray<string>; overload; static;
     /// <summary>Wie oben mit AMax = 24.</summary>
     class function Frames(const AAddresses: TArray<UInt64>;
       const AModules: TArray<TAtlasModuleRange>): TArray<string>; overload; static;
-    /// <summary>Erste Adresse (von oben) in einem Modul, dessen Name mit APrefix beginnt, als "Modul+Offset";
+    /// <summary>Erste Adresse (von oben) im Code eines Moduls, dessen Name mit APrefix beginnt, als "Modul+Offset";
     /// '' ohne. Durchsucht alle Adressen.</summary>
     class function FirstIn(const AAddresses: TArray<UInt64>; const AModules: TArray<TAtlasModuleRange>;
       const APrefix: string): string; static;
@@ -248,6 +259,25 @@ begin
   HangTest(cHangTestMs);
 end;
 
+{ TAtlasModuleRange }
+
+function TAtlasModuleRange.Holds(AAddress: UInt64): Boolean;
+begin
+  Result := (AAddress >= Base) and (AAddress < Base + Size);
+end;
+
+function TAtlasModuleRange.HoldsCode(AAddress: UInt64): Boolean;
+begin
+  if CodeSize = 0 then
+  begin
+    Result := Holds(AAddress);
+  end
+  else
+  begin
+    Result := (AAddress >= Base + CodeStart) and (AAddress < Base + CodeStart + CodeSize);
+  end;
+end;
+
 { TAtlasStackScan }
 
 class function TAtlasStackScan.Frames(const AAddresses: TArray<UInt64>; const AModules: TArray<TAtlasModuleRange>;
@@ -266,8 +296,13 @@ begin
     end;
     for mModule in AModules do
     begin
-      if (mAddress >= mModule.Base) and (mAddress < mModule.Base + mModule.Size) then
+      if mModule.Holds(mAddress) then
       begin
+        // Zeiger in die Daten eines Moduls sind keine Rahmen.
+        if not mModule.HoldsCode(mAddress) then
+        begin
+          Break;
+        end;
         mFrame := Format('%s+%x', [mModule.Name, mAddress - mModule.Base]);
         if (Length(Result) = 0) or (Result[High(Result)] <> mFrame) then
         begin
@@ -312,7 +347,7 @@ begin
   begin
     for mModule in mCandidates do
     begin
-      if (mAddress >= mModule.Base) and (mAddress < mModule.Base + mModule.Size) then
+      if mModule.HoldsCode(mAddress) then
       begin
         Exit(Format('%s+%x', [mModule.Name, mAddress - mModule.Base]));
       end;

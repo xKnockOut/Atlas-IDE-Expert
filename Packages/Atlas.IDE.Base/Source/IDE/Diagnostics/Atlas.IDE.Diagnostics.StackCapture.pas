@@ -14,6 +14,9 @@
 //   (Objekt der Ausnahme bzw. Fehleradresse aus ExceptAddr) und beschreibt
 //   ihn als "Modul+$Offset"; Rahmen im Atlas-Modul bekommen mit der
 //   Map-Datei neben der BPL (DCC_MapFile=3) Unit, Routine und Zeile.
+// - Symbolize löst auch Rahmen der Module (Atlas…bpl) über deren Map-Datei auf,
+//   geladen beim ersten Rahmen des Moduls; sonst blieben Hänger in Modulen
+//   (Willkommensseite, Prüfregeln) bloße Offsets.
 // - Uninstall vor dem Entladen meldet den Behandler wieder ab.
 // Nur im Hauptthread installieren und abbauen; der Behandler läuft in jedem Thread.
 
@@ -35,7 +38,7 @@ type
     /// <summary>Hängt an Rahmen "Atlas…bpl+Offset" (z. B. aus dem Einfrier-Wächter) Unit, Routine und Zeile an.
     /// </summary>
     class function Symbolize(const AFrames: TArray<string>): TArray<string>; static;
-    /// <summary>Module des Prozesses mit Basis und Größe.</summary>
+    /// <summary>Module des Prozesses mit Basis, Größe und dem ausführbaren Teil (Abschnitte mit Code).</summary>
     class function Modules: TArray<TAtlasModuleRange>; static;
   end;
 
@@ -47,6 +50,7 @@ uses
   Winapi.PsAPI,
   System.IOUtils,
   System.SyncObjs,
+  System.Generics.Collections,
   Atlas.Text.MapFile,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.StackRing,
@@ -98,6 +102,8 @@ var
   MapLock: TCriticalSection;
   MapLoaded: Boolean;
   Map: TMapFile;
+  // Map-Dateien der Module nach Dateiname des Moduls (klein); nil = keine lesbar. Unter MapLock.
+  ModuleMaps: TObjectDictionary<string, TMapFile>;
 
 /// <summary>Bereich eines geladenen Moduls aus seinem PE-Kopf.</summary>
 procedure ModuleRange(AModule: HMODULE; out ABase, AEnd: NativeUInt);
@@ -252,6 +258,45 @@ begin
   end;
 end;
 
+/// <summary>Map-Datei des geladenen Moduls AModule (Dateiname wie im Rahmen); nil ohne. Einmal je Modul gelesen.
+/// </summary>
+function ModuleMap(const AModule: string): TMapFile;
+var
+  mKey: string;
+  mHandle: HMODULE;
+begin
+  mKey := LowerCase(AModule);
+  MapLock.Enter;
+  try
+    if ModuleMaps.TryGetValue(mKey, Result) then
+    begin
+      Exit;
+    end;
+    Result := nil;
+    mHandle := GetModuleHandle(PChar(AModule));
+    if mHandle <> 0 then
+    begin
+      Result := LoadMapFile(MapCandidates(GetModuleName(mHandle)));
+    end;
+    ModuleMaps.Add(mKey, Result);
+  finally
+    MapLock.Leave;
+  end;
+end;
+
+/// <summary>Modul eines Rahmens "Modul+Offset"; '' ohne „+“.</summary>
+function FrameModule(const AFrame: string): string;
+var
+  mPlus: Integer;
+begin
+  mPlus := Pos('+', AFrame);
+  Result := '';
+  if mPlus > 1 then
+  begin
+    Result := Copy(AFrame, 1, mPlus - 1);
+  end;
+end;
+
 { TAtlasIdeStackCapture }
 
 class procedure TAtlasIdeStackCapture.Install;
@@ -318,20 +363,77 @@ class function TAtlasIdeStackCapture.Symbolize(const AFrames: TArray<string>): T
 var
   mIndex: Integer;
   mLoaded: TMapFile;
+  mModule: string;
 begin
   Result := Copy(AFrames);
-  mLoaded := LoadedMap;
-  if mLoaded = nil then
-  begin
-    Exit;
-  end;
   if OwnName = '' then
   begin
     OwnName := ExtractFileName(GetModuleName(HInstance));
   end;
   for mIndex := 0 to High(Result) do
   begin
-    Result[mIndex] := TAtlasStackFrames.Symbolize(Result[mIndex], mLoaded, OwnName);
+    mModule := FrameModule(Result[mIndex]);
+    if SameText(mModule, OwnName) then
+    begin
+      mLoaded := LoadedMap;
+    end
+    else if mModule.StartsWith('Atlas', True) then
+    begin
+      mLoaded := ModuleMap(mModule);
+    end
+    else
+    begin
+      Continue;
+    end;
+    Result[mIndex] := TAtlasStackFrames.Symbolize(Result[mIndex], mLoaded, mModule);
+  end;
+end;
+
+/// <summary>Ausführbarer Teil des geladenen Moduls ab ABase aus seinen Abschnitten (IMAGE_SCN_MEM_EXECUTE), als
+/// Abstand zu ABase und Länge; ohne lesbaren PE-Kopf 0 und 0 (dann zählt das ganze Abbild).</summary>
+procedure CodeRange(ABase: NativeUInt; ASize: UInt64; out AStart, ALength: UInt64);
+var
+  mDos: PImageDosHeader;
+  mNt: PImageNtHeaders;
+  mSection: PImageSectionHeader;
+  mIndex: Integer;
+  mFirst, mLast: UInt64;
+begin
+  AStart := 0;
+  ALength := 0;
+  mDos := PImageDosHeader(ABase);
+  if (mDos.e_magic <> IMAGE_DOS_SIGNATURE) or (mDos._lfanew <= 0) or (UInt64(mDos._lfanew) >= ASize) then
+  begin
+    Exit;
+  end;
+  mNt := PImageNtHeaders(ABase + NativeUInt(mDos._lfanew));
+  if mNt.Signature <> IMAGE_NT_SIGNATURE then
+  begin
+    Exit;
+  end;
+  // Die Abschnitte folgen dem optionalen Kopf (IMAGE_FIRST_SECTION).
+  mSection := PImageSectionHeader(NativeUInt(@mNt.OptionalHeader) + mNt.FileHeader.SizeOfOptionalHeader);
+  mFirst := High(UInt64);
+  mLast := 0;
+  for mIndex := 1 to mNt.FileHeader.NumberOfSections do
+  begin
+    if (mSection.Characteristics and IMAGE_SCN_MEM_EXECUTE) <> 0 then
+    begin
+      if mSection.VirtualAddress < mFirst then
+      begin
+        mFirst := mSection.VirtualAddress;
+      end;
+      if UInt64(mSection.VirtualAddress) + mSection.Misc.VirtualSize > mLast then
+      begin
+        mLast := UInt64(mSection.VirtualAddress) + mSection.Misc.VirtualSize;
+      end;
+    end;
+    Inc(mSection);
+  end;
+  if (mLast > mFirst) and (mLast <= ASize) then
+  begin
+    AStart := mFirst;
+    ALength := mLast - mFirst;
   end;
 end;
 
@@ -355,9 +457,12 @@ begin
       SizeOf(mInfo)) and
       (GetModuleFileName(mHandles[mIndex], mName, Length(mName)) > 0) then
     begin
+      mRange := Default(TAtlasModuleRange);
       mRange.Name := ExtractFileName(mName);
       mRange.Base := NativeUInt(mInfo.lpBaseOfDll);
       mRange.Size := mInfo.SizeOfImage;
+      // Nur Code zählt als Rahmen: Der Einfrier-Wächter liest den Stapel roh, mit Zeigern auf Daten.
+      CodeRange(NativeUInt(mInfo.lpBaseOfDll), mInfo.SizeOfImage, mRange.CodeStart, mRange.CodeSize);
       Result := Result + [mRange];
     end;
   end;
@@ -365,11 +470,13 @@ end;
 
 initialization
   MapLock := TCriticalSection.Create;
+  ModuleMaps := TObjectDictionary<string, TMapFile>.Create([doOwnsValues], 16);
 
 finalization
   TAtlasIdeStackCapture.Uninstall;
   FreeAndNil(Ring);
   FreeAndNil(Map);
+  FreeAndNil(ModuleMaps);
   FreeAndNil(MapLock);
 
 end.
