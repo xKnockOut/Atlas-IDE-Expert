@@ -33,24 +33,43 @@ type
   /// <summary>Datensatz ARecNo (ab 1) und Feld AField (ab 0).</summary>
   TAtlasDataSetCellProc = reference to procedure(ARecNo: Int64; AField: Integer);
 
+  /// <summary>Steuerelemente des Fensters.</summary>
+  TAtlasDataSetFormParts = record
+    Header: TLabel;
+    ConsentNote: TLabel;
+    ConsentRow: TFlowPanel;
+    ConsentButton: TButton;
+    CurrentButton: TButton;
+    Hint: TLabel;
+    List: TAtlasListView;
+    Bar: TFlowPanel;
+    Status: TLabel;
+    LoadMoreButton: TButton;
+    GoToButton: TButton;
+    EditButton: TButton;
+    CopyCsvButton: TButton;
+    CopyJsonButton: TButton;
+    RefreshButton: TButton;
+    CancelButton: TButton;
+  end;
+
+  /// <summary>Was die Knöpfe auslösen; nil: nichts.</summary>
+  TAtlasDataSetFormEvents = record
+    OnLoadMore: TProc;
+    OnGoTo: TProc<Int64>;
+    OnEdit: TAtlasDataSetCellProc;
+    /// <summary>True: Cursor bewegen und lesen; False: nur aktueller Datensatz.</summary>
+    OnConsent: TProc<Boolean>;
+    OnRefresh: TProc;
+    OnCancel: TProc;
+    /// <summary>Das Fenster schließt und gibt sich frei.</summary>
+    OnClosed: TProc;
+  end;
+
   TAtlasDebugDataSetForm = class(TAtlasDialog)
   private
-    FHeader: TLabel;
-    FConsentRow: TFlowPanel;
-    FConsentNote: TLabel;
-    FConsentButton: TButton;
-    FCurrentButton: TButton;
-    FHint: TLabel;
-    FList: TAtlasListView;
-    FBar: TFlowPanel;
-    FStatus: TLabel;
-    FLoadMoreButton: TButton;
-    FGoToButton: TButton;
-    FEditButton: TButton;
-    FCopyCsvButton: TButton;
-    FCopyJsonButton: TButton;
-    FRefreshButton: TButton;
-    FCancelButton: TButton;
+    FParts: TAtlasDataSetFormParts;
+    FEvents: TAtlasDataSetFormEvents;
     FNames: TArray<string>;
     FRows: TArray<TAtlasDataSetRow>;
     FCurrentRecNo: Int64;
@@ -58,13 +77,6 @@ type
     FReading: Boolean;
     FCanLoadMore: Boolean;
     FCanMove: Boolean;
-    FOnLoadMore: TProc;
-    FOnGoTo: TProc<Int64>;
-    FOnEdit: TAtlasDataSetCellProc;
-    FOnConsent: TProc<Boolean>;
-    FOnRefresh: TProc;
-    FOnCancel: TProc;
-    FOnClosed: TNotifyEvent;
     procedure BuildTop;
     procedure BuildBottom;
     procedure ListData(Sender: TObject; AItem: TListItem);
@@ -72,14 +84,17 @@ type
     procedure ListKeyDown(Sender: TObject; var AKey: Word; AShift: TShiftState);
     procedure ListSelect(Sender: TObject; AItem: TListItem; ASelected: Boolean);
     procedure ButtonClick(Sender: TObject);
+    /// <summary>„Zum Datensatz springen“ und „Wert ändern …“ für den markierten Datensatz.</summary>
+    procedure RecordClick(Sender: TObject);
     procedure ConsentClick(Sender: TObject);
     procedure FormClosed(Sender: TObject; var AAction: TCloseAction);
-    procedure CopyText(const AText: string);
     procedure SetConsentVisible(AVisible: Boolean);
     function SelectedRecNo: Int64;
     function RowText(AIndex: Integer): string;
   public
     constructor CreateTable(AOwner: TComponent);
+    /// <summary>Ereignisse der Knöpfe setzen; Default(TAtlasDataSetFormEvents) löst alle.</summary>
+    procedure Connect(const AEvents: TAtlasDataSetFormEvents);
     /// <summary>Titel und Kopfzeile.</summary>
     procedure ShowHeader(const AExpression, AHeader: string);
     /// <summary>Spalten neu (leert die Zeilen).</summary>
@@ -102,25 +117,9 @@ type
     function SelectedText: string;
     property Names: TArray<string> read FNames;
     property Rows: TArray<TAtlasDataSetRow> read FRows;
-    property List: TAtlasListView read FList;
-    property HeaderLabel: TLabel read FHeader;
-    property StatusLabel: TLabel read FStatus;
-    property ConsentRow: TFlowPanel read FConsentRow;
-    property HintLabel: TLabel read FHint;
-    property LoadMoreButton: TButton read FLoadMoreButton;
-    property GoToButton: TButton read FGoToButton;
-    property EditButton: TButton read FEditButton;
-    property CancelButton: TButton read FCancelButton;
+    property Parts: TAtlasDataSetFormParts read FParts;
     /// <summary>Zuletzt angeklicktes Feld (ab 0); -1 ohne.</summary>
     property ClickedField: Integer read FClickedField write FClickedField;
-    property OnLoadMore: TProc read FOnLoadMore write FOnLoadMore;
-    property OnGoTo: TProc<Int64> read FOnGoTo write FOnGoTo;
-    property OnEdit: TAtlasDataSetCellProc read FOnEdit write FOnEdit;
-    /// <summary>True: Cursor bewegen und lesen; False: nur aktueller Datensatz.</summary>
-    property OnConsent: TProc<Boolean> read FOnConsent write FOnConsent;
-    property OnRefresh: TProc read FOnRefresh write FOnRefresh;
-    property OnCancel: TProc read FOnCancel write FOnCancel;
-    property OnClosed: TNotifyEvent read FOnClosed write FOnClosed;
   end;
 
 implementation
@@ -133,6 +132,7 @@ uses
   Vcl.Graphics,
   Vcl.Clipbrd,
   Atlas.Core.Settings.Plugin.Debug,
+  Atlas.Plugin.Calls.Optional,
   Atlas.Vcl.Controls.WrapLabel,
   Atlas.UI.Debug.DataSetTable.Strings;
 
@@ -147,6 +147,14 @@ const
   cFillMinWidth = 100;
   cCurrentMark = '▶ ';
 
+procedure CopyText(const AText: string);
+begin
+  if AText <> '' then
+  begin
+    Clipboard.AsText := AText;
+  end;
+end;
+
 { TAtlasDebugDataSetForm }
 
 constructor TAtlasDebugDataSetForm.CreateTable(AOwner: TComponent);
@@ -160,103 +168,103 @@ begin
   FClickedField := -1;
   BuildBottom;
   BuildTop;
-  FList := TAtlasListView.Create(Self);
-  FList.Parent := Self;
-  FList.Align := alClient;
-  FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cGap), 0);
-  FList.OwnerData := True;
-  FList.ReadOnly := True;
-  FList.RowSelect := True;
-  FList.MultiSelect := True;
-  FList.HideSelection := False;
-  FList.OnData := ListData;
-  FList.OnMouseDown := ListMouseDown;
-  FList.OnKeyDown := ListKeyDown;
-  FList.OnSelectItem := ListSelect;
+  FParts.List := TAtlasListView.Create(Self);
+  FParts.List.Parent := Self;
+  FParts.List.Align := alClient;
+  FParts.List.AlignWithMargins := True;
+  FParts.List.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cGap), 0);
+  FParts.List.OwnerData := True;
+  FParts.List.ReadOnly := True;
+  FParts.List.RowSelect := True;
+  FParts.List.MultiSelect := True;
+  FParts.List.HideSelection := False;
+  FParts.List.OnData := ListData;
+  FParts.List.OnMouseDown := ListMouseDown;
+  FParts.List.OnKeyDown := ListKeyDown;
+  FParts.List.OnSelectItem := ListSelect;
   SetReading(False);
 end;
 
 procedure TAtlasDebugDataSetForm.BuildTop;
 begin
-  FHeader := TAtlasWrapLabel.Create(Self);
-  FHeader.Parent := Self;
-  FHeader.Align := alTop;
-  FHeader.AlignWithMargins := True;
-  FHeader.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cGap), 0);
-  FHeader.ShowAccelChar := False;
-  FHeader.Font.Style := [fsBold];
+  FParts.Header := TAtlasWrapLabel.Create(Self);
+  FParts.Header.Parent := Self;
+  FParts.Header.Align := alTop;
+  FParts.Header.AlignWithMargins := True;
+  FParts.Header.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cGap), 0);
+  FParts.Header.ShowAccelChar := False;
+  FParts.Header.Font.Style := [fsBold];
 
   // Hinweis über den Knöpfen; bricht mit der Fensterbreite um.
-  FConsentNote := TAtlasWrapLabel.Create(Self);
-  FConsentNote.Top := FHeader.Top + FHeader.Height + 1;
-  FConsentNote.Parent := Self;
-  FConsentNote.Align := alTop;
-  FConsentNote.AlignWithMargins := True;
-  FConsentNote.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cGap), 0);
-  FConsentNote.ShowAccelChar := False;
-  FConsentRow := NewFlowRow(cGap);
-  FConsentRow.Top := FConsentNote.Top + FConsentNote.Height + 1;
-  FConsentButton := NewTextButton(FConsentRow, '', cButtonPadding, cGap);
-  FConsentButton.OnClick := ConsentClick;
-  FCurrentButton := NewTextButton(FConsentRow,
+  FParts.ConsentNote := TAtlasWrapLabel.Create(Self);
+  FParts.ConsentNote.Top := FParts.Header.Top + FParts.Header.Height + 1;
+  FParts.ConsentNote.Parent := Self;
+  FParts.ConsentNote.Align := alTop;
+  FParts.ConsentNote.AlignWithMargins := True;
+  FParts.ConsentNote.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cGap), 0);
+  FParts.ConsentNote.ShowAccelChar := False;
+  FParts.ConsentRow := NewFlowRow(cGap);
+  FParts.ConsentRow.Top := FParts.ConsentNote.Top + FParts.ConsentNote.Height + 1;
+  FParts.ConsentButton := NewTextButton(FParts.ConsentRow, '', cButtonPadding, cGap);
+  FParts.ConsentButton.OnClick := ConsentClick;
+  FParts.CurrentButton := NewTextButton(FParts.ConsentRow,
     TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.ConsentCurrentOnly), cButtonPadding, cGap);
-  FCurrentButton.OnClick := ConsentClick;
+  FParts.CurrentButton.OnClick := ConsentClick;
   SetConsentVisible(False);
 
-  FHint := TAtlasWrapLabel.Create(Self);
-  FHint.Top := FConsentRow.Top + FConsentRow.Height + 1;
-  FHint.Parent := Self;
-  FHint.Align := alTop;
-  FHint.AlignWithMargins := True;
-  FHint.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap div 2), ScaleValue(cGap), 0);
-  FHint.ShowAccelChar := False;
-  FHint.Caption := TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.HelperHint);
-  FHint.Visible := False;
+  FParts.Hint := TAtlasWrapLabel.Create(Self);
+  FParts.Hint.Top := FParts.ConsentRow.Top + FParts.ConsentRow.Height + 1;
+  FParts.Hint.Parent := Self;
+  FParts.Hint.Align := alTop;
+  FParts.Hint.AlignWithMargins := True;
+  FParts.Hint.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap div 2), ScaleValue(cGap), 0);
+  FParts.Hint.ShowAccelChar := False;
+  FParts.Hint.Caption := TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.HelperHint);
+  FParts.Hint.Visible := False;
 end;
 
 /// <summary>Unten der Stand, darüber die Knöpfe (fließend: Bei schmalem Fenster brechen sie um).</summary>
 procedure TAtlasDebugDataSetForm.BuildBottom;
 begin
-  FStatus := TAtlasWrapLabel.Create(Self);
-  FStatus.Parent := Self;
-  FStatus.Align := alBottom;
-  FStatus.AlignWithMargins := True;
-  FStatus.Margins.SetBounds(ScaleValue(cGap), 0, ScaleValue(cGap), ScaleValue(cGap));
-  FStatus.ShowAccelChar := False;
+  FParts.Status := TAtlasWrapLabel.Create(Self);
+  FParts.Status.Parent := Self;
+  FParts.Status.Align := alBottom;
+  FParts.Status.AlignWithMargins := True;
+  FParts.Status.Margins.SetBounds(ScaleValue(cGap), 0, ScaleValue(cGap), ScaleValue(cGap));
+  FParts.Status.ShowAccelChar := False;
 
-  FBar := TFlowPanel.Create(Self);
-  FBar.Top := FStatus.Top - 1;
-  FBar.Parent := Self;
-  FBar.Align := alBottom;
-  FBar.AlignWithMargins := True;
-  FBar.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cGap), 0);
-  FBar.BevelOuter := bvNone;
-  FBar.ShowCaption := False;
-  FBar.ParentBackground := True;
-  FBar.AutoWrap := True;
-  FBar.AutoSize := True;
-  FLoadMoreButton := NewTextButton(FBar, TAtlasDataSetTableStrings.Fmt(TAtlasDataSetTableTextId.LoadMore,
+  FParts.Bar := TFlowPanel.Create(Self);
+  FParts.Bar.Top := FParts.Status.Top - 1;
+  FParts.Bar.Parent := Self;
+  FParts.Bar.Align := alBottom;
+  FParts.Bar.AlignWithMargins := True;
+  FParts.Bar.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cGap), 0);
+  FParts.Bar.BevelOuter := bvNone;
+  FParts.Bar.ShowCaption := False;
+  FParts.Bar.ParentBackground := True;
+  FParts.Bar.AutoWrap := True;
+  FParts.Bar.AutoSize := True;
+  FParts.LoadMoreButton := NewTextButton(FParts.Bar, TAtlasDataSetTableStrings.Fmt(TAtlasDataSetTableTextId.LoadMore,
     [cDefaultDataSetTablePageSize]), cButtonPadding, cGap);
-  FGoToButton := NewTextButton(FBar, TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.GoToRecord),
+  FParts.GoToButton := NewTextButton(FParts.Bar, TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.GoToRecord),
     cButtonPadding, cGap);
-  FEditButton := NewTextButton(FBar, TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.EditValue),
+  FParts.EditButton := NewTextButton(FParts.Bar, TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.EditValue),
     cButtonPadding, cGap);
-  FCopyCsvButton := NewTextButton(FBar, TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.CopyCsv),
+  FParts.CopyCsvButton := NewTextButton(FParts.Bar, TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.CopyCsv),
     cButtonPadding, cGap);
-  FCopyJsonButton := NewTextButton(FBar, TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.CopyJson),
+  FParts.CopyJsonButton := NewTextButton(FParts.Bar, TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.CopyJson),
     cButtonPadding, cGap);
-  FRefreshButton := NewTextButton(FBar, TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.Refresh),
+  FParts.RefreshButton := NewTextButton(FParts.Bar, TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.Refresh),
     cButtonPadding, cGap);
-  FCancelButton := NewTextButton(FBar, TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.Cancel),
+  FParts.CancelButton := NewTextButton(FParts.Bar, TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.Cancel),
     cButtonPadding, cGap);
-  FLoadMoreButton.OnClick := ButtonClick;
-  FGoToButton.OnClick := ButtonClick;
-  FEditButton.OnClick := ButtonClick;
-  FCopyCsvButton.OnClick := ButtonClick;
-  FCopyJsonButton.OnClick := ButtonClick;
-  FRefreshButton.OnClick := ButtonClick;
-  FCancelButton.OnClick := ButtonClick;
+  FParts.LoadMoreButton.OnClick := ButtonClick;
+  FParts.GoToButton.OnClick := RecordClick;
+  FParts.EditButton.OnClick := RecordClick;
+  FParts.CopyCsvButton.OnClick := ButtonClick;
+  FParts.CopyJsonButton.OnClick := ButtonClick;
+  FParts.RefreshButton.OnClick := ButtonClick;
+  FParts.CancelButton.OnClick := ButtonClick;
 end;
 
 procedure TAtlasDebugDataSetForm.ListData(Sender: TObject; AItem: TListItem);
@@ -297,7 +305,7 @@ var
 begin
   FillChar(mHit, SizeOf(mHit), 0);
   mHit.pt := System.Types.Point(AX, AY);
-  if ListView_SubItemHitTest(FList.Handle, @mHit) >= 0 then
+  if ListView_SubItemHitTest(FParts.List.Handle, @mHit) >= 0 then
   begin
     // Spalte 0 ist die Nummer des Datensatzes.
     FClickedField := mHit.iSubItem - 1;
@@ -326,74 +334,76 @@ end;
 
 procedure TAtlasDebugDataSetForm.ButtonClick(Sender: TObject);
 begin
-  if (Sender = FLoadMoreButton) and Assigned(FOnLoadMore) then
+  if Sender = FParts.LoadMoreButton then
   begin
-    FOnLoadMore();
+    TAtlasCalls.Call(FEvents.OnLoadMore);
   end
-  else if (Sender = FGoToButton) and Assigned(FOnGoTo) and (SelectedRecNo > 0) then
-  begin
-    FOnGoTo(SelectedRecNo);
-  end
-  else if (Sender = FEditButton) and Assigned(FOnEdit) and (SelectedRecNo > 0) and (FClickedField >= 0) then
-  begin
-    FOnEdit(SelectedRecNo, FClickedField);
-  end
-  else if Sender = FCopyCsvButton then
+  else if Sender = FParts.CopyCsvButton then
   begin
     CopyText(TAtlasDataSetTable.ToCsv(FNames, FRows));
   end
-  else if Sender = FCopyJsonButton then
+  else if Sender = FParts.CopyJsonButton then
   begin
     CopyText(TAtlasDataSetTable.ToJson(FNames, FRows));
   end
-  else if (Sender = FRefreshButton) and Assigned(FOnRefresh) then
+  else if Sender = FParts.RefreshButton then
   begin
-    FOnRefresh();
+    TAtlasCalls.Call(FEvents.OnRefresh);
   end
-  else if (Sender = FCancelButton) and Assigned(FOnCancel) then
+  else if Sender = FParts.CancelButton then
   begin
-    FOnCancel();
+    TAtlasCalls.Call(FEvents.OnCancel);
+  end;
+end;
+
+procedure TAtlasDebugDataSetForm.RecordClick(Sender: TObject);
+begin
+  if SelectedRecNo <= 0 then
+  begin
+    Exit;
+  end;
+  if (Sender = FParts.GoToButton) and Assigned(FEvents.OnGoTo) then
+  begin
+    FEvents.OnGoTo(SelectedRecNo);
+  end
+  else if (Sender = FParts.EditButton) and Assigned(FEvents.OnEdit) and (FClickedField >= 0) then
+  begin
+    FEvents.OnEdit(SelectedRecNo, FClickedField);
   end;
 end;
 
 procedure TAtlasDebugDataSetForm.SetConsentVisible(AVisible: Boolean);
 begin
-  FConsentNote.Visible := AVisible;
-  FConsentRow.Visible := AVisible;
+  FParts.ConsentNote.Visible := AVisible;
+  FParts.ConsentRow.Visible := AVisible;
 end;
 
 procedure TAtlasDebugDataSetForm.ConsentClick(Sender: TObject);
 begin
   SetConsentVisible(False);
-  if Assigned(FOnConsent) then
+  if Assigned(FEvents.OnConsent) then
   begin
-    FOnConsent(Sender = FConsentButton);
+    FEvents.OnConsent(Sender = FParts.ConsentButton);
   end;
 end;
 
 procedure TAtlasDebugDataSetForm.FormClosed(Sender: TObject; var AAction: TCloseAction);
 begin
   AAction := caFree;
-  if Assigned(FOnClosed) then
-  begin
-    FOnClosed(Self);
-  end;
+  TAtlasCalls.Call(FEvents.OnClosed);
 end;
 
-procedure TAtlasDebugDataSetForm.CopyText(const AText: string);
+procedure TAtlasDebugDataSetForm.Connect(const AEvents: TAtlasDataSetFormEvents);
 begin
-  if AText <> '' then
-  begin
-    Clipboard.AsText := AText;
-  end;
+  FEvents := AEvents;
 end;
 
 function TAtlasDebugDataSetForm.SelectedRecNo: Int64;
 begin
   Result := 0;
-  if (FList.Selected <> nil) and (FList.Selected.Index < Length(FRows)) then
+  if (FParts.List.Selected <> nil) and (FParts.List.Selected.Index < Length(FRows)) then
   begin
-    Result := FRows[FList.Selected.Index].RecNo;
+    Result := FRows[FParts.List.Selected.Index].RecNo;
   end;
 end;
 
@@ -413,11 +423,11 @@ var
 begin
   mLines := TStringList.Create;
   try
-    mItem := FList.Selected;
+    mItem := FParts.List.Selected;
     while mItem <> nil do
     begin
       mLines.Add(RowText(mItem.Index));
-      mItem := FList.GetNextItem(mItem, sdAll, [isSelected]);
+      mItem := FParts.List.GetNextItem(mItem, sdAll, [isSelected]);
     end;
     Result := TrimRight(mLines.Text);
   finally
@@ -428,8 +438,8 @@ end;
 procedure TAtlasDebugDataSetForm.ShowHeader(const AExpression, AHeader: string);
 begin
   Caption := TAtlasDataSetTableStrings.Fmt(TAtlasDataSetTableTextId.Title, [AExpression]);
-  FHeader.Caption := AHeader;
-  FHeader.Enabled := True;
+  FParts.Header.Caption := AHeader;
+  FParts.Header.Enabled := True;
 end;
 
 procedure TAtlasDebugDataSetForm.SetColumns(const ANames: TArray<string>);
@@ -439,20 +449,20 @@ begin
   FNames := Copy(ANames);
   FRows := nil;
   FClickedField := -1;
-  FList.Items.BeginUpdate;
+  FParts.List.Items.BeginUpdate;
   try
-    FList.Items.Count := 0;
-    FList.Columns.Clear;
-    FList.AddColumn(TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.ColumnRecord), cRecNoWidth,
+    FParts.List.Items.Count := 0;
+    FParts.List.Columns.Clear;
+    FParts.List.AddColumn(TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.ColumnRecord), cRecNoWidth,
       taRightJustify);
     for mName in FNames do
     begin
-      FList.AddColumn(mName, cFieldWidth);
+      FParts.List.AddColumn(mName, cFieldWidth);
     end;
-    FList.FillColumn(FList.Columns.Count - 1, cFillMinWidth);
-    FList.ShowColumnHeaders := True;
+    FParts.List.FillColumn(FParts.List.Columns.Count - 1, cFillMinWidth);
+    FParts.List.ShowColumnHeaders := True;
   finally
-    FList.Items.EndUpdate;
+    FParts.List.Items.EndUpdate;
   end;
 end;
 
@@ -463,11 +473,11 @@ begin
   FCurrentRecNo := ACurrentRecNo;
   FCanLoadMore := ACanLoadMore;
   FCanMove := ACanMove;
-  FList.Enabled := True;
-  if FList.HandleAllocated then
+  FParts.List.Enabled := True;
+  if FParts.List.HandleAllocated then
   begin
-    FList.Items.Count := Length(FRows);
-    FList.Invalidate;
+    FParts.List.Items.Count := Length(FRows);
+    FParts.List.Invalidate;
   end;
   SetReading(FReading);
 end;
@@ -479,25 +489,27 @@ begin
   begin
     Exit;
   end;
-  FConsentNote.Caption := ANote;
-  FConsentButton.Caption := TAtlasDataSetTableStrings.Fmt(TAtlasDataSetTableTextId.ConsentRead, [APageSize]);
-  FConsentButton.Width := TextWidth(FConsentButton.Font, FConsentButton.Caption) + ScaleValue(cButtonPadding);
+  FParts.ConsentNote.Caption := ANote;
+  FParts.ConsentButton.Caption := TAtlasDataSetTableStrings.Fmt(TAtlasDataSetTableTextId.ConsentRead, [APageSize]);
+  FParts.ConsentButton.Width := TextWidth(FParts.ConsentButton.Font, FParts.ConsentButton.Caption) +
+    ScaleValue(cButtonPadding);
 end;
 
 procedure TAtlasDebugDataSetForm.ShowHint(AVisible: Boolean);
 begin
-  FHint.Visible := AVisible;
+  FParts.Hint.Visible := AVisible;
 end;
 
 procedure TAtlasDebugDataSetForm.SetStatus(const AText: string);
 begin
-  FStatus.Caption := AText;
+  FParts.Status.Caption := AText;
 end;
 
 procedure TAtlasDebugDataSetForm.SetPageSize(APageSize: Integer);
 begin
-  FLoadMoreButton.Caption := TAtlasDataSetTableStrings.Fmt(TAtlasDataSetTableTextId.LoadMore, [APageSize]);
-  FLoadMoreButton.Width := TextWidth(FLoadMoreButton.Font, FLoadMoreButton.Caption) + ScaleValue(cButtonPadding);
+  FParts.LoadMoreButton.Caption := TAtlasDataSetTableStrings.Fmt(TAtlasDataSetTableTextId.LoadMore, [APageSize]);
+  FParts.LoadMoreButton.Width := TextWidth(FParts.LoadMoreButton.Font, FParts.LoadMoreButton.Caption) +
+    ScaleValue(cButtonPadding);
 end;
 
 procedure TAtlasDebugDataSetForm.SetReading(AValue: Boolean);
@@ -506,28 +518,28 @@ var
 begin
   FReading := AValue;
   mSelected := SelectedRecNo > 0;
-  FLoadMoreButton.Enabled := not AValue and FCanLoadMore;
-  FGoToButton.Enabled := not AValue and FCanMove and mSelected;
-  FEditButton.Enabled := not AValue and mSelected and (FClickedField >= 0) and (FClickedField < Length(FNames));
-  FCopyCsvButton.Enabled := not AValue and (FRows <> nil);
-  FCopyJsonButton.Enabled := FCopyCsvButton.Enabled;
-  FRefreshButton.Enabled := not AValue;
-  FCancelButton.Enabled := AValue;
-  FConsentButton.Enabled := not AValue;
-  FCurrentButton.Enabled := not AValue;
+  FParts.LoadMoreButton.Enabled := not AValue and FCanLoadMore;
+  FParts.GoToButton.Enabled := not AValue and FCanMove and mSelected;
+  FParts.EditButton.Enabled := not AValue and mSelected and (FClickedField >= 0) and (FClickedField < Length(FNames));
+  FParts.CopyCsvButton.Enabled := not AValue and (FRows <> nil);
+  FParts.CopyJsonButton.Enabled := FParts.CopyCsvButton.Enabled;
+  FParts.RefreshButton.Enabled := not AValue;
+  FParts.CancelButton.Enabled := AValue;
+  FParts.ConsentButton.Enabled := not AValue;
+  FParts.CurrentButton.Enabled := not AValue;
 end;
 
 procedure TAtlasDebugDataSetForm.MarkUnavailable(const AReason: string);
 begin
-  FHeader.Enabled := False;
-  FList.Enabled := False;
+  FParts.Header.Enabled := False;
+  FParts.List.Enabled := False;
   SetConsentVisible(False);
   FCanLoadMore := False;
   FCanMove := False;
   SetReading(False);
-  FRefreshButton.Enabled := False;
-  FEditButton.Enabled := False;
-  FStatus.Caption := AReason;
+  FParts.RefreshButton.Enabled := False;
+  FParts.EditButton.Enabled := False;
+  FParts.Status.Caption := AReason;
 end;
 
 end.

@@ -222,6 +222,7 @@ contains
   Atlas.UI.Debug.DataSetTable.Strings in 'Source\UI\Debug\Atlas.UI.Debug.DataSetTable.Strings.pas',
   Atlas.UI.Debug.DataSetTable in 'Source\UI\Debug\Atlas.UI.Debug.DataSetTable.pas',
   Atlas.IDE.Debug.DataSetTable in 'Source\IDE\Debug\Atlas.IDE.Debug.DataSetTable.pas',
+  Atlas.IDE.Debug.CursorExpression in 'Source\IDE\Debug\Atlas.IDE.Debug.CursorExpression.pas',
   Atlas.Core.Debug.Variables in 'Source\Core\Debug\Atlas.Core.Debug.Variables.pas',
   Atlas.Core.Debug.VariablesFlow in 'Source\Core\Debug\Atlas.Core.Debug.VariablesFlow.pas',
   Atlas.Core.Debug.WatchScopes in 'Source\Core\Debug\Atlas.Core.Debug.WatchScopes.pas',

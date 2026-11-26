@@ -181,6 +181,7 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.DialogCompletion.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.DisplayRules.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.CursorExpression.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.DataSetTable.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Evaluate.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.EvaluateHook.pas"/>

@@ -11,9 +11,10 @@ type
   TAtlasDataSetTableTextId = (
     EvaluateTableButton, Title, Header, HeaderUnknownPosition, ColumnRecord, LoadMore, GoToRecord, EditValue,
     CopyCsv, CopyJson, Refresh, Cancel, Reading, StatusRows, StatusHelper, StatusCursor, StatusCurrentOnly,
-    StatusAtEnd, ConsentNote, ConsentRead, ConsentCurrentOnly, NoMoveNote, HelperHint, NotADataSet, Running,
-    GoToConfirm, EditConfirm, EditTitle, EditPrompt, EditFailed, GoToFailed, ReadFailed, NullValue, CursorRestored,
-    SettingsDataSetTable, SettingsPageSize, SettingsMoveCursor, MoveCursorNever, MoveCursorAsk, MoveCursorAlways);
+    StatusAtEnd, ConsentNote, ConsentRead, ConsentCurrentOnly, NoMoveNote, UnknownPosition, HelperHint, NotADataSet,
+    Running, GoToConfirm, EditConfirm, EditTitle, EditPrompt, EditFailed, GoToFailed, ReadFailed, NullValue,
+    CursorRestored, SettingsDataSetTable, SettingsPageSize, SettingsMoveCursor, MoveCursorNever, MoveCursorAsk,
+    MoveCursorAlways);
 
   TAtlasDataSetTableStrings = class
   public
@@ -53,6 +54,7 @@ const
      '%d Zeilen lesen',
      'Nur aktueller Datensatz',
      'Mehr als den aktuellen Datensatz kann Atlas jetzt nicht lesen: %s',
+     'Position unbekannt (RecNo %d)',
      'Schneller und ohne Cursorbewegung: Unit Atlas.Debug.DataSets aus dem Ordner „Vorlagen“ in Debug-Builds ' +
        'einbinden.',
      '„%s“ ist keine geöffnete Datenmenge (%s).',
@@ -95,6 +97,7 @@ const
      'Read %d rows',
      'Current record only',
      'Atlas cannot read more than the current record now: %s',
+     'position unknown (RecNo %d)',
      'Faster and without moving the cursor: add the unit Atlas.Debug.DataSets from the “Vorlagen” folder to ' +
        'debug builds.',
      '“%s” is not an open data set (%s).',

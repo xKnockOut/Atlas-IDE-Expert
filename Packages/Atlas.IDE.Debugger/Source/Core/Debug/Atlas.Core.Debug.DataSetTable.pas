@@ -25,7 +25,6 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Plugin.Settings.VisualizerKinds,
   Atlas.Core.Debug.Visualizers;
 
 type
@@ -63,6 +62,14 @@ type
     /// </summary>
     function CanMoveCursor: Boolean;
     function FieldCount: Integer;
+  end;
+
+  /// <summary>Zelle zum Ändern: Datensatz RecNo (ab 1), Feld Field (ab 0), neuer Wert Value.</summary>
+  TAtlasDataSetCell = record
+    RecNo: Int64;
+    Field: Integer;
+    Value: string;
+    class function Create(ARecNo: Int64; AField: Integer; const AValue: string): TAtlasDataSetCell; static;
   end;
 
   TAtlasDataSetRow = record
@@ -113,9 +120,9 @@ type
       const AContext: TAtlasVisualizerContext; out AMessage: string): Boolean; static;
     /// <summary>Feld AField des Datensatzes ARecNo auf AValue setzen: über die Hilfs-Unit, sonst Cursor hin, Edit,
     /// Modify von AsString, Post, Cursor zurück. False mit Meldung.</summary>
-    class function EditCell(const AExpression: string; const AInfo: TAtlasDataSetInfo; ARecNo: Int64;
-      AField: Integer; const AValue: string; const AContext: TAtlasVisualizerContext;
-      const AModify: TAtlasDataSetModify; out AMessage: string): Boolean; static;
+    class function EditCell(const AExpression: string; const AInfo: TAtlasDataSetInfo;
+      const ACell: TAtlasDataSetCell; const AContext: TAtlasVisualizerContext; const AModify: TAtlasDataSetModify;
+      out AMessage: string): Boolean; static;
     class function ToCsv(const ANames: TArray<string>; const ARows: TArray<TAtlasDataSetRow>): string; static;
     class function ToJson(const ANames: TArray<string>; const ARows: TArray<TAtlasDataSetRow>): string; static;
     /// <summary>Wert von debug.evaluateWindow.dataSetTable.moveCursor; Unbekanntes gilt als Ask.</summary>
@@ -140,8 +147,6 @@ type
     FPosition: Int64;
     FOffset: Int64;
     FAtEnd: Boolean;
-    function Eval(const AContext: TAtlasVisualizerContext; const AExpression: string;
-      AEvaluation: TAtlasVisualizerEvaluation; out AText: string): Boolean;
     function MoveBy(const AContext: TAtlasVisualizerContext; ADistance: Int64; out AMoved: Int64): Boolean;
     function ReadCurrent(const AContext: TAtlasVisualizerContext; out ARow: TAtlasDataSetRow): Boolean;
     procedure StepStart(const AContext: TAtlasVisualizerContext);
@@ -174,12 +179,15 @@ implementation
 uses
   System.StrUtils,
   System.Math,
+  Atlas.Plugin.Settings.VisualizerKinds,
   Atlas.Core.Settings.Plugin.Debug,
   Atlas.Core.Debug.Visualizers.Format;
 
 const
   cTab = #9;
   cNullMark = '\N';
+  /// <summary>Hexziffern von \uXXXX in JSON.</summary>
+  cJsonUnicodeDigits = 4;
 
 /// <summary>Ausdruck geklammert, damit .Fields[0] am ganzen Ausdruck hängt (A.B^, P^).</summary>
 function Inner(const AExpression: string): string;
@@ -261,6 +269,15 @@ end;
 function TAtlasDataSetInfo.FieldCount: Integer;
 begin
   Result := Length(Names);
+end;
+
+{ TAtlasDataSetCell }
+
+class function TAtlasDataSetCell.Create(ARecNo: Int64; AField: Integer; const AValue: string): TAtlasDataSetCell;
+begin
+  Result.RecNo := ARecNo;
+  Result.Field := AField;
+  Result.Value := AValue;
 end;
 
 { TAtlasDataSetTable }
@@ -637,9 +654,8 @@ begin
 end;
 
 /// <summary>Ändern ohne Hilfs-Unit: Cursor hin, Edit, Modify, Post, zurück.</summary>
-function EditByCursor(const AExpression: string; const AInfo: TAtlasDataSetInfo; ARecNo: Int64; AField: Integer;
-  const AValue: string; const AContext: TAtlasVisualizerContext; const AModify: TAtlasDataSetModify;
-  out AMessage: string): Boolean;
+function EditByCursor(const AExpression: string; const AInfo: TAtlasDataSetInfo; const ACell: TAtlasDataSetCell;
+  const AContext: TAtlasVisualizerContext; const AModify: TAtlasDataSetModify; out AMessage: string): Boolean;
 var
   mMoved, mBack: Int64;
   mText, mInner: string;
@@ -650,14 +666,14 @@ begin
   begin
     Exit(False);
   end;
-  if not EvalInt(AContext, TAtlasDataSetTable.MoveByExpression(mInner, ARecNo - AInfo.RecNo),
+  if not EvalInt(AContext, TAtlasDataSetTable.MoveByExpression(mInner, ACell.RecNo - AInfo.RecNo),
     TAtlasVisualizerEvaluation.Calls, mMoved) then
   begin
     Exit(False);
   end;
-  Result := (mMoved = ARecNo - AInfo.RecNo) and
+  Result := (mMoved = ACell.RecNo - AInfo.RecNo) and
     EvalText(AContext, mInner + '.Edit', TAtlasVisualizerEvaluation.Calls, mText) and
-    AModify(Format('%s.Fields[%d].AsString', [mInner, AField]), AValue, AMessage) and
+    AModify(Format('%s.Fields[%d].AsString', [mInner, ACell.Field]), ACell.Value, AMessage) and
     EvalText(AContext, mInner + '.Post', TAtlasVisualizerEvaluation.Calls, mText);
   if not Result then
   begin
@@ -672,26 +688,26 @@ begin
 end;
 
 class function TAtlasDataSetTable.EditCell(const AExpression: string; const AInfo: TAtlasDataSetInfo;
-  ARecNo: Int64; AField: Integer; const AValue: string; const AContext: TAtlasVisualizerContext;
-  const AModify: TAtlasDataSetModify; out AMessage: string): Boolean;
+  const ACell: TAtlasDataSetCell; const AContext: TAtlasVisualizerContext; const AModify: TAtlasDataSetModify;
+  out AMessage: string): Boolean;
 var
   mText: string;
 begin
   AMessage := '';
-  if not AInfo.Valid or AInfo.Editing or (AField < 0) or (AField >= AInfo.FieldCount) then
+  if not AInfo.Valid or AInfo.Editing or (ACell.Field < 0) or (ACell.Field >= AInfo.FieldCount) then
   begin
     Exit(False);
   end;
   if AInfo.HasHelper then
   begin
-    Result := EvalText(AContext, HelperSetValueExpression(AInfo.HelperPrefix, AExpression, ARecNo, AField, AValue),
-      TAtlasVisualizerEvaluation.Calls, mText);
+    Result := EvalText(AContext, HelperSetValueExpression(AInfo.HelperPrefix, AExpression, ACell.RecNo, ACell.Field,
+      ACell.Value), TAtlasVisualizerEvaluation.Calls, mText);
     // Die Hilfs-Unit meldet '' bei Erfolg, sonst den Grund.
     AMessage := Decode(mText);
     Result := Result and (AMessage = '');
     Exit;
   end;
-  Result := EditByCursor(AExpression, AInfo, ARecNo, AField, AValue, AContext, AModify, AMessage);
+  Result := EditByCursor(AExpression, AInfo, ACell, AContext, AModify, AMessage);
 end;
 
 /// <summary>CSV-Zelle: in Anführungszeichen, wenn nötig.</summary>
@@ -760,7 +776,7 @@ begin
       else
         if mChar < ' ' then
         begin
-          mBuilder.Append('\u').Append(IntToHex(Ord(mChar), 4));
+          mBuilder.Append('\u').Append(IntToHex(Ord(mChar), cJsonUnicodeDigits));
         end
         else
         begin
@@ -870,12 +886,6 @@ begin
   end;
 end;
 
-function TAtlasDataSetReader.Eval(const AContext: TAtlasVisualizerContext; const AExpression: string;
-  AEvaluation: TAtlasVisualizerEvaluation; out AText: string): Boolean;
-begin
-  Result := EvalText(AContext, AExpression, AEvaluation, AText);
-end;
-
 function TAtlasDataSetReader.MoveBy(const AContext: TAtlasVisualizerContext; ADistance: Int64;
   out AMoved: Int64): Boolean;
 begin
@@ -897,7 +907,7 @@ var
 begin
   ARow := Default(TAtlasDataSetRow);
   ARow.RecNo := FPosition;
-  if Eval(AContext, TAtlasDataSetTable.RowExpression(FExpression, FInfo.FieldCount),
+  if EvalText(AContext, TAtlasDataSetTable.RowExpression(FExpression, FInfo.FieldCount),
     TAtlasVisualizerEvaluation.Properties, mText) and
     TAtlasDataSetTable.SplitRow(TAtlasDataSetTable.Decode(mText), FInfo.FieldCount, ARow.Cells) then
   begin
@@ -909,7 +919,7 @@ begin
   Result := False;
   for mIndex := 0 to FInfo.FieldCount - 1 do
   begin
-    if Eval(AContext, TAtlasDataSetTable.CellExpression(FExpression, mIndex), TAtlasVisualizerEvaluation.Properties,
+    if EvalText(AContext, TAtlasDataSetTable.CellExpression(FExpression, mIndex), TAtlasVisualizerEvaluation.Properties,
       mText) then
     begin
       ARow.Cells[mIndex] := TAtlasDataSetTable.Decode(mText);
@@ -937,7 +947,7 @@ begin
     Exit;
   end;
   // Gebundene Steuerelemente nicht bei jedem Schritt benachrichtigen; scheitert der Aufruf, geht es auch ohne.
-  Eval(AContext, FExpression + '.DisableControls', TAtlasVisualizerEvaluation.Calls, mText);
+  EvalText(AContext, FExpression + '.DisableControls', TAtlasVisualizerEvaluation.Calls, mText);
   if not MoveBy(AContext, FFirst - FInfo.RecNo, mMoved) then
   begin
     Fail(mText);
@@ -957,7 +967,7 @@ var
   mFirst: Int64;
 begin
   mFirst := FFirst + Length(FRows);
-  if not Eval(AContext, TAtlasDataSetTable.HelperRowsExpression(FInfo.HelperPrefix, FExpression, mFirst,
+  if not EvalText(AContext, TAtlasDataSetTable.HelperRowsExpression(FInfo.HelperPrefix, FExpression, mFirst,
     FCount - Length(FRows)), TAtlasVisualizerEvaluation.Calls, mText) or
     not TAtlasDataSetTable.ParseHelperRows(TAtlasDataSetTable.Decode(mText), FInfo.FieldCount, mRows) then
   begin
@@ -1009,7 +1019,7 @@ begin
   begin
     FProblem := TAtlasDataSetTable.MoveByExpression(FExpression, -FOffset);
   end;
-  Eval(AContext, FExpression + '.EnableControls', TAtlasVisualizerEvaluation.Calls, mText);
+  EvalText(AContext, FExpression + '.EnableControls', TAtlasVisualizerEvaluation.Calls, mText);
 end;
 
 function TAtlasDataSetReader.Step(const AContext: TAtlasVisualizerContext): Boolean;

@@ -987,6 +987,7 @@ Atlas.IDE.Debugger	Atlas.IDE.Debug.Composition.Session	IDE/Debug/Atlas.IDE.Debug
 Atlas.IDE.Debugger	Atlas.IDE.Debug.Composition.Values	IDE/Debug/Atlas.IDE.Debug.Composition.Values.pas	Teile für Werte und Ausdrücke des Moduls `atlas.debugger`, #1455
 Atlas.IDE.Debugger	Atlas.IDE.Debug.ConsoleCapture	IDE/Debug/Atlas.IDE.Debug.ConsoleCapture.pas	Start abfangen, Debugger anhängen, Fenster und Befehle der Konsolenausgabe, #581
 Atlas.IDE.Debugger	Atlas.IDE.Debug.ConsoleProcess	IDE/Debug/Atlas.IDE.Debug.ConsoleProcess.pas	Konsolenprogramm mit Pipes starten, lesen, Eingabe senden, #581
+Atlas.IDE.Debugger	Atlas.IDE.Debug.CursorExpression	IDE/Debug/Atlas.IDE.Debug.CursorExpression.pas	Ordner `IDE/Debug`
 Atlas.IDE.Debugger	Atlas.IDE.Debug.DataBreak	IDE/Debug/Atlas.IDE.Debug.DataBreak.pas	Ordner `IDE/Debug`
 Atlas.IDE.Debugger	Atlas.IDE.Debug.DataBreakpoint	IDE/Debug/Atlas.IDE.Debug.DataBreakpoint.pas	Ordner `IDE/Debug`
 Atlas.IDE.Debugger	Atlas.IDE.Debug.DataSetTable	IDE/Debug/Atlas.IDE.Debug.DataSetTable.pas	Ordner `IDE/Debug`

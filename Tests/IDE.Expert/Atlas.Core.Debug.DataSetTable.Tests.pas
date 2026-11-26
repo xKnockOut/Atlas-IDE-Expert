@@ -89,6 +89,12 @@ type
     Posted: Integer;
     Cancelled: Integer;
     constructor Create;
+    function AnswerProperty(const AExpression: string; out AText: string): Boolean;
+    function AnswerMoveBy(const AExpression: string; AEvaluation: TAtlasVisualizerEvaluation;
+      out AText: string): Boolean;
+    function AnswerCall(const AExpression: string): Boolean;
+    function AnswerHelper(const AExpression: string; out AText: string): Boolean;
+    function AnswerField(const AExpression: string; out AText: string): Boolean;
     function Answer(const AExpression: string; AEvaluation: TAtlasVisualizerEvaluation; out AText: string): Boolean;
     function Modify(const AExpression, ANewValue: string; out AResult: string): Boolean;
   end;
@@ -131,15 +137,9 @@ begin
   end;
 end;
 
-function TFakeDataSet.Answer(const AExpression: string; AEvaluation: TAtlasVisualizerEvaluation;
-  out AText: string): Boolean;
-var
-  mIndex, mFirst, mCount, mTarget, mOld: Integer;
-  mArgs: TArray<string>;
-  mBuilder: string;
+function TFakeDataSet.AnswerProperty(const AExpression: string; out AText: string): Boolean;
 begin
   Result := True;
-  AText := '';
   if AExpression = cDs + '.State' then
   begin
     AText := State;
@@ -160,25 +160,33 @@ begin
   begin
     AText := IntToStr(Length(Names));
   end
-  else if AExpression = TAtlasDataSetTable.RowExpression(cDs, Length(Names)) then
+  else
   begin
-    Result := not RowExpressionFails;
-    AText := 'E2010 Inkompatible Typen';
-    if Result then
-    begin
-      AText := TAtlasDataSetTable.Literal(string.Join(#9, Rows[RecNo - 1]));
-    end;
-  end
-  else if StartsText(cDs + '.MoveBy(', AExpression) then
+    Result := False;
+  end;
+end;
+
+function TFakeDataSet.AnswerMoveBy(const AExpression: string; AEvaluation: TAtlasVisualizerEvaluation;
+  out AText: string): Boolean;
+var
+  mOld: Integer;
+begin
+  Result := StartsText(cDs + '.MoveBy(', AExpression);
+  if not Result then
   begin
-    Assert.AreEqual(Ord(TAtlasVisualizerEvaluation.Calls), Ord(AEvaluation), 'MoveBy braucht Aufrufe');
-    Inc(Moves);
-    mOld := RecNo;
-    mTarget := mOld + StrToInt(Arguments(AExpression, cDs + '.MoveBy(')[0]);
-    RecNo := EnsureRange(mTarget, 1, Length(Rows));
-    AText := IntToStr(RecNo - mOld);
-  end
-  else if AExpression = cDs + '.DisableControls' then
+    Exit;
+  end;
+  Assert.AreEqual(Ord(TAtlasVisualizerEvaluation.Calls), Ord(AEvaluation), 'MoveBy braucht Aufrufe');
+  Inc(Moves);
+  mOld := RecNo;
+  RecNo := EnsureRange(mOld + StrToInt(Arguments(AExpression, cDs + '.MoveBy(')[0]), 1, Length(Rows));
+  AText := IntToStr(RecNo - mOld);
+end;
+
+function TFakeDataSet.AnswerCall(const AExpression: string): Boolean;
+begin
+  Result := True;
+  if AExpression = cDs + '.DisableControls' then
   begin
     Inc(Disabled);
   end
@@ -201,49 +209,87 @@ begin
     Inc(Cancelled);
     State := 'dsBrowse';
   end
-  else if Helper and StartsText(HelperPrefix + TAtlasDataSetTable.cHelperRows + '(', AExpression) then
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+function TFakeDataSet.AnswerHelper(const AExpression: string; out AText: string): Boolean;
+var
+  mIndex, mFirst, mCount: Integer;
+  mArgs: TArray<string>;
+begin
+  Result := Helper and StartsText(HelperPrefix + TAtlasDataSetTable.cHelperRows + '(', AExpression);
+  if Result then
   begin
     mArgs := Arguments(AExpression, HelperPrefix + TAtlasDataSetTable.cHelperRows + '(');
     mFirst := StrToInt(mArgs[1]);
-    mCount := Min(StrToInt(mArgs[2]), Max(Length(Rows) - mFirst + 1, 0));
     // Höchstens zwei Zeilen je Antwort: Der Leser muss nachfragen.
-    mCount := Min(mCount, 2);
-    mBuilder := IntToStr(mCount);
+    mCount := Min(Min(StrToInt(mArgs[2]), Max(Length(Rows) - mFirst + 1, 0)), 2);
+    AText := IntToStr(mCount);
     for mIndex := mFirst to mFirst + mCount - 1 do
     begin
-      mBuilder := mBuilder + #10 + IntToStr(mIndex) + #9 + HelperEscaped(Rows[mIndex - 1][0]) + #9 +
+      AText := AText + #10 + IntToStr(mIndex) + #9 + HelperEscaped(Rows[mIndex - 1][0]) + #9 +
         HelperEscaped(Rows[mIndex - 1][1]);
     end;
-    AText := TAtlasDataSetTable.Literal(mBuilder);
-  end
-  else if Helper and StartsText(HelperPrefix + TAtlasDataSetTable.cHelperSetValue + '(', AExpression) then
+    AText := TAtlasDataSetTable.Literal(AText);
+    Exit;
+  end;
+  Result := Helper and StartsText(HelperPrefix + TAtlasDataSetTable.cHelperSetValue + '(', AExpression);
+  if Result then
   begin
     mArgs := Arguments(AExpression, HelperPrefix + TAtlasDataSetTable.cHelperSetValue + '(');
     Rows[StrToInt(mArgs[1]) - 1][StrToInt(mArgs[2])] := TAtlasDataSetTable.Decode(mArgs[3]);
     AText := '''''';
-  end
-  else
+  end;
+end;
+
+function TFakeDataSet.AnswerField(const AExpression: string; out AText: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := True;
+  for mIndex := 0 to High(Names) do
   begin
-    for mIndex := 0 to High(Names) do
+    if AExpression = Format('%s.Fields[%d].FieldName', [cDs, mIndex]) then
     begin
-      if AExpression = Format('%s.Fields[%d].FieldName', [cDs, mIndex]) then
-      begin
-        AText := TAtlasDataSetTable.Literal(Names[mIndex]);
-        Exit;
-      end;
-      if AExpression = Format('%s.Fields[%d].DataType', [cDs, mIndex]) then
-      begin
-        AText := 'ftString';
-        Exit;
-      end;
-      if AExpression = TAtlasDataSetTable.CellExpression(cDs, mIndex) then
-      begin
-        AText := TAtlasDataSetTable.Literal(Rows[RecNo - 1][mIndex]);
-        Exit;
-      end;
+      AText := TAtlasDataSetTable.Literal(Names[mIndex]);
+      Exit;
     end;
+    if AExpression = Format('%s.Fields[%d].DataType', [cDs, mIndex]) then
+    begin
+      AText := 'ftString';
+      Exit;
+    end;
+    if AExpression = TAtlasDataSetTable.CellExpression(cDs, mIndex) then
+    begin
+      AText := TAtlasDataSetTable.Literal(Rows[RecNo - 1][mIndex]);
+      Exit;
+    end;
+  end;
+  Result := False;
+end;
+
+function TFakeDataSet.Answer(const AExpression: string; AEvaluation: TAtlasVisualizerEvaluation;
+  out AText: string): Boolean;
+begin
+  AText := '';
+  if AExpression = TAtlasDataSetTable.RowExpression(cDs, Length(Names)) then
+  begin
+    Result := not RowExpressionFails;
+    AText := 'E2010 Inkompatible Typen';
+    if Result then
+    begin
+      AText := TAtlasDataSetTable.Literal(string.Join(#9, Rows[RecNo - 1]));
+    end;
+    Exit;
+  end;
+  Result := AnswerProperty(AExpression, AText) or AnswerMoveBy(AExpression, AEvaluation, AText) or
+    AnswerCall(AExpression) or AnswerHelper(AExpression, AText) or AnswerField(AExpression, AText);
+  if not Result then
+  begin
     AText := 'E2003 Undeklarierter Bezeichner';
-    Result := False;
   end;
 end;
 
@@ -632,8 +678,8 @@ var
 begin
   mFake := TFakeDataSet.Create;
   try
-    Assert.IsTrue(TAtlasDataSetTable.EditCell(cDs, Probe(mFake), 1, 1, 'Anja', ContextOf(mFake), ModifyOf(mFake),
-      mMessage), mMessage);
+    Assert.IsTrue(TAtlasDataSetTable.EditCell(cDs, Probe(mFake), TAtlasDataSetCell.Create(1, 1, 'Anja'),
+      ContextOf(mFake), ModifyOf(mFake), mMessage), mMessage);
     Assert.AreEqual('Anja', mFake.Rows[0][1]);
     Assert.AreEqual(1, mFake.Posted);
     Assert.AreEqual(0, mFake.Cancelled);
@@ -651,15 +697,15 @@ begin
   mFake := TFakeDataSet.Create;
   try
     mFake.ModifyFails := True;
-    Assert.IsFalse(TAtlasDataSetTable.EditCell(cDs, Probe(mFake), 2, 0, 'x', ContextOf(mFake), ModifyOf(mFake),
-      mMessage));
+    Assert.IsFalse(TAtlasDataSetTable.EditCell(cDs, Probe(mFake), TAtlasDataSetCell.Create(2, 0, 'x'),
+      ContextOf(mFake), ModifyOf(mFake), mMessage));
     Assert.AreEqual('Wert nicht zulässig', mMessage);
     Assert.AreEqual(1, mFake.Cancelled);
     Assert.AreEqual(0, mFake.Posted);
     Assert.AreEqual('dsBrowse', mFake.State);
     Assert.AreEqual(3, mFake.RecNo);
-    Assert.IsFalse(TAtlasDataSetTable.EditCell(cDs, Probe(mFake), 2, 7, 'x', ContextOf(mFake), ModifyOf(mFake),
-      mMessage), 'kein solches Feld');
+    Assert.IsFalse(TAtlasDataSetTable.EditCell(cDs, Probe(mFake), TAtlasDataSetCell.Create(2, 7, 'x'),
+      ContextOf(mFake), ModifyOf(mFake), mMessage), 'kein solches Feld');
   finally
     mFake.Free;
   end;
@@ -673,8 +719,8 @@ begin
   mFake := TFakeDataSet.Create;
   try
     mFake.Helper := True;
-    Assert.IsTrue(TAtlasDataSetTable.EditCell(cDs, Probe(mFake), 4, 1, 'Do''ra', ContextOf(mFake), nil, mMessage),
-      mMessage);
+    Assert.IsTrue(TAtlasDataSetTable.EditCell(cDs, Probe(mFake), TAtlasDataSetCell.Create(4, 1, 'Do''ra'),
+      ContextOf(mFake), nil, mMessage), mMessage);
     Assert.AreEqual('Do''ra', mFake.Rows[3][1]);
     Assert.AreEqual(0, mFake.Moves, 'ohne Cursor');
   finally

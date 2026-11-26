@@ -14,6 +14,8 @@
 //   neu.
 // - Bei jedem Halt liest die Tabelle im nächsten Takt neu; läuft das Programm,
 //   bricht sie das Lesen ab und graut aus.
+// - Ein Fenster für alle: ShowFor legt die Tabelle beim ersten Mal an,
+//   Release (Einstellung aus, Entladen) schließt sie und gibt sie frei.
 // Nur im Hauptthread verwenden.
 
 interface
@@ -31,6 +33,8 @@ type
     /// <summary>Zeit je Schritt und für die Probe (Feldnamen, Hilfs-Unit).</summary>
     cStepBudgetMs = 3000;
     cProbeBudgetMs = 10000;
+  private class var
+    FCurrent: TAtlasIdeDebugDataSetTable;
   private
     FOnChanged: TProc;
     FForm: TAtlasDebugDataSetForm;
@@ -42,7 +46,7 @@ type
     FRows: TArray<TAtlasDataSetRow>;
     FConsented: Boolean;
     FReloadPending: Boolean;
-    procedure FormClosed(Sender: TObject);
+    procedure FormClosed;
     procedure WireForm;
     procedure Reload;
     procedure ShowInfo;
@@ -54,8 +58,6 @@ type
     function StatusText(AWay: TAtlasDataSetWay; AAtEnd: Boolean): string;
     procedure GoToRecord(ARecNo: Int64);
     procedure EditValue(ARecNo: Int64; AField: Integer);
-    function PageSize: Integer;
-    function MoveCursor: TAtlasDataSetMoveCursor;
   protected
     procedure SessionStopped; override;
     procedure SessionResumed; override;
@@ -71,6 +73,11 @@ type
     /// <summary>Fenster schließen (Einstellung aus, Entladen).</summary>
     procedure CloseForm;
     property Form: TAtlasDebugDataSetForm read FForm;
+    /// <summary>Die Tabelle für AExpression zeigen (legt sie beim ersten Mal an); AOnChanged wie bei Create.
+    /// </summary>
+    class procedure ShowFor(const AExpression, AFileName: string; ALine: Integer; const AOnChanged: TProc); static;
+    /// <summary>Fenster schließen und die Tabelle freigeben.</summary>
+    class procedure Release; static;
   end;
 
 implementation
@@ -79,7 +86,6 @@ uses
   System.UITypes,
   Vcl.Forms,
   Vcl.Dialogs,
-  Atlas.Core.Debug.Contract,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Evaluator,
@@ -102,6 +108,16 @@ end;
 function Confirmed(const AQuestion: string): Boolean;
 begin
   Result := MessageDlg(AQuestion, mtConfirmation, [mbYes, mbNo], 0) = mrYes;
+end;
+
+function PageSize: Integer;
+begin
+  Result := TAtlasIdeSettings.Current.DebugEvaluateDataSetTablePageSize;
+end;
+
+function MoveCursor: TAtlasDataSetMoveCursor;
+begin
+  Result := TAtlasDataSetTable.MoveCursorOf(TAtlasIdeSettings.Current.DebugEvaluateDataSetTableMoveCursor);
 end;
 
 { TAtlasIdeDebugDataSetTable }
@@ -132,32 +148,29 @@ begin
   if mForm <> nil then
   begin
     // Sofort freigeben: Beim Entladen darf keine eingereihte Freigabe übrig bleiben.
-    mForm.OnClosed := nil;
+    mForm.Connect(Default(TAtlasDataSetFormEvents));
     mForm.Free;
   end;
 end;
 
-procedure TAtlasIdeDebugDataSetTable.FormClosed(Sender: TObject);
+procedure TAtlasIdeDebugDataSetTable.FormClosed;
 begin
   // Das Fenster gibt sich selbst frei (caFree).
   FForm := nil;
   StopReading;
 end;
 
-function TAtlasIdeDebugDataSetTable.PageSize: Integer;
-begin
-  Result := TAtlasIdeSettings.Current.DebugEvaluateDataSetTablePageSize;
-end;
-
-function TAtlasIdeDebugDataSetTable.MoveCursor: TAtlasDataSetMoveCursor;
-begin
-  Result := TAtlasDataSetTable.MoveCursorOf(TAtlasIdeSettings.Current.DebugEvaluateDataSetTableMoveCursor);
-end;
-
 procedure TAtlasIdeDebugDataSetTable.WireForm;
+var
+  mEvents: TAtlasDataSetFormEvents;
 begin
-  FForm.OnClosed := FormClosed;
-  FForm.OnLoadMore :=
+  mEvents := Default(TAtlasDataSetFormEvents);
+  mEvents.OnClosed :=
+    procedure
+    begin
+      FormClosed;
+    end;
+  mEvents.OnLoadMore :=
     procedure
     begin
       if FRows <> nil then
@@ -165,7 +178,7 @@ begin
         Load(FRows[High(FRows)].RecNo + 1);
       end;
     end;
-  FForm.OnConsent :=
+  mEvents.OnConsent :=
     procedure(AMove: Boolean)
     begin
       FConsented := AMove;
@@ -175,22 +188,22 @@ begin
         Load(1);
       end;
     end;
-  FForm.OnGoTo :=
+  mEvents.OnGoTo :=
     procedure(ARecNo: Int64)
     begin
       GoToRecord(ARecNo);
     end;
-  FForm.OnEdit :=
+  mEvents.OnEdit :=
     procedure(ARecNo: Int64; AField: Integer)
     begin
       EditValue(ARecNo, AField);
     end;
-  FForm.OnRefresh :=
+  mEvents.OnRefresh :=
     procedure
     begin
       Reload;
     end;
-  FForm.OnCancel :=
+  mEvents.OnCancel :=
     procedure
     begin
       if FReader <> nil then
@@ -198,6 +211,23 @@ begin
         FReader.Cancel;
       end;
     end;
+  FForm.Connect(mEvents);
+end;
+
+class procedure TAtlasIdeDebugDataSetTable.ShowFor(const AExpression, AFileName: string; ALine: Integer;
+  const AOnChanged: TProc);
+begin
+  if FCurrent = nil then
+  begin
+    FCurrent := TAtlasIdeDebugDataSetTable.Create(AOnChanged);
+  end;
+  FCurrent.FOnChanged := AOnChanged;
+  FCurrent.Show(AExpression, AFileName, ALine);
+end;
+
+class procedure TAtlasIdeDebugDataSetTable.Release;
+begin
+  FreeAndNil(FCurrent);
 end;
 
 procedure TAtlasIdeDebugDataSetTable.Show(const AExpression, AFileName: string; ALine: Integer);
@@ -310,7 +340,7 @@ begin
   end
   else if not FInfo.Editing then
   begin
-    mReason := 'RecNo = ' + IntToStr(FInfo.RecNo);
+    mReason := TAtlasDataSetTableStrings.Fmt(TAtlasDataSetTableTextId.UnknownPosition, [FInfo.RecNo]);
   end;
   FForm.SetStatus(TAtlasDataSetTableStrings.Fmt(TAtlasDataSetTableTextId.NoMoveNote, [mReason]));
 end;
@@ -500,7 +530,7 @@ begin
     begin
       Result := TAtlasIdeDebugSession.NewEvaluator.Modify(AExpression, FFileName, FLine, ANewValue, AResult);
     end;
-  if not TAtlasDataSetTable.EditCell(FExpression, FInfo, ARecNo, AField, mValue,
+  if not TAtlasDataSetTable.EditCell(FExpression, FInfo, TAtlasDataSetCell.Create(ARecNo, AField, mValue),
     TAtlasIdeDebugEvaluator.Context(cStepBudgetMs), mModify, mMessage) then
   begin
     MessageDlg(TAtlasDataSetTableStrings.Fmt(TAtlasDataSetTableTextId.EditFailed, [mMessage]), mtWarning, [mbOK], 0);
