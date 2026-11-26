@@ -41,6 +41,10 @@ type
     procedure ChildrenOfTypesAndRoutines;
     [Test]
     procedure RoutinesForFindMethod;
+    [Test]
+    procedure RoutinesForFindMethodWithNestedLocalRoutines;
+    [Test]
+    procedure RoutineAtFindsTheInnermostRoutine;
   end;
 
 implementation
@@ -97,6 +101,34 @@ const
     'initialization'#13#10 +                                          // 35
     '  Hilfe;'#13#10 +                                                // 36
     'end.';                                                           // 37
+
+  /// <summary>Lokale Routinen in zwei Ebenen, in einer Methode und in einer freien Routine.</summary>
+  cLocalCode =
+    'unit uLokal;'#13#10 +                    // 0
+    'interface'#13#10 +                       // 1
+    'type'#13#10 +                            // 2
+    '  TFoo = class'#13#10 +                  // 3
+    '    procedure Bar;'#13#10 +              // 4
+    '  end;'#13#10 +                          // 5
+    'implementation'#13#10 +                  // 6
+    'procedure TFoo.Bar;'#13#10 +             // 7
+    '  procedure Aussen;'#13#10 +             // 8
+    '    function Innen: Integer;'#13#10 +    // 9
+    '    begin'#13#10 +                       // 10
+    '      Result := 1;'#13#10 +              // 11
+    '    end;'#13#10 +                        // 12
+    '  begin'#13#10 +                         // 13
+    '    Innen;'#13#10 +                      // 14
+    '  end;'#13#10 +                          // 15
+    'begin'#13#10 +                           // 16
+    '  Aussen;'#13#10 +                       // 17
+    'end;'#13#10 +                            // 18
+    'procedure Frei;'#13#10 +                 // 19
+    '  procedure Hilf; begin end;'#13#10 +    // 20
+    'begin'#13#10 +                           // 21
+    '  Hilf;'#13#10 +                         // 22
+    'end;'#13#10 +                            // 23
+    'end.';                                   // 24
 
   /// <summary>Regionen, Bedingungszweige und Abschnitte für den Vergleich mit dem vorbereiteten Text.</summary>
   cDirectiveCode =
@@ -157,6 +189,29 @@ begin
     end;
     Result := Result + TAtlasBreadcrumbs.ShortName(ANodes[mItem].Name);
   end;
+end;
+
+/// <summary>Namen der Routinen für „Methode suchen“, durch Komma getrennt.</summary>
+function RoutineNamesOf(const ANodes: TAtlasOutlineNodes): string;
+var
+  mItem: Integer;
+begin
+  Result := '';
+  for mItem in TAtlasBreadcrumbs.Routines(ANodes) do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + ',';
+    end;
+    Result := Result + TAtlasBreadcrumbs.RoutineName(ANodes, mItem);
+  end;
+end;
+
+/// <summary>Name der innersten Routine an Zeile ALine von cLocalCode; leer ohne.</summary>
+function RoutineNameAt(const ANodes: TAtlasOutlineNodes; ALine: Integer): string;
+begin
+  Result := TAtlasBreadcrumbs.RoutineName(ANodes, TAtlasBreadcrumbs.RoutineAt(ANodes,
+    TAtlasBreadcrumbs.Routines(ANodes), ALine));
 end;
 
 { TAtlasBreadcrumbsTests }
@@ -394,26 +449,41 @@ end;
 procedure TAtlasBreadcrumbsTests.RoutinesForFindMethod;
 var
   mList: TAtlasOutlineNodes;
-  mItem: Integer;
-  mNames: string;
 begin
   mList := Nodes;
-  // „Methode suchen“ der Editorleiste (#1101): Methoden mit Besitzer, Routinen, keine lokalen Routinen und
-  // keine Rümpfe doppelt.
-  mNames := '';
-  for mItem in TAtlasBreadcrumbs.Routines(mList) do
-  begin
-    if mNames <> '' then
-    begin
-      mNames := mNames + ',';
-    end;
-    mNames := mNames + TAtlasBreadcrumbs.QualifiedName(mList, mItem);
-  end;
-  Assert.AreEqual('TfrmKunde.btnSpeichernClick,TfrmKunde.SpeichereAdresse,TfrmKunde.SpaltenBreite,' +
-    'TfrmKunde.Display,TfrmKunde.TInner.Tief,Hilfe', mNames);
+  // „Methode suchen“ der Editorleiste (#1101): Methoden mit Besitzer, Routinen, lokale Routinen hinter ihrer
+  // Methode und keine Rümpfe doppelt.
+  Assert.AreEqual('TfrmKunde.btnSpeichernClick,TfrmKunde.btnSpeichernClick › Pruefe,' +
+    'TfrmKunde.btnSpeichernClick › Melde,TfrmKunde.SpeichereAdresse,TfrmKunde.SpaltenBreite,' +
+    'TfrmKunde.Display,TfrmKunde.TInner.Tief,Hilfe', RoutineNamesOf(mList));
+  // QualifiedName bleibt ohne Routine davor (Brotkrumen, Statusleiste).
+  Assert.AreEqual('Pruefe', TAtlasBreadcrumbs.QualifiedName(mList, TOutlineTest.Find(mList, 'Pruefe')));
   Assert.AreEqual('', TAtlasBreadcrumbs.QualifiedName(mList, -1));
   Assert.AreEqual('TAndere', TAtlasBreadcrumbs.QualifiedName(mList, TOutlineTest.Find(mList, 'TAndere')));
   Assert.AreEqual(0, Integer(Length(TAtlasBreadcrumbs.Routines(nil))));
+end;
+
+procedure TAtlasBreadcrumbsTests.RoutinesForFindMethodWithNestedLocalRoutines;
+begin
+  Assert.AreEqual('TFoo.Bar,TFoo.Bar › Aussen,TFoo.Bar › Aussen › Innen,Frei,Frei › Hilf',
+    RoutineNamesOf(TOutlineTest.NodesOf(cLocalCode)));
+end;
+
+procedure TAtlasBreadcrumbsTests.RoutineAtFindsTheInnermostRoutine;
+var
+  mList: TAtlasOutlineNodes;
+begin
+  mList := TOutlineTest.NodesOf(cLocalCode);
+  Assert.AreEqual('TFoo.Bar › Aussen › Innen', RoutineNameAt(mList, 11));
+  Assert.AreEqual('TFoo.Bar › Aussen', RoutineNameAt(mList, 14));
+  Assert.AreEqual('TFoo.Bar', RoutineNameAt(mList, 17));
+  Assert.AreEqual('TFoo.Bar', RoutineNameAt(mList, 4), 'Deklaration in der Klasse');
+  Assert.AreEqual('Frei › Hilf', RoutineNameAt(mList, 20));
+  Assert.AreEqual('Frei', RoutineNameAt(mList, 22));
+  Assert.AreEqual(-1, TAtlasBreadcrumbs.RoutineAt(mList, TAtlasBreadcrumbs.Routines(mList), 2), 'Typ');
+  Assert.AreEqual(-1, TAtlasBreadcrumbs.RoutineAt(mList, nil, 11), 'ohne Routinen');
+  Assert.AreEqual(-1, TAtlasBreadcrumbs.RoutineAt(mList, [Length(mList)], 11), 'ungültiger Knoten');
+  Assert.AreEqual('', TAtlasBreadcrumbs.RoutineName(mList, -1));
 end;
 
 initialization

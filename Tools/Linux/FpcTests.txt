@@ -609,6 +609,7 @@ Atlas.Plugin.Projects.Summary.Json.Tests
 Atlas.Core.Problems.IdeErrors.Tests
 Atlas.Core.Problems.AtCaret.Tests
 Atlas.Core.Outline.CrumbPlan.Tests
+Atlas.Core.Outline.Breadcrumbs.Tests
 Atlas.Core.Editor.StickyPlan.Tests
 Atlas.Core.Editor.BlockFolds.Tests
 Atlas.Core.Problems.Plan.Tests
