@@ -66,7 +66,8 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.XmlDoc,
-  Atlas.Common.Lsp.Documentation;
+  Atlas.Common.Lsp.Documentation,
+  Atlas.Common.Documents.Contract;
 
 const
   cBaseFile = 'C:\P\Basis.pas';
@@ -134,7 +135,7 @@ const
     'end;'#10 +
     'end.';
 
-function ReadFiles: TDocReadText;
+function ReadFiles: TDocumentReadText;
 begin
   Result :=
     function(const AFileName: string; out AText: string): Boolean
@@ -405,7 +406,7 @@ end;
 
 procedure TLspDocumentationTests.ReaderPrefersOwnText;
 var
-  mReader: TDocReadText;
+  mReader: TDocumentReadText;
   mText: string;
 begin
   mReader := TLspDocumentation.Reader(cMainFile, 'ungespeichert', ReadFiles());

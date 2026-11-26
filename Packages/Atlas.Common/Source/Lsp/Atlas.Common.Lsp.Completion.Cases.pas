@@ -11,10 +11,11 @@ interface
 
 uses
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Lsp.CompletionRequest,
+  Atlas.Common.Completion.Request,
   Atlas.Common.Lsp.Completion.Forms,
   Atlas.Common.Lsp.Completion.Postfix,
-  Atlas.Common.Lsp.Completion.Hooks;
+  Atlas.Common.Lsp.Completion.Hooks,
+  Atlas.Common.Completion.Contract;
 
 type
   /// <summary>Ergebnis eines Falls der Vervollständigung: weiter mit dem nächsten Fall oder

@@ -8,7 +8,8 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Completion;
+  Atlas.Common.Lsp.Completion,
+  Atlas.Common.Completion.Contract;
 
 type
   [TestFixture]
@@ -84,7 +85,8 @@ uses
   Atlas.Common.Lsp.Completion.Lists,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Index.SymbolIndex;
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Completion.Request;
 
 const
   cHauptFile = 'C:\P\Haupt.pas';

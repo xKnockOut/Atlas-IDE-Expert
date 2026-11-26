@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.CompletionRequest.Tests;
+﻿unit Atlas.Common.Completion.Request.Tests;
 
 // Anfrage der Vervollständigung: Zeilenhelfer mit der Semantik der
 // früheren freien Funktionen, Zeilenende, Offset wie das Dokument und Index der eigenen Unit.
@@ -38,7 +38,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Completion.Request;
 
 { TCompletionRequestTests }
 
@@ -122,9 +122,11 @@ var
 begin
   mStore := TDocumentStore.Create;
   mDocument := mStore.Open('file:///C:/P/U.pas', 'delphi', 1, cText);
-  mFromText := TCompletionRequest.Create(cText, 'C:\P\U.pas', TTextPosition.Create(2, 4));
-  mFromDocument := TCompletionRequest.Create(mDocument, 'C:\P\U.pas', TTextPosition.Create(2, 4));
+  mFromText := nil;
+  mFromDocument := nil;
   try
+    mFromText := TCompletionRequest.Create(cText, 'C:\P\U.pas', TTextPosition.Create(2, 4));
+    mFromDocument := TCompletionRequest.Create(mDocument, 'C:\P\U.pas', TTextPosition.Create(2, 4));
     Assert.AreEqual('file:///C:/P/U.pas', mFromDocument.Uri);
     Assert.AreEqual(cText, mFromDocument.Text);
     for mLine := 0 to 3 do
@@ -153,11 +155,15 @@ var
   mRequest: TCompletionRequest;
 begin
   mIndex := TSymbolIndex.Create;
-  mResolver := TNameResolver.Create(mIndex);
-  mTree := TPascalParser.Parse(cText);
-  mOther := TPascalParser.Parse(StringReplace(cText, 'unit Haupt;', 'unit Neben;', []));
-  mRequest := TCompletionRequest.Create(cText, 'C:\P\Haupt.pas', TTextPosition.Create(3, 2));
+  mResolver := nil;
+  mTree := nil;
+  mOther := nil;
+  mRequest := nil;
   try
+    mResolver := TNameResolver.Create(mIndex);
+    mTree := TPascalParser.Parse(cText);
+    mOther := TPascalParser.Parse(StringReplace(cText, 'unit Haupt;', 'unit Neben;', []));
+    mRequest := TCompletionRequest.Create(cText, 'C:\P\Haupt.pas', TTextPosition.Create(3, 2));
     mRequest.Resolver := mResolver;
     mRequest.Tree := mTree;
     Assert.AreEqual('Haupt', mRequest.UnitIndex.UnitName);

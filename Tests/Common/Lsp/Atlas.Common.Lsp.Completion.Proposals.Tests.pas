@@ -74,10 +74,10 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.InterfaceStubs,
   Atlas.Common.Semantics.AssignFields,
-  Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Lsp.CompletionCollector,
-  Atlas.Common.Lsp.Completion.Details;
+  Atlas.Common.Lsp.Completion.Details,
+  Atlas.Common.Completion.Contract;
 
 const
   cEventsUnitBasis =
@@ -388,7 +388,7 @@ const
     'end.';
 
 /// <summary>Liest nur die Unit Typen.</summary>
-function TypenReader: TCompletionReadText;
+function TypenReader: TDocumentReadText;
 begin
   Result :=
     function(const AFileName: string; out AText: string): Boolean
@@ -399,7 +399,7 @@ begin
 end;
 /// <summary>Scoped Enum: Typpräfix beim Einfügen; case-Zweig mit den fehlenden Werten.</summary>
 procedure AssertScopedEnumAndCase(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AReader: TCompletionReadText);
+  const AReader: TDocumentReadText);
 var
   mItems: TArray<TCompletionItem>;
   mSetMode: Boolean;
@@ -418,7 +418,7 @@ begin
 end;
 /// <summary>Menge: alle Werte des Elementtyps, akLeft angehakt; bei in der Elementtyp aus der linken Seite.</summary>
 procedure AssertEnumSetItems(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AReader: TCompletionReadText);
+  const AReader: TDocumentReadText);
 var
   mItems: TArray<TCompletionItem>;
   mSetMode: Boolean;
@@ -615,7 +615,7 @@ var
   mResolver: TNameResolver;
   mItems: TArray<TCompletionItem>;
   mSetMode: Boolean;
-  mReader: TCompletionReadText;
+  mReader: TDocumentReadText;
 begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(cEnumUnitTypen, cEnumTypenFile, nil));
   mReader := TypenReader();

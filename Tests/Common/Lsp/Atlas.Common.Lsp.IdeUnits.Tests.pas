@@ -45,15 +45,14 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.Hover,
-  Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.Completion.Lists,
   Atlas.Common.Lsp.IdeUnits.Source,
   Atlas.Common.Lsp.IdeUnits,
   Atlas.Common.Lsp.Adapters.IdeIndex,
   Atlas.Common.Index.NameIndex,
-  Atlas.Common.Diagnostics.ShutdownLeaks;
+  Atlas.Common.Diagnostics.ShutdownLeaks,
+  Atlas.Common.Completion.Contract;
 
 const
   cMembers = '{"units":[{"unit":"Vendor.Grid","types":[' +
@@ -105,7 +104,7 @@ begin
 end;
 
 /// <summary>Liest die Ersatz-Units aus AUnits.</summary>
-function ReaderOf(AUnits: TIdeUnits): TDocReadText;
+function ReaderOf(AUnits: TIdeUnits): TDocumentReadText;
 begin
   Result :=
     function(const AFileName: string; out AText: string): Boolean

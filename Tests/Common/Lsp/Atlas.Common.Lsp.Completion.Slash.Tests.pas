@@ -36,8 +36,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.ConditionalSymbols,
-  Atlas.Common.Lsp.CompletionRequest,
-  Atlas.Common.Lsp.Completion.Slash;
+  Atlas.Common.Completion.Request,
+  Atlas.Common.Lsp.Completion.Slash,
+  Atlas.Common.Completion.Contract;
 
 const
   cUnit =

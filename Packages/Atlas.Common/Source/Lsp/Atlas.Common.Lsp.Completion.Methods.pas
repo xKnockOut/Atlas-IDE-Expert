@@ -11,9 +11,10 @@ interface
 uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.CompletionRequest,
+  Atlas.Common.Completion.Request,
   Atlas.Common.Lsp.CompletionAnonymous,
-  Atlas.Common.Lsp.Completion.Names;
+  Atlas.Common.Lsp.Completion.Names,
+  Atlas.Common.Completion.Contract;
 
 type
   TCompletionMethods = class

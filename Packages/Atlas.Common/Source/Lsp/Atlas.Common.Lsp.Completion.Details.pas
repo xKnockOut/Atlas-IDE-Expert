@@ -11,8 +11,7 @@ interface
 uses
   System.JSON,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Index.Contract;
 
 type
   TCompletionDetails = class
@@ -23,7 +22,7 @@ type
     /// samt Fundorten der Verweise und documentationText (#654). AReadText liest andere Dateien
     /// für &lt;inheritdoc/&gt;. Der Aufrufer übernimmt das Objekt.</summary>
     class function Details(const AIndex: ISymbolIndex; const AFileName, AText: string;
-      const APosition: TTextPosition; const AReadText: TCompletionReadText): TJSONObject; overload; static;
+      const APosition: TTextPosition; const AReadText: TDocumentReadText): TJSONObject; overload; static;
     /// <summary>Wie oben mit AReadText = nil.</summary>
     class function Details(const AIndex: ISymbolIndex; const AFileName, AText: string;
       const APosition: TTextPosition): TJSONObject; overload; static;
@@ -49,7 +48,8 @@ uses
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Pascal.InterfaceStubs,
   Atlas.Common.Lsp.Documentation,
-  Atlas.Common.Pascal.TypeTexts;
+  Atlas.Common.Pascal.TypeTexts,
+  Atlas.Common.Completion.Request;
 
 const
   cDirectives: array[0..13] of string = ('class', 'static', 'virtual', 'dynamic', 'override', 'abstract', 'final',
@@ -67,7 +67,7 @@ type
     Index: ISymbolIndex;
     FileName: string;
     Text: string;
-    ReadText: TCompletionReadText;
+    ReadText: TDocumentReadText;
     Lines: TArray<string>;
     HasUnit: Boolean;
     UnitInfo: TUnitIndex;
@@ -316,7 +316,7 @@ end;
 { TCompletionDetails }
 
 class function TCompletionDetails.Details(const AIndex: ISymbolIndex; const AFileName, AText: string;
-  const APosition: TTextPosition; const AReadText: TCompletionReadText): TJSONObject;
+  const APosition: TTextPosition; const AReadText: TDocumentReadText): TJSONObject;
 var
   mSite: TDetailsSite;
   mDeclaration: string;

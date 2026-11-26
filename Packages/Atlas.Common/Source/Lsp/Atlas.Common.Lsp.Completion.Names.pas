@@ -9,7 +9,8 @@ interface
 
 uses
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Completion.Request,
+  Atlas.Common.Completion.Contract;
 
 type
   /// <summary>Präfix für Namensvorschläge (#452) der Art AKind im Projekt von AUri: Vorgabe der Projektdatei,

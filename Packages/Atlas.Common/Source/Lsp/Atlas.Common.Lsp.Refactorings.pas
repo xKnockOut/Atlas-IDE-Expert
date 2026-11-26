@@ -43,8 +43,7 @@ uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.Extract,
   Atlas.Common.Editing.WithResolution,
-  Atlas.Common.Editing.Inlining,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Editing.Inlining;
 
 type
   TRefactoringContext = record
@@ -52,7 +51,7 @@ type
     EnsureUnit: TEnsureUnitFunc;
     Namespaces: TArray<string>;
     FileName: string;
-    ReadText: TCompletionReadText;
+    ReadText: TDocumentReadText;
     Settings: TRefactoringSettings;
     /// <summary>Inline-Variablen erlaubt (Einstellung und Sprachversion).</summary>
     InlineVar: Boolean;

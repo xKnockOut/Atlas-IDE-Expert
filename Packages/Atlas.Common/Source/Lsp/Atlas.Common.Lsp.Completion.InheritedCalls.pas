@@ -10,8 +10,9 @@ interface
 
 uses
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.CompletionRequest,
-  Atlas.Common.Lsp.CompletionCollector;
+  Atlas.Common.Completion.Request,
+  Atlas.Common.Lsp.CompletionCollector,
+  Atlas.Common.Completion.Contract;
 
 type
   TCompletionInheritedCalls = class

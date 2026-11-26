@@ -30,7 +30,6 @@ uses
   System.JSON,
   Atlas.Common.Lsp.ApplyEdit,
   Atlas.Common.Lsp.IdeProject,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.TestUnits,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Pascal.FormatRoutines,
@@ -42,7 +41,8 @@ uses
   Shell.Composition.CodeArea,
   Shell.Composition.AnalysisArea,
   Shell.Composition.IdeArea,
-  Atlas.Common.Semantics.Contract;
+  Atlas.Common.Semantics.Contract,
+  Atlas.Common.Completion.Contract;
 
 { TShellFeatureWiring }
 

@@ -8,7 +8,8 @@ interface
 {$SCOPEDENUMS ON}
 
 uses
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Completion.Request,
+  Atlas.Common.Completion.Contract;
 
 type
   TCompletionGuard = class

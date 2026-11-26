@@ -55,7 +55,8 @@ uses
   Atlas.Common.Editing.ContextSnippets,
   Atlas.Common.Lsp.Completion,
   Atlas.Tests.TextEdits,
-  Atlas.Tests.SourceText;
+  Atlas.Tests.SourceText,
+  Atlas.Common.Completion.Contract;
 
 const
   cAnzeige =

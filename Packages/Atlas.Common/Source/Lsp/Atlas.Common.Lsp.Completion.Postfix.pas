@@ -12,7 +12,8 @@ uses
   System.JSON,
   Atlas.Common.Pascal.PostfixTemplates,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Completion.Request,
+  Atlas.Common.Completion.Contract;
 
 type
   /// <summary>Postfix-Vorlagen (#188) je Dokument.</summary>

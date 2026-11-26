@@ -46,7 +46,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.CompletionSameNames,
   Atlas.Common.Lsp.Completion,
-  Atlas.Common.Lsp.Completion.TestSupport;
+  Atlas.Common.Lsp.Completion.TestSupport,
+  Atlas.Common.Completion.Contract;
 
 const
   cUnitWindows =

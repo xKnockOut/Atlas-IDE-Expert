@@ -11,7 +11,8 @@ interface
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Lsp.Internals.FormCache,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Completion.Request,
+  Atlas.Common.Completion.Contract;
 
 type
   /// <summary>Auszug des Formulars zur Unit ASourceFile mit dem Text ASourceText (#455, #480); False ohne
@@ -37,10 +38,10 @@ type
   public
     /// <summary>Formular zur Unit über AReadText, ohne Zwischenspeicher (für Aufrufer ohne Instanz, z. B. Tests);
     /// nil ohne AReadText.</summary>
-    class function Uncached(const AReadText: TCompletionReadText): TCompletionFormFunc; static;
+    class function Uncached(const AReadText: TDocumentReadText): TCompletionFormFunc; static;
     /// <summary>Formular zur Unit über AReadText, zwischengespeichert in ACache je Stand der Formulardatei:
     /// offene Formulare (AStore) nach ihrem Text, Dateien nach der Dateizeit. False ohne AReadText.</summary>
-    class function Cached(const AStore: IDocumentStore; const AReadText: TCompletionReadText;
+    class function Cached(const AStore: IDocumentStore; const AReadText: TDocumentReadText;
       ACache: TFormSnapshotCache): TCompletionFormFunc; static;
     /// <summary>Komponenten des Formulars zur Unit (#455), wenn der Cursor ohne Punkt in einer Methode der
     /// Formularklasse steht. Quelle ist das Formular über AForms, also der Stand im Designer, solange es offen
@@ -102,7 +103,7 @@ type
   /// <summary>Woher Cached das Formular liest und wohin es den Auszug legt.</summary>
   TFormSource = record
     Store: IDocumentStore;
-    ReadText: TCompletionReadText;
+    ReadText: TDocumentReadText;
     Cache: TFormSnapshotCache;
   end;
 
@@ -225,7 +226,7 @@ begin
 end;
 
 /// <summary>Erstes lesbares Formular zur Unit, ohne Zwischenspeicher.</summary>
-function UncachedSnapshot(const AReadText: TCompletionReadText; const ASourceFile, ASourceText: string;
+function UncachedSnapshot(const AReadText: TDocumentReadText; const ASourceFile, ASourceText: string;
   out ASnapshot: TFormSnapshot): Boolean;
 var
   mFormFile, mFormText: string;
@@ -500,7 +501,7 @@ end;
 
 { TCompletionForms }
 
-class function TCompletionForms.Uncached(const AReadText: TCompletionReadText): TCompletionFormFunc;
+class function TCompletionForms.Uncached(const AReadText: TDocumentReadText): TCompletionFormFunc;
 begin
   Result := nil;
   if not Assigned(AReadText) then
@@ -514,7 +515,7 @@ begin
     end;
 end;
 
-class function TCompletionForms.Cached(const AStore: IDocumentStore; const AReadText: TCompletionReadText;
+class function TCompletionForms.Cached(const AStore: IDocumentStore; const AReadText: TDocumentReadText;
   ACache: TFormSnapshotCache): TCompletionFormFunc;
 var
   mSource: TFormSource;

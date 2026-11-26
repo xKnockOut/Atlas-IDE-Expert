@@ -16,10 +16,11 @@ uses
   Atlas.Common.Pascal.PostfixTemplates,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.ConditionalSymbols,
-  Atlas.Common.Lsp.CompletionRequest,
+  Atlas.Common.Completion.Request,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Completion.Names,
-  Atlas.Common.Lsp.Completion.Postfix;
+  Atlas.Common.Lsp.Completion.Postfix,
+  Atlas.Common.Completion.Contract;
 
 type
   TPostfixOptionsFunc = reference to function(const AUri: string): TPostfixOptions;
@@ -62,7 +63,7 @@ type
     procedure SetNamespaces(const AValue: TArray<string>);
   public
     /// <summary>Liest Dateien für completionItem/resolve; ohne Zuweisung keine Details.</summary>
-    ReadText: TCompletionReadText;
+    ReadText: TDocumentReadText;
     /// <summary>Auswahl je Dokument; ohne Zuweisung unscharf.</summary>
     MatchingFor: TCompletionMatchingFunc;
     /// <summary>Abschnitt für Interface-Methoden (#466), Typumwandlung von Sender (#480); ohne Zuweisung die

@@ -1212,7 +1212,7 @@ var
   mSignature: TSignature;
   mKey: string;
   mSeen, mBindings: TArray<string>;
-  mReader: TDocReadText;
+  mReader: TDocumentReadText;
 begin
   Result := nil;
   mSeen := nil;

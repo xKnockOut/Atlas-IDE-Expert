@@ -24,8 +24,9 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.CompletionRequest,
-  Atlas.Common.Lsp.CompletionCollector;
+  Atlas.Common.Completion.Request,
+  Atlas.Common.Lsp.CompletionCollector,
+  Atlas.Common.Completion.Contract;
 
 type
   TUsesGroup = (Project, Rtl, Library_);

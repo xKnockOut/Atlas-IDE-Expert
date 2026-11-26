@@ -202,7 +202,7 @@ uses
   Atlas.Common.Lsp.CompletionDebugDisplay.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionDebugDisplay.Tests.pas',
   Atlas.Common.Lsp.CompletionInherited.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionInherited.Tests.pas',
   Atlas.Common.Lsp.CompletionSameNames.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionSameNames.Tests.pas',
-  Atlas.Common.Lsp.CompletionRequest.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionRequest.Tests.pas',
+  Atlas.Common.Completion.Request.Tests in 'Common\Completion\Atlas.Common.Completion.Request.Tests.pas',
   Atlas.Common.Lsp.CompletionCollector.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionCollector.Tests.pas',
   Atlas.Common.Lsp.Completion.TypeConversions.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.TypeConversions.Tests.pas',
   Atlas.Common.Lsp.Internals.CompletionSource.Tests in 'Common\Lsp\Atlas.Common.Lsp.Internals.CompletionSource.Tests.pas',

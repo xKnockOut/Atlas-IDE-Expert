@@ -9,7 +9,7 @@ interface
 
 uses
   System.JSON,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Completion.Contract;
 
 /// <summary>CompletionItem[]; AFirstSort: sortText des ersten Eintrags (bei Teilergebnissen fortlaufend). Der
 /// Aufrufer übernimmt das Array.</summary>

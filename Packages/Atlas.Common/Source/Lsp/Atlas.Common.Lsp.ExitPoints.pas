@@ -29,17 +29,16 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Lsp.DocumentHighlights,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.ExitPoints,
-  Atlas.Common.Lsp.Documentation;
+  Atlas.Common.Semantics.ExitPoints;
 
 type
   /// <summary>Woher der Befehl Texte anderer Dateien und die Einstellungen zur Datei bekommt.</summary>
   TExitPointsReaders = record
     /// <summary>Text anderer Units für die XMLDoc der aufgerufenen Routinen (nil = keine).</summary>
-    ReadText: TDocReadText;
+    ReadText: TDocumentReadText;
     /// <summary>highlight.exitKeywords zur Datei (nil = Standard).</summary>
     SettingsFor: THighlightSettingsProvider;
-    class function Create(const AReadText: TDocReadText; const ASettingsFor: THighlightSettingsProvider):
+    class function Create(const AReadText: TDocumentReadText; const ASettingsFor: THighlightSettingsProvider):
       TExitPointsReaders; static;
   end;
 
@@ -51,7 +50,7 @@ type
     class function Json(const ASet: TExitPointSet): TJSONObject; static;
     /// <summary>Exceptions laut XMLDoc: erst der Baum, dann über AResolver die deklarierende Unit.</summary>
     class function ExceptionLookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
-      const ALines: TArray<string>; const AReadText: TDocReadText): TExitPointExceptionLookup; static;
+      const ALines: TArray<string>; const AReadText: TDocumentReadText): TExitPointExceptionLookup; static;
     /// <summary>Vererbung über AResolver, sonst wie TExitPoints.TreeClassTest.</summary>
     class function ClassTest(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string):
       TExitPointClassTest; static;
@@ -73,7 +72,8 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Lsp.Documentation;
 
 {$SCOPEDENUMS ON}
 
@@ -95,7 +95,7 @@ const
 
 { TExitPointsReaders }
 
-class function TExitPointsReaders.Create(const AReadText: TDocReadText;
+class function TExitPointsReaders.Create(const AReadText: TDocumentReadText;
   const ASettingsFor: THighlightSettingsProvider): TExitPointsReaders;
 begin
   Result.ReadText := AReadText;
@@ -145,13 +145,13 @@ begin
 end;
 
 class function TLspExitPoints.ExceptionLookup(AResolver: TNameResolver; ATree: TSyntaxTree;
-  const AFileName: string; const ALines: TArray<string>; const AReadText: TDocReadText): TExitPointExceptionLookup;
+  const AFileName: string; const ALines: TArray<string>; const AReadText: TDocumentReadText): TExitPointExceptionLookup;
 var
   mOwn: TExitPointExceptionLookup;
   mResolver: TNameResolver;
   mTree: TSyntaxTree;
   mFileName: string;
-  mReader: TDocReadText;
+  mReader: TDocumentReadText;
 begin
   mOwn := TExitPoints.TreeExceptions(ATree, ALines);
   mResolver := AResolver;

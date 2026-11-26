@@ -14,7 +14,8 @@ interface
 
 uses
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Completion.Request,
+  Atlas.Common.Completion.Contract;
 
 type
   /// <summary>Kann das Argument AArgument (ab 0) des Aufrufs, dessen "(" am Token ACallOpen steht, als var oder

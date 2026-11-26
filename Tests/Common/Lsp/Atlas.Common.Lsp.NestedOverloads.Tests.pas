@@ -9,8 +9,8 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.CompletionRequest,
-  Atlas.Common.Lsp.SignatureHelp;
+  Atlas.Common.Lsp.SignatureHelp,
+  Atlas.Common.Completion.Contract;
 
 type
   [TestFixture]

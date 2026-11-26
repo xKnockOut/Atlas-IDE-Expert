@@ -23,7 +23,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Completion.Request,
+  Atlas.Common.Completion.Contract;
 
 type
   TGenericArgSite = record

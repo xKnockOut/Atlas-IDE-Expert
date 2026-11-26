@@ -62,9 +62,9 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.FuzzyMatch,
-  Atlas.Common.Lsp.CompletionCollector;
+  Atlas.Common.Lsp.CompletionCollector,
+  Atlas.Common.Completion.Contract;
 
 { TLspCompletionFormProposalTests }
 
@@ -388,7 +388,7 @@ var
   mTree: TSyntaxTree;
   mResolver: TNameResolver;
   mItems: TCompletionItems;
-  mReadForm: TCompletionReadText;
+  mReadForm: TDocumentReadText;
 begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(cSenderUnitSteuer, 'C:\P\Steuer.pas', nil));
   mReadForm :=
@@ -536,7 +536,7 @@ var
   mResolver: TNameResolver;
   mItems: TArray<TCompletionItem>;
   mReads: Integer;
-  mReadForm: TCompletionReadText;
+  mReadForm: TDocumentReadText;
 begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(cFormUnitSteuer, 'C:\P\Steuer.pas', nil));
   mReads := 0;
@@ -661,7 +661,7 @@ var
   mTree: TSyntaxTree;
   mResolver: TNameResolver;
   mItems: TCompletionItems;
-  mReadForm: TCompletionReadText;
+  mReadForm: TDocumentReadText;
   mIndex, mLine: Integer;
 begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(cFormUnitSteuer, 'C:\P\Steuer.pas', nil));

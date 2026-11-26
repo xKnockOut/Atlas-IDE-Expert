@@ -18,8 +18,9 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.CompletionRequest,
-  Atlas.Common.Lsp.CompletionCollector;
+  Atlas.Common.Completion.Request,
+  Atlas.Common.Lsp.CompletionCollector,
+  Atlas.Common.Completion.Contract;
 
 type
   {$SCOPEDENUMS ON}
@@ -84,7 +85,8 @@ uses
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.FuzzyMatch,
-  Atlas.Common.Lsp.CompletionGenerics;
+  Atlas.Common.Lsp.CompletionGenerics,
+  Atlas.Common.Documents.Contract;
 
 const
   cKnownRaiseTable: array[0..19] of TKnownRaise = (
@@ -306,7 +308,7 @@ type
   /// <summary>Sucht die Exceptions der Aufrufe im try-Block (TCompletionExceptions.TryClasses).</summary>
   TTryScan = record
     Request: TCompletionRequest;
-    Reader: TDocReadText;
+    Reader: TDocumentReadText;
     // Klassen (groß) und Deklarationen (Datei:Zeile), die schon gezählt sind.
     Seen, Done: TDictionary<string, Boolean>;
     // Zeilen je Datei (groß), nil ohne Quelltext.

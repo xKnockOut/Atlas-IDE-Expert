@@ -9,7 +9,7 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Completion.Contract;
 
 type
   [TestFixture]

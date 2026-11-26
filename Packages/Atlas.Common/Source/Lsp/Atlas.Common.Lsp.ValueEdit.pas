@@ -23,7 +23,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.Completion.Values;
 
 type
@@ -57,7 +56,7 @@ type
     class function Json(const AInfo: TLspValueEditInfo): TJSONObject; static;
     /// <summary>Führt den Befehl aus; der Aufrufer übernimmt das Ergebnis.</summary>
     class function Execute(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-      const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AReadText: TCompletionReadText;
+      const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AReadText: TDocumentReadText;
       const AArguments: TJSONArray): TJSONValue; static;
   end;
 
@@ -73,7 +72,8 @@ uses
   Atlas.Common.Semantics.ExpressionTypes.Contract,
   Atlas.Common.Semantics.ExpressionTypes.Operators,
   Atlas.Common.Lsp.ExpressionType,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Completion.Request;
 
 {$SCOPEDENUMS ON}
 
@@ -317,7 +317,7 @@ begin
 end;
 
 class function TLspValueEdit.Execute(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-  const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AReadText: TCompletionReadText;
+  const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AReadText: TDocumentReadText;
   const AArguments: TJSONArray): TJSONValue;
 var
   mUri: string;

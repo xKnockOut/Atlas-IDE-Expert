@@ -16,16 +16,17 @@ uses
   Atlas.Common.Lsp.HoverTypes,
   Atlas.Common.Index.PublishedMembers,
   Atlas.Common.Lsp.Hover.UnitContents,
-  Atlas.Common.Rationale.Contract;
+  Atlas.Common.Rationale.Contract,
+  Atlas.Common.Documents.Contract;
 
 type
   /// <summary>Womit der Hover sucht: Namensauflösung, Index und Lesen anderer Dateien (darf nil sein).</summary>
   THoverSource = record
     Resolver: TNameResolver;
     Index: ISymbolIndex;
-    ReadText: TDocReadText;
+    ReadText: TDocumentReadText;
     class function Create(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-      const AReadText: TDocReadText): THoverSource; static;
+      const AReadText: TDocumentReadText): THoverSource; static;
   end;
 
   THoverInfo = record
@@ -248,7 +249,7 @@ end;
 { THoverSource }
 
 class function THoverSource.Create(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  const AReadText: TDocReadText): THoverSource;
+  const AReadText: TDocumentReadText): THoverSource;
 begin
   Result.Resolver := AResolver;
   Result.Index := AIndex;

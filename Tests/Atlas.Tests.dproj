@@ -317,7 +317,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionDebugDisplay.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionInherited.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionSameNames.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionRequest.Tests.pas"/>
+        <DCCReference Include="Common\Completion\Atlas.Common.Completion.Request.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionCollector.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.TypeConversions.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Internals.CompletionSource.Tests.pas"/>

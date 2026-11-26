@@ -11,7 +11,8 @@ interface
 uses
   System.JSON,
   Atlas.Common.Semantics.NameResolver.Candidates,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Completion.Request,
+  Atlas.Common.Completion.Contract;
 
 type
   TCompletionHiddenMembers = class

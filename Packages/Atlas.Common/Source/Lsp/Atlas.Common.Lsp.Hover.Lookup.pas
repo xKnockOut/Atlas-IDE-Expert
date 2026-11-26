@@ -144,7 +144,7 @@ end;
 
 /// <summary>Text der Formulardatei neben AUnitFile (.dfm vor .fmx); die geöffnete Datei AOpenFile aus AOpenText.
 /// '' ohne Formulardatei.</summary>
-function FormText(const AUnitFile, AOpenFile, AOpenText: string; const AReadText: TDocReadText;
+function FormText(const AUnitFile, AOpenFile, AOpenText: string; const AReadText: TDocumentReadText;
   out AFormFile: string): string;
 var
   mExtension: string;
@@ -203,7 +203,7 @@ end;
 
 /// <summary>Leser für TPublishedMembers: die eigene Datei kommt aus dem Editor, nicht von der Platte. Eigene
 /// Routine, damit die anonyme Methode nur diese Kopien einfängt.</summary>
-function MemberReader(const AFileName, ATreeText: string; const AReadText: TDocReadText): TMemberReadText;
+function MemberReader(const AFileName, ATreeText: string; const AReadText: TDocumentReadText): TMemberReadText;
 begin
   Result :=
     function(const AName: string; out AText: string): Boolean
@@ -221,7 +221,7 @@ begin
 end;
 
 /// <summary>Derselbe Leser für TMessageHandlers.</summary>
-function MessageReader(const AFileName, ATreeText: string; const AReadText: TDocReadText): TMessageReadText;
+function MessageReader(const AFileName, ATreeText: string; const AReadText: TDocumentReadText): TMessageReadText;
 begin
   Result :=
     function(const AName: string; out AText: string): Boolean
