@@ -1,2 +1,0 @@
-### Behoben
-- Atlas-Struktur: Kein Absturz der IDE mehr (Zugriffsverletzung in `ComponentDesigner.TComponentRoot.FindCurrentParentItem`), wenn das Fenster bei einem Datenmodul oder während eines Formularwechsels die Symbole nichtvisueller Komponenten aus- oder einblendet (`designer.structureHideOnForm`). Der Befehl der IDE läuft jetzt erst, wenn ein visuelles Formular fertig im Designer steht; bei einem Datenmodul wartet er.
