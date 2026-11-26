@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.DeclareUnknown;
+﻿unit Atlas.Common.Pascal.DeclareUnknown;
 
 // Unbekannten Bezeichner deklarieren (#471), Teil ohne Namensauflösung:
 //   - Slot: getippter Name am Cursor, der eine Variable, ein Feld oder eine Konstante sein kann (kein Punkt

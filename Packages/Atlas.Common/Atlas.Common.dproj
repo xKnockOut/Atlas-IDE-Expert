@@ -368,7 +368,7 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.StringLiterals.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.PostfixTemplates.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.CaseCompletion.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.AssignFields.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.AssignFields.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.RoutineBody.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ParamOwnership.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ObjectUses.pas"/>
@@ -425,7 +425,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.EnumValueCommands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ValueEdit.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Refactorings.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.DeclareUnknown.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.DeclareUnknown.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ForwardDeclarations.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.OwnedFields.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.OwnedFields.Types.pas"/>
