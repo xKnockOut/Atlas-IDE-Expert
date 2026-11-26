@@ -20,6 +20,10 @@ type
     procedure ResultReadBeforeSet;
     [Test]
     procedure ResultSilentCases;
+    /// <summary>SetLength(Result, 0) leert; dicht gefülltes Result (Zähler mit Inc, am Ende SetLength(Result, N))
+    /// liest nur eigene Elemente.</summary>
+    [Test]
+    procedure ResultClearedOrCompacted;
     [Test]
     procedure TryGetValueOverwritesPreset;
     [Test]
@@ -158,6 +162,29 @@ begin
     '  SetLength(Result, 4);', '  Move(P^, Result[0], 4);', '  if Result[0] = 0 then', '    Exit;', 'end;']));
 end;
 
+procedure TDelphiSemanticsTests.ResultClearedOrCompacted;
+begin
+  TRuleAssert.Silent(TManagedResultReadRule.Create, UnitWith(['function Liste(K: Integer): TArray<Integer>;',
+    'var', '  J: Integer;', 'begin', '  SetLength(Result, 0);', '  for J := 0 to K - 1 do', '    if Result[J] = 0 then',
+    '      Exit;', 'end;']));
+  // Doppelte auslassen, Hotkeys entfernen, einsortieren (XML-Inspector).
+  TRuleAssert.Silent(TManagedResultReadRule.Create, UnitWith(['function Einmal(const A: array of string): ' +
+    'TArray<string>;', 'var', '  I, J, N: Integer;', '  Dup: Boolean;', 'begin', '  SetLength(Result, Length(A));',
+    '  N := 0;', '  for I := 0 to High(A) do', '  begin', '    Dup := False;', '    for J := 0 to N - 1 do',
+    '      if Result[J] = A[I] then', '        Dup := True;', '    if not Dup then', '    begin',
+    '      Result[N] := A[I];', '      Inc(N);', '    end;', '  end;', '  SetLength(Result, N);', 'end;',
+    'function Ohne(const S: string): string;', 'var', '  I, N: Integer;', 'begin', '  SetLength(Result, Length(S));',
+    '  N := 0;', '  for I := 1 to Length(S) do', '    if S[I] <> ''&'' then', '    begin', '      Inc(N);',
+    '      Result[N] := S[I];', '    end;', '  SetLength(Result, N);', '  if (N > 0) and (Result[N] = ''.'') then',
+    '    SetLength(Result, N - 1);', '  N := Length(Result);', '  if Copy(Result, N - 2, 3) = ''...'' then',
+    '    SetLength(Result, N - 3);', 'end;']));
+  // Ohne Zähler bleibt das Lesen nur teilweise geschriebener Elemente ein Befund.
+  TRuleAssert.Reports(TManagedResultReadRule.Create, UnitWith(['function Teil(const A: TArray<Integer>): ' +
+    'TArray<Boolean>;', 'var', '  I, N: Integer;', 'begin', '  SetLength(Result, Length(A));', '  N := Length(A);',
+    '  for I := 0 to High(A) do', '    if A[I] > 0 then', '      Result[I] := True;', '  SetLength(Result, N);',
+    '  if Result[0] then', '    Exit;', 'end;']), 1);
+end;
+
 procedure TDelphiSemanticsTests.TryGetValueOverwritesPreset;
 var
   mFound: TArray<TRuleFinding>;
@@ -275,6 +302,11 @@ begin
     '  Result := Cardinal(UInt64(H xor 1) * 16777619);', 'end;', 'function Mal(H: Integer): Integer;', 'begin',
     '  Result := H * 16777618;', 'end;', '{$OVERFLOWCHECKS OFF}', 'function Spaet(H: Cardinal): Cardinal;', 'begin',
     '  Result := H * 16777619;', 'end;']));
+  // Operand mit 64-Bit-Typ: FNV-32 in Int64 gerechnet (XML-Inspector, SdHash).
+  TRuleAssert.Silent(THashOverflowCheckedRule.Create, UnitWith(['function SdHash(const S: string): Int64;', 'var',
+    '  H: Int64;', '  I: Integer;', 'begin', '  H := 2166136261;', '  for I := 1 to Length(S) do',
+    '    H := ((H xor Ord(S[I])) * 16777619) and $FFFFFFFF;', '  Result := H;', 'end;',
+    'function Weiter(H: UInt64; B: Byte): UInt64;', 'begin', '  Result := (H xor B) * 16777619;', 'end;']));
 end;
 
 procedure TDelphiSemanticsTests.RulesAreRegistered;

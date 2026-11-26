@@ -82,6 +82,12 @@ procedure TFlowHandleLeakTests.FailedOpenBranchIsSilent;
 begin
   TRuleAssert.Silent(THandleLeakRule.Create, Routine('  H := OpenProcess(0, False, 1);'#10 +
     '  if H = 0 then'#10'    Exit;'#10'  CloseHandle(H);'));
+  // INVALID_HANDLE_VALUE ausgeschrieben: THandle(-1) (XML-Inspector, FileWatch).
+  TRuleAssert.Silent(THandleLeakRule.Create, Routine('  H := CreateFile(PChar(Name), 0, 0, nil, 3, 0, 0);'#10 +
+    '  if H = THandle(-1) then'#10'    Exit;'#10'  try'#10'    Merke(0);'#10'  finally'#10'    CloseHandle(H);'#10 +
+    '  end;'));
+  TRuleAssert.Silent(THandleLeakRule.Create, Routine('  H := CreateFile(PChar(Name), 0, 0, nil, 3, 0, 0);'#10 +
+    '  if H <> THandle(-1) then'#10'    CloseHandle(H);'));
 end;
 
 procedure TFlowHandleLeakTests.FixAppendsClose;

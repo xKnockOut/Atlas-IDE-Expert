@@ -192,6 +192,7 @@ type
     function BodyIndexes(AFrom, AStop: Integer; const ABaseKey: string; ABaseCount: Integer;
       const AVar: string): Boolean;
     function IsCountCall(const AHeader: TLoopHeader): Boolean;
+    function GuardsBound(const AHeader: TLoopHeader; const AVar: string): Boolean;
     function CallBase(const AHeader: TLoopHeader; var ABase: TLoopBase): Boolean;
     function CountBase(const AHeader: TLoopHeader; var ABase: TLoopBase): Boolean;
     function FindBase(const AHeader: TLoopHeader; out ABase: TLoopBase): Boolean;
@@ -298,6 +299,43 @@ begin
     mClose := NextCode(FTokens, mInner + 1);
     if (mClose < AStop) and SameText(FTokens[mInner].Text, AVar) and FTokens[mClose].IsSymbol(']') and
       IndexesBase(mIndex, ABaseKey, ABaseCount) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+// Vergleicht der Rumpf die Laufvariable AVar mit der Obergrenze (I = Length(A), I < Length(A), I <> X.Count)? Dann
+// behandelt die Schleife den letzten Durchlauf eigens (for I := 0 to Length(A) do if (I = Length(A)) or (A[I] =
+// 10) then …) und liest A[I] dort nicht.
+function TLoopOffByOneScan.GuardsBound(const AHeader: TLoopHeader; const AVar: string): Boolean;
+var
+  mIndex, mOperator, mFirst, mLast, mStep, mCount: Integer;
+  mHighKey: string;
+begin
+  mHighKey := CodeKey(FTokens, AHeader.HighFirst, AHeader.HighLast);
+  mCount := CodeCount(FTokens, AHeader.HighFirst, AHeader.HighLast);
+  for mIndex := AHeader.DoIndex + 1 to AHeader.Stop - 1 do
+  begin
+    if IsTrivia(FTokens[mIndex]) or not SameText(FTokens[mIndex].Text, AVar) then
+    begin
+      Continue;
+    end;
+    mOperator := NextCode(FTokens, mIndex + 1);
+    if (mOperator >= AHeader.Stop) or not MatchText(FTokens[mOperator].Text, ['=', '<', '<>', '>=']) then
+    begin
+      Continue;
+    end;
+    mFirst := NextCode(FTokens, mOperator + 1);
+    mLast := mFirst;
+    mStep := 1;
+    while (mStep < mCount) and (mLast < AHeader.Stop) do
+    begin
+      mLast := NextCode(FTokens, mLast + 1);
+      Inc(mStep);
+    end;
+    if (mLast < AHeader.Stop) and SameText(CodeKey(FTokens, mFirst, mLast), mHighKey) then
     begin
       Exit(True);
     end;
@@ -453,7 +491,8 @@ var
 begin
   // downto prüft for-high-to-low.
   if not ParseForHeader(FTokens, ANode, mHeader) or not FindBase(mHeader, mBase) or not BodyIndexes(
-    mHeader.DoIndex + 1, mHeader.Stop, mBase.Key, CodeCount(FTokens, mBase.First, mBase.Last), ANode.Name) then
+    mHeader.DoIndex + 1, mHeader.Stop, mBase.Key, CodeCount(FTokens, mBase.First, mBase.Last), ANode.Name) or
+    GuardsBound(mHeader, ANode.Name) then
   begin
     Exit;
   end;

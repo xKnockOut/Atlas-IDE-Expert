@@ -1,0 +1,12 @@
+### Behoben
+- Fehlalarme in einem großen Fremdprojekt (Delphi und Lazarus gemischt) behoben:
+  - `uses-unit-not-found`: `in`-Pfade mit `\` werden ohne Projektdatei auch unter Linux gefunden.
+  - `uses-order-hides-type`: Units aus inaktiven `{$IFDEF}`-Zweigen zählen nicht mehr.
+  - `control-fixed-bounds`: still bei `Top`/`Left` vor einem `Align` in derselben Routine, bei Grafikobjekten (`TBitmap` u. a.) und bei lokalen Variablen wie `Left`.
+  - `managed-result-read-before-set`: `SetLength(Result, 0)` gilt als gesetzt; Ergebnis-Arrays, die Element für Element gefüllt und am Ende gekürzt werden, bleiben still.
+  - `loop-off-by-one`: still, wenn der Rumpf die Schleifenvariable mit der oberen Grenze vergleicht.
+  - `handle-leak`: `THandle(-1)` gilt wie `INVALID_HANDLE_VALUE` als Fehlerwert.
+  - `hash-overflow-checked`: Hashes in `Int64`/`UInt64` laufen nicht über und bleiben still.
+  - `lock-without-finally`: Sperrmethoden, deren Rumpf nur sperrt (Paar `Lock…`/`Unlock…`), und erneutes Sperren im `finally` nach vorherigem Freigeben bleiben still.
+  - `duplicate-condition`: Vergleiche zweier Funktionsaufrufe (`Zufall <> Zufall`) bleiben still.
+  - `owned-item-freed`: Listen-Parameter gelten nicht mehr als besitzend, weil der Aufrufer sie erzeugt.

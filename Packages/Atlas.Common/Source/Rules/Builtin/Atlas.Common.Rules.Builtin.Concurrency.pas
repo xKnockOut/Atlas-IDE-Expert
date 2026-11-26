@@ -576,6 +576,46 @@ var
     end;
   end;
 
+  // Eine Routine, die nur sperrt (procedure TX.LockCatalog; begin FLock.Acquire; end), gibt die Sperre an den
+  // Aufrufer weiter; das Gegenstück (UnlockCatalog) gibt frei.
+  function OnlyLocks(AList: TSyntaxNode): Boolean;
+  begin
+    Result := (AList.Kind = TSyntaxKind.Block) and (AList.ChildCount = 1) and (AList.Parent <> nil) and
+      (AList.Parent.Kind = TSyntaxKind.RoutineDecl);
+  end;
+
+  // Wieder sperren im finally nach freigegebenem Abschnitt: Lock.Leave; try … finally Lock.Enter; end. Die Sperre
+  // gehört dem Abschnitt um das try und wird dort geprüft.
+  function ReacquiresAfterRelease(AList: TSyntaxNode; const ACall: TMethodCall; const ARelease: string): Boolean;
+  var
+    mTry, mOuter: TSyntaxNode;
+    mIndex: Integer;
+  begin
+    Result := False;
+    mTry := AList;
+    if (mTry.Kind = TSyntaxKind.Block) and (mTry.Parent <> nil) then
+    begin
+      mTry := mTry.Parent;
+    end;
+    if (ARelease = '') or (mTry.Kind <> TSyntaxKind.FinallyBlock) or (mTry.Parent = nil) then
+    begin
+      Exit;
+    end;
+    mTry := mTry.Parent;
+    mOuter := mTry.Parent;
+    if (mTry.Kind <> TSyntaxKind.TryStatement) or (mOuter = nil) then
+    begin
+      Exit;
+    end;
+    for mIndex := 1 to mOuter.ChildCount - 1 do
+    begin
+      if mOuter[mIndex] = mTry then
+      begin
+        Exit(IsRelease(AContext.Text, mOuter[mIndex - 1], ARelease, LockKey(AContext.Text, ACall)));
+      end;
+    end;
+  end;
+
   procedure CheckList(AList: TSyntaxNode);
   var
     mIndex, mReleaseIndex: Integer;
@@ -588,7 +628,8 @@ var
       begin
         Continue;
       end;
-      if IsOwnRoutine(AList, mCall) or PairOf(AList, mIndex, mCall, mRelease, mReleaseIndex) or (mRelease = '') then
+      if IsOwnRoutine(AList, mCall) or PairOf(AList, mIndex, mCall, mRelease, mReleaseIndex) or (mRelease = '') or
+        OnlyLocks(AList) or ReacquiresAfterRelease(AList, mCall, mRelease) then
       begin
         Continue;
       end;

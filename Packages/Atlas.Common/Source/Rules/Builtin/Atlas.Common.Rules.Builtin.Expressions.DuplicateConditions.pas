@@ -35,7 +35,10 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Editing.ConditionalExpression,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Rules.TypedScope;
 
 {$SCOPEDENUMS ON}
 
@@ -87,8 +90,11 @@ type
     FReport: IRuleReport;
     FTokens: TTokens;
     FTypes: TDeclaredTypes;
+    FScope: TTypedScope;
+    FRoutines: TArray<string>;
     function FirstToken(AOffset: Integer): Integer;
     function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
+    function CallsFunction(ANode: TSyntaxNode): Boolean;
     function Key(ANode: TSyntaxNode): string;
     function Display(ANode: TSyntaxNode): string;
     function Impure(ANode: TSyntaxNode): Boolean;
@@ -180,6 +186,27 @@ begin
 end;
 
 // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+/// <summary>Ruft der Bezeichner ANode ohne Klammern eine Funktion auf (NewRandomToken &lt;&gt; NewRandomToken)?
+/// Lokale Variablen, Parameter und Felder nicht; sonst Routinen der Unit und, mit Index, Routinen und Methoden.
+/// </summary>
+function TDuplicateConditionScan.CallsFunction(ANode: TSyntaxNode): Boolean;
+var
+  mSymbol: TResolvedSymbol;
+begin
+  Result := False;
+  if (ANode.Kind <> TSyntaxKind.Identifier) or (FTypes.DeclaredType(ANode.Name, ANode.StartPos) <> '') then
+  begin
+    Exit;
+  end;
+  if MatchText(ANode.Name, FRoutines) then
+  begin
+    Exit(True);
+  end;
+  mSymbol := FScope.Resolver.Resolve(FContext.Tree, FScope.FileName, ANode.StartPos);
+  Result := (mSymbol.Kind = TResolvedKind.Symbol) and (mSymbol.SymbolKind in [TIndexSymbolKind.Routine,
+    TIndexSymbolKind.Method]);
+end;
+
 function TDuplicateConditionScan.Impure(ANode: TSyntaxNode): Boolean;
 var
   mPending: TStack<TSyntaxNode>;
@@ -202,7 +229,7 @@ begin
       begin
         Exit(True);
       end;
-      if mNode.Kind = TSyntaxKind.AnonymousMethod then
+      if (mNode.Kind = TSyntaxKind.AnonymousMethod) or CallsFunction(mNode) then
       begin
         Exit(True);
       end;
@@ -459,6 +486,31 @@ begin
   end;
 end;
 
+/// <summary>Kurznamen der Funktionen der Unit (ohne Klassenpräfix).</summary>
+function UnitFunctions(ARoot: TSyntaxNode): TArray<string>;
+var
+  mNames: TArray<string>;
+begin
+  mNames := nil;
+  ARoot.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    var
+      mName: string;
+    begin
+      Result := True;
+      if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.Name <> '') then
+      begin
+        mName := ANode.Name;
+        if LastDelimiter('.', mName) > 0 then
+        begin
+          mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
+        end;
+        mNames := mNames + [mName];
+      end;
+    end);
+  Result := mNames;
+end;
+
 procedure TDuplicateConditionScan.Run;
 begin
   if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
@@ -466,10 +518,13 @@ begin
     Exit;
   end;
   FTokens := FContext.Tree.Tokens;
+  FRoutines := UnitFunctions(FContext.Tree.Root);
   FTypes := TDeclaredTypes.Create(FContext.Tree, FContext.Text);
+  FScope := TTypedScope.Create(FContext);
   try
     Visit(FContext.Tree.Root);
   finally
+    FScope.Free;
     FTypes.Free;
   end;
 end;
