@@ -431,6 +431,11 @@ begin
   begin
     Exit;
   end;
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if TAtlasIdeEditorCover.Covers(Rect, Context) then
+  begin
+    Exit;
+  end;
   try
     if not TAtlasPaintedLine.Resolve(Stage, BeforeEvent, Context, FState.FileName, FLines, mLine) or
       TAtlasIdeElements.FileHidden(TAtlasDrawnElement.SelectionMatches, Context.FileName) then

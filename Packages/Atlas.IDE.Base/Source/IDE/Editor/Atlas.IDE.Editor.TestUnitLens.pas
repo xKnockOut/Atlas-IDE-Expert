@@ -277,7 +277,9 @@ var
   mCell: TRect;
   mBack: TAtlasColor;
 begin
-  if not FShowing or not TAtlasLensPill.Ready(Stage, BeforeEvent, Context, FPoll.FetchedFile) then
+  // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
+  if not FShowing or not TAtlasLensPill.Ready(Stage, BeforeEvent, Context, FPoll.FetchedFile) or
+    TAtlasIdeEditorCover.Covers(Rect, Context) then
   begin
     Exit;
   end;
