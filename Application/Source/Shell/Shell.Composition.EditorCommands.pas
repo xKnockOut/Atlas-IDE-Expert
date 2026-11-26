@@ -18,9 +18,9 @@ uses
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.DocumentHighlights,
   Atlas.Common.Lsp.ResourceStringCommands,
-  Atlas.Common.Editing.SmartIndent.Protocol,
-  Atlas.Common.Editing.LearnedSuggestions.Protocol,
-  Atlas.Common.Editing.MethodOrder.Protocol;
+  Editing.SmartIndent.Protocol,
+  Editing.LearnedSuggestions.Protocol,
+  Editing.MethodOrder.Protocol;
 
 type
   TShellEditorReadText = reference to function(const AFileName: string; out AText: string): Boolean;

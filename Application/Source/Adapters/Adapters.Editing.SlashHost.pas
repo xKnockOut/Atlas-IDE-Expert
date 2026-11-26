@@ -30,7 +30,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Projects.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
-  Atlas.Common.Editing.Contract,
+  Editing.Contract,
   Core.Workspace,
   Atlas.Common.Semantics.Contract;
 

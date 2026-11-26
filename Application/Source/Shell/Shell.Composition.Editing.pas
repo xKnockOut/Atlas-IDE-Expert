@@ -12,7 +12,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.Contract,
+  Editing.Contract,
   Atlas.Common.Semantics.TypeInfoClasses,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.Completion,
@@ -20,8 +20,8 @@ uses
   Atlas.Common.Lsp.FoldingRanges,
   Atlas.Common.Lsp.BlockFolds,
   Atlas.Common.Lsp.SelectionRanges,
-  Atlas.Common.Editing.Formatting.Protocol,
-  Atlas.Common.Editing.SlashMenu.Protocol;
+  Editing.Formatting.Protocol,
+  Editing.SlashMenu.Protocol;
 
 type
   /// <summary>Was das Bearbeiten von der Komposition braucht.</summary>
@@ -74,7 +74,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Editing.MaintenanceCommands;
+  Editing.MaintenanceCommands;
 
 function ReadEditorConfig(const AFileName: string; out AText: string): Boolean;
 begin

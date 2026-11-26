@@ -17,7 +17,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.Composition,
+  Editing.Composition,
   Adapters.Checks.Refactorings;
 
 class function TShellCheckRefactorings.Create: TCheckRefactorings;

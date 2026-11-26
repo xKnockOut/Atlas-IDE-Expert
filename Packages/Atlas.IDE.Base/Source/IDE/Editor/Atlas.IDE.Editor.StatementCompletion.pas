@@ -61,7 +61,7 @@ uses
   Atlas.IDE.Foundation.Host;
 
 const
-  // Wie ClassBodiesTag und CaseCompleteTag des Servers (Atlas.Common.Editing.CodeActions).
+  // Wie ClassBodiesTag und CaseCompleteTag des Servers (Editing.CodeActions).
   cClassBodiesTag = 'class.bodies';
   cCaseCompleteTag = 'case.complete';
 

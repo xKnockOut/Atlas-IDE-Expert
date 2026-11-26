@@ -1,0 +1,136 @@
+﻿unit Editing.CompilerFixes.Protocol.Tests;
+
+// Tests für die Code-Aktionen an Compilermeldungen, Teil 2 (#549).
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TCompilerFixesProtocolTests = class
+  public
+    [Test]
+    procedure OffersFixAndFixAll;
+    [Test]
+    procedure OnlyLinesOfRange;
+    [Test]
+    procedure DisabledOffersNothing;
+    /// <summary>Steht der Cursor auf dem Bezeichner, bietet schon die uses-Aktion (#284) die Unit an.</summary>
+    [Test]
+    procedure E2003NotTwiceOnIdentifier;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  System.Generics.Collections,
+  System.JSON,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Compiler.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
+  Editing.CompilerFixes,
+  Editing.CompilerFixes.Protocol;
+
+const
+  cUri = 'file:///C:/Projekt/A.pas';
+  cSource =
+    'unit A;' + #10 +                              // 0
+    'interface' + #10 +                            // 1
+    'implementation' + #10 +                       // 2
+    'procedure P(const A: AnsiString);' + #10 +    // 3
+    'var' + #10 +                                  // 4
+    '  S, T: string;' + #10 +                      // 5
+    '  L: TStringList;' + #10 +                    // 6
+    'begin' + #10 +                                // 7
+    '  S := A;' + #10 +                            // 8
+    '  T := A;' + #10 +                            // 9
+    '  Zeige(S + T);' + #10 +                      // 10
+    'end;' + #10 +
+    'end.';
+
+function Msg(ALine: Integer; const ACode, AText: string): TCompilerMessage;
+begin
+  Result := Default(TCompilerMessage);
+  Result.FileName := 'C:\Projekt\A.pas';
+  Result.Line := ALine;
+  Result.Column := -1;
+  Result.Code := ACode;
+  Result.Text := AText;
+end;
+
+function Context: TCompilerFixContext;
+begin
+  Result := Default(TCompilerFixContext);
+  Result.Declaring :=
+    function(const AName: string): TArray<string>
+    begin
+      Result := nil;
+      if SameText(AName, 'TStringList') then
+      begin
+        Result := TArray<string>.Create('System.Classes');
+      end;
+    end;
+end;
+
+function Titles(AEnabled: Boolean; const ARange: TTextRange): string;
+var
+  mTree: TSyntaxTree;
+  mActions: TArray<TJSONObject>;
+  mAction: TJSONObject;
+  mRequest: TCompilerFixRequest;
+begin
+  Result := '';
+  mTree := TPascalParser.Parse(cSource);
+  try
+    mRequest.Text := cSource;
+    mRequest.Tree := mTree;
+    mRequest.Uri := cUri;
+    mRequest.Range := ARange;
+    mRequest.Context := Context;
+    mActions := TCompilerFixesProtocol.Actions(AEnabled, mRequest,
+      [Msg(8, 'W1057', 'x ''AnsiString'' y ''string'''), Msg(8, 'W1057', 'x ''AnsiString'' y ''string'''),
+      Msg(9, 'W1057', 'x ''AnsiString'' y ''string'''), Msg(6, 'E2003', 'Undeclared identifier: ''TStringList'''),
+      Msg(-1, 'W1057', 'ohne Zeile')]);
+    for mAction in mActions do
+    begin
+      Result := Result + mAction.GetValue<string>('title', '') + ' [' + mAction.GetValue<string>('kind', '') + ']|';
+      mAction.Free;
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
+
+{ TCompilerFixesProtocolTests }
+
+procedure TCompilerFixesProtocolTests.OffersFixAndFixAll;
+begin
+  Assert.AreEqual('Explizit umwandeln: string(…) (W1057) [quickfix]|' +
+    'Alle W1057 in der Datei beheben (2) [quickfix]|', Titles(True, TTextRange.Create(8, 2, 8, 2)));
+end;
+
+procedure TCompilerFixesProtocolTests.OnlyLinesOfRange;
+begin
+  Assert.AreEqual('', Titles(True, TTextRange.Create(10, 0, 10, 0)));
+  Assert.AreEqual('uses System.Classes ergänzen (E2003: TStringList) [quickfix]|',
+    Titles(True, TTextRange.Create(6, 0, 6, 0)));
+end;
+
+procedure TCompilerFixesProtocolTests.DisabledOffersNothing;
+begin
+  Assert.AreEqual('', Titles(False, TTextRange.Create(8, 0, 9, 0)));
+end;
+
+procedure TCompilerFixesProtocolTests.E2003NotTwiceOnIdentifier;
+begin
+  Assert.AreEqual('', Titles(True, TTextRange.Create(6, 6, 6, 6)));
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TCompilerFixesProtocolTests);
+
+end.

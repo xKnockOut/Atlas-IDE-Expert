@@ -46,7 +46,7 @@ uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.ClassActions.Contract,
   Atlas.Common.Checks.Contract.Refactorings,
-  Atlas.Common.Editing.Composition,
+  Editing.Composition,
   Atlas.Tests.TextEdits,
   Adapters.Checks.Refactorings,
   Atlas.Common.Semantics.Contract;

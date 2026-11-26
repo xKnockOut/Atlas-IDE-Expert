@@ -1,6 +1,6 @@
 ﻿unit Shell.Composition.Refactorings.Editing;
 
-// Internals-Rolle Shell: Refactorings am Text der Routine aus Atlas.Common.Editing.Refactorings (herauslösen, case
+// Internals-Rolle Shell: Refactorings am Text der Routine aus Editing.Refactorings (herauslösen, case
 // vervollständigen, with auflösen, …), Umschließung entfernen, uses nach dem Umbenennen einer Unit (#512) und nach
 // dem Einfügen (#515).
 
@@ -37,15 +37,15 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Editing.Refactorings,
-  Atlas.Common.Editing.Unwrap.Protocol,
-  Atlas.Common.Editing.UnitRename.Protocol,
-  Atlas.Common.Editing.SmartPaste.Protocol,
+  Editing.Refactorings,
+  Editing.Unwrap.Protocol,
+  Editing.UnitRename.Protocol,
+  Editing.SmartPaste.Protocol,
   Atlas.Common.Localization.RequestTexts,
   Atlas.Common.CodeActions.Json,
   Atlas.Common.Semantics.Contract;
 
-/// <summary>Ist eins der Refactorings aus Atlas.Common.Editing.Refactorings eingeschaltet?</summary>
+/// <summary>Ist eins der Refactorings aus Editing.Refactorings eingeschaltet?</summary>
 function AnyEnabled(const ASettings: TRefactoringSettings): Boolean;
 begin
   Result := ASettings.Extract or ASettings.CompleteCase or ASettings.ResolveWith or ASettings.CreateMethod;

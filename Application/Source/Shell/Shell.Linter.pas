@@ -142,7 +142,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Formatting.Outcome,
-  Atlas.Common.Editing.FormatCheck,
+  Editing.FormatCheck,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Logging.Providers.Logger,

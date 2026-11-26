@@ -62,7 +62,7 @@ uses
   System.IOUtils,
   System.JSON,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Editing.TestUnits,
+  Editing.TestUnits,
   Core.Workspace,
   Core.VersionControlChanges;
 

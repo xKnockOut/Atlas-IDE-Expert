@@ -42,7 +42,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.CodeActions,
+  Editing.CodeActions,
   Atlas.Common.Pascal.StringLiterals;
 
 /// <summary>StringLiteralActions mit den Token von AText.</summary>

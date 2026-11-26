@@ -14,8 +14,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Editing.TestUnits.Protocol,
-  Atlas.Common.Editing.TestFromDebug.Protocol,
+  Editing.TestUnits.Protocol,
+  Editing.TestFromDebug.Protocol,
   Core.Workspace,
   Shell.Composition.Contract;
 
@@ -75,10 +75,10 @@ uses
   System.IOUtils,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Editing.TestUnits,
-  Atlas.Common.Editing.BoundaryTests.Protocol,
+  Editing.TestUnits,
+  Editing.BoundaryTests.Protocol,
   Atlas.Common.Lsp.TestCases,
-  Atlas.Common.Editing.BoundaryCases.Protocol,
+  Editing.BoundaryCases.Protocol,
   Atlas.Common.Lsp.Mutants,
   Atlas.Text.LogMarks;
 

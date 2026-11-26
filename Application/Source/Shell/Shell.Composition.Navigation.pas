@@ -11,7 +11,7 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.Bookmarks,
+  Editing.Bookmarks,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.Definition,

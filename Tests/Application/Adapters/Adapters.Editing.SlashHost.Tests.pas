@@ -33,7 +33,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.JsonRpc.StreamTransport,
-  Atlas.Common.Editing.Contract,
+  Editing.Contract,
   Core.Workspace,
   Adapters.Editing.SlashHost;
 

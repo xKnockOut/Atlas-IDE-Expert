@@ -14,12 +14,12 @@ uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.ClassActions.Contract,
   Atlas.Common.Checks.Contract.Refactorings,
-  Atlas.Common.Editing.Contract.ClassActions,
-  Atlas.Common.Editing.Contract.ClassCompletion,
-  Atlas.Common.Editing.Contract.Extract,
-  Atlas.Common.Editing.Contract.MethodOrder,
-  Atlas.Common.Editing.Contract.MethodWithoutSelf,
-  Atlas.Common.Editing.Contract.SlashCommands;
+  Editing.Contract.ClassActions,
+  Editing.Contract.ClassCompletion,
+  Editing.Contract.Extract,
+  Editing.Contract.MethodOrder,
+  Editing.Contract.MethodWithoutSelf,
+  Editing.Contract.SlashCommands;
 
 type
   /// <summary>ICheckClassRefactorings über die Klassen-Aktionen von Editing.</summary>
@@ -108,7 +108,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.Contract,
+  Editing.Contract,
   Atlas.Common.Semantics.Contract;
 
 { TCheckClassRefactoringsAdapter }

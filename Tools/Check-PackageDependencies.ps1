@@ -414,32 +414,32 @@ $TokenLockHomes = @('Atlas.Common.Pascal.TokenCursor', 'Atlas.Common.Pascal.Rout
 
 # Erlaubte abweichende Fassungen ("Unit:Routine") mit Grund. Die Liste soll nur schrumpfen.
 $TokenAllowedLocal = @{
-    'Atlas.Common.Editing.Formatter.Indent:PreviousSignificant'           = 'Methodendeklaration von TIndentTokens'
-    'Atlas.Common.Editing.Formatter.Indent:TIndentTokens.PreviousSignificant' = 'Methode über die eigenen Token des Formatierers, leitet an PreviousCode weiter'
-    'Atlas.Common.Editing.Formatter.Indent:NextSignificant'               = 'Methodendeklaration von TIndentTokens'
-    'Atlas.Common.Editing.Formatter.Indent:TIndentTokens.NextSignificant' = 'Methode über die eigenen Token des Formatierers, leitet an NextCodeAfter weiter'
-    'Atlas.Common.Editing.Unwrap:IsCode'                                  = 'Methodendeklaration von TBuilder'
-    'Atlas.Common.Editing.Unwrap:TBuilder.IsCode'                         = 'Token-Index statt Token, außerhalb des Arrays False'
+    'Editing.Formatter.Indent:PreviousSignificant'           = 'Methodendeklaration von TIndentTokens'
+    'Editing.Formatter.Indent:TIndentTokens.PreviousSignificant' = 'Methode über die eigenen Token des Formatierers, leitet an PreviousCode weiter'
+    'Editing.Formatter.Indent:NextSignificant'               = 'Methodendeklaration von TIndentTokens'
+    'Editing.Formatter.Indent:TIndentTokens.NextSignificant' = 'Methode über die eigenen Token des Formatierers, leitet an NextCodeAfter weiter'
+    'Editing.Unwrap:IsCode'                                  = 'Methodendeklaration von TBuilder'
+    'Editing.Unwrap:TBuilder.IsCode'                         = 'Token-Index statt Token, außerhalb des Arrays False'
     'Rules.Builtin.Capture:NextToken'                        = 'sucht ab einem Offset über den Regelkontext und liefert das Token mit out-Parameter'
     'Rules.Builtin.Todos:IsCode'                             = 'prüft Kommentarzeilen auf auskommentierten Code, keine Token'
-    'Atlas.Common.Editing.SafeDelete:PreviousSolid'                       = 'schließt AIndex ein'
-    'Atlas.Common.Editing.Unwrap:PrevCode'                                = 'Offset im Text statt Token-Index'
-    'Atlas.Common.Editing.Unwrap:TBuilder.PrevCode'                       = 'Offset im Text statt Token-Index'
+    'Editing.SafeDelete:PreviousSolid'                       = 'schließt AIndex ein'
+    'Editing.Unwrap:PrevCode'                                = 'Offset im Text statt Token-Index'
+    'Editing.Unwrap:TBuilder.PrevCode'                       = 'Offset im Text statt Token-Index'
     'Atlas.Common.Lsp.Completion.TypeGuards:Prev'                         = 'Methodendeklaration von TGuardScan'
     'Atlas.Common.Lsp.Completion.TypeGuards:TGuardScan.Prev'              = 'Methode über die eigenen Token, leitet an PreviousCode weiter'
     'Atlas.Common.Lsp.SignatureHelp:PreviousCodeToken'                    = 'überspringt nach IsSkipped der Unit'
     'Atlas.Common.Pascal.RoutineBody:TRoutineBody.TokenAt'               = 'öffentliche Weiterleitung an TSyntaxTree.FirstTokenOf'
-    'Atlas.Common.Editing.Unwrap:NextCode'                                = 'Offset im Text statt Token-Index'
-    'Atlas.Common.Editing.Unwrap:TBuilder.NextCode'                       = 'Offset im Text statt Token-Index'
+    'Editing.Unwrap:NextCode'                                = 'Offset im Text statt Token-Index'
+    'Editing.Unwrap:TBuilder.NextCode'                       = 'Offset im Text statt Token-Index'
     'Atlas.Common.Index.Extractor.Tokens:TIndexTokenReader.NextCode'      = 'Methode des Lesers über seinen eigenen Token-Ausschnitt'
     'Atlas.Common.Index.Extractor.Tokens:TIndexTokenReader.PreviousCode'  = 'schließt AIndex ein'
     'Atlas.Common.Lsp.Completion.Cases:TokenAt'                           = 'sucht nach Zeile und Spalte (TTextPosition), nicht nach Offset'
-    'Atlas.Common.Editing.InvertBoolean.Protocol:TokenAt'               = 'Methodendeklaration von TSourceFile, sucht nach TTextPosition'
-    'Atlas.Common.Editing.InvertBoolean.Protocol:TSourceFile.TokenAt'   = 'Methode der Unit-Sicht: rechnet die Position in den Offset um und leitet an TokenExactly weiter'
+    'Editing.InvertBoolean.Protocol:TokenAt'               = 'Methodendeklaration von TSourceFile, sucht nach TTextPosition'
+    'Editing.InvertBoolean.Protocol:TSourceFile.TokenAt'   = 'Methode der Unit-Sicht: rechnet die Position in den Offset um und leitet an TokenExactly weiter'
     'Atlas.Common.Lsp.SelectionRanges:TokenAt'                            = 'Token im Syntaxbaum mit out-Parameter, sucht das umschließende Token'
     'Atlas.Common.Pascal.SyntaxTree:TSyntaxTree.IdentifierAt'             = 'Methode des Baums: ein #13-Teil einer Zeichenkonstante (IsControlCharPart) gilt nicht als Bezeichner'
-    'Atlas.Common.Editing.InvertBoolean:IdentifierAt'                     = 'Methodendeklaration von TSourceTokens'
-    'Atlas.Common.Editing.InvertBoolean:TSourceTokens.IdentifierAt'       = 'Bezeichner, der genau bei einem Offset beginnt, nicht nach Zeile und Spalte'
+    'Editing.InvertBoolean:IdentifierAt'                     = 'Methodendeklaration von TSourceTokens'
+    'Editing.InvertBoolean:TSourceTokens.IdentifierAt'       = 'Bezeichner, der genau bei einem Offset beginnt, nicht nach Zeile und Spalte'
     'Atlas.Common.Pascal.SyntaxChecks:NextCode'                           = 'Methodendeklaration von TTreeChecker'
     'Atlas.Common.Pascal.SyntaxChecks:TTreeChecker.NextCode'              = 'überspringt zusätzlich Token außerhalb aktiver Zweige'
     'Rules.Builtin.Database:TokenAt'                         = 'Methodendeklaration von TSqlBuild'
@@ -459,11 +459,11 @@ $AllowedJsonFormLocal = @{
     'Shell.Composition.Refactorings.Services:TShellRefactoringPart.Count'  = 'Antwort des eigenen Servers: fehlender Wert ist ein Fehler (Ausnahme), keine Vorgabe'
     'Atlas.Common.Lsp.Baseline.Tests:NumberAt'                           = 'Pfad mit Punkten (FindValue), prüft den Typ mit Assert'
     'Atlas.Common.Lsp.Baseline.Tests:TextAt'                             = 'Pfad mit Punkten (FindValue), prüft den Typ mit Assert'
-    'Atlas.Common.Editing.BoundaryCases.Protocol.Tests:Count'                         = 'Test: fehlendes Array soll als Ausnahme auffallen'
-    'Atlas.Common.Editing.SlashMenu.Protocol.Tests:Field'                             = 'Test: fehlender Wert soll als Ausnahme auffallen'
-    'Atlas.Common.Editing.SlashMenu.Protocol.Tests:Flag'                              = 'Test: fehlender Wert soll als Ausnahme auffallen'
-    'Atlas.Common.Editing.SlashMenu.Protocol.Tests:List'                              = 'Test: fehlender Wert soll als Ausnahme auffallen'
-    'Atlas.Common.Editing.SafeDelete.Protocol.Tests:Items'                            = 'Test: setzt die Einträge eines Arrays zu einer Vergleichszeile zusammen'
+    'Editing.BoundaryCases.Protocol.Tests:Count'                         = 'Test: fehlendes Array soll als Ausnahme auffallen'
+    'Editing.SlashMenu.Protocol.Tests:Field'                             = 'Test: fehlender Wert soll als Ausnahme auffallen'
+    'Editing.SlashMenu.Protocol.Tests:Flag'                              = 'Test: fehlender Wert soll als Ausnahme auffallen'
+    'Editing.SlashMenu.Protocol.Tests:List'                              = 'Test: fehlender Wert soll als Ausnahme auffallen'
+    'Editing.SafeDelete.Protocol.Tests:Items'                            = 'Test: setzt die Einträge eines Arrays zu einer Vergleichszeile zusammen'
 }
 
 # Kopien-Sperre für JSON aus Text: nur TJsonRead.Parse/ParseObject/ParseObjectOrEmpty in Atlas.Text.Json.
@@ -660,7 +660,7 @@ $RolePrefixes = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Common', 'Atlas.Windows'
     'Atlas.IDE.Welcome')
 $HostRoles    = @('Foundation', 'Core', 'Shell', 'Adapters', 'Platform')
 # Hosted-Features der Anwendung (Konzept 8.2): erstes Segment eines Namens ohne Präfix; wie "hostedFeatures" in atlas.json.
-$HostedFeatures = @('Replay', 'Monitor', 'Update', 'Rules', 'Mcp')
+$HostedFeatures = @('Replay', 'Monitor', 'Update', 'Rules', 'Mcp', 'Editing')
 $FeatureRoles = @('Contract', 'Internals', 'Providers', 'Adapters', 'Composition', 'Hosting')
 # Eigenes Feature (bzw. innerhalb einer Struktur relativ zum Träger): Rolle der Quelle -> erlaubte Rollen des Ziels
 $OwnAllowed = @{

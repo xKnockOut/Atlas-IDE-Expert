@@ -13,7 +13,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Semantics.Impact,
-  Atlas.Common.Editing.TestUnits.Protocol,
+  Editing.TestUnits.Protocol,
   Atlas.Common.Testing.AffectedTests,
   Atlas.Common.Testing.AffectedTests.Report,
   Atlas.Common.Testing.AffectedTests.Types,

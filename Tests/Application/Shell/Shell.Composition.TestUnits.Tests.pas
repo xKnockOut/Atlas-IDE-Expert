@@ -42,7 +42,7 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Editing.TestUnits.Protocol;
+  Editing.TestUnits.Protocol;
 
 { TShellTestUnitsTests }
 

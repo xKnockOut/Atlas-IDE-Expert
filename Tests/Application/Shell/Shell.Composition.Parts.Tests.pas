@@ -38,7 +38,7 @@ uses
   System.JSON,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.JsonRpc.StreamTransport,
-  Atlas.Common.Editing.TestUnits.Protocol,
+  Editing.TestUnits.Protocol,
   Shell.Composition.ProtocolWiring,
   Atlas.Common.Semantics.Contract;
 

@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Editor.SmartIndent;
 
 // Einrückung beim Tippen (#1827) im Editor. Was sich ändert, rechnet der
-// Server (atlas.server.smartIndent, Atlas.Common.Editing.SmartIndent); ob die
+// Server (atlas.server.smartIndent, Editing.SmartIndent); ob die
 // Antwort noch passt, Atlas.Core.Editor.SmartIndent; hier bleiben Puffer,
 // Schreibmarke und die Anfrage.
 // - Den Zeilenumbruch erkennt Atlas.IDE.Editor.EnterWatch, ohne Enter zu

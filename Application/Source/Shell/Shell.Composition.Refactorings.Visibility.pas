@@ -31,7 +31,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Editing.RaiseVisibility.Protocol,
+  Editing.RaiseVisibility.Protocol,
   Atlas.Common.Localization.Texts;
 
 type

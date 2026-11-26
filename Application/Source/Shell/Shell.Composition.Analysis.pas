@@ -95,7 +95,7 @@ uses
   Rules.Contract.Api,
   Rules.Providers.InheritanceDepths,
   Adapters.Lsp.InheritanceDepths,
-  Atlas.Common.Editing.MethodWithoutSelf.Protocol,
+  Editing.MethodWithoutSelf.Protocol,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver;
 

@@ -1,0 +1,545 @@
+﻿unit Editing.FormatCheck;
+
+// Formatieren ohne Editor (#1358): derselbe Formatierer wie „Dokument
+// formatieren“ (TFormatter.Edits, #43), für die ganze Datei oder nur für
+// Zeilenbereiche wie textDocument/rangeFormatting (geänderte Zeilen aus Git
+// bzw. SVN). Dazu:
+//   - Abweichungen je Zeile mit Art und Text („Einrückung 3 statt 2“: erst
+//     der Ist-, dann der Sollwert), aus dem Zeilenvergleich von altem und
+//     formatiertem Text
+//   - Syntaxfehler: Eine Datei, die der Parser nicht fehlerfrei liest, wird
+//     nicht formatiert (Ergebnis = Original)
+//   - Stabilität: Ein zweiter Lauf auf dem Ergebnis darf nichts mehr ändern
+// Zeilen außerhalb der Bereiche bleiben Zeichen für Zeichen gleich; die
+// Zeilenumbrüche des Originals bleiben, außer format.endOfLine verlangt andere.
+
+interface
+
+uses
+  System.SysUtils,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Pascal.Preprocessor,
+  Atlas.Common.Formatting.Outcome;
+
+type
+  TFormatCheck = class
+  public
+    /// <summary>Änderungen des Formatierers für AScope, wie „Dokument formatieren“ bzw. „Auswahl formatieren“.
+    /// Mehrere Bereiche überlappen nie; nebeneinanderliegende werden zusammengefasst.</summary>
+    class function Edits(const AText: string; const AStyle: TFormatStyle; const AScope: TFormatScope):
+      TArray<TTextEdit>; static;
+    /// <summary>AText nach dem Formatieren von AScope.</summary>
+    class function FormatText(const AText: string; const AStyle: TFormatStyle; const AScope: TFormatScope): string;
+      static;
+    /// <summary>Abweichungen von AOld zu ANew (formatiert) je Zeile von AOld, aufsteigend.</summary>
+    class function Deviations(const AOld, ANew: string; const AStyle: TFormatStyle): TArray<TFormatDeviation>;
+      static;
+    /// <summary>Prüft AText mit den Symbolen aus AOptions auf Syntaxfehler, formatiert AScope, beschreibt die
+    /// Abweichungen und prüft die Stabilität.</summary>
+    class function Run(const AText: string; const AStyle: TFormatStyle; const AScope: TFormatScope;
+      const AOptions: TPreprocessorOptions): TFormatOutcome; static;
+  end;
+
+implementation
+
+uses
+  System.Math,
+  System.Generics.Collections,
+  System.Generics.Defaults,
+  Atlas.Text.Lines,
+  Atlas.Text.Diff,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TreeCache,
+  Editing.Formatter,
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TFormatCheckText = (SpaceBeforeMissing, SpaceAfterMissing, TooManySpacesAfter, SpaceAfterCommaMissing,
+    TooManySpacesAfterComma, IndentationInsteadOf, IndentationWithTabInsteadOf, IndentationWithSpacesInsteadOf,
+    IndentationOfTabsAndSpaces, LineBreakAtEndOf, TooManySpacesBefore, SpaceAtEndOfLine, LineBreakLinesInsteadOf,
+    AlignmentBefore, LineBreak, Spelling, Mixed, None, LineEndingsInsteadOf);
+
+const
+  cTexts: array[TFormatCheckText] of TAtlasText = (
+    (De: 'Leerzeichen vor := fehlt'; En: 'Space before := missing'),
+    (De: 'Leerzeichen nach := fehlt'; En: 'Space after := missing'),
+    (De: 'Zu viele Leerzeichen nach :='; En: 'Too many spaces after :='),
+    (De: 'Leerzeichen nach Komma fehlt'; En: 'Space after comma missing'),
+    (De: 'Zu viele Leerzeichen nach Komma'; En: 'Too many spaces after comma'),
+    (De: 'Einrückung %d statt %d'; En: 'Indentation %d instead of %d'),
+    (De: 'Einrückung mit Tabulator statt Leerzeichen'; En: 'Indentation with tab instead of spaces'),
+    (De: 'Einrückung mit Leerzeichen statt Tabulator'; En: 'Indentation with spaces instead of tab'),
+    (De: 'Einrückung aus Tabulatoren und Leerzeichen'; En: 'Indentation of tabs and spaces'),
+    (De: 'Zeilenumbruch am Dateiende fehlt'; En: 'Line break at end of file missing'),
+    (De: 'Zu viele Leerzeichen vor :='; En: 'Too many spaces before :='),
+    (De: 'Leerzeichen am Zeilenende'; En: 'Space at end of line'),
+    (De: 'Zeilenumbruch: %d Zeilen statt %d'; En: 'Line break: %d lines instead of %d'),
+    (De: 'Ausrichtung vor „%s“'; En: 'Alignment before “%s”'),
+    (De: 'Zeilenumbruch'; En: 'Line break'),
+    (De: 'Schreibweise `%s`'; En: 'Spelling `%s`'),
+    (De: 'gemischt'; En: 'mixed'),
+    (De: 'keine'; En: 'none'),
+    (De: 'Zeilenenden %s statt %s'; En: 'Line endings %s instead of %s'));
+
+{$SCOPEDENUMS OFF}
+
+/// <summary>Bereiche aufsteigend; überlappende und nebeneinanderliegende zusammengefasst.</summary>
+function MergedSpans(const ASpans: TArray<TFormatLineSpan>): TArray<TFormatLineSpan>;
+var
+  mSorted: TArray<TFormatLineSpan>;
+  mSpan: TFormatLineSpan;
+begin
+  Result := nil;
+  mSorted := Copy(ASpans);
+  TArray.Sort<TFormatLineSpan>(mSorted, TComparer<TFormatLineSpan>.Construct(
+    function(const A, B: TFormatLineSpan): Integer
+    begin
+      Result := A.First - B.First;
+      if Result = 0 then
+      begin
+        Result := A.Last - B.Last;
+      end;
+    end));
+  for mSpan in mSorted do
+  begin
+    if mSpan.Last < mSpan.First then
+    begin
+      Continue;
+    end;
+    if (Result <> nil) and (mSpan.First <= Result[High(Result)].Last + 1) then
+    begin
+      Result[High(Result)].Last := Max(Result[High(Result)].Last, mSpan.Last);
+    end
+    else
+    begin
+      Result := Result + [mSpan];
+    end;
+  end;
+end;
+
+/// <summary>A liegt ganz vor B (Ende von A vor oder am Anfang von B).</summary>
+function EndsBefore(const A, B: TTextRange): Boolean;
+begin
+  Result := (A.EndPos.Line < B.StartPos.Line) or
+    ((A.EndPos.Line = B.StartPos.Line) and (A.EndPos.Character <= B.StartPos.Character));
+end;
+
+/// <summary>Überschneidet AEdit keine der Änderungen in AFound?</summary>
+function IsFree(AFound: TList<TTextEdit>; const AEdit: TTextEdit): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := True;
+  for mIndex := 0 to AFound.Count - 1 do
+  begin
+    Result := Result and (EndsBefore(AFound[mIndex].Range, AEdit.Range) or
+      EndsBefore(AEdit.Range, AFound[mIndex].Range));
+  end;
+end;
+
+{ TFormatCheck }
+
+class function TFormatCheck.Edits(const AText: string; const AStyle: TFormatStyle;
+  const AScope: TFormatScope): TArray<TTextEdit>;
+var
+  mTokens: TArray<TPascalToken>;
+  mSpan: TFormatLineSpan;
+  mEdit: TTextEdit;
+  mFound: TList<TTextEdit>;
+begin
+  mTokens := TPascalLexer.Tokenize(AText);
+  if AScope.WholeFile then
+  begin
+    Exit(TFormatter.Edits(AText, mTokens, AStyle, 0, -1));
+  end;
+  mFound := TList<TTextEdit>.Create;
+  try
+    for mSpan in MergedSpans(AScope.Spans) do
+    begin
+      for mEdit in TFormatter.Edits(AText, mTokens, AStyle, mSpan.First, mSpan.Last) do
+      begin
+        // Sicherheitsnetz: Ein Umbruch über die Grenze zweier Bereiche darf keine überlappenden Änderungen
+        // ergeben (die Bereiche sind getrennt, die Gruppen des Formatierers bleiben in einem Bereich).
+        if IsFree(mFound, mEdit) then
+        begin
+          mFound.Add(mEdit);
+        end;
+      end;
+    end;
+    Result := mFound.ToArray;
+  finally
+    mFound.Free;
+  end;
+end;
+
+class function TFormatCheck.FormatText(const AText: string; const AStyle: TFormatStyle;
+  const AScope: TFormatScope): string;
+begin
+  Result := TTextChanges.Apply(AText, Edits(AText, AStyle, AScope));
+end;
+
+/// <summary>Breite des führenden Leerraums in Spalten (Tab bis zur nächsten Ebene) und ob ein Tab darin steht.
+/// </summary>
+function LeadingWidth(const ALine: string; AIndentSize: Integer; out AHasTab: Boolean;
+  out ALength: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := 0;
+  AHasTab := False;
+  mIndex := 1;
+  while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], [' ', #9]) do
+  begin
+    if ALine[mIndex] = #9 then
+    begin
+      AHasTab := True;
+      Result := (Result div AIndentSize + 1) * AIndentSize;
+    end
+    else
+    begin
+      Inc(Result);
+    end;
+    Inc(mIndex);
+  end;
+  ALength := mIndex - 1;
+end;
+
+/// <summary>Abweichung der Art AKind höchstens einmal je Zeile.</summary>
+procedure AddOnce(var AList: TArray<TFormatDeviation>; ALine: Integer; AKind: TFormatDeviationKind;
+  const AMessage: string);
+var
+  mItem: TFormatDeviation;
+begin
+  for mItem in AList do
+  begin
+    if (mItem.Line = ALine) and (mItem.Kind = AKind) and (mItem.Message = AMessage) then
+    begin
+      Exit;
+    end;
+  end;
+  AList := AList + [TFormatDeviation.Create(ALine, AKind, AMessage)];
+end;
+
+/// <summary>Leerraum zwischen ABefore und AToken (beide in derselben Zeile) abweichend: Art und Text.</summary>
+procedure DescribeGap(var AList: TArray<TFormatDeviation>; ALine: Integer; const ABefore, AToken: TPascalToken;
+  AOldGap: Integer);
+var
+  mWhat: string;
+begin
+  if AToken.IsSymbol(':=') then
+  begin
+    if AOldGap = 0 then
+    begin
+      mWhat := cTexts[TFormatCheckText.SpaceBeforeMissing].Text;
+    end
+    else
+    begin
+      mWhat := cTexts[TFormatCheckText.TooManySpacesBefore].Text;
+    end;
+    AddOnce(AList, ALine, TFormatDeviationKind.SpaceAssignment, mWhat);
+  end
+  else if ABefore.IsSymbol(':=') then
+  begin
+    if AOldGap = 0 then
+    begin
+      mWhat := cTexts[TFormatCheckText.SpaceAfterMissing].Text;
+    end
+    else
+    begin
+      mWhat := cTexts[TFormatCheckText.TooManySpacesAfter].Text;
+    end;
+    AddOnce(AList, ALine, TFormatDeviationKind.SpaceAssignment, mWhat);
+  end
+  else if ABefore.IsSymbol(',') then
+  begin
+    if AOldGap = 0 then
+    begin
+      mWhat := cTexts[TFormatCheckText.SpaceAfterCommaMissing].Text;
+    end
+    else
+    begin
+      mWhat := cTexts[TFormatCheckText.TooManySpacesAfterComma].Text;
+    end;
+    AddOnce(AList, ALine, TFormatDeviationKind.SpaceComma, mWhat);
+  end
+  else
+  begin
+    AddOnce(AList, ALine, TFormatDeviationKind.Alignment, cTexts[TFormatCheckText.AlignmentBefore].Fmt([AToken.Text]));
+  end;
+end;
+
+type
+  /// <summary>Führender Leerraum einer Zeile.</summary>
+  TLeading = record
+    /// <summary>Breite in Spalten (Tab bis zur nächsten Ebene).</summary>
+    Width: Integer;
+    HasTab: Boolean;
+    /// <summary>Der Leerraum selbst.</summary>
+    Chars: string;
+    /// <summary>Die Zeile hinter dem Leerraum.</summary>
+    Rest: string;
+    class function Create(const ALine: string; AIndentSize: Integer): TLeading; static;
+  end;
+
+{ TLeading }
+
+class function TLeading.Create(const ALine: string; AIndentSize: Integer): TLeading;
+var
+  mLength: Integer;
+begin
+  Result.Width := LeadingWidth(ALine, AIndentSize, Result.HasTab, mLength);
+  Result.Chars := Copy(ALine, 1, mLength);
+  Result.Rest := Copy(ALine, mLength + 1, MaxInt);
+end;
+
+/// <summary>Abweichung der Einrückung: Breite, Tab statt Leerzeichen oder umgekehrt, gemischt.</summary>
+procedure DescribeIndent(var AList: TArray<TFormatDeviation>; ALine: Integer; const AOld, ANew: TLeading);
+begin
+  if AOld.Width <> ANew.Width then
+  begin
+    AddOnce(AList, ALine, TFormatDeviationKind.Indent, cTexts[TFormatCheckText.IndentationInsteadOf].Fmt([AOld.Width,
+      ANew.Width]));
+  end
+  else if AOld.HasTab and not ANew.HasTab then
+  begin
+    AddOnce(AList, ALine, TFormatDeviationKind.IndentChars, cTexts[TFormatCheckText.IndentationWithTabInsteadOf].Text);
+  end
+  else if ANew.HasTab and not AOld.HasTab then
+  begin
+    AddOnce(AList, ALine, TFormatDeviationKind.IndentChars,
+      cTexts[TFormatCheckText.IndentationWithSpacesInsteadOf].Text);
+  end
+  else if AOld.Chars <> ANew.Chars then
+  begin
+    AddOnce(AList, ALine, TFormatDeviationKind.IndentChars, cTexts[TFormatCheckText.IndentationOfTabsAndSpaces].Text);
+  end;
+end;
+
+/// <summary>Dieselben Token bis auf Groß-/Kleinschreibung?</summary>
+function SameTokenTexts(const AOld, ANew: TArray<TPascalToken>): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := Length(AOld) = Length(ANew);
+  if Result then
+  begin
+    for mIndex := 0 to High(AOld) do
+    begin
+      Result := Result and SameText(AOld[mIndex].Text, ANew[mIndex].Text);
+    end;
+  end;
+end;
+
+/// <summary>Abstand zwischen dem Token AIndex und seinem Vorgänger.</summary>
+function GapBefore(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+begin
+  Result := ATokens[AIndex].StartPos.Character - ATokens[AIndex - 1].EndPos.Character;
+end;
+
+/// <summary>Abweichungen im Rest der Zeile hinter der Einrückung: Umbruch, Schreibweise, Leerraum.</summary>
+procedure DescribeTokens(var AList: TArray<TFormatDeviation>; ALine: Integer; const AOldRest, ANewRest: string);
+var
+  mOldTokens, mNewTokens: TArray<TPascalToken>;
+  mIndex: Integer;
+begin
+  mOldTokens := TPascalLexer.Tokenize(AOldRest);
+  mNewTokens := TPascalLexer.Tokenize(ANewRest);
+  if not SameTokenTexts(mOldTokens, mNewTokens) then
+  begin
+    AddOnce(AList, ALine, TFormatDeviationKind.LineBreaks, cTexts[TFormatCheckText.LineBreak].Text);
+    Exit;
+  end;
+  for mIndex := 0 to High(mOldTokens) do
+  begin
+    if mOldTokens[mIndex].Text <> mNewTokens[mIndex].Text then
+    begin
+      AddOnce(AList, ALine, TFormatDeviationKind.KeywordCase, cTexts[TFormatCheckText.Spelling].Fmt([
+        mOldTokens[mIndex].Text]));
+    end;
+    if (mIndex > 0) and (GapBefore(mOldTokens, mIndex) <> GapBefore(mNewTokens, mIndex)) then
+    begin
+      DescribeGap(AList, ALine, mOldTokens[mIndex - 1], mOldTokens[mIndex], GapBefore(mOldTokens, mIndex));
+    end;
+  end;
+end;
+
+/// <summary>Abweichungen einer Zeile, deren formatierte Fassung ANew ist.</summary>
+procedure DescribeLine(var AList: TArray<TFormatDeviation>; ALine: Integer; const AOld, ANew: string;
+  AIndentSize: Integer);
+var
+  mOld, mNew: TLeading;
+begin
+  mOld := TLeading.Create(AOld, AIndentSize);
+  mNew := TLeading.Create(ANew, AIndentSize);
+  if mOld.Rest <> '' then
+  begin
+    DescribeIndent(AList, ALine, mOld, mNew);
+  end;
+  if (TrimRight(AOld) <> AOld) and (TrimRight(ANew) = ANew) then
+  begin
+    AddOnce(AList, ALine, TFormatDeviationKind.TrailingWhitespace, cTexts[TFormatCheckText.SpaceAtEndOfLine].Text);
+    mOld.Rest := TrimRight(mOld.Rest);
+  end;
+  if mOld.Rest <> mNew.Rest then
+  begin
+    DescribeTokens(AList, ALine, mOld.Rest, mNew.Rest);
+  end;
+end;
+
+function LineBreakName(AKind: TTextLineBreak): string;
+begin
+  case AKind of
+    TTextLineBreak.CRLF:
+      Result := 'CRLF';
+    TTextLineBreak.LF:
+      Result := 'LF';
+    TTextLineBreak.CR:
+      Result := 'CR';
+    TTextLineBreak.Mixed:
+      Result := cTexts[TFormatCheckText.Mixed].Text;
+  else
+    Result := cTexts[TFormatCheckText.None].Text;
+  end;
+end;
+
+/// <summary>Unterschiedliche Zeilenenden (beide Texte haben welche).</summary>
+procedure DescribeLineBreaks(var AList: TArray<TFormatDeviation>; const AOld, ANew: string);
+var
+  mOldKind, mNewKind: TTextLineBreak;
+begin
+  mOldKind := TTextLines.KindOf(AOld);
+  mNewKind := TTextLines.KindOf(ANew);
+  if (mOldKind <> mNewKind) and (mOldKind <> TTextLineBreak.None) and (mNewKind <> TTextLineBreak.None) then
+  begin
+    AddOnce(AList, 0, TFormatDeviationKind.EndOfLine, cTexts[TFormatCheckText.LineEndingsInsteadOf].Fmt([
+      LineBreakName(mOldKind), LineBreakName(mNewKind)]));
+  end;
+end;
+
+/// <summary>Hängt AHunk nur leere Zeilen ans Dateiende? Dann fehlt der abschließende Umbruch.</summary>
+function OnlyEmptyAppended(const AHunk: TTextLineHunk; const AOld, ANew: TArray<string>): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := (AHunk.OldCount = 0) and (AHunk.OldStart = Length(AOld));
+  for mIndex := 0 to AHunk.NewCount - 1 do
+  begin
+    Result := Result and (ANew[AHunk.NewStart + mIndex] = '');
+  end;
+end;
+
+/// <summary>Abweichungen eines Abschnitts des Zeilenvergleichs.</summary>
+procedure DescribeHunk(var AList: TArray<TFormatDeviation>; const AHunk: TTextLineHunk;
+  const AOld, ANew: TArray<string>; AIndentSize: Integer);
+var
+  mIndex: Integer;
+begin
+  if AHunk.OldCount = AHunk.NewCount then
+  begin
+    for mIndex := 0 to AHunk.OldCount - 1 do
+    begin
+      DescribeLine(AList, AHunk.OldStart + mIndex, AOld[AHunk.OldStart + mIndex], ANew[AHunk.NewStart + mIndex],
+        AIndentSize);
+    end;
+  end
+  else if OnlyEmptyAppended(AHunk, AOld, ANew) then
+  begin
+    AddOnce(AList, Max(Length(AOld) - 1, 0), TFormatDeviationKind.FinalNewline,
+      cTexts[TFormatCheckText.LineBreakAtEndOf].Text);
+  end
+  else
+  begin
+    AddOnce(AList, Min(AHunk.OldStart, Max(Length(AOld) - 1, 0)), TFormatDeviationKind.LineBreaks,
+      cTexts[TFormatCheckText.LineBreakLinesInsteadOf].Fmt([AHunk.OldCount, AHunk.NewCount]));
+  end;
+end;
+
+class function TFormatCheck.Deviations(const AOld, ANew: string; const AStyle: TFormatStyle):
+  TArray<TFormatDeviation>;
+var
+  mOld, mNew: TArray<string>;
+  mHunk: TTextLineHunk;
+  mIndentSize: Integer;
+begin
+  Result := nil;
+  if AOld = ANew then
+  begin
+    Exit;
+  end;
+  mIndentSize := AStyle.IndentSize;
+  if mIndentSize < 1 then
+  begin
+    mIndentSize := 2;
+  end;
+  mOld := TTextLines.SplitLines(AOld);
+  mNew := TTextLines.SplitLines(ANew);
+  DescribeLineBreaks(Result, AOld, ANew);
+  for mHunk in TTextDiff.Hunks(mOld, mNew) do
+  begin
+    DescribeHunk(Result, mHunk, mOld, mNew, mIndentSize);
+  end;
+  TArray.Sort<TFormatDeviation>(Result, TComparer<TFormatDeviation>.Construct(
+    function(const A, B: TFormatDeviation): Integer
+    begin
+      Result := A.Line - B.Line;
+      if Result = 0 then
+      begin
+        Result := Ord(A.Kind) - Ord(B.Kind);
+      end;
+      if Result = 0 then
+      begin
+        Result := CompareStr(A.Message, B.Message);
+      end;
+    end));
+end;
+
+class function TFormatCheck.Run(const AText: string; const AStyle: TFormatStyle; const AScope: TFormatScope;
+  const AOptions: TPreprocessorOptions): TFormatOutcome;
+var
+  mTree: TSyntaxTree;
+  mProcessed: TPreprocessorResult;
+  mOnce: string;
+begin
+  Result := Default(TFormatOutcome);
+  Result.Original := AText;
+  Result.Formatted := AText;
+  Result.Stable := True;
+  // Nur die aktiven Zweige wie im Editor und bei --check: Inaktive Zweige erzeugen keine Syntaxfehler.
+  mTree := TSyntaxTreeCache.ParseActive(AText, AOptions, nil, mProcessed);
+  try
+    if Length(mTree.Diagnostics) > 0 then
+    begin
+      Result.HasSyntaxError := True;
+      Result.SyntaxError := mTree.Diagnostics[0];
+      Exit;
+    end;
+  finally
+    mTree.Free;
+  end;
+  Result.Formatted := FormatText(AText, AStyle, AScope);
+  Result.Deviations := Deviations(AText, Result.Formatted, AStyle);
+  // Zweiter Lauf auf denselben Bereichen. Hat das Formatieren Zeilen umbrochen oder zusammengeführt, passen sie
+  // nicht mehr; dann prüft der zweite Lauf, ob die ganze Datei nach einmal Formatieren stabil bleibt.
+  if not AScope.WholeFile and (Length(TTextLines.SplitLines(AText)) <>
+    Length(TTextLines.SplitLines(Result.Formatted))) then
+  begin
+    mOnce := FormatText(Result.Formatted, AStyle, TFormatScope.All);
+    Result.Stable := FormatText(mOnce, AStyle, TFormatScope.All) = mOnce;
+  end
+  else
+  begin
+    Result.Stable := FormatText(Result.Formatted, AStyle, AScope) = Result.Formatted;
+  end;
+end;
+
+initialization
+  TAtlasTextTables.Add('Editing.FormatCheck', cTexts);
+
+end.

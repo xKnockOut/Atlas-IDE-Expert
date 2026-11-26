@@ -15,7 +15,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.CodeActions,
-  Atlas.Common.Editing.Contract.CodeActions,
+  Editing.Contract.CodeActions,
   Mcp.EditTools,
   Mcp.RefactorTools,
   Shell.Composition.Refactorings.Services,
@@ -82,7 +82,7 @@ uses
   Rules.Providers.DocumentActions,
   Adapters.Lsp.RuleActions,
   Adapters.Lsp.SourceActions,
-  Atlas.Common.Editing.Composition,
+  Editing.Composition,
   Mcp.Server,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Semantics.Contract;

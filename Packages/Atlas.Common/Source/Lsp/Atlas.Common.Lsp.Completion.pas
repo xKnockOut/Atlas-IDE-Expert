@@ -18,7 +18,7 @@
 //   - nach "inherited " nur Methoden und Konstruktoren der Vorfahren,
 //   - nach "class(", "is", "is not", "as" und nach ":" in Deklarationen (auch inline var) nur Typen,
 //   - in "property Name: T read/write " nur Felder und Methoden mit passender Signatur (Quelle
-//     Atlas.Common.Editing.Completion.Properties an TCompletionSlot.PropertyAccess),
+//     Editing.Completion.Properties an TCompletionSlot.PropertyAccess),
 //   - nach "override " im Klassenrumpf die überschreibbaren Methoden der Vorfahren (OverrideItems),
 //   - Schlüsselwörter passend zur Stelle (Anweisung, Deklaration, Klassenrumpf), sobald etwas getippt ist.
 // In Kommentaren und Strings (auch mehrzeiligen ''' ab Delphi 12) wird nichts vorgeschlagen.

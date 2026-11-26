@@ -41,7 +41,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Semantics.Impact,
-  Atlas.Common.Editing.TestUnits.Protocol,
+  Editing.TestUnits.Protocol,
   Atlas.Common.Testing.AffectedTests.Types,
   Atlas.Common.Logging.Providers.Logger;
 

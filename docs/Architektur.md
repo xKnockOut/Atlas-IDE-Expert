@@ -51,8 +51,8 @@ Die Regeln für die Packages prüft `Tools/Check-PackageDependencies.ps1` (uses-
 Nach der Rollenregel enthält ein Platform-Package nur technische Abstraktionen; der Fachcode des Servers
 (LSP-Methoden in `Lsp`, Prüfregeln in `Rules`, Refactoring- und Schnellbefehle in `Editing`,
 Namensauflösung in `Semantics`, MCP-Werkzeuge in `Mcp`) gehörte als Hosted-Features in die Anwendung.
-`Rules` und `Mcp` sind umgezogen (`Application/Source/Features/Rules` bzw. `.../Mcp`, Units `Rules.*` bzw. `Mcp.*`, die
-Werkzeuge des MCP-Modus als `Mcp.Tools.*`); der übrige Fachcode liegt
+`Rules`, `Mcp` und `Editing` sind umgezogen (`Application/Source/Features/Rules`, `.../Mcp` bzw. `.../Editing`, Units
+`Rules.*`, `Mcp.*` bzw. `Editing.*`, die Werkzeuge des MCP-Modus als `Mcp.Tools.*`); der übrige Fachcode liegt
 bewusst weiter in `Atlas.Common`:
 
 - Die Verschiebung beträfe rund 300 Dateien mit Tests, jede `uses`-Klausel, alle Projektdateien und
@@ -136,7 +136,7 @@ Application/
     Core/                          Host-Core: Abläufe ohne Adapter (Kommandozeile, Start, Arbeitsbereich, Linter, MCP-Werkzeuge)
     Adapters/                      Host-Adapters: implementieren Contracts von Platform- und Hosted-Features
     Platform/                      Host-Platform: Plattformdienste des Servers (Platform.Server)
-    Features/<Feature>/            Hosted-Features der Anwendung (Replay, Monitor, Update, Rules)
+    Features/<Feature>/            Hosted-Features der Anwendung (Replay, Monitor, Update, Rules, Mcp, Editing)
     Shell/                         Einstiegspunkte und Komposition (Shell.Composition.*), erzeugt alle Adapter
 Setup/                             Daten des Release-Pakets: Tipps, Vorlagen, Profile, Beispiele, tips.json (der Installer AtlasSetup ist seit 1.2.0 entfernt)
 Tests/
@@ -253,8 +253,8 @@ Jedes Plugin-Package (`Packages/Atlas.IDE.*`) hat eine eigene `atlas.json` und `
 
 Auch über implementation-uses bilden die Units unter `Packages/` und `Application/` keinen Zyklus: `AtlasServer --check . --units 'Packages/**,Application/**' --rules uses-cycle` meldet nichts. Eine Unit eines Zyklus ließe sich weder allein testen noch austauschen. Die Muster dafür:
 
-- Gemeinsame Typen eines Features stehen in seiner Contract-Unit. `Atlas.Common.Editing.Contract` trägt die Typen der Schnellbefehle (`TSlashContext`, `TSlashCommand`, `ISlashHost`, `TSlashSettings` …) und den Kontext der uses-Aktionen (`TUsesContext`). Die Befehls-Units (`*Commands`) binden nur den Contract ein und melden ihre Befehle über `TSlashRegister`; nur das Register `Atlas.Common.Editing.SlashCommands` bindet alle Befehls-Units ein. Es bleibt eine Root-Unit, weil Lsp, Rules und `ClassActions` es nutzen (eine Composition dürften sie nach der Matrix nicht einbinden).
-- Was zwei Units gemeinsam brauchen, kommt in eine tiefere Unit: `TLspSymbolKind` in `Atlas.Common.Lsp.Contract`, die Formularprüfung in `Atlas.Common.Editing.FormMentions`, JSON-Strings schreiben und JSON nachsichtig lesen in `Atlas.Text.Json`, Dateiadressen des Plugins in `Atlas.Plugin.Lsp.Uris`, die Steuerelemente `Atlas.Vcl.Options.ChoiceBox` und `Atlas.UI.Tracker.DocBox`.
+- Gemeinsame Typen eines Features stehen in seiner Contract-Unit. `Editing.Contract` trägt die Typen der Schnellbefehle (`TSlashContext`, `TSlashCommand`, `ISlashHost`, `TSlashSettings` …) und den Kontext der uses-Aktionen (`TUsesContext`). Die Befehls-Units (`*Commands`) binden nur den Contract ein und melden ihre Befehle über `TSlashRegister`; nur das Register `Editing.SlashCommands` bindet alle Befehls-Units ein. Es bleibt eine Root-Unit, weil Lsp, Rules und `ClassActions` es nutzen (eine Composition dürften sie nach der Matrix nicht einbinden).
+- Was zwei Units gemeinsam brauchen, kommt in eine tiefere Unit: `TLspSymbolKind` in `Atlas.Common.Lsp.Contract`, die Formularprüfung in `Editing.FormMentions`, JSON-Strings schreiben und JSON nachsichtig lesen in `Atlas.Text.Json`, Dateiadressen des Plugins in `Atlas.Plugin.Lsp.Uris`, die Steuerelemente `Atlas.Vcl.Options.ChoiceBox` und `Atlas.UI.Tracker.DocBox`.
 - Eine Funktion gehört zu ihren Daten: Die Nutzung je Befehl fragt `TAtlasIdeCommandUsage.UsageOf`, nicht die Tastenkürzel-Tipps; der Rückruf „Testen“ des Abfragedialogs (`TAtlasQueryTestEvent`) steht beim Dialog, nicht auf der Seite, die ihn öffnet.
 
 ### Genehmigte Ausnahmen
@@ -348,7 +348,7 @@ Innerhalb von `Atlas.Common` hängen die Features in dieser Richtung voneinander
 
 ```text
 Lsp            LSP-Methoden, Capabilities, Positionen
-Architecture   Uses-Graph, Architekturübersicht (nutzt Index und die uses-Leser aus Editing)
+Architecture   Uses-Graph, Architekturübersicht (nutzt Index und die uses-Leser aus Pascal)
 Semantics      Namensauflösung, Kontrollfluss
 Index          Symbolindex, Cache, Aufbau
 Pascal         Lexer, Präprozessor, Parser, Syntaxbaum

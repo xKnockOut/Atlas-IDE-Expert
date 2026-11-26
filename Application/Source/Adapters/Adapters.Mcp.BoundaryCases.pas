@@ -7,7 +7,7 @@ interface
 
 uses
   Mcp.Contract.BoundaryCases,
-  Atlas.Common.Editing.Contract.BoundaryCases;
+  Editing.Contract.BoundaryCases;
 
 type
   TMcpBoundaryCasesAdapter = class(TInterfacedObject, IMcpBoundaryCases)

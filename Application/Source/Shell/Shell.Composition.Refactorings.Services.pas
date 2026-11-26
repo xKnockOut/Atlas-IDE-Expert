@@ -19,7 +19,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.CodeActions,
-  Atlas.Common.Editing.Refactorings,
+  Editing.Refactorings,
   Atlas.Common.Semantics.References,
   Atlas.Common.Semantics.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics;
@@ -124,7 +124,7 @@ type
     procedure Register(ACommands: TLspCommands); virtual; abstract;
     /// <summary>Code-Aktionen des Teils für den Bereich.</summary>
     function Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>; virtual; abstract;
-    /// <summary>Umfeld der Refactorings aus Atlas.Common.Editing.Refactorings für eine Datei.</summary>
+    /// <summary>Umfeld der Refactorings aus Editing.Refactorings für eine Datei.</summary>
     function ContextFor(const AUri: string): TRefactoringContext;
   end;
 

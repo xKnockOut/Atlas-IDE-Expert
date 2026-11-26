@@ -1,0 +1,333 @@
+﻿unit Editing.LearnedSuggestions.Protocol;
+
+// Gelernte Vorschläge (#1890) über das Protokoll. Das Plugin schickt vorher
+// den Puffer.
+//   - atlas.server.suggestNext [uri, line, editorOptions, options]: Vorschlag
+//     für die leere Zeile line (0-basiert) nach einem Auslöser. editorOptions
+//     sind die FormattingOptions des Editors ({tabSize, insertSpaces}) oder
+//     null; options {"minCount", "minShare", "adjust": {Kennung: Punkte}} aus
+//     den Einstellungen und Lernzählern des Plugins. Antwort {"id", "trigger",
+//     "lines", "cursor", "count", "total", "share", "team", "evidence":
+//     [{"uri", "line"}]} oder null.
+//   - atlas.server.learnedPatterns [uri]: alle Muster aus atlas.json und aus
+//     dem Projekt ab zwei Stellen für die Liste „Gelernte Vorschläge“, je
+//     {"id", "trigger", "text", "count", "total", "share", "team",
+//     "evidence"}.
+//   - atlas.server.suggestionContext [uri, line]: Wissen aus dem Index für
+//     einen KI-Anbieter (#1922): {"declarations": [Kopf je Zeile]} der Klasse
+//     der Methode an line und ihrer Mitglieder, sonst leer.
+//   - atlas.server.checkSuggestion [uri, line, lines]: Prüfung eines fremden
+//     Vorschlags (#1922) wie bei den gelernten: keine neuen Syntaxfehler, jeder
+//     Bezeichner steht in der Datei oder im Index. Antwort {"valid": bool}.
+// Die Logik liegt in Editing.LearnedSuggestions und
+// Editing.SuggestionContext.
+
+interface
+
+uses
+  System.SysUtils,
+  System.JSON,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Index.Contract,
+  Editing.LearnedSuggestions;
+
+type
+  /// <summary>Einrückung und Muster aus atlas.json für AUri mit den Editor-Optionen AEditorOptions (nil = keine).
+  /// </summary>
+  TLearnedOptionsFunc = reference to function(const AUri: string; const AEditorOptions: TJSONValue):
+    TLearnedOptions;
+
+  TLearnedSuggestionsProtocol = class
+  public const
+    cSuggestCommand = 'atlas.server.suggestNext';
+    cListCommand = 'atlas.server.learnedPatterns';
+    cContextCommand = 'atlas.server.suggestionContext';
+    cCheckCommand = 'atlas.server.checkSuggestion';
+  public
+    /// <summary>Schwellen und Lernzähler aus AValue ({"minCount", "minShare", "adjust"}) in AOptions.</summary>
+    class procedure ReadOptions(const AValue: TJSONValue; var AOptions: TLearnedOptions); static;
+    /// <summary>atlas.server.suggestNext; ungültige Argumente ergeben EArgumentException.</summary>
+    class function ExecuteSuggest(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+      const AOptionsFor: TLearnedOptionsFunc; const AArguments: TJSONArray): TJSONValue; static;
+    /// <summary>atlas.server.learnedPatterns.</summary>
+    class function ExecuteList(const AIndex: ISymbolIndex; const AOptionsFor: TLearnedOptionsFunc;
+      const AArguments: TJSONArray): TJSONValue; static;
+    /// <summary>atlas.server.suggestionContext; ungültige Argumente ergeben EArgumentException.</summary>
+    class function ExecuteContext(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+      const AArguments: TJSONArray): TJSONValue; static;
+    /// <summary>atlas.server.checkSuggestion; ungültige Argumente ergeben EArgumentException.</summary>
+    class function ExecuteCheck(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+      const AArguments: TJSONArray): TJSONValue; static;
+  end;
+
+implementation
+
+uses
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
+  System.Math,
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Pascal.TreeCache,
+  Editing.SuggestionContext,
+  Atlas.Common.JsonRpc.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLearnedSuggestionsText = (ArgumentsUriAndLineMissing, ArgumentLinesMissing);
+
+const
+  cTexts: array[TLearnedSuggestionsText] of TAtlasText = (
+    (De: 'Argumente "uri" und "line" fehlen'; En: 'Arguments "uri" and "line" missing'),
+    (De: 'Argument "lines" fehlt'; En: 'Argument "lines" missing'));
+
+{$SCOPEDENUMS OFF}
+
+const
+  /// <summary>Grenzen der Schwellen wie in den Einstellungen des Plugins.</summary>
+  cMinCountLow = 2;
+  cMinCountHigh = 100;
+  cMinShareLow = 50;
+  cMinShareHigh = 100;
+
+{ TLearnedSuggestionsProtocol }
+
+class procedure TLearnedSuggestionsProtocol.ReadOptions(const AValue: TJSONValue; var AOptions: TLearnedOptions);
+var
+  mObject, mAdjust: TJSONObject;
+  mPair: TJSONPair;
+  mNumber: TJSONValue;
+begin
+  if not (AValue is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mObject := TJSONObject(AValue);
+  mNumber := mObject.GetValue('minCount');
+  if mNumber is TJSONNumber then
+  begin
+    AOptions.MinCount := EnsureRange(TJSONNumber(mNumber).AsInt, cMinCountLow, cMinCountHigh);
+  end;
+  mNumber := mObject.GetValue('minShare');
+  if mNumber is TJSONNumber then
+  begin
+    AOptions.MinShare := EnsureRange(TJSONNumber(mNumber).AsInt, cMinShareLow, cMinShareHigh);
+  end;
+  if mObject.GetValue('adjust') is TJSONObject then
+  begin
+    mAdjust := TJSONObject(mObject.GetValue('adjust'));
+    for mPair in mAdjust do
+    begin
+      if mPair.JsonValue is TJSONNumber then
+      begin
+        AOptions.AdjustIds := AOptions.AdjustIds + [mPair.JsonString.Value];
+        AOptions.AdjustBy := AOptions.AdjustBy + [TJSONNumber(mPair.JsonValue).AsInt];
+      end;
+    end;
+  end;
+end;
+
+function EvidenceJson(const APattern: TLearnedPattern): TJSONArray;
+var
+  mEvidence: TLearnedEvidence;
+  mItem: TJSONObject;
+begin
+  Result := TJSONArray.Create;
+  for mEvidence in APattern.Evidence do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('uri', TDocumentUris.FromPath(mEvidence.FileName));
+    mItem.AddPair('line', TJSONNumber.Create(mEvidence.Line));
+    Result.AddElement(mItem);
+  end;
+end;
+
+/// <summary>Gemeinsame Felder eines Musters.</summary>
+procedure AddPattern(AObject: TJSONObject; const APattern: TLearnedPattern);
+begin
+  AObject.AddPair('id', APattern.Id);
+  AObject.AddPair('trigger', APattern.Trigger);
+  AObject.AddPair('count', TJSONNumber.Create(APattern.Count));
+  AObject.AddPair('total', TJSONNumber.Create(APattern.Total));
+  AObject.AddPair('share', TJSONNumber.Create(APattern.Share));
+  AObject.AddPair('team', TJSONBool.Create(APattern.Team));
+  AObject.AddPair('evidence', EvidenceJson(APattern));
+end;
+
+/// <summary>ALine: die leere Zeile, die der Block ersetzt. Die Schreibmarke geht als Zeile im Dokument hinaus (wie
+/// in LSP üblich); TLearnedSuggestion führt sie relativ zum Block.</summary>
+function SuggestionJson(const ASuggestion: TLearnedSuggestion; ALine: Integer): TJSONObject;
+var
+  mLines: TJSONArray;
+  mLine: string;
+  mCursor: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  AddPattern(Result, ASuggestion.Pattern);
+  mLines := TJSONArray.Create;
+  for mLine in ASuggestion.Lines do
+  begin
+    mLines.Add(mLine);
+  end;
+  Result.AddPair('lines', mLines);
+  mCursor := TJSONObject.Create;
+  // Relativ hinausgegeben sprang die Schreibmarke nach Tab an den Anfang der Unit, und die IDE verwarf jeden
+  // Vorschlag unterhalb der ersten Zeilen (sie prüft, ob die Marke im Block liegt).
+  mCursor.AddPair('line', TJSONNumber.Create(ALine + ASuggestion.CursorLine));
+  mCursor.AddPair('character', TJSONNumber.Create(ASuggestion.CursorCharacter));
+  Result.AddPair('cursor', mCursor);
+end;
+
+class function TLearnedSuggestionsProtocol.ExecuteSuggest(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AOptionsFor: TLearnedOptionsFunc; const AArguments: TJSONArray): TJSONValue;
+var
+  mUri: string;
+  mLine: Integer;
+  mDocument: ITextDocument;
+  mEditorOptions: TJSONValue;
+  mOptions: TLearnedOptions;
+  mShared: ISharedSyntaxTree;
+  mSuggestion: TLearnedSuggestion;
+  mIndex: ISymbolIndex;
+begin
+  if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONNumber) then
+  begin
+    raise EArgumentException.Create(cTexts[TLearnedSuggestionsText.ArgumentsUriAndLineMissing].Text);
+  end;
+  mUri := AArguments.Items[0].Value;
+  mLine := TJSONNumber(AArguments.Items[1]).AsInt;
+  mEditorOptions := nil;
+  if (AArguments.Count > 2) and not (AArguments.Items[2] is TJSONNull) then
+  begin
+    mEditorOptions := AArguments.Items[2];
+  end;
+  if (AIndex = nil) or not AStore.TryGet(mUri, mDocument) then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  mOptions := AOptionsFor(mUri, mEditorOptions);
+  if AArguments.Count > 3 then
+  begin
+    ReadOptions(AArguments.Items[3], mOptions);
+  end;
+  mIndex := AIndex;
+  mShared := TSyntaxTreeCache.Get(mDocument);
+  if not TLearnedSuggestions.Suggest(mShared.Tree, mDocument.Text, mLine, TLearnedProject.Create(AIndex.Units,
+    function(const AName: string): Boolean
+    begin
+      Result := Length(mIndex.FindSymbols(AName)) > 0;
+    end), mOptions, mSuggestion) then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  Result := SuggestionJson(mSuggestion, mLine);
+end;
+
+class function TLearnedSuggestionsProtocol.ExecuteList(const AIndex: ISymbolIndex; const AOptionsFor: TLearnedOptionsFunc;
+  const AArguments: TJSONArray): TJSONValue;
+var
+  mUri: string;
+  mPattern: TLearnedPattern;
+  mItem: TJSONObject;
+  mList: TJSONArray;
+  mUnits: TArray<TUnitIndex>;
+begin
+  mUri := '';
+  if (AArguments <> nil) and (AArguments.Count > 0) then
+  begin
+    mUri := AArguments.Items[0].Value;
+  end;
+  mUnits := nil;
+  if AIndex <> nil then
+  begin
+    mUnits := AIndex.Units;
+  end;
+  mList := TJSONArray.Create;
+  for mPattern in TLearnedSuggestions.List(mUnits, AOptionsFor(mUri, nil)) do
+  begin
+    mItem := TJSONObject.Create;
+    AddPattern(mItem, mPattern);
+    mItem.AddPair('text', TLearnedSuggestions.Display(mPattern.Follow));
+    mList.AddElement(mItem);
+  end;
+  Result := mList;
+end;
+
+/// <summary>Adresse und Zeile aus den ersten beiden Argumenten; sonst EArgumentException.</summary>
+procedure ReadUriAndLine(const AArguments: TJSONArray; out AUri: string; out ALine: Integer);
+begin
+  if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONNumber) then
+  begin
+    raise EArgumentException.Create(cTexts[TLearnedSuggestionsText.ArgumentsUriAndLineMissing].Text);
+  end;
+  AUri := AArguments.Items[0].Value;
+  ALine := TJSONNumber(AArguments.Items[1]).AsInt;
+end;
+
+class function TLearnedSuggestionsProtocol.ExecuteContext(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AArguments: TJSONArray): TJSONValue;
+var
+  mUri, mDeclaration: string;
+  mLine: Integer;
+  mDocument: ITextDocument;
+  mList: TJSONArray;
+  mResult: TJSONObject;
+begin
+  ReadUriAndLine(AArguments, mUri, mLine);
+  mList := TJSONArray.Create;
+  mResult := TJSONObject.Create;
+  mResult.AddPair('declarations', mList);
+  if AStore.TryGet(mUri, mDocument) then
+  begin
+    for mDeclaration in TSuggestionContext.Declarations(AIndex, TDocumentUris.ToPath(mUri), mDocument.Text, mLine) do
+    begin
+      mList.Add(mDeclaration);
+    end;
+  end;
+  Result := mResult;
+end;
+
+class function TLearnedSuggestionsProtocol.ExecuteCheck(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AArguments: TJSONArray): TJSONValue;
+var
+  mUri: string;
+  mLine, mItem: Integer;
+  mDocument: ITextDocument;
+  mLines: TJSONArray;
+  mSuggestion: TLearnedSuggestion;
+  mShared: ISharedSyntaxTree;
+  mIndex: ISymbolIndex;
+  mValid: Boolean;
+begin
+  ReadUriAndLine(AArguments, mUri, mLine);
+  if (AArguments.Count < 3) or not (AArguments.Items[2] is TJSONArray) then
+  begin
+    raise EArgumentException.Create(cTexts[TLearnedSuggestionsText.ArgumentLinesMissing].Text);
+  end;
+  mLines := TJSONArray(AArguments.Items[2]);
+  mSuggestion := Default(TLearnedSuggestion);
+  SetLength(mSuggestion.Lines, mLines.Count);
+  for mItem := 0 to mLines.Count - 1 do
+  begin
+    mSuggestion.Lines[mItem] := mLines.Items[mItem].Value;
+  end;
+  mValid := False;
+  if (Length(mSuggestion.Lines) > 0) and AStore.TryGet(mUri, mDocument) and (mLine >= 0) and
+    (mLine < Length(mDocument.Text.Split([#13#10, #10]))) then
+  begin
+    mIndex := AIndex;
+    mShared := TSyntaxTreeCache.Get(mDocument);
+    mValid := TLearnedSuggestions.Valid(mShared.Tree, mDocument.Text, mLine, mSuggestion,
+      function(const AName: string): Boolean
+      begin
+        Result := (mIndex <> nil) and (Length(mIndex.FindSymbols(AName)) > 0);
+      end);
+  end;
+  Result := TJSONObject.Create(TJSONPair.Create('valid', TJSONBool.Create(mValid)));
+end;
+
+initialization
+  TAtlasTextTables.Add('Editing.LearnedSuggestions.Protocol', cTexts);
+
+end.

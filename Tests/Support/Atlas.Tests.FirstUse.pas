@@ -39,7 +39,7 @@ uses
   Data.DB,
   Datasnap.DBClient,
   MidasLib,
-  Atlas.Common.Editing.SlashCommands,
+  Editing.SlashCommands,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Metrics.DuplicateCatalog,
   Rules.Catalog,

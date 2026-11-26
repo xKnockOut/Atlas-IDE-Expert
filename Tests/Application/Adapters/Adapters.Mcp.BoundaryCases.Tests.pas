@@ -20,7 +20,7 @@ implementation
 
 uses
   Mcp.Contract.BoundaryCases,
-  Atlas.Common.Editing.Contract.BoundaryCases,
+  Editing.Contract.BoundaryCases,
   Adapters.Mcp.BoundaryCases;
 
 type

@@ -75,7 +75,7 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Editing.TestUnits.Protocol,
+  Editing.TestUnits.Protocol,
   Shell.Composition.CoveredBy;
 
 { TShellAnalysisArea }

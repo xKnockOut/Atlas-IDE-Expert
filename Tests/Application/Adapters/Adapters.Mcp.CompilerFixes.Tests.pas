@@ -21,7 +21,7 @@ implementation
 uses
   Atlas.Common.Documents.Contract,
   Mcp.Contract.CompilerFixes,
-  Atlas.Common.Editing.Contract.CompilerFixes,
+  Editing.Contract.CompilerFixes,
   Adapters.Mcp.CompilerFixes;
 
 type
