@@ -10,7 +10,7 @@ uses
   System.JSON,
   Atlas.Common.JsonRpc.Connection,
   Atlas.Common.Lsp.TextDocumentSync,
-  Atlas.Common.Lsp.TestUnits,
+  Atlas.Common.Editing.TestUnits.Protocol,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Compiler.Contract,

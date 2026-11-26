@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.TestFromDebug;
+﻿unit Atlas.Common.Editing.TestFromDebug.Protocol;
 
 // Befehl atlas.server.testFromDebugStop [uri, zeile, anfrage] (#1873): Test
 // aus dem Debug-Halt. Das Plugin fragt zweimal:
@@ -9,27 +9,27 @@
 //     sie damit anlegt (wie „Testfall anlegen“, #1226), Datei und Name.
 // Anfrage: parameters/fields als Objekte {name, text}, kind ("works" oder
 // "raises"), expected, exceptionClass, testName, maxArray, stoppedAt.
-// Kern: Atlas.Common.Editing.TestFromDebug; Ort und Edit: TLspTestUnits.
+// Kern: Atlas.Common.Editing.TestFromDebug; Ort und Edit: TTestUnitsProtocol.
 
 interface
 
 uses
   System.JSON,
-  Atlas.Common.Lsp.TestUnits,
+  Atlas.Common.Editing.TestUnits.Protocol,
   Atlas.Common.Editing.TestFromDebug;
 
 type
-  TLspTestFromDebug = class
+  TTestFromDebugProtocol = class
   public const
     cCommand = 'atlas.server.testFromDebugStop';
     cModeDescribe = 'describe';
     cModeCreate = 'create';
     cKindRaises = 'raises';
   private
-    FTestUnits: TLspTestUnits;
+    FTestUnits: TTestUnitsProtocol;
   public
     /// <summary>ATestUnits gehört dem Aufrufer.</summary>
-    constructor Create(ATestUnits: TLspTestUnits);
+    constructor Create(ATestUnits: TTestUnitsProtocol);
     /// <summary>Anfrage aus dem JSON-Objekt des Plugins; nil ergibt die leere Anfrage.</summary>
     class function ReadRequest(AObject: TJSONObject): TDebugStopRequest; static;
     /// <summary>atlas.server.testFromDebugStop [uri, zeile, anfrage]; Antwort siehe Kopf. Fehler stehen in
@@ -51,10 +51,10 @@ uses
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TLspTestFromDebugText = (NeedsArguments, NoTestableRoutine, NotAdded);
+  TTestFromDebugProtocolText = (NeedsArguments, NoTestableRoutine, NotAdded);
 
 const
-  cTexts: array[TLspTestFromDebugText] of TAtlasText = (
+  cTexts: array[TTestFromDebugProtocolText] of TAtlasText = (
     (De: ' braucht URI, Zeile und Anfrage'; En: ' needs URI, line and request'),
     (De: 'An dieser Stelle steht keine Methode, für die sich ein Test anlegen lässt (Testunit fehlt oder lässt ' +
       'sich nicht anlegen)';
@@ -64,9 +64,9 @@ const
 
 {$SCOPEDENUMS OFF}
 
-{ TLspTestFromDebug }
+{ TTestFromDebugProtocol }
 
-constructor TLspTestFromDebug.Create(ATestUnits: TLspTestUnits);
+constructor TTestFromDebugProtocol.Create(ATestUnits: TTestUnitsProtocol);
 begin
   inherited Create;
   FTestUnits := ATestUnits;
@@ -94,7 +94,7 @@ begin
   end;
 end;
 
-class function TLspTestFromDebug.ReadRequest(AObject: TJSONObject): TDebugStopRequest;
+class function TTestFromDebugProtocol.ReadRequest(AObject: TJSONObject): TDebugStopRequest;
 begin
   Result := TDebugStopRequest.Empty;
   if AObject = nil then
@@ -170,7 +170,7 @@ begin
 end;
 
 /// <summary>Antwort auf "create"; "reason", wenn sich nichts eintragen ließ.</summary>
-procedure CreateTest(AAnswer: TJSONObject; ATestUnits: TLspTestUnits; const APlace: TTestDraftPlace;
+procedure CreateTest(AAnswer: TJSONObject; ATestUnits: TTestUnitsProtocol; const APlace: TTestDraftPlace;
   const ARequest: TDebugStopRequest);
 var
   mPlace: TTestDraftPlace;
@@ -188,7 +188,7 @@ begin
   mEdit := ATestUnits.DraftEdit(mPlace, mFile, mName);
   if mEdit = nil then
   begin
-    AAnswer.AddPair('reason', cTexts[TLspTestFromDebugText.NotAdded].Fmt([mPlace.Target.Counterpart]));
+    AAnswer.AddPair('reason', cTexts[TTestFromDebugProtocolText.NotAdded].Fmt([mPlace.Target.Counterpart]));
     Exit;
   end;
   AAnswer.AddPair('edit', mEdit);
@@ -197,7 +197,7 @@ begin
   AAnswer.AddPair('fixture', mPlace.Draft.Fixture);
 end;
 
-function TLspTestFromDebug.Execute(const AArguments: TJSONArray): TJSONValue;
+function TTestFromDebugProtocol.Execute(const AArguments: TJSONArray): TJSONValue;
 var
   mAnswer, mRequestJson: TJSONObject;
   mPlace: TTestDraftPlace;
@@ -205,7 +205,7 @@ var
 begin
   if (AArguments = nil) or (AArguments.Count < 2) then
   begin
-    raise EArgumentException.Create(cCommand + cTexts[TLspTestFromDebugText.NeedsArguments].Text);
+    raise EArgumentException.Create(cCommand + cTexts[TTestFromDebugProtocolText.NeedsArguments].Text);
   end;
   mRequestJson := nil;
   if (AArguments.Count > 2) and (AArguments.Items[2] is TJSONObject) then
@@ -217,7 +217,7 @@ begin
   Result := mAnswer;
   if not FTestUnits.DraftPlace(AArguments.Items[0].Value, StrToIntDef(AArguments.Items[1].Value, -1), mPlace) then
   begin
-    mAnswer.AddPair('reason', cTexts[TLspTestFromDebugText.NoTestableRoutine].Text);
+    mAnswer.AddPair('reason', cTexts[TTestFromDebugProtocolText.NoTestableRoutine].Text);
     Exit;
   end;
   if (mRequestJson <> nil) and SameText(TJsonRead.Text(mRequestJson, 'mode'), cModeCreate) then
@@ -231,6 +231,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.TestFromDebug', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.TestFromDebug.Protocol', cTexts);
 
 end.

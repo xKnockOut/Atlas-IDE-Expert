@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.BoundaryTests.Tests;
+﻿unit Atlas.Common.Editing.BoundaryTests.Protocol.Tests;
 
 // Grenzfälle in die Testunit übernehmen (#2173): neue Testmethode mit [TestCase] und AExpected, Anfügen an eine
 // vorhandene Tabelle, Trennzeichen, Kommentar, Gründe ohne Testunit und bei var-Parametern, Befehl als JSON.
@@ -9,15 +9,15 @@ uses
   DUnitX.TestFramework,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.TestUnits;
+  Atlas.Common.Editing.TestUnits.Protocol;
 
 type
   [TestFixture]
-  TLspBoundaryTestsTests = class
+  TBoundaryTestsProtocolTests = class
   private
     FStore: IDocumentStore;
     FFiles: TDictionary<string, string>;
-    FTestUnits: TLspTestUnits;
+    FTestUnits: TTestUnitsProtocol;
     function Context: TTestUnitContext;
   public
     [Setup]
@@ -52,7 +52,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.TestDrafts,
-  Atlas.Common.Lsp.BoundaryTests;
+  Atlas.Common.Editing.BoundaryTests.Protocol;
 
 const
   cKundenFile = 'C:\P\Quelle\Kunden.pas';
@@ -106,23 +106,23 @@ begin
   Result.UnitName := 'Kunden';
 end;
 
-function Case_(const AName: string; const AValues: TArray<string>; const AExpected: string): TLspBoundaryTestCase;
+function Case_(const AName: string; const AValues: TArray<string>; const AExpected: string): TBoundaryTestCase;
 begin
   Result.Name := AName;
   Result.Values := AValues;
   Result.Expected := AExpected;
 end;
 
-function Cases: TArray<TLspBoundaryTestCase>;
+function Cases: TArray<TBoundaryTestCase>;
 begin
   SetLength(Result, 2);
   Result[0] := Case_('AMenge 99', ['99', 'x'], '0');
   Result[1] := Case_('AMenge 100', ['100', 'a,b'], '5');
 end;
 
-{ TLspBoundaryTestsTests }
+{ TBoundaryTestsProtocolTests }
 
-function TLspBoundaryTestsTests.Context: TTestUnitContext;
+function TBoundaryTestsProtocolTests.Context: TTestUnitContext;
 var
   mFiles: TDictionary<string, string>;
 begin
@@ -159,14 +159,14 @@ begin
     end;
 end;
 
-procedure TLspBoundaryTestsTests.Setup;
+procedure TBoundaryTestsProtocolTests.Setup;
 begin
   FStore := TDocumentStore.Create;
   FFiles := TDictionary<string, string>.Create;
   FFiles.Add('C:\P\Tests\Tests.dpr', 'program Tests;' + cBreak + 'uses' + cBreak + '  DUnitX.TestFramework;' +
     cBreak + 'begin' + cBreak + 'end.');
   FStore.Open(TDocumentUris.FromPath(cKundenFile), 'pascal', 1, cKundenText);
-  FTestUnits := TLspTestUnits.Create(FStore,
+  FTestUnits := TTestUnitsProtocol.Create(FStore,
     function(const AUri: string; out AContext: TTestUnitContext): Boolean
     begin
       AContext := Context;
@@ -174,29 +174,29 @@ begin
     end);
 end;
 
-procedure TLspBoundaryTestsTests.TearDown;
+procedure TBoundaryTestsProtocolTests.TearDown;
 begin
   FTestUnits.Free;
   FFiles.Free;
   FStore := nil;
 end;
 
-procedure TLspBoundaryTestsTests.SeparatorAvoidsValues;
+procedure TBoundaryTestsProtocolTests.SeparatorAvoidsValues;
 var
-  mCases: TArray<TLspBoundaryTestCase>;
+  mCases: TArray<TBoundaryTestCase>;
 begin
   mCases := Cases;
-  Assert.AreEqual(';', TLspBoundaryTests.SeparatorFor(mCases));
+  Assert.AreEqual(';', TBoundaryTestsProtocol.SeparatorFor(mCases));
   mCases[0].Expected := 'a;b|c#d';
-  Assert.AreEqual('', TLspBoundaryTests.SeparatorFor(mCases));
-  Assert.AreEqual('A 2', TLspBoundaryTests.Rows([Case_('A', ['1'], '')], ',', ['A'])[0].Name);
+  Assert.AreEqual('', TBoundaryTestsProtocol.SeparatorFor(mCases));
+  Assert.AreEqual('A 2', TBoundaryTestsProtocol.Rows([Case_('A', ['1'], '')], ',', ['A'])[0].Name);
 end;
 
-procedure TLspBoundaryTestsTests.NewMethodWithCases;
+procedure TBoundaryTestsProtocolTests.NewMethodWithCases;
 var
-  mPlan: TLspBoundaryPlan;
+  mPlan: TBoundaryPlan;
 begin
-  mPlan := TLspBoundaryTests.Plan(DraftAt(10), Cases, cTestText, 'heute');
+  mPlan := TBoundaryTestsProtocol.Plan(DraftAt(10), Cases, cTestText, 'heute');
   Assert.AreEqual('', mPlan.Reason);
   Assert.AreEqual('TestRabattCases', mPlan.Method);
   Assert.IsFalse(mPlan.Appended);
@@ -210,30 +210,30 @@ begin
   Assert.IsTrue(ContainsStr(mPlan.NewText, 'Assert.AreEqual(AExpected, Actual);'), mPlan.NewText);
 end;
 
-procedure TLspBoundaryTestsTests.AppendsToExistingTable;
+procedure TBoundaryTestsProtocolTests.AppendsToExistingTable;
 var
-  mFirst, mSecond: TLspBoundaryPlan;
-  mCases: TArray<TLspBoundaryTestCase>;
+  mFirst, mSecond: TBoundaryPlan;
+  mCases: TArray<TBoundaryTestCase>;
 begin
-  mFirst := TLspBoundaryTests.Plan(DraftAt(10), [Case_('Eins', ['1', 'x'], '0')], cTestText, '');
+  mFirst := TBoundaryTestsProtocol.Plan(DraftAt(10), [Case_('Eins', ['1', 'x'], '0')], cTestText, '');
   mCases := [Case_('Eins', ['2', 'y'], '1')];
-  mSecond := TLspBoundaryTests.Plan(DraftAt(10), mCases, mFirst.NewText, 'heute');
+  mSecond := TBoundaryTestsProtocol.Plan(DraftAt(10), mCases, mFirst.NewText, 'heute');
   Assert.AreEqual('', mSecond.Reason);
   Assert.IsTrue(mSecond.Appended);
   Assert.IsTrue(ContainsStr(mSecond.NewText, '    // heute' + cBreak + '    [TestCase(''Eins'', ''1,x,0'')]' + cBreak +
     '    [TestCase(''Eins 2'', ''2,y,1'')]' + cBreak + '    procedure TestRabattCases('), mSecond.NewText);
   // Mit dem Trennzeichen der Tabelle in einem Wert lehnt das Schreiben ab.
   mCases := [Case_('Drei', ['3', 'a,b'], '1')];
-  Assert.AreNotEqual('', TLspBoundaryTests.Plan(DraftAt(10), mCases, mFirst.NewText, '').Reason);
+  Assert.AreNotEqual('', TBoundaryTestsProtocol.Plan(DraftAt(10), mCases, mFirst.NewText, '').Reason);
 end;
 
-procedure TLspBoundaryTestsTests.RefusesVarParameters;
+procedure TBoundaryTestsProtocolTests.RefusesVarParameters;
 begin
-  Assert.AreNotEqual('', TLspBoundaryTests.Plan(DraftAt(14), [Case_('A', ['x'], '')], cTestText, '').Reason);
-  Assert.AreNotEqual('', TLspBoundaryTests.Plan(DraftAt(10), nil, cTestText, '').Reason);
+  Assert.AreNotEqual('', TBoundaryTestsProtocol.Plan(DraftAt(14), [Case_('A', ['x'], '')], cTestText, '').Reason);
+  Assert.AreNotEqual('', TBoundaryTestsProtocol.Plan(DraftAt(10), nil, cTestText, '').Reason);
 end;
 
-procedure TLspBoundaryTestsTests.CommandAnswersWithEdit;
+procedure TBoundaryTestsProtocolTests.CommandAnswersWithEdit;
 var
   mArguments: TJSONArray;
   mResult: TJSONValue;
@@ -243,7 +243,7 @@ begin
   mArguments := TJSONObject.ParseJSONValue('["' + TDocumentUris.FromPath(cKundenFile) +
     '",11,[{"name":"A","values":["1","x"],"expected":"0"}],"heute"]') as TJSONArray;
   try
-    mResult := TLspBoundaryTests.Execute(FTestUnits, mArguments);
+    mResult := TBoundaryTestsProtocol.Execute(FTestUnits, mArguments);
   finally
     mArguments.Free;
   end;
@@ -258,7 +258,7 @@ begin
   end;
 end;
 
-procedure TLspBoundaryTestsTests.CommandWithoutTestUnitNamesReason;
+procedure TBoundaryTestsProtocolTests.CommandWithoutTestUnitNamesReason;
 var
   mArguments: TJSONArray;
   mResult: TJSONValue;
@@ -266,7 +266,7 @@ begin
   mArguments := TJSONObject.ParseJSONValue('["' + TDocumentUris.FromPath(cKundenFile) +
     '",11,[{"name":"A","values":["1","x"],"expected":"0"}]]') as TJSONArray;
   try
-    mResult := TLspBoundaryTests.Execute(FTestUnits, mArguments);
+    mResult := TBoundaryTestsProtocol.Execute(FTestUnits, mArguments);
   finally
     mArguments.Free;
   end;
@@ -278,19 +278,19 @@ begin
   end;
 end;
 
-procedure TLspBoundaryTestsTests.ExpectedCompletedOrRefused;
+procedure TBoundaryTestsProtocolTests.ExpectedCompletedOrRefused;
 var
-  mCases: TArray<TLspBoundaryTestCase>;
+  mCases: TArray<TBoundaryTestCase>;
   mReason: string;
 begin
   mCases := [Case_('A', ['1', 'x'], '')];
-  Assert.IsFalse(TLspBoundaryTests.Completed(DraftAt(10), mCases, False, mReason));
+  Assert.IsFalse(TBoundaryTestsProtocol.Completed(DraftAt(10), mCases, False, mReason));
   Assert.IsTrue(ContainsStr(mReason, 'A'), mReason);
-  Assert.IsTrue(TLspBoundaryTests.Completed(DraftAt(10), mCases, True, mReason), mReason);
+  Assert.IsTrue(TBoundaryTestsProtocol.Completed(DraftAt(10), mCases, True, mReason), mReason);
   Assert.AreEqual('0', mCases[0].Expected, 'Platzhalter von Integer');
   // Prozedur: kein erwartetes Ergebnis.
   mCases := [Case_('B', ['x'], '5')];
-  Assert.IsTrue(TLspBoundaryTests.Completed(DraftAt(14), mCases, False, mReason), mReason);
+  Assert.IsTrue(TBoundaryTestsProtocol.Completed(DraftAt(14), mCases, False, mReason), mReason);
   Assert.AreEqual('', mCases[0].Expected);
 end;
 

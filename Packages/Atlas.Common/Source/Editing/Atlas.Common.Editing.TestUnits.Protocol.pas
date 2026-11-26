@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.TestUnits;
+﻿unit Atlas.Common.Editing.TestUnits.Protocol;
 
 // Testunits über das Protokoll (#274, #189):
 //   - Code-Aktion „DUnitX-Testunit für TFoo anlegen“ auf einer Klasse: ein
@@ -80,7 +80,7 @@ type
     Draft: TTestDraft;
   end;
 
-  TLspTestUnits = class
+  TTestUnitsProtocol = class
   public const
     cCommand = 'atlas.server.testUnit';
     /// <summary>Befehl des Clients: Datei öffnen (Argument: URI).</summary>
@@ -159,12 +159,12 @@ uses
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TLspTestUnitsText = (UnitNotFound, NoTestProjectFoundDUnitX, SwitchToUnit, SwitchToTestUnit, CreateADUnitXTestUnit,
+  TTestUnitsProtocolText = (UnitNotFound, NoTestProjectFoundDUnitX, SwitchToUnit, SwitchToTestUnit, CreateADUnitXTestUnit,
     NeedsTheURIOfThe, FileBelongsToNoWorkspace, HasNeitherClassesNorRoutines, CreateTestCase, NoTestableRoutine,
     NoTestUnitYet);
 
 const
-  cTexts: array[TLspTestUnitsText] of TAtlasText = (
+  cTexts: array[TTestUnitsProtocolText] of TAtlasText = (
     (De: 'Unit %s nicht gefunden'; En: 'Unit %s not found'),
     (De: 'Kein Testprojekt gefunden (DUnitX oder DUnit im Arbeitsbereich); „testUnits.project“ in atlas.json ' +
       'festlegen';
@@ -187,16 +187,16 @@ const
 const
   cLineBreak = #13#10;
 
-{ TLspTestUnits }
+{ TTestUnitsProtocol }
 
-constructor TLspTestUnits.Create(const AStore: IDocumentStore; const AContextFor: TTestUnitContextProvider);
+constructor TTestUnitsProtocol.Create(const AStore: IDocumentStore; const AContextFor: TTestUnitContextProvider);
 begin
   inherited Create;
   FStore := AStore;
   FContextFor := AContextFor;
 end;
 
-function TLspTestUnits.ResolveUri(const AUri: string; ALine: Integer;
+function TTestUnitsProtocol.ResolveUri(const AUri: string; ALine: Integer;
   const AContext: TTestUnitContext): TTestUnitTarget;
 var
   mDocument: ITextDocument;
@@ -231,7 +231,7 @@ begin
   end;
 end;
 
-function TLspTestUnits.SourceOf(const AUri: string; const AContext: TTestUnitContext; out AText: string;
+function TTestUnitsProtocol.SourceOf(const AUri: string; const AContext: TTestUnitContext; out AText: string;
   out ATokens: TArray<TPascalToken>): Boolean;
 var
   mDocument: ITextDocument;
@@ -260,7 +260,7 @@ begin
   end;
   if ATarget.CounterpartFile = '' then
   begin
-    ATarget.Reason := cTexts[TLspTestUnitsText.UnitNotFound].Fmt([ATested]);
+    ATarget.Reason := cTexts[TTestUnitsProtocolText.UnitNotFound].Fmt([ATested]);
   end;
 end;
 
@@ -293,11 +293,11 @@ begin
   end;
   if AContext.TestProgram = '' then
   begin
-    ATarget.Reason := cTexts[TLspTestUnitsText.NoTestProjectFoundDUnitX].Text;
+    ATarget.Reason := cTexts[TTestUnitsProtocolText.NoTestProjectFoundDUnitX].Text;
   end
   else if (ATarget.ClassName = '') and (Length(TTestUnits.TestMethods(ATarget.Source, '')) = 0) then
   begin
-    ATarget.Reason := cTexts[TLspTestUnitsText.HasNeitherClassesNorRoutines].Fmt([ATarget.UnitName]);
+    ATarget.Reason := cTexts[TTestUnitsProtocolText.HasNeitherClassesNorRoutines].Fmt([ATarget.UnitName]);
   end
   else
   begin
@@ -306,7 +306,7 @@ begin
   end;
 end;
 
-function TLspTestUnits.TextOf(const AFileName: string; const AContext: TTestUnitContext): string;
+function TTestUnitsProtocol.TextOf(const AFileName: string; const AContext: TTestUnitContext): string;
 var
   mDocument: ITextDocument;
 begin
@@ -343,14 +343,14 @@ begin
   Result.AddPair('edits', mEdits);
 end;
 
-class function TLspTestUnits.Resolve(const AFileName, AText: string; ALine: Integer;
+class function TTestUnitsProtocol.Resolve(const AFileName, AText: string; ALine: Integer;
   const AContext: TTestUnitContext): TTestUnitTarget;
 begin
   Result := Resolve(AFileName, TPascalLexer.Tokenize(AText), TIndexExtractor.ExtractText(AText, AFileName, nil), ALine,
     AContext);
 end;
 
-class function TLspTestUnits.Resolve(const AFileName: string; const ATokens: TArray<TPascalToken>;
+class function TTestUnitsProtocol.Resolve(const AFileName: string; const ATokens: TArray<TPascalToken>;
   const ASource: TUnitIndex; ALine: Integer; const AContext: TTestUnitContext): TTestUnitTarget;
 var
   mTested, mFolder: string;
@@ -411,7 +411,7 @@ begin
   end;
 end;
 
-class function TLspTestUnits.TestFolder(const AContext: TTestUnitContext; const AFileName, AUnitName: string): string;
+class function TTestUnitsProtocol.TestFolder(const AContext: TTestUnitContext; const AFileName, AUnitName: string): string;
 var
   mFolder: string;
 begin
@@ -434,13 +434,13 @@ begin
   end;
 end;
 
-class function TLspTestUnits.CreateEdit(const ATarget: TTestUnitTarget;
+class function TTestUnitsProtocol.CreateEdit(const ATarget: TTestUnitTarget;
   const AContext: TTestUnitContext): TJSONObject;
 begin
   Result := CreateEdit(ATarget, AContext, nil);
 end;
 
-class function TLspTestUnits.CreateEdit(const ATarget: TTestUnitTarget; const AContext: TTestUnitContext;
+class function TTestUnitsProtocol.CreateEdit(const ATarget: TTestUnitTarget; const AContext: TTestUnitContext;
   const ADrafts: TArray<TTestUnitMethod>): TJSONObject;
 var
   mChanges: TJSONArray;
@@ -539,10 +539,10 @@ begin
   mMethod.Name := mDraft.TestName;
   mMethod.Target := mDraft.Target;
   mMethod.Draft := TTestDrafts.MethodText(mDraft, cLineBreak);
-  Result := TLspTestUnits.CreateEdit(ATarget, AContext, [mMethod]);
+  Result := TTestUnitsProtocol.CreateEdit(ATarget, AContext, [mMethod]);
 end;
 
-function TLspTestUnits.PlaceFor(const AUri: string; ALine: Integer; const AContext: TTestUnitContext;
+function TTestUnitsProtocol.PlaceFor(const AUri: string; ALine: Integer; const AContext: TTestUnitContext;
   const ATarget: TTestUnitTarget; out APlace: TTestDraftPlace): Boolean;
 var
   mText: string;
@@ -565,7 +565,7 @@ begin
   end;
 end;
 
-function TLspTestUnits.DraftAction(const AUri: string; ALine: Integer; const AContext: TTestUnitContext;
+function TTestUnitsProtocol.DraftAction(const AUri: string; ALine: Integer; const AContext: TTestUnitContext;
   const ATarget: TTestUnitTarget): TJSONObject;
 var
   mPlace: TTestDraftPlace;
@@ -582,7 +582,7 @@ begin
   begin
     Exit;
   end;
-  mTitle := cTexts[TLspTestUnitsText.CreateTestCase].Fmt([mPlace.Draft.Target]);
+  mTitle := cTexts[TTestUnitsProtocolText.CreateTestCase].Fmt([mPlace.Draft.Target]);
   Result := TJSONObject.Create;
   Result.AddPair('title', mTitle);
   Result.AddPair('kind', cRewriteKind);
@@ -590,7 +590,7 @@ begin
   Result.AddPair('command', CommandJson(mTitle, cOpenFileCommand, TDocumentUris.FromPath(mFile)));
 end;
 
-function TLspTestUnits.DraftPlace(const AUri: string; ALine: Integer; out APlace: TTestDraftPlace): Boolean;
+function TTestUnitsProtocol.DraftPlace(const AUri: string; ALine: Integer; out APlace: TTestDraftPlace): Boolean;
 var
   mContext: TTestUnitContext;
 begin
@@ -602,7 +602,7 @@ begin
   end;
 end;
 
-function TLspTestUnits.DraftEdit(const APlace: TTestDraftPlace; out AFile, AName: string): TJSONObject;
+function TTestUnitsProtocol.DraftEdit(const APlace: TTestDraftPlace; out AFile, AName: string): TJSONObject;
 var
   mOld, mNew, mReason: string;
 begin
@@ -624,7 +624,7 @@ begin
   end;
 end;
 
-function TLspTestUnits.Actions(const AUri: string; ALine: Integer): TArray<TJSONObject>;
+function TTestUnitsProtocol.Actions(const AUri: string; ALine: Integer): TArray<TJSONObject>;
 var
   mContext: TTestUnitContext;
   mTarget: TTestUnitTarget;
@@ -650,11 +650,11 @@ begin
   begin
     if mTarget.IsTest then
     begin
-      mTitle := cTexts[TLspTestUnitsText.SwitchToUnit].Fmt([mTarget.Counterpart]);
+      mTitle := cTexts[TTestUnitsProtocolText.SwitchToUnit].Fmt([mTarget.Counterpart]);
     end
     else
     begin
-      mTitle := cTexts[TLspTestUnitsText.SwitchToTestUnit].Fmt([mTarget.Counterpart]);
+      mTitle := cTexts[TTestUnitsProtocolText.SwitchToTestUnit].Fmt([mTarget.Counterpart]);
     end;
     mAction := TJSONObject.Create;
     mAction.AddPair('title', mTitle);
@@ -673,7 +673,7 @@ begin
   begin
     mSubject := mTarget.UnitName;
   end;
-  mTitle := cTexts[TLspTestUnitsText.CreateADUnitXTestUnit].Fmt([mSubject]);
+  mTitle := cTexts[TTestUnitsProtocolText.CreateADUnitXTestUnit].Fmt([mSubject]);
   mEdit := CreateEdit(mTarget, mContext);
   mAction := TJSONObject.Create;
   mAction.AddPair('title', mTitle);
@@ -683,7 +683,7 @@ begin
   Result := Result + [mAction];
 end;
 
-function TLspTestUnits.DraftWithTestUnit(const AUri: string; ALine: Integer; out ADraft: TTestDraft;
+function TTestUnitsProtocol.DraftWithTestUnit(const AUri: string; ALine: Integer; out ADraft: TTestDraft;
   out ATestFile, ATestText, AReason: string): Boolean;
 var
   mPlace: TTestDraftPlace;
@@ -691,7 +691,7 @@ begin
   ADraft := Default(TTestDraft);
   ATestFile := '';
   ATestText := '';
-  AReason := cTexts[TLspTestUnitsText.NoTestableRoutine].Text;
+  AReason := cTexts[TTestUnitsProtocolText.NoTestableRoutine].Text;
   if not DraftPlace(AUri, ALine, mPlace) or mPlace.Draft.Bare then
   begin
     Exit(False);
@@ -699,7 +699,7 @@ begin
   ADraft := mPlace.Draft;
   if mPlace.Target.CounterpartFile = '' then
   begin
-    AReason := cTexts[TLspTestUnitsText.NoTestUnitYet].Fmt([mPlace.Target.Counterpart]);
+    AReason := cTexts[TTestUnitsProtocolText.NoTestUnitYet].Fmt([mPlace.Target.Counterpart]);
     Exit(False);
   end;
   ATestFile := mPlace.Target.CounterpartFile;
@@ -708,12 +708,12 @@ begin
   Result := True;
 end;
 
-class function TLspTestUnits.ChangeEditOf(const AFileName, AOld, ANew: string): TJSONObject;
+class function TTestUnitsProtocol.ChangeEditOf(const AFileName, AOld, ANew: string): TJSONObject;
 begin
   Result := ChangeEdit(AFileName, AOld, ANew);
 end;
 
-function TLspTestUnits.Execute(const AArguments: TJSONArray): TJSONValue;
+function TTestUnitsProtocol.Execute(const AArguments: TJSONArray): TJSONValue;
 var
   mUri: string;
   mLine: Integer;
@@ -723,7 +723,7 @@ var
 begin
   if (AArguments = nil) or (AArguments.Count = 0) then
   begin
-    raise EArgumentException.Create(cCommand + cTexts[TLspTestUnitsText.NeedsTheURIOfThe].Text);
+    raise EArgumentException.Create(cCommand + cTexts[TTestUnitsProtocolText.NeedsTheURIOfThe].Text);
   end;
   mUri := AArguments.Items[0].Value;
   mLine := -1;
@@ -736,7 +736,7 @@ begin
   if not Assigned(FContextFor) or not FContextFor(mUri, mContext) then
   begin
     mAnswer.AddPair('unit', '');
-    mAnswer.AddPair('reason', cTexts[TLspTestUnitsText.FileBelongsToNoWorkspace].Text);
+    mAnswer.AddPair('reason', cTexts[TTestUnitsProtocolText.FileBelongsToNoWorkspace].Text);
     Exit;
   end;
   mTarget := ResolveUri(mUri, mLine, mContext);
@@ -761,6 +761,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.TestUnits', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.TestUnits.Protocol', cTexts);
 
 end.

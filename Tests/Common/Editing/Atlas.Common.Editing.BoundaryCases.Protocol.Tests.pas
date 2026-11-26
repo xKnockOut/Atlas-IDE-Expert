@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.BoundaryCases.Tests;
+﻿unit Atlas.Common.Editing.BoundaryCases.Protocol.Tests;
 
 // Befehl atlas.server.boundaryCases (#2173): Fälle als JSON mit Werten aller Parameter, nil nicht als [TestCase],
 // Höchstzahl, null ohne Routine, Fehler ohne URI.
@@ -10,7 +10,7 @@ uses
 
 type
   [TestFixture]
-  TLspBoundaryCasesTests = class
+  TBoundaryCasesProtocolTests = class
   public
     [Test]
     procedure CasesAsJson;
@@ -29,7 +29,7 @@ uses
   System.JSON,
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Lsp.BoundaryCases;
+  Atlas.Common.Editing.BoundaryCases.Protocol;
 
 const
   cUri = 'file:///C:/P/Rabatt.pas';
@@ -45,7 +45,7 @@ var
 begin
   mArguments := TJSONObject.ParseJSONValue(AArguments) as TJSONArray;
   try
-    Result := TLspBoundaryCases.Execute(mArguments,
+    Result := TBoundaryCasesProtocol.Execute(mArguments,
       function(const AUri: string; out AText: string): Boolean
       begin
         AText := cText;
@@ -66,9 +66,9 @@ begin
   Result := (AObject.GetValue(AName) as TJSONArray).Count;
 end;
 
-{ TLspBoundaryCasesTests }
+{ TBoundaryCasesProtocolTests }
 
-procedure TLspBoundaryCasesTests.CasesAsJson;
+procedure TBoundaryCasesProtocolTests.CasesAsJson;
 var
   mResult: TJSONValue;
   mObject, mCase: TJSONObject;
@@ -102,7 +102,7 @@ begin
   end;
 end;
 
-procedure TLspBoundaryCasesTests.MaxTruncates;
+procedure TBoundaryCasesProtocolTests.MaxTruncates;
 var
   mResult: TJSONValue;
 begin
@@ -122,7 +122,7 @@ begin
   end;
 end;
 
-procedure TLspBoundaryCasesTests.NullOutsideRoutine;
+procedure TBoundaryCasesProtocolTests.NullOutsideRoutine;
 var
   mResult: TJSONValue;
 begin
@@ -134,7 +134,7 @@ begin
   end;
 end;
 
-procedure TLspBoundaryCasesTests.InvalidArguments;
+procedure TBoundaryCasesProtocolTests.InvalidArguments;
 begin
   Assert.WillRaise(
     procedure

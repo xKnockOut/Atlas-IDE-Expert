@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.BoundaryTests;
+﻿unit Atlas.Common.Editing.BoundaryTests.Protocol;
 
 // Grenzfälle als [TestCase] in die Testunit übernehmen (#2173). Befehl atlas.server.boundaryTests
 // [uri, zeile, fälle, kommentar?, platzhalter?]:
@@ -19,13 +19,12 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.TestUnits,
+  Atlas.Common.Editing.TestUnits.Protocol,
   Atlas.Common.Editing.TestDrafts,
   Atlas.Common.Testing.TestCaseTable;
 
 type
-  TLspBoundaryTestCase = record
+  TBoundaryTestCase = record
     Name: string;
     /// <summary>Werte aller Parameter der Routine in der Schreibweise von [TestCase].</summary>
     Values: TArray<string>;
@@ -34,7 +33,7 @@ type
   end;
 
   /// <summary>Ergebnis der Übernahme in den Text einer Testunit.</summary>
-  TLspBoundaryPlan = record
+  TBoundaryPlan = record
     NewText: string;
     Method: string;
     /// <summary>Zeilen an eine vorhandene Testmethode angefügt?</summary>
@@ -42,30 +41,28 @@ type
     Reason: string;
   end;
 
-  TLspBoundaryTests = class
+  TBoundaryTestsProtocol = class
   public const
     cCommand = 'atlas.server.boundaryTests';
     cMethodSuffix = 'Cases';
     cSeparators: array[0..3] of string = (',', ';', '|', '#');
   public
     /// <summary>Erstes Trennzeichen, das in keinem Wert vorkommt; '' wenn jedes vorkommt.</summary>
-    class function SeparatorFor(const ACases: TArray<TLspBoundaryTestCase>): string; static;
+    class function SeparatorFor(const ACases: TArray<TBoundaryTestCase>): string; static;
     /// <summary>Zeilen der Tabelle für die Fälle: Werte und, wenn gesetzt, das erwartete Ergebnis; Namen
     /// eindeutig (Nummer dahinter) gegenüber ATaken und untereinander.</summary>
-    class function Rows(const ACases: TArray<TLspBoundaryTestCase>; const ASeparator: string;
+    class function Rows(const ACases: TArray<TBoundaryTestCase>; const ASeparator: string;
       const ATaken: TArray<string>): TArray<TTestCaseRow>; static;
     /// <summary>Übernimmt die Fälle für ADraft in die Testunit ATestText; False mit Reason im Plan.</summary>
-    class function Plan(const ADraft: TTestDraft; const ACases: TArray<TLspBoundaryTestCase>;
-      const ATestText, AComment: string): TLspBoundaryPlan; static;
+    class function Plan(const ADraft: TTestDraft; const ACases: TArray<TBoundaryTestCase>;
+      const ATestText, AComment: string): TBoundaryPlan; static;
     /// <summary>Erwartete Werte passend zur Routine: bei Prozeduren keine, bei Funktionen fehlende mit dem
     /// Platzhalter (APlaceholders) bzw. False mit AReason.</summary>
-    class function Completed(const ADraft: TTestDraft; var ACases: TArray<TLspBoundaryTestCase>;
+    class function Completed(const ADraft: TTestDraft; var ACases: TArray<TBoundaryTestCase>;
       APlaceholders: Boolean; out AReason: string): Boolean; static;
     /// <summary>Fälle aus dem JSON der Anfrage.</summary>
-    class function CasesFromJson(AArray: TJSONArray): TArray<TLspBoundaryTestCase>; static;
-    class function Execute(ATestUnits: TLspTestUnits; const AArguments: TJSONArray): TJSONValue; static;
-    /// <summary>Meldet den Befehl an (nebenläufig: liest nur); ATestUnits bleibt beim Aufrufer.</summary>
-    class procedure Attach(ACommands: TLspCommands; ATestUnits: TLspTestUnits); static;
+    class function CasesFromJson(AArray: TJSONArray): TArray<TBoundaryTestCase>; static;
+    class function Execute(ATestUnits: TTestUnitsProtocol; const AArguments: TJSONArray): TJSONValue; static;
   end;
 
 implementation
@@ -86,10 +83,10 @@ uses
 {$SCOPEDENUMS ON}
 
 type
-  TLspBoundaryTestsText = (NeedsArguments, NoCases, NoSeparator, NotTestCase, NoExpected);
+  TBoundaryTestsProtocolText = (NeedsArguments, NoCases, NoSeparator, NotTestCase, NoExpected);
 
 const
-  cTexts: array[TLspBoundaryTestsText] of TAtlasText = (
+  cTexts: array[TBoundaryTestsProtocolText] of TAtlasText = (
     (De: '%s braucht URI, Zeile und Fälle'; En: '%s needs a URI, a line and cases'),
     (De: 'Keine Fälle ausgewählt'; En: 'No cases selected'),
     (De: 'Jeder Wert enthält eines der Trennzeichen , ; | #; DUnitX kann die Werte nicht übergeben';
@@ -100,12 +97,12 @@ const
 
 {$SCOPEDENUMS OFF}
 
-{ TLspBoundaryTests }
+{ TBoundaryTestsProtocol }
 
-class function TLspBoundaryTests.SeparatorFor(const ACases: TArray<TLspBoundaryTestCase>): string;
+class function TBoundaryTestsProtocol.SeparatorFor(const ACases: TArray<TBoundaryTestCase>): string;
 var
   mSeparator, mValue: string;
-  mCase: TLspBoundaryTestCase;
+  mCase: TBoundaryTestCase;
   mUsed: Boolean;
 begin
   for mSeparator in cSeparators do
@@ -140,10 +137,10 @@ begin
   end;
 end;
 
-class function TLspBoundaryTests.Rows(const ACases: TArray<TLspBoundaryTestCase>; const ASeparator: string;
+class function TBoundaryTestsProtocol.Rows(const ACases: TArray<TBoundaryTestCase>; const ASeparator: string;
   const ATaken: TArray<string>): TArray<TTestCaseRow>;
 var
-  mCase: TLspBoundaryTestCase;
+  mCase: TBoundaryTestCase;
   mRow: TTestCaseRow;
   mTaken: TArray<string>;
 begin
@@ -225,15 +222,15 @@ begin
   Result := string.Join(mLineBreak, mLines);
 end;
 
-function AppendPlan(const ATable: TTestCaseTable; const ACases: TArray<TLspBoundaryTestCase>;
-  const ATestText, AComment: string): TLspBoundaryPlan;
+function AppendPlan(const ATable: TTestCaseTable; const ACases: TArray<TBoundaryTestCase>;
+  const ATestText, AComment: string): TBoundaryPlan;
 var
   mNames: TArray<string>;
   mRow: TTestCaseRow;
   mEdit: TTextEdit;
   mReason: string;
 begin
-  Result := Default(TLspBoundaryPlan);
+  Result := Default(TBoundaryPlan);
   Result.Method := ATable.Method;
   Result.Appended := True;
   mNames := nil;
@@ -243,7 +240,7 @@ begin
   end;
   // Neue Zeilen übernehmen Form und Trennzeichen der letzten; Write lehnt Werte mit Trennzeichen ab.
   mRow := TTestCaseTables.NewRow(ATable, '', nil);
-  if not TTestCaseTables.Write(ATable, ATable.Rows + TLspBoundaryTests.Rows(ACases, mRow.Separator, mNames),
+  if not TTestCaseTables.Write(ATable, ATable.Rows + TBoundaryTestsProtocol.Rows(ACases, mRow.Separator, mNames),
     TTextLines.LineBreakOf(ATestText), mEdit, mReason) then
   begin
     Result.Reason := mReason;
@@ -252,22 +249,22 @@ begin
   Result.NewText := WithComment(TTextChanges.Apply(ATestText, TArray<TTextEdit>.Create(mEdit)), AComment, ATable.Indent, ATable.FirstLine);
 end;
 
-function NewMethodPlan(const ADraft: TTestDraft; const ACases: TArray<TLspBoundaryTestCase>;
-  const ATestText, AComment: string): TLspBoundaryPlan;
+function NewMethodPlan(const ADraft: TTestDraft; const ACases: TArray<TBoundaryTestCase>;
+  const ATestText, AComment: string): TBoundaryPlan;
 var
   mDraft: TTestDraft;
   mSeparator, mName, mReason: string;
   mRow: TTestCaseRow;
 begin
-  Result := Default(TLspBoundaryPlan);
-  mSeparator := TLspBoundaryTests.SeparatorFor(ACases);
+  Result := Default(TBoundaryPlan);
+  mSeparator := TBoundaryTestsProtocol.SeparatorFor(ACases);
   if mSeparator = '' then
   begin
-    Result.Reason := cTexts[TLspBoundaryTestsText.NoSeparator].Text;
+    Result.Reason := cTexts[TBoundaryTestsProtocolText.NoSeparator].Text;
     Exit;
   end;
   mDraft := ADraft;
-  mDraft.TestName := ADraft.TestName + TLspBoundaryTests.cMethodSuffix;
+  mDraft.TestName := ADraft.TestName + TBoundaryTestsProtocol.cMethodSuffix;
   mDraft.Parameterized := True;
   mDraft.Draft := False;
   mDraft.Attributes := nil;
@@ -275,7 +272,7 @@ begin
   begin
     mDraft.Attributes := ['// ' + AComment];
   end;
-  for mRow in TLspBoundaryTests.Rows(ACases, mSeparator, nil) do
+  for mRow in TBoundaryTestsProtocol.Rows(ACases, mSeparator, nil) do
   begin
     mDraft.Attributes := mDraft.Attributes + [TTestCaseTables.AttributeText(mRow)];
   end;
@@ -287,20 +284,20 @@ begin
   Result.Method := mName;
 end;
 
-class function TLspBoundaryTests.Plan(const ADraft: TTestDraft; const ACases: TArray<TLspBoundaryTestCase>;
-  const ATestText, AComment: string): TLspBoundaryPlan;
+class function TBoundaryTestsProtocol.Plan(const ADraft: TTestDraft; const ACases: TArray<TBoundaryTestCase>;
+  const ATestText, AComment: string): TBoundaryPlan;
 var
   mTable: TTestCaseTable;
 begin
   if Length(ACases) = 0 then
   begin
-    Result := Default(TLspBoundaryPlan);
-    Result.Reason := cTexts[TLspBoundaryTestsText.NoCases].Text;
+    Result := Default(TBoundaryPlan);
+    Result.Reason := cTexts[TBoundaryTestsProtocolText.NoCases].Text;
   end
   else if not Fillable(ADraft) then
   begin
-    Result := Default(TLspBoundaryPlan);
-    Result.Reason := cTexts[TLspBoundaryTestsText.NotTestCase].Fmt([ADraft.Target]);
+    Result := Default(TBoundaryPlan);
+    Result.Reason := cTexts[TBoundaryTestsProtocolText.NotTestCase].Fmt([ADraft.Target]);
   end
   else if ExistingTable(ATestText, ADraft.Fixture, ADraft.TestName + cMethodSuffix, mTable) then
   begin
@@ -322,7 +319,7 @@ begin
   end;
 end;
 
-class function TLspBoundaryTests.Completed(const ADraft: TTestDraft; var ACases: TArray<TLspBoundaryTestCase>;
+class function TBoundaryTestsProtocol.Completed(const ADraft: TTestDraft; var ACases: TArray<TBoundaryTestCase>;
   APlaceholders: Boolean; out AReason: string): Boolean;
 var
   mIndex: Integer;
@@ -340,18 +337,18 @@ begin
     end
     else if Trim(ACases[mIndex].Expected) = '' then
     begin
-      AReason := cTexts[TLspBoundaryTestsText.NoExpected].Fmt([ACases[mIndex].Name]);
+      AReason := cTexts[TBoundaryTestsProtocolText.NoExpected].Fmt([ACases[mIndex].Name]);
       Exit(False);
     end;
   end;
   Result := True;
 end;
 
-class function TLspBoundaryTests.CasesFromJson(AArray: TJSONArray): TArray<TLspBoundaryTestCase>;
+class function TBoundaryTestsProtocol.CasesFromJson(AArray: TJSONArray): TArray<TBoundaryTestCase>;
 var
   mIndex: Integer;
   mObject: TJSONObject;
-  mCase: TLspBoundaryTestCase;
+  mCase: TBoundaryTestCase;
 begin
   Result := nil;
   for mIndex := 0 to AArray.Count - 1 do
@@ -361,7 +358,7 @@ begin
       Continue;
     end;
     mObject := TJSONObject(AArray.Items[mIndex]);
-    mCase := Default(TLspBoundaryTestCase);
+    mCase := Default(TBoundaryTestCase);
     if not mObject.TryGetValue<string>('name', mCase.Name) then
     begin
       mCase.Name := '';
@@ -375,7 +372,7 @@ begin
   end;
 end;
 
-function PlanJson(const ATestFile, AOld: string; const APlan: TLspBoundaryPlan): TJSONObject;
+function PlanJson(const ATestFile, AOld: string; const APlan: TBoundaryPlan): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('uri', TDocumentUris.FromPath(ATestFile));
@@ -383,7 +380,7 @@ begin
   Result.AddPair('appended', TJSONBool.Create(APlan.Appended));
   if (APlan.Reason = '') and (ATestFile <> '') then
   begin
-    Result.AddPair('edit', TLspTestUnits.ChangeEditOf(ATestFile, AOld, APlan.NewText));
+    Result.AddPair('edit', TTestUnitsProtocol.ChangeEditOf(ATestFile, AOld, APlan.NewText));
   end
   else
   begin
@@ -392,19 +389,19 @@ begin
   Result.AddPair('reason', APlan.Reason);
 end;
 
-class function TLspBoundaryTests.Execute(ATestUnits: TLspTestUnits; const AArguments: TJSONArray): TJSONValue;
+class function TBoundaryTestsProtocol.Execute(ATestUnits: TTestUnitsProtocol; const AArguments: TJSONArray): TJSONValue;
 var
   mDraft: TTestDraft;
   mFile, mText, mReason, mComment: string;
-  mPlan: TLspBoundaryPlan;
-  mCases: TArray<TLspBoundaryTestCase>;
+  mPlan: TBoundaryPlan;
+  mCases: TArray<TBoundaryTestCase>;
   mPlaceholders: Boolean;
 begin
   if (AArguments = nil) or (AArguments.Count < 3) or not (AArguments.Items[0] is TJSONString) or
     not (AArguments.Items[1] is TJSONNumber) or not (AArguments.Items[2] is TJSONArray) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TLspBoundaryTestsText.NeedsArguments].Fmt([cCommand]));
+      cTexts[TBoundaryTestsProtocolText.NeedsArguments].Fmt([cCommand]));
   end;
   mComment := '';
   if (AArguments.Count > 3) and (AArguments.Items[3] is TJSONString) then
@@ -414,7 +411,7 @@ begin
   mPlaceholders := (AArguments.Count > 4) and (AArguments.Items[4] is TJSONBool) and
     TJSONBool(AArguments.Items[4]).AsBoolean;
   mCases := CasesFromJson(TJSONArray(AArguments.Items[2]));
-  mPlan := Default(TLspBoundaryPlan);
+  mPlan := Default(TBoundaryPlan);
   if ATestUnits.DraftWithTestUnit(AArguments.Items[0].Value, TJSONNumber(AArguments.Items[1]).AsInt, mDraft, mFile,
     mText, mReason) then
   begin
@@ -434,16 +431,7 @@ begin
   Result := PlanJson(mFile, mText, mPlan);
 end;
 
-class procedure TLspBoundaryTests.Attach(ACommands: TLspCommands; ATestUnits: TLspTestUnits);
-begin
-  ACommands.RegisterConcurrent(cCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := Execute(ATestUnits, AArguments);
-    end);
-end;
-
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.BoundaryTests', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.BoundaryTests.Protocol', cTexts);
 
 end.

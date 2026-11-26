@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.BoundaryCases;
+﻿unit Atlas.Common.Editing.BoundaryCases.Protocol;
 
 // Grenzfälle als Testfälle (#2173) für das Plugin. Logik und Bericht in Atlas.Common.Editing.BoundaryCases(.Report);
 // den Text (offenes Dokument vor der Platte) liefert die Shell.
@@ -17,18 +17,15 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.TestCases;
+  Atlas.Common.Documents.Contract;
 
 type
-  TLspBoundaryCases = class
+  TBoundaryCasesProtocol = class
   public const
     cCommand = 'atlas.server.boundaryCases';
   public
-    /// <summary>Meldet den Befehl an (nebenläufig: liest nur).</summary>
-    class procedure Attach(ACommands: TLspCommands; const AReadText: TLspTestCasesReadText); static;
     /// <summary>Befehl mit dem Text des Dokuments AArguments[0].</summary>
-    class function Execute(const AArguments: TJSONArray; const AReadText: TLspTestCasesReadText): TJSONValue; static;
+    class function Execute(const AArguments: TJSONArray; const AReadText: TDocumentReadText): TJSONValue; static;
   end;
 
 implementation
@@ -43,21 +40,16 @@ uses
 {$SCOPEDENUMS ON}
 
 type
-  TLspBoundaryText = (NeedsUriAndLine, NotReadable);
+  TBoundaryCasesProtocolText = (NeedsUriAndLine, NotReadable);
 
 const
-  cTexts: array[TLspBoundaryText] of TAtlasText = (
+  cTexts: array[TBoundaryCasesProtocolText] of TAtlasText = (
     (De: '%s braucht URI und Zeile'; En: '%s needs a URI and a line'),
     (De: '%s ist nicht lesbar'; En: '%s cannot be read'));
 
 {$SCOPEDENUMS OFF}
 
-{ TLspBoundaryCases }
-
-class procedure TLspBoundaryCases.Attach(ACommands: TLspCommands; const AReadText: TLspTestCasesReadText);
-begin
-  TLspTestCases.AttachReading(ACommands, cCommand, Execute, AReadText);
-end;
+{ TBoundaryCasesProtocol }
 
 /// <summary>Höchstzahl aus AArguments[2]; Vorgabe ohne Angabe.</summary>
 function MaxOf(const AArguments: TJSONArray): Integer;
@@ -70,8 +62,8 @@ begin
   end;
 end;
 
-class function TLspBoundaryCases.Execute(const AArguments: TJSONArray;
-  const AReadText: TLspTestCasesReadText): TJSONValue;
+class function TBoundaryCasesProtocol.Execute(const AArguments: TJSONArray;
+  const AReadText: TDocumentReadText): TJSONValue;
 var
   mUri, mText: string;
 begin
@@ -79,12 +71,12 @@ begin
     not (AArguments.Items[1] is TJSONNumber) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TLspBoundaryText.NeedsUriAndLine].Fmt([cCommand]));
+      cTexts[TBoundaryCasesProtocolText.NeedsUriAndLine].Fmt([cCommand]));
   end;
   mUri := AArguments.Items[0].Value;
   if not AReadText(mUri, mText) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TLspBoundaryText.NotReadable].Fmt([mUri]));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TBoundaryCasesProtocolText.NotReadable].Fmt([mUri]));
   end;
   Result := TBoundaryCaseReports.JsonAt(mText, mUri, Max(0, TJSONNumber(AArguments.Items[1]).AsInt),
     MaxOf(AArguments));
@@ -95,6 +87,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.BoundaryCases', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.BoundaryCases.Protocol', cTexts);
 
 end.

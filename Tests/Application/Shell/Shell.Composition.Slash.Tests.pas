@@ -9,7 +9,7 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Configuration.Contract,
   Rules.CheckContext,
-  Atlas.Common.Lsp.TestUnits,
+  Atlas.Common.Editing.TestUnits.Protocol,
   Shell.Composition.Slash;
 
 type

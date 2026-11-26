@@ -170,7 +170,7 @@ Atlas.Common.Editing.SuggestionContext.Tests
 Atlas.Common.Editing.SuggestConst.Tests
 Atlas.Common.Editing.TestCommands.Tests
 Atlas.Common.Editing.TestDrafts.Tests
-Atlas.Common.Lsp.TestFromDebug.Tests
+Atlas.Common.Editing.TestFromDebug.Protocol.Tests
 Atlas.Common.Editing.TestFromDebug.Tests
 Atlas.Common.Editing.TestUnits.Tests
 Atlas.Common.Editing.TypeAlias.Tests
@@ -290,9 +290,9 @@ Atlas.Common.Diagnostics.StatusFile.Tests
 Atlas.Common.Lsp.StatusHeartbeat.Tests
 Atlas.Common.Lsp.StringLiteralCommands.Tests
 Atlas.Common.Lsp.TestCases.Tests
-Atlas.Common.Lsp.BoundaryCases.Tests
+Atlas.Common.Editing.BoundaryCases.Protocol.Tests
 Atlas.Common.Lsp.Mutants.Tests
-Atlas.Common.Lsp.BoundaryTests.Tests
+Atlas.Common.Editing.BoundaryTests.Protocol.Tests
 Atlas.Common.Lsp.TextDocumentSync.Tests
 Atlas.Common.Lsp.Todos.Tests
 Atlas.Common.Lsp.WinApiDocs.Tests

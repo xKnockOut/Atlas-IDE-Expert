@@ -17,6 +17,7 @@ interface
 
 uses
   System.JSON,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.TestCases,
@@ -28,7 +29,7 @@ type
     cCommand = 'atlas.server.mutants';
   public
     /// <summary>Meldet den Befehl an (nebenläufig: liest nur).</summary>
-    class procedure Attach(ACommands: TLspCommands; const AReadText: TLspTestCasesReadText); static;
+    class procedure Attach(ACommands: TLspCommands; const AReadText: TDocumentReadText); static;
     /// <summary>Optionen aus dem zweiten Argument; False mit Grund in AError bei unbekannten Operatoren.</summary>
     class function OptionsOf(AValue: TJSONValue; out AOptions: TMutationOptions; out AError: string): Boolean;
       static;
@@ -36,7 +37,7 @@ type
     /// </summary>
     class function RoutineRanges(ATree: TSyntaxTree; const ANames: TArray<string>): TJSONArray; static;
     /// <summary>Befehl mit dem Text des Dokuments AArguments[0].</summary>
-    class function Execute(const AArguments: TJSONArray; const AReadText: TLspTestCasesReadText): TJSONValue; static;
+    class function Execute(const AArguments: TJSONArray; const AReadText: TDocumentReadText): TJSONValue; static;
   end;
 
 implementation
@@ -68,7 +69,7 @@ const
 
 { TLspMutants }
 
-class procedure TLspMutants.Attach(ACommands: TLspCommands; const AReadText: TLspTestCasesReadText);
+class procedure TLspMutants.Attach(ACommands: TLspCommands; const AReadText: TDocumentReadText);
 begin
   TLspTestCases.AttachReading(ACommands, cCommand, Execute, AReadText);
 end;
@@ -189,7 +190,7 @@ begin
   end;
 end;
 
-class function TLspMutants.Execute(const AArguments: TJSONArray; const AReadText: TLspTestCasesReadText): TJSONValue;
+class function TLspMutants.Execute(const AArguments: TJSONArray; const AReadText: TDocumentReadText): TJSONValue;
 var
   mUri, mText, mError: string;
   mOptions: TMutationOptions;

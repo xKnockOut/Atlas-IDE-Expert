@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.TestFromDebug.Tests;
+﻿unit Atlas.Common.Editing.TestFromDebug.Protocol.Tests;
 
 // Tests für den Befehl atlas.server.testFromDebugStop (#1873): "describe"
 // nennt Methode, Parameter, Felder, Literale und einen Namen; "create" liefert
@@ -10,18 +10,18 @@ uses
   DUnitX.TestFramework,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.TestUnits,
-  Atlas.Common.Lsp.TestFromDebug;
+  Atlas.Common.Editing.TestUnits.Protocol,
+  Atlas.Common.Editing.TestFromDebug.Protocol;
 
 type
   [TestFixture]
-  TLspTestFromDebugTests = class
+  TTestFromDebugProtocolTests = class
   private
     FStore: IDocumentStore;
     FFiles: TDictionary<string, string>;
     FUnits: TDictionary<string, string>;
-    FTestUnits: TLspTestUnits;
-    FFromDebug: TLspTestFromDebug;
+    FTestUnits: TTestUnitsProtocol;
+    FFromDebug: TTestFromDebugProtocol;
     function Context: TTestUnitContext;
     function Run(ALine: Integer; const ARequest: string): string;
   public
@@ -101,9 +101,9 @@ const
     '"parameters": [{"name": "AText", "text": "''12,5 kg''"}], "fields": [{"name": "Genau", "text": "True"}], ' +
     '"stoppedAt": "2026-11-13 14:05"}';
 
-{ TLspTestFromDebugTests }
+{ TTestFromDebugProtocolTests }
 
-function TLspTestFromDebugTests.Context: TTestUnitContext;
+function TTestFromDebugProtocolTests.Context: TTestUnitContext;
 var
   mFiles, mUnits: TDictionary<string, string>;
 begin
@@ -137,7 +137,7 @@ begin
 end;
 
 /// <summary>Befehl an ALine mit der Anfrage ARequest (JSON); Antwort als JSON-Text.</summary>
-function TLspTestFromDebugTests.Run(ALine: Integer; const ARequest: string): string;
+function TTestFromDebugProtocolTests.Run(ALine: Integer; const ARequest: string): string;
 var
   mArguments: TJSONArray;
   mAnswer: TJSONValue;
@@ -158,7 +158,7 @@ begin
   end;
 end;
 
-procedure TLspTestFromDebugTests.Setup;
+procedure TTestFromDebugProtocolTests.Setup;
 begin
   FStore := TDocumentStore.Create;
   FFiles := TDictionary<string, string>.Create;
@@ -167,16 +167,16 @@ begin
   FFiles.Add(cTestsDproj, cDprojText);
   FUnits.Add('gewichte', cGewichtFile);
   FStore.Open(TDocumentUris.FromPath(cGewichtFile), 'pascal', 1, cGewichtText);
-  FTestUnits := TLspTestUnits.Create(FStore,
+  FTestUnits := TTestUnitsProtocol.Create(FStore,
     function(const AUri: string; out AContext: TTestUnitContext): Boolean
     begin
       AContext := Context;
       Result := True;
     end);
-  FFromDebug := TLspTestFromDebug.Create(FTestUnits);
+  FFromDebug := TTestFromDebugProtocol.Create(FTestUnits);
 end;
 
-procedure TLspTestFromDebugTests.TearDown;
+procedure TTestFromDebugProtocolTests.TearDown;
 begin
   FFromDebug.Free;
   FTestUnits.Free;
@@ -185,7 +185,7 @@ begin
   FStore := nil;
 end;
 
-procedure TLspTestFromDebugTests.DescribeNamesValuesAndLiterals;
+procedure TTestFromDebugProtocolTests.DescribeNamesValuesAndLiterals;
 var
   mText: string;
 begin
@@ -202,7 +202,7 @@ begin
   Assert.IsTrue(ContainsStr(mText, '12_5Kg"'), 'Name: ' + mText);
 end;
 
-procedure TLspTestFromDebugTests.CreateAddsToExistingTestUnit;
+procedure TTestFromDebugProtocolTests.CreateAddsToExistingTestUnit;
 var
   mText: string;
 begin
@@ -219,7 +219,7 @@ begin
   Assert.IsFalse(ContainsStr(mText, '"reason"'), mText);
 end;
 
-procedure TLspTestFromDebugTests.CreateWithoutTestUnitCreatesIt;
+procedure TTestFromDebugProtocolTests.CreateWithoutTestUnitCreatesIt;
 var
   mText: string;
 begin
@@ -229,7 +229,7 @@ begin
   Assert.IsTrue(ContainsStr(mText, 'Tests.dpr'), 'Testprojekt: ' + mText);
 end;
 
-procedure TLspTestFromDebugTests.NoMethodGivesReason;
+procedure TTestFromDebugProtocolTests.NoMethodGivesReason;
 var
   mText: string;
 begin
@@ -238,17 +238,17 @@ begin
   Assert.IsFalse(ContainsStr(mText, '"target"'), mText);
 end;
 
-procedure TLspTestFromDebugTests.ReadRequestDefaults;
+procedure TTestFromDebugProtocolTests.ReadRequestDefaults;
 var
   mJson: TJSONObject;
   mRequest: TDebugStopRequest;
 begin
-  mRequest := TLspTestFromDebug.ReadRequest(nil);
+  mRequest := TTestFromDebugProtocol.ReadRequest(nil);
   Assert.AreEqual<TTestDraftKind>(TTestDraftKind.Works, mRequest.Kind);
   Assert.AreEqual(TTestFromDebug.cDefaultMaxArray, mRequest.MaxArray);
   mJson := TJSONObject.ParseJSONValue('{"kind": "raises", "maxArray": 5, "testName": "X"}') as TJSONObject;
   try
-    mRequest := TLspTestFromDebug.ReadRequest(mJson);
+    mRequest := TTestFromDebugProtocol.ReadRequest(mJson);
   finally
     mJson.Free;
   end;
@@ -259,6 +259,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspTestFromDebugTests);
+  TDUnitX.RegisterTestFixture(TTestFromDebugProtocolTests);
 
 end.
