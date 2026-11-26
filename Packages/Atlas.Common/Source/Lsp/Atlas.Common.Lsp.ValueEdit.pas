@@ -229,7 +229,13 @@ begin
   begin
     Exit;
   end;
-  mWriter := TLspValueEdit.WriterOf(TCompletionValues.DeclarationOf(ALookup, mSymbol));
+  // Eine neu deklarierte Property ohne Zugriffe (TButton: property Enabled;) trägt in der Signatur die geerbten
+  // (MergedProperty); der Quelltext der Neudeklaration nennt kein write.
+  mWriter := TLspValueEdit.WriterOf(mSymbol.Signature);
+  if mWriter = '' then
+  begin
+    mWriter := TLspValueEdit.WriterOf(TCompletionValues.DeclarationOf(ALookup, mSymbol));
+  end;
   AInfo.ReadOnly := mWriter = '';
   // write FBetrag schreibt das Feld direkt: kein Aufruf.
   if not TRegEx.IsMatch(mWriter, '^F[A-Z]') then
