@@ -298,6 +298,8 @@ type
   /// <summary>Stelle in der festen Reihenfolge der Fälle, an der angemeldete Quellen laufen. Die Reihenfolge
   /// selbst führt der Sprachserver; eine Quelle nennt nur ihre Stelle.</summary>
   TCompletionSlot = (
+    /// <summary>Schnellbefehle nach "/" am Zeilenanfang (#293) samt Argumenten: als Erstes, allein.</summary>
+    Slash,
     /// <summary>Methode aus Aufruf anlegen (#472): nach "(" allein, sonst oben in der Liste.</summary>
     CreateMethod,
     /// <summary>Kontextabhängige Code-Vorlagen am Zeilenanfang (#51): am Ende der Liste.</summary>

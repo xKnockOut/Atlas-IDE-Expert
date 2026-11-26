@@ -14,6 +14,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.Completion;
 
@@ -29,6 +30,9 @@ type
     FForm: string;
     FProgress: TArray<string>;
     FId: Integer;
+    /// <summary>Regeln einer Zeile und Katalog für /ignore; nil = keine Auskunft bzw. keine Regeln.</summary>
+    FRuleIdsFor: TSlashRuleIdsFunc;
+    FCatalogIds: TSlashCatalogIdsFunc;
     /// <summary>Unit für den Index und für ReadText.</summary>
     procedure AddUnit(const AFileName, AText: string);
     /// <summary>Fragt an der Stelle von "|" in AText; ATrigger und AToken '' = ohne. Der Aufrufer gibt frei.
@@ -110,6 +114,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
+  Atlas.Common.Completion.Contract,
+  Atlas.Common.Editing.Completion.Slash,
   Atlas.Tests.LspRules;
 
 const
@@ -166,10 +172,7 @@ var
   mRequest, mResponse: TJSONObject;
 begin
   mMarker := Pos('|', AText);
-  if mMarker = 0 then
-  begin
-    raise Exception.Create('Marker "|" fehlt');
-  end;
+  Assert.IsTrue(mMarker > 0, 'Marker "|" fehlt');
   mLine := 0;
   mLineStart := 1;
   for mIndex := 1 to mMarker - 1 do
@@ -240,6 +243,21 @@ begin
         AParams.Free;
       end;
     end;
+  // Schnellbefehle meldet Editing als Quelle an (wie die Komposition).
+  FCompletion.Sources.Add(TCompletionSlot.Slash, TEditingSlashCompletion.Source(nil,
+    function(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean
+    begin
+      AIds := nil;
+      Result := Assigned(FRuleIdsFor) and FRuleIdsFor(AUri, AText, ALine, AIds);
+    end,
+    function: TArray<string>
+    begin
+      Result := nil;
+      if Assigned(FCatalogIds) then
+      begin
+        Result := FCatalogIds();
+      end;
+    end));
   FDispatcher := TJsonRpcDispatcher.Create;
   FCompletion.Attach(FDispatcher);
 end;
@@ -254,6 +272,8 @@ begin
   // Von den Tests gefüllt; der Leckmonitor zählte die Felder sonst dem Test an.
   FProgress := nil;
   FForm := '';
+  FRuleIdsFor := nil;
+  FCatalogIds := nil;
 end;
 
 /// <summary>Labels der Einträge, mit Leerzeichen getrennt.</summary>
@@ -380,7 +400,7 @@ var
 begin
   mLine := -1;
   mBlanked := False;
-  FCompletion.Hooks.RuleIdsFor :=
+  FRuleIdsFor :=
     function(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean
     begin
       mLine := ALine;
@@ -397,8 +417,12 @@ begin
     mAnswer.Free;
   end;
   // Ohne Auskunft der ganze Katalog.
-  FCompletion.Hooks.RuleIdsFor := nil;
-  FCompletion.Hooks.RuleCatalog := TTestLspRules.Catalog;
+  FRuleIdsFor := nil;
+  FCatalogIds :=
+    function: TArray<string>
+    begin
+      Result := TTestLspRules.Catalog.RuleIds;
+    end;
   mAnswer := Complete(cSource);
   try
     Assert.IsTrue(ItemCount(mAnswer) > 2, Labels(mAnswer));

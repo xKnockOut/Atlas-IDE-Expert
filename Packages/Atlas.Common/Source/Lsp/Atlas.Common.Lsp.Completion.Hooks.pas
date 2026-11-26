@@ -12,12 +12,10 @@ uses
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Pascal.PostfixTemplates,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Completion.Request,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Completion.Names,
   Atlas.Common.Lsp.Completion.Postfix,
   Atlas.Common.Completion.Contract;
@@ -65,12 +63,6 @@ type
     /// <summary>Abschnitt für Interface-Methoden (#466), Typumwandlung von Sender (#480); ohne Zuweisung die
     /// Standardwerte.</summary>
     SettingsFor: TCompletionSettingsFunc;
-    /// <summary>Schnellbefehle nach "/" am Zeilenanfang (#293); ohne Zuweisung alle eingeschaltet.</summary>
-    SlashCommandsFor: TSlashCommandsProvider;
-    /// <summary>Regeln, die in einer Zeile treffen, für /ignore (#297); ohne Zuweisung der ganze Katalog.</summary>
-    RuleIdsFor: TSlashRuleIdsFunc;
-    /// <summary>Regelkatalog für /ignore ohne Auskunft von RuleIdsFor; ohne Zuweisung keine Regeln.</summary>
-    RuleCatalog: ILspRuleCatalog;
     /// <summary>Postfix-Vorlagen je Dokument (#188); ohne Zuweisung an und mit Inline-Variable.</summary>
     PostfixFor: TPostfixOptionsFunc;
     /// <summary>„with auflösen“ auf dem Wort with (#50); ohne Zuweisung kein Eintrag.</summary>

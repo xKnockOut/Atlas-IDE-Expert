@@ -181,6 +181,9 @@ type
   /// <summary>Wie ISlashHost.RuleIdsAt, für die Vervollständigung nach /ignore (#297).</summary>
   TSlashRuleIdsFunc = reference to function(const AUri, AText: string; ALine: Integer;
     out AIds: TArray<string>): Boolean;
+  /// <summary>Kennungen des eingebauten Regelkatalogs für /ignore, wenn TSlashRuleIdsFunc keine Auskunft gibt.
+  /// </summary>
+  TSlashCatalogIdsFunc = reference to function: TArray<string>;
   /// <summary>Wie ISlashHost.UsesContext (/sortuses, #297).</summary>
   TSlashUsesContextFunc = reference to function(const AUri: string; out AContext: TUsesContext): Boolean;
   /// <summary>Wie ISlashHost.FindingsAt (/fix, /explain, #300).</summary>

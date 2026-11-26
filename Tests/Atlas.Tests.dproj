@@ -759,6 +759,7 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.PostfixTemplates.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.CaseCompletion.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.AssignFields.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.TypeImports.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.RoutineLocals.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MoveClass.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.UnitRename.Tests.pas"/>
@@ -773,6 +774,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Inlining.Method.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.WithResolution.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Completion.CreateMethod.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Completion.Slash.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CreateMethod.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameSuggestions.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.AccessorCreation.Tests.pas"/>
@@ -825,7 +827,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Postfix.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Names.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Hooks.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Slash.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Directives.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.HiddenMembers.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.ProjectFrequency.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.TypeGuards.Tests.pas"/>

@@ -83,6 +83,7 @@ Atlas.Common.Documents.TextChanges.Tests
 Atlas.Common.Editing.AnonymousMethods.Shared.Tests
 Atlas.Common.Editing.AnonymousMethods.Tests
 Atlas.Common.Semantics.AssignFields.Tests
+Atlas.Common.Semantics.TypeImports.Tests
 Atlas.Common.Pascal.CaseCompletion.Tests
 Atlas.Common.Pascal.SignatureChanges.Tests
 Atlas.Common.Pascal.CommandLines.Tests
@@ -101,6 +102,7 @@ Atlas.Common.Editing.Conditions.Tests
 Atlas.Common.Editing.BoundaryCases.Tests
 Atlas.Common.Editing.CreateMethod.Tests
 Atlas.Common.Editing.Completion.CreateMethod.Tests
+Atlas.Common.Editing.Completion.Slash.Tests
 Atlas.Common.Completion.Answer.Tests
 Atlas.Common.Dfm.DataFieldNames.Tests
 Atlas.Common.Pascal.DeclareUnknown.Tests

@@ -67,10 +67,6 @@ type
       out AItem: TCompletionItem): Boolean; static;
   end;
 
-/// <summary>uses-Eintrag für ATypeName (#294, #180), wenn der Typ an AOffset nicht sichtbar ist und der Index
-/// ihn in einer anderen Unit kennt; sonst leer.</summary>
-function TypeUnitEdits(const ALookup: TEnumLookup; const ATypeName, ALineBreak: string;
-  AOffset: Integer): TArray<TTextEdit>;
 
 implementation
 
@@ -88,12 +84,11 @@ uses
   Atlas.Common.Pascal.CaseCompletion,
   Atlas.Common.Semantics.AssignFields,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Pascal.UsesEdits,
-  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Completion.FuzzyMatch,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.CompletionEnums,
   Atlas.Common.Lsp.Completion.Context,
+  Atlas.Common.Semantics.TypeImports,
   Atlas.Common.Pascal.TypeTexts;
 
 type
@@ -438,50 +433,6 @@ begin
   end;
 end;
 
-/// <summary>Ein schlichter Typname, der einen uses-Eintrag brauchen kann: nicht generisch, nicht qualifiziert,
-/// kein Platzhalter, nicht eingebaut.</summary>
-function IsImportableName(const ATypeName: string): Boolean;
-begin
-  Result := (ATypeName <> '') and (Pos('<', ATypeName) = 0) and (Pos('.', ATypeName) = 0) and
-    (Pos('{', ATypeName) = 0) and not TResolverText.IsBuiltinTypeName(ATypeName);
-end;
-
-/// <summary>Ein Typ aus einer anderen Unit, die ATree noch nicht einbindet.</summary>
-function IsForeignType(AResolver: TNameResolver; ATree: TSyntaxTree; const ALocation: TSymbolLocation): Boolean;
-begin
-  Result := (ALocation.Symbol.Container = '') and (ALocation.Symbol.Kind in [TIndexSymbolKind.ClassType,
-    TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType,
-    TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias]) and not SameText(ALocation.UnitName, 'System') and
-    not SameText(ALocation.UnitName, TPascalUses.OwnName(ATree.Tokens));
-  Result := Result and not TPascalUses.IsUsed(TPascalUses.UsedUnits(ATree.Tokens), ALocation.UnitName,
-    AResolver.Namespaces);
-end;
-
-/// <summary>uses-Eintrag für ATypeName (#180), wenn der Typ an AOffset nicht sichtbar ist und der Index ihn
-/// in einer anderen Unit kennt; leer sonst.</summary>
-function TypeUnitEdits(const ALookup: TEnumLookup; const ATypeName, ALineBreak: string;
-  AOffset: Integer): TArray<TTextEdit>;
-var
-  mLocation: TSymbolLocation;
-  mEdit: TTextEdit;
-begin
-  Result := nil;
-  if (ALookup.Index = nil) or not IsImportableName(ATypeName) or ALookup.Resolver.ResolveChain(ALookup.Tree,
-    ALookup.FileName, [ATypeName], AOffset).Found then
-  begin
-    Exit;
-  end;
-  for mLocation in ALookup.Index.FindSymbols(ATypeName) do
-  begin
-    if IsForeignType(ALookup.Resolver, ALookup.Tree, mLocation) and TPascalUsesEdits.AddUnit(ALookup.Tree.Tokens,
-      AOffset, mLocation.UnitName, ALineBreak, mEdit) then
-    begin
-      Result := [mEdit];
-      Exit;
-    end;
-  end;
-end;
-
 /// <summary>Typ für den unbekannten Namen: rechte Seite der Zuweisung, sonst der erwartete Typ.</summary>
 function SlotType(ARequest: TCompletionRequest; const ASlot: TUnknownSlot): string;
 var
@@ -561,7 +512,8 @@ end;
 
 function TDeclareBuilder.TypeEdits(AOffset: Integer): TArray<TTextEdit>;
 begin
-  Result := TypeUnitEdits(TEnumLookup.FromRequest(FRequest), FTypeName, FSource.LineBreak, AOffset);
+  Result := TTypeImports.Edits(FRequest.Resolver, FRequest.Index, FRequest.Tree, FRequest.FileName, FTypeName,
+    FSource.LineBreak, AOffset);
 end;
 
 function TDeclareBuilder.ClassFields(const AClass: TIndexSymbol): TArray<string>;
