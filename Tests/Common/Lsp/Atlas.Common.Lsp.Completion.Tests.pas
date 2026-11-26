@@ -99,7 +99,7 @@ uses
   Atlas.Common.Completion.Request,
   Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Lsp.Completion.Lists,
-  Atlas.Common.Lsp.Completion.Values,
+  Atlas.Common.Semantics.EnumTypes,
   Atlas.Common.Completion.Contract;
 
 /// <summary>Eintrag, der jedes Datenfeld belegt.</summary>

@@ -23,7 +23,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Completion.Values;
+  Atlas.Common.Semantics.EnumTypes;
 
 type
   TLspValueEditInfo = record
@@ -229,7 +229,7 @@ begin
   begin
     Exit;
   end;
-  mWriter := TLspValueEdit.WriterOf(TCompletionValues.DeclarationOf(ALookup, mSymbol));
+  mWriter := TLspValueEdit.WriterOf(TEnumTypes.DeclarationOf(ALookup, mSymbol));
   AInfo.ReadOnly := mWriter = '';
   // write FBetrag schreibt das Feld direkt: kein Aufruf.
   if not TRegEx.IsMatch(mWriter, '^F[A-Z]') then
@@ -283,7 +283,7 @@ begin
   end;
   Result.Kind := 'other';
   mTable := TLineTable.Build(ALookup.Text);
-  if TCompletionValues.EnumOfType(ALookup, mTable.OffsetAt(mRange.StartPos), mType.TypeName, Result.Values, mIsSet,
+  if TEnumTypes.EnumOfType(ALookup, mTable.OffsetAt(mRange.StartPos), mType.TypeName, Result.Values, mIsSet,
     Result.Prefix) then
   begin
     Result.Kind := 'enum';

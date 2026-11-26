@@ -85,6 +85,7 @@ Atlas.Common.Editing.AnonymousMethods.Shared.Tests
 Atlas.Common.Editing.AnonymousMethods.Tests
 Atlas.Common.Semantics.AssignFields.Tests
 Atlas.Common.Semantics.TypeImports.Tests
+Atlas.Common.Semantics.EnumTypes.Tests
 Atlas.Common.Semantics.ExpectedTypes.Tests
 Atlas.Common.Pascal.CallSites.Tests
 Atlas.Common.Pascal.CaseCompletion.Tests

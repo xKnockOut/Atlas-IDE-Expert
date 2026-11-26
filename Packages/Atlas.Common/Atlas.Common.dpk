@@ -334,6 +334,7 @@ contains
   Atlas.Common.Pascal.CaseCompletion in 'Source\Pascal\Atlas.Common.Pascal.CaseCompletion.pas',
   Atlas.Common.Semantics.AssignFields in 'Source\Semantics\Atlas.Common.Semantics.AssignFields.pas',
   Atlas.Common.Semantics.TypeImports in 'Source\Semantics\Atlas.Common.Semantics.TypeImports.pas',
+  Atlas.Common.Semantics.EnumTypes in 'Source\Semantics\Atlas.Common.Semantics.EnumTypes.pas',
   Atlas.Common.Semantics.ExpectedTypes in 'Source\Semantics\Atlas.Common.Semantics.ExpectedTypes.pas',
   Atlas.Common.Pascal.CallSites in 'Source\Pascal\Atlas.Common.Pascal.CallSites.pas',
   Atlas.Common.Pascal.RoutineBody in 'Source\Pascal\Atlas.Common.Pascal.RoutineBody.pas',
