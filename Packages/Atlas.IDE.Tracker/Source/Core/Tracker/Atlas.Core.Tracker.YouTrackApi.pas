@@ -575,8 +575,12 @@ begin
 end;
 
 class function TAtlasYouTrackApi.ScopeQuery(AScope: TAtlasTrackerNotifyScope; const ALanguage, AMe: string): string;
+const
+  // %0:s Attribut des Zuständigen, %1:s Benutzer.
+  cScopes: array[TAtlasTrackerNotifyScope] of string = ('%0:s: %1:s', '(%0:s: %1:s OR reporter: %1:s)',
+    '(%0:s: %1:s OR reporter: %1:s OR has: star)');
 var
-  mAssignee, mUser: string;
+  mAssignee: string;
 begin
   // Systemsprache Deutsch: „for“ gibt es dort nicht, „assignee“ und die Operatoren in Großbuchstaben schon (an
   // einem deutschen YouTrack geprüft). Der Anmeldename statt „me“ macht den Wert unabhängig von der Sprache.
@@ -585,15 +589,7 @@ begin
   begin
     mAssignee := 'assignee';
   end;
-  mUser := UserValue(AMe, ALanguage);
-  case AScope of
-    TAtlasTrackerNotifyScope.Assigned:
-      Result := mAssignee + ': ' + mUser;
-    TAtlasTrackerNotifyScope.Watched:
-      Result := '(' + mAssignee + ': ' + mUser + ' OR reporter: ' + mUser + ' OR has: star)';
-  else
-    Result := '(' + mAssignee + ': ' + mUser + ' OR reporter: ' + mUser + ')';
-  end;
+  Result := Format(cScopes[AScope], [mAssignee, UserValue(AMe, ALanguage)]);
 end;
 
 class function TAtlasYouTrackApi.ChangedIssuesQuery(ASince: TDateTime; AScope: TAtlasTrackerNotifyScope;
