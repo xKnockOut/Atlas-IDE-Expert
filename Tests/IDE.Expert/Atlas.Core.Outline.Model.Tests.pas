@@ -186,8 +186,13 @@ var
 begin
   mList := Nodes;
   mText := RowText(mList, TAtlasOutline.Rows(mList, TAtlasOutlineFilter.All, TAtlasOutlineSort.Source));
-  Assert.AreEqual('interface,TForm1*,Button1*,Button1Click*,FCount*,Missing*,Add*,Add*,Paint*,Make*,Count*,' +
-    'Limit*,Run*,implementation,Helper*', mText);
+  // Lokale Routinen unter ihrer Methode.
+  Assert.AreEqual('interface,TForm1*,Button1*,Button1Click*,Local*,FCount*,Missing*,Add*,Add*,Paint*,Make*,' +
+    'Count*,Limit*,Run*,implementation,Helper*', mText);
+  Assert.AreEqual('Local', mList[TAtlasOutline.Rows(mList, TAtlasOutlineFilter.All,
+    TAtlasOutlineSort.Source)[4].Node].Name);
+  Assert.AreEqual(3, TAtlasOutline.Rows(mList, TAtlasOutlineFilter.All, TAtlasOutlineSort.Source)[4].Depth,
+    'eine Ebene unter der Methode');
   mFirst := Find(mList, 'Add', 0);
   mSecond := Find(mList, 'Add', 1);
   // Überladungen in Reihenfolge.
@@ -223,6 +228,9 @@ var
 begin
   mList := Nodes;
   mFilter := TAtlasOutlineFilter.All;
+  mFilter.Text := 'Loc';
+  Assert.AreEqual('interface,TForm1,Button1Click,Local*', RowText(mList, TAtlasOutline.Rows(mList, mFilter,
+    TAtlasOutlineSort.Source)), 'lokale Routine mit ihrer Methode als Rahmen');
   mFilter.Text := 'BuCl';
   Assert.AreEqual('interface,TForm1,Button1Click*', RowText(mList, TAtlasOutline.Rows(mList, mFilter,
     TAtlasOutlineSort.Source)));
@@ -240,7 +248,7 @@ var
   mList: TAtlasOutlineNodes;
 begin
   mList := Nodes;
-  Assert.AreEqual('interface,Limit*,Run*,TForm1*,Add*,Add*,Button1*,Button1Click*,Count*,FCount*,Make*,' +
+  Assert.AreEqual('interface,Limit*,Run*,TForm1*,Add*,Add*,Button1*,Button1Click*,Local*,Count*,FCount*,Make*,' +
     'Missing*,Paint*,implementation,Helper*',
     RowText(mList, TAtlasOutline.Rows(mList, TAtlasOutlineFilter.All, TAtlasOutlineSort.Alphabetical)));
 end;
@@ -253,7 +261,10 @@ begin
   Assert.AreEqual(Find(mList, 'Missing'), TAtlasOutline.NodeAt(mList, 9, 8));
   Assert.AreEqual(Find(mList, 'TForm1'), TAtlasOutline.NodeAt(mList, 7, 2), 'zwischen Mitgliedern: der Typ');
   Assert.AreEqual(Find(mList, 'Button1Click'), TAtlasOutline.NodeAt(mList, 24, 2), 'Rumpf zur Deklaration');
-  Assert.AreEqual(Find(mList, 'Button1Click'), TAtlasOutline.NodeAt(mList, 22, 14), 'lokale Routine');
+  Assert.AreEqual(Find(mList, 'Local'), TAtlasOutline.NodeAt(mList, 22, 14), 'lokale Routine');
+  Assert.IsTrue(TAtlasOutline.IsLocalRoutine(mList, Find(mList, 'Local')));
+  Assert.IsFalse(TAtlasOutline.IsLocalRoutine(mList, Find(mList, 'Helper')));
+  Assert.IsFalse(TAtlasOutline.IsLocalRoutine(mList, -1));
   Assert.AreEqual(Find(mList, 'Add', 1), TAtlasOutline.NodeAt(mList, 27, 40));
   Assert.AreEqual(Find(mList, 'Helper'), TAtlasOutline.NodeAt(mList, 31, 20));
   Assert.AreEqual(-1, TAtlasOutline.NodeAt(mList, 2, 4), 'uses');

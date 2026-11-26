@@ -149,6 +149,8 @@ Atlas.Common.Hotspots.History.Tests
 Atlas.Common.Hotspots.Report.Tests
 Atlas.Common.Index.Extractor.Conditions.Tests
 Atlas.Common.Index.Extractor.InlineRefs.Tests
+Atlas.Common.Index.Extractor.LocalRoutines.Tests
+Atlas.Common.Lsp.WorkspaceSymbols.Tests
 Atlas.Common.Index.Extractor.Tokens.Tests
 Atlas.Common.Index.Extractor.TypeText.Tests
 Atlas.Common.Index.Processes.Tests
@@ -198,6 +200,7 @@ Atlas.Common.Lsp.ValueEdit.Tests
 Atlas.Common.Lsp.FoldingRanges.Tests
 Atlas.Common.Lsp.FuzzyMatch.Tests
 Atlas.Common.Lsp.HoverValues.Tests
+Atlas.Common.Lsp.Hover.Tests
 Atlas.Common.Lsp.Internals.Cancellation.Tests
 Atlas.Common.Lsp.KeywordHighlights.Tests
 Atlas.Common.Lsp.KeywordReference.Tests
@@ -409,6 +412,8 @@ Atlas.Core.Projects.Summary.Json.Tests
 Atlas.Core.Problems.IdeErrors.Tests
 Atlas.Core.Problems.AtCaret.Tests
 Atlas.Core.Outline.CrumbPlan.Tests
+Atlas.Core.Outline.Breadcrumbs.Tests
+Atlas.Core.Outline.Model.Tests
 Atlas.Core.Editor.StickyPlan.Tests
 Atlas.Core.Problems.Plan.Tests
 Atlas.Core.Problems.Marks.Tests

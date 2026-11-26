@@ -20,6 +20,13 @@ type
     /// wenig, die letzte Zeile wurde unten abgeschnitten).</summary>
     [Test]
     procedure BodyAreaHoldsMeasuredText;
+    /// <summary>Ohne eigene Farben nimmt der Tooltip beim Zeigen die des Themendienstes (in der IDE deren
+    /// Thema), nicht die des globalen VCL-Stils: sonst hell im dunklen Editor.</summary>
+    [Test]
+    procedure FollowsThemeWithoutOwnColors;
+    /// <summary>Gesetzte Farben bleiben beim Zeigen, auch wenn der Themendienst andere liefert.</summary>
+    [Test]
+    procedure KeepsOwnColors;
   end;
 
 implementation
@@ -28,9 +35,58 @@ uses
   System.SysUtils,
   System.Types,
   Atlas.Core.Style.Palette,
+  Atlas.UI.Foundation.Theme,
   Atlas.UI.Popup.TitledTip;
 
+function DarkColors: TAtlasColors;
+begin
+  Result := TAtlasColors.Dark;
+end;
+
 { TAtlasTitledTipTests }
+
+procedure TAtlasTitledTipTests.FollowsThemeWithoutOwnColors;
+var
+  mTip: TAtlasTitledTip;
+begin
+  mTip := TAtlasTitledTip.Create(nil);
+  try
+    mTip.SetScaling(96, 1, 'Segoe UI', 9);
+    Assert.AreEqual(Int64(TAtlasColors.Light.Surface), Int64(mTip.Colors.Surface), 'ohne Themendienst hell');
+    TAtlasUiTheme.Install(DarkColors, nil, nil);
+    try
+      mTip.ShowNote('Wer gibt das frei?', 'Text', Point(10, 10));
+    finally
+      TAtlasUiTheme.Uninstall;
+    end;
+    Assert.AreEqual(Int64(TAtlasColors.Dark.Surface), Int64(mTip.Colors.Surface), 'Fläche im Thema');
+    Assert.AreEqual(Int64(TAtlasColors.Dark.Accent), Int64(mTip.BorderColor), 'Rahmen im Thema');
+    mTip.HidePopup;
+  finally
+    mTip.Free;
+  end;
+end;
+
+procedure TAtlasTitledTipTests.KeepsOwnColors;
+var
+  mTip: TAtlasTitledTip;
+begin
+  mTip := TAtlasTitledTip.Create(nil);
+  try
+    mTip.Colors := TAtlasColors.Light;
+    mTip.SetScaling(96, 1, 'Segoe UI', 9);
+    TAtlasUiTheme.Install(DarkColors, nil, nil);
+    try
+      mTip.ShowNote('Notiz', 'Text', Point(10, 10));
+    finally
+      TAtlasUiTheme.Uninstall;
+    end;
+    Assert.AreEqual(Int64(TAtlasColors.Light.Surface), Int64(mTip.Colors.Surface));
+    mTip.HidePopup;
+  finally
+    mTip.Free;
+  end;
+end;
 
 procedure TAtlasTitledTipTests.MeasuresWrappedText;
 var

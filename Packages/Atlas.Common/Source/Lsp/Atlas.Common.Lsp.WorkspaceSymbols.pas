@@ -6,7 +6,9 @@
 // Teilstring, dann Teilfolge mit Kürzeln wie "TBB" für TBButton (#39);
 // innerhalb gleicher Güte Typen vor Mitgliedern und danach alphabetisch. Höchstens MaxResults Treffer.
 // Implementierungen von
-// Methoden (TFoo.Bar in implementation) erscheinen nicht doppelt.
+// Methoden (TFoo.Bar in implementation) erscheinen nicht doppelt. Lokale
+// Routinen der Projekt-Units (TUnitIndex.LocalRoutines) gehören dazu,
+// containerName ist dann Unit und umgebende Routine („uKunde.TFoo.Bar“).
 // Eine leere Anfrage liefert nichts, damit der Client nicht den ganzen
 // Index erhält. Lesezeichen ("// @bookmark Name", #306) kommen vor den
 // Symbolen, wenn BookmarksFor gesetzt ist.
@@ -168,14 +170,14 @@ begin
   end;
 end;
 
-/// <summary>Treffer der Unit AUnit für AQuery (klein geschrieben) an ACandidates anhängen.</summary>
-procedure AddUnitCandidates(ACandidates: TList<TCandidate>; ASeen: TDictionary<string, Boolean>;
-  const AUnit: TUnitIndex; const AQuery: string);
+/// <summary>Treffer unter ASymbols der Unit AUnit für AQuery (klein geschrieben) an ACandidates anhängen.</summary>
+procedure AddSymbolCandidates(ACandidates: TList<TCandidate>; ASeen: TDictionary<string, Boolean>;
+  const AUnit: TUnitIndex; const ASymbols: TArray<TIndexSymbol>; const AQuery: string);
 var
   mSymbol: TIndexSymbol;
   mRank: Integer;
 begin
-  for mSymbol in AUnit.Symbols do
+  for mSymbol in ASymbols do
   begin
     mRank := TFuzzyMatch.Score(mSymbol.Name, AQuery);
     if (mRank <> TFuzzyMatch.cNoMatch) and not IsRepeat(ASeen, AUnit, mSymbol) then
@@ -183,6 +185,14 @@ begin
       ACandidates.Add(NewCandidate(AUnit, mSymbol, mRank));
     end;
   end;
+end;
+
+/// <summary>Treffer der Unit AUnit für AQuery: ihre Symbole und lokalen Routinen.</summary>
+procedure AddUnitCandidates(ACandidates: TList<TCandidate>; ASeen: TDictionary<string, Boolean>;
+  const AUnit: TUnitIndex; const AQuery: string);
+begin
+  AddSymbolCandidates(ACandidates, ASeen, AUnit, AUnit.Symbols, AQuery);
+  AddSymbolCandidates(ACandidates, ASeen, AUnit, AUnit.LocalRoutines, AQuery);
 end;
 
 /// <summary>Reihenfolge: Güte, Name, Klasse, Unit.</summary>

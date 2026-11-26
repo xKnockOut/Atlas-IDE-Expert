@@ -101,6 +101,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Build.Verdict` | `Core/Build/Atlas.Core.Build.Verdict.pas` | Bewertung als Typen und `IAtlasBuildVerdictListener`; Benachrichtigungszentrale (Base) und Module lesen sie, #1455 |
 | `Atlas.Core.CiBuild.Contract` | `Core/CiBuild/Atlas.Core.CiBuild.Contract.pas` | CI-Stand als Daten (Lauf, Job, Fehler); Projektzusammenfassung, Willkommensseite und Modul Tracker lesen ihn, #1455 |
 | `Atlas.Core.Commands.KeyConflicts` | `Core/Commands/Atlas.Core.Commands.KeyConflicts.pas` | Ordner `Core/Commands` |
+| `Atlas.Core.Commands.CustomKeys` | `Core/Commands/Atlas.Core.Commands.CustomKeys.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.KeyMap` | `Core/Commands/Atlas.Core.Commands.KeyMap.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.KeyScan` | `Core/Commands/Atlas.Core.Commands.KeyScan.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.KeyFallback` | `Core/Commands/Atlas.Core.Commands.KeyFallback.pas` | Ordner `Core/Commands` |
@@ -575,6 +576,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Completion.Placeholders` | `IDE/Completion/Atlas.IDE.Completion.Placeholders.pas` | Ordner `IDE/Completion` |
 | `Atlas.IDE.Completion.Preview` | `IDE/Completion/Atlas.IDE.Completion.Preview.pas` | Ordner `IDE/Completion` |
 | `Atlas.IDE.Diagnostics.BugReport` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.BugReport.pas` | Ordner `IDE/Diagnostics` |
+| `Atlas.IDE.Diagnostics.AddressSpace` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.AddressSpace.pas` | Ordner `IDE/Diagnostics` |
 | `Atlas.IDE.Diagnostics.Export` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.Export.pas` | Ordner `IDE/Diagnostics` |
 | `Atlas.IDE.Diagnostics.PluginTimings` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.PluginTimings.pas` | Ordner `IDE/Diagnostics` |
 | `Atlas.IDE.Diagnostics.Edition` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.Edition.pas` | Ordner `IDE/Diagnostics` |
@@ -748,6 +750,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Updates.Install` | `IDE/Updates/Atlas.IDE.Updates.Install.pas` | Ordner `IDE/Updates` |
 | `Atlas.UI.CodeInsight.Strings` | `UI/CodeInsight/Atlas.UI.CodeInsight.Strings.pas` | Ordner `UI/CodeInsight` |
 | `Atlas.UI.Commands.KeyMap` | `UI/Commands/Atlas.UI.Commands.KeyMap.pas` | Ordner `UI/Commands` |
+| `Atlas.UI.Commands.KeyAssign` | `UI/Commands/Atlas.UI.Commands.KeyAssign.pas` | Ordner `UI/Commands` |
 | `Atlas.UI.Commands.Palette` | `UI/Commands/Atlas.UI.Commands.Palette.pas` | Ordner `UI/Commands` |
 | `Atlas.UI.Commands.ShortcutTip` | `UI/Commands/Atlas.UI.Commands.ShortcutTip.pas` | Ordner `UI/Commands` |
 | `Atlas.UI.Commands.Strings` | `UI/Commands/Atlas.UI.Commands.Strings.pas` | Ordner `UI/Commands` |

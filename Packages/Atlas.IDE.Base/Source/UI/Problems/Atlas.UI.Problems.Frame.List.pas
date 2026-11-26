@@ -158,6 +158,9 @@ type
     procedure ClearListSelection;
     procedure ApplyOrder;
     function ColumnCaption(AColumn: TAtlasFindingColumn): string;
+    /// <summary>Name der Gruppe: Datei, Regel (ohne Regel-ID nach RuleText) bzw. Kategorie wie in der Spalte.
+    /// </summary>
+    function GroupName(const ARow: TAtlasFindingRow): string;
     function CellText(const ARow: TAtlasFindingRow; AColumn: TAtlasFindingColumn): string;
     /// <summary>Text der Spalte AColumn für den Befund der Zeile ARow.</summary>
     function FindingCellText(const ARow: TAtlasFindingRow; AColumn: TAtlasFindingColumn): string;
@@ -612,6 +615,22 @@ begin
   end;
 end;
 
+/// <summary>Text der Spalte und Gruppe „Regel“: die Regel-ID, ohne Regel-ID „IDE-Fehler“, „Compiler“ bzw.
+/// „Ohne Regel“.</summary>
+function RuleText(const ACode: string; ARuleless: TAtlasFindingRuleless): string;
+begin
+  case ARuleless of
+    TAtlasFindingRuleless.Ide:
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsRuleIde);
+    TAtlasFindingRuleless.Compiler:
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryCompiler);
+    TAtlasFindingRuleless.Other:
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsRuleNone);
+  else
+    Result := ACode;
+  end;
+end;
+
 function TAtlasProblemsFrameList.FindingCellText(const ARow: TAtlasFindingRow; AColumn: TAtlasFindingColumn): string;
 var
   mFinding: TAtlasFinding;
@@ -629,7 +648,7 @@ begin
     TAtlasFindingColumn.Location:
       Result := mFinding.Location;
     TAtlasFindingColumn.Rule:
-      Result := mFinding.Rule;
+      Result := RuleText(mFinding.Rule, TAtlasFindings.RulelessOf(mFinding.Problem));
     TAtlasFindingColumn.Compiler:
       Result := mFinding.CompilerText;
     TAtlasFindingColumn.Source:
@@ -733,8 +752,8 @@ begin
   end;
 end;
 
-/// <summary>Name einer Gruppe mit Pfeil, Nadel, Zahl und Kennzeichen der Stufe (#1108).</summary>
-function GroupCaption(const ARow: TAtlasFindingRow): string;
+/// <summary>Name AName einer Gruppe mit Pfeil, Nadel, Zahl und Kennzeichen der Stufe (#1108).</summary>
+function GroupCaption(const ARow: TAtlasFindingRow; const AName: string): string;
 begin
   if ARow.Expanded then
   begin
@@ -748,7 +767,7 @@ begin
   begin
     Result := Result + TAtlasProblemsFrameParts.cPinMark + ' ';
   end;
-  Result := Result + ARow.Caption + ' (' + IntToStr(ARow.Count) + ')';
+  Result := Result + AName + ' (' + IntToStr(ARow.Count) + ')';
   if ARow.Pinned then
   begin
     Result := Result + ' ' + #$00B7 + ' ' + TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsTagActive);
@@ -756,6 +775,18 @@ begin
   else if ARow.Dimmed then
   begin
     Result := Result + ' ' + #$00B7 + ' ' + TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsTagClosed);
+  end;
+end;
+
+function TAtlasProblemsFrameList.GroupName(const ARow: TAtlasFindingRow): string;
+begin
+  case Grouping of
+    TAtlasFindingGrouping.ByRule:
+      Result := RuleText(ARow.Caption, ARow.Ruleless);
+    TAtlasFindingGrouping.ByCategory:
+      Result := CategoryText(ARow.Category);
+  else
+    Result := ARow.Caption;
   end;
 end;
 
@@ -778,7 +809,7 @@ begin
   end
   else
   begin
-    Result := GroupCaption(ARow);
+    Result := GroupCaption(ARow, GroupName(ARow));
   end;
 end;
 

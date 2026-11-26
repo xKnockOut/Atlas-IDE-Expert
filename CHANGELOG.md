@@ -6,6 +6,27 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+## [2.2.5] - 2026-11-26
+
+### Geändert
+- Protokoll: Zu Beginn und am Ende jedes Gruppenlaufs schreibt Atlas den belegten Adressraum der IDE und den größten freien Block in `atlas.log` („Address space before/after build: used … of … MB, largest free block … MB“). Läuft er in der 32-Bit-IDE voll, scheitert dcc mit wechselnden internen Fehlern (F2084).
+
+### Behoben
+- Debug-Hover: „Set to False“/„Set to True“ und „Change …“ wirken jetzt auch bei neu deklarierten Eigenschaften wie `TButton.Enabled` (`property Enabled;`). Atlas hielt sie für nur lesbar und schrieb ohne Setter; jetzt ruft der Debugger der IDE den geerbten Setter auf (`SetEnabled`), und am Zeilenende steht der danach gelesene Wert. Eine wirklich nur lesbare Eigenschaft meldet Atlas, statt still nichts zu tun.
+- Datenfluss („Woher kommt der Wert“): Bei neu deklarierten Eigenschaften (`property Name;` in einer abgeleiteten Klasse) fehlten Setter und gelesenes Feld bzw. Getter; jetzt folgt Atlas der geerbten Deklaration.
+- Designer: Zugriffsverletzung in der Designer-Leiste beim Bauen einer Projektgruppe („Alle erzeugen“), wenn Rückgängig im Designer (`designer.undo`) an ist. Die IDE zeigt den Fortschrittsdialog je Projekt modal, bevor sie den Compile des Projekts meldet. Das Erfassen hielt die Pause davor für Ruhe nach dem Build und schrieb mitten im Gruppenbau ein Formular, dessen Packages die IDE gerade neu lädt. Aufträge, die auf Ruhe nach dem Build warten (Erfassen im Designer, automatisch geöffnete Fenster), laufen jetzt erst, wenn weder der Fortschrittsdialog noch ein anderer modaler Dialog offen ist.
+- Hänger beim Bauen und beim Anmelden der Module (bis 1,5 s je Mal): Die Frage, ob ein Modul eingeschaltet ist, schrieb jedes Mal alle Einstellungen in einen Zwischenspeicher. Sie liest jetzt nur noch die Liste der ausgeschalteten Module, die bei jeder Änderung der Einstellungen neu entsteht.
+- Gesperrte oder fehlende Datendateien von Atlas (z. B. während eines Builds) werden ohne Ausnahme übergangen; jede Ausnahme kostete in der IDE einige hundert Millisekunden.
+- Hängerprotokoll (atlas.log): „Atlas im Aufrufstapel“ zählt nur noch Adressen im Code eines Atlas-Moduls. Bisher reichte ein Zeiger in die Daten von Atlas auf dem Stapel, etwa während die IDE übersetzt. Rahmen der Module (Willkommensseite, Prüfregeln …) bekommen jetzt Unit, Routine und Zeile aus ihrer Map-Datei, nicht nur Rahmen von Atlas.IDE.Base.
+- Hover über einen Namen aus einer Liste (`mTest1, mTest2: string;`, Felder, Parameter `A, B: Integer`) zeigt nur diesen Namen mit seinem Typ statt der ganzen Liste; Parameter ohne die folgenden.
+- Fenster „Atlas-Prüfung“: Fehler der IDE (Error Insight) stehen in der Gruppierung „Nach Regel“ und in der Spalte „Regel“ als „IDE-Fehler“ statt als Gruppe ohne Namen; Compilermeldungen ohne Nummer heißen „Compiler“, sonstige Befunde ohne Regel „Ohne Regel“. Die Gruppierung „Nach Kategorie“ zeigt die Kategorien wie die Spalte (auch „Sonstige“ statt einer leeren Gruppe).
+- Meldungen zu meinen Issues (YouTrack): Auch mit 2.2.4 lehnte ein YouTrack mit deutscher Systemsprache die Abfrage ab („Can't parse search query“, HTTP 400). Atlas fragt jetzt mit dem eigenen Anmeldenamen statt „me“/„meine“ und verbindet Umfang und Zeitraum ausdrücklich mit AND; scheitert die Abfrage, steht sie (ohne Anmeldenamen) im Protokoll.
+- „Methode suchen“ der Editorleiste findet jetzt auch lokale (verschachtelte) Prozeduren und Funktionen in Methoden und Routinen, angezeigt als „TFoo.Bar › Lokal“ direkt hinter ihrer Methode; vorgewählt ist die innerste Routine am Cursor.
+- Gliederung und projektweite Symbolsuche („#“ in Datei oder Symbol öffnen, workspace/symbol) zeigen lokale Prozeduren und Funktionen jetzt ebenso: in der Gliederung unter ihrer Methode (der Cursor markiert die lokale Routine), in der Symbolsuche mit Unit und umgebender Routine. Der Index-Cache wird dafür einmal neu aufgebaut.
+- Tooltips und Popups von Atlas ohne eigene Farben folgen beim Zeigen dem IDE-Thema statt dem globalen VCL-Stil: kein heller Tooltip mehr im dunklen Editor, auch wenn ein Aufrufer die Farben nicht selbst setzt (etwa „Wer gibt das frei?“ an den Freigabe-Marken).
+- Mitlaufender Kopf im Editor: Werte beim Debuggen, Inlay-Hints, Code Lens, Fehlertexte, Besitzhinweise, Markierungen und andere Atlas-Zeichnungen liegen beim Bildlauf nicht mehr über den Kopfzeilen.
+- Atlas-Struktur: Kein Absturz der IDE mehr (Zugriffsverletzung in `ComponentDesigner.TComponentRoot.FindCurrentParentItem`), wenn das Fenster bei einem Datenmodul oder während eines Formularwechsels die Symbole nichtvisueller Komponenten aus- oder einblendet (`designer.structureHideOnForm`). Der Befehl der IDE läuft jetzt erst, wenn ein visuelles Formular fertig im Designer steht; bei einem Datenmodul wartet er.
+
 ## [2.2.4] - 2026-11-25
 
 ### Neu

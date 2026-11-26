@@ -93,6 +93,7 @@ uses
   Atlas.Common.Index.UsageCounts.Tests in 'Common\Index\Atlas.Common.Index.UsageCounts.Tests.pas',
   Atlas.Common.Index.Extractor.Conditions.Tests in 'Common\Index\Atlas.Common.Index.Extractor.Conditions.Tests.pas',
   Atlas.Common.Index.Extractor.InlineRefs.Tests in 'Common\Index\Atlas.Common.Index.Extractor.InlineRefs.Tests.pas',
+  Atlas.Common.Index.Extractor.LocalRoutines.Tests in 'Common\Index\Atlas.Common.Index.Extractor.LocalRoutines.Tests.pas',
   Atlas.Common.Index.Extractor.Patterns.Tests in 'Common\Index\Atlas.Common.Index.Extractor.Patterns.Tests.pas',
   Atlas.Common.Index.Extractor.Tokens.Tests in 'Common\Index\Atlas.Common.Index.Extractor.Tokens.Tests.pas',
   Atlas.Common.Index.Extractor.TypeText.Tests in 'Common\Index\Atlas.Common.Index.Extractor.TypeText.Tests.pas',

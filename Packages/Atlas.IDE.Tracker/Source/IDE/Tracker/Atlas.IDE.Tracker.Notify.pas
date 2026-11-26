@@ -235,9 +235,10 @@ begin
   mSchedule := ScheduleOf(AOutcome.Job.Id);
   if not AOutcome.Succeeded then
   begin
-    // Anonym: Anbieter, Fehlerart und HTTP-Status; der Fehlertext des Trackers kann Namen enthalten.
-    TAtlasGuard.Log(Format('Issue-Meldungen: %s nicht abgefragt (%s, HTTP %d)', [AOutcome.Job.Target.Provider,
-      TAtlasCiBuild.ErrorKey(AOutcome.Error), AOutcome.Job.Poll.FailedStatus]));
+    // Anonym: Anbieter, Fehlerart, HTTP-Status und die Suchabfrage ohne Anmeldename; der Fehlertext des Trackers
+    // kann Namen enthalten.
+    TAtlasGuard.Log(Format('Issue-Meldungen: %s nicht abgefragt (%s, HTTP %d) %s', [AOutcome.Job.Target.Provider,
+      TAtlasCiBuild.ErrorKey(AOutcome.Error), AOutcome.Job.Poll.FailedStatus, AOutcome.Job.Poll.FailedQuery]));
     if TAtlasNotifyPlan.ReportsError(mSchedule.Failed, AOutcome.Error) then
     begin
       NotifyError(AOutcome.Job, AOutcome.Error);

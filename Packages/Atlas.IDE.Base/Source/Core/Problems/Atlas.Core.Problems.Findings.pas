@@ -60,6 +60,9 @@ type
   TAtlasFindingGrouping = (None, ByFile, ByRule, ByCategory);
   /// <summary>Stufe einer Datei (#1108): Datei des oberen Editors, in der IDE geöffnet, nicht geöffnet.</summary>
   TAtlasFindingTier = (Active, Open, Closed);
+  /// <summary>Befund ohne Regel-ID in Spalte und Gruppe „Regel“: Fehler der IDE (Error Insight), Compilermeldung
+  /// ohne Nummer, sonst ohne Regel; None = der Befund hat eine Regel.</summary>
+  TAtlasFindingRuleless = (None, Ide, Compiler, Other);
   /// <summary>Darstellung nicht geöffneter Units (problems.window.closedUnits).</summary>
   TAtlasClosedUnits = (Dimmed, Normal, Hidden);
   {$SCOPEDENUMS OFF}
@@ -165,6 +168,8 @@ type
     Count: Integer;
     /// <summary>Gruppenzeile: Kategorie bei Gruppierung nach Kategorie.</summary>
     Category: TAtlasFindingCategory;
+    /// <summary>Gruppenzeile nach Regel: Art der Befunde ohne Regel-ID (Caption ''); None bei einer Regel.</summary>
+    Ruleless: TAtlasFindingRuleless;
     Expanded: Boolean;
     /// <summary>Befundzeile: Index in TAtlasFindingsView.Findings; -1 bei Gruppenzeilen.</summary>
     Finding: Integer;
@@ -206,6 +211,9 @@ type
     /// <summary>dcc = Compiler; sonst nach data.category ("bug", "vulnerability", "code-smell",
     /// "security-hotspot"), ohne Kategorie Other.</summary>
     class function CategoryOf(const AProblem: TAtlasProblem): TAtlasFindingCategory; static;
+    /// <summary>Art eines Befunds ohne Regel-ID: IDE (Error Insight), Compiler (dcc ohne Nummer), sonst Other;
+    /// None mit Regel-ID.</summary>
+    class function RulelessOf(const AProblem: TAtlasProblem): TAtlasFindingRuleless; static;
     /// <summary>Gehört der Eintrag in das Fenster? Ohne inaktive Zweige, uses-Hinweise (#621) und Tests (#69).
     /// </summary>
     class function IsFinding(const AProblem: TAtlasProblem): Boolean; static;
@@ -828,6 +836,26 @@ end;
 class function TAtlasFindings.CategoryName(ACategory: TAtlasFindingCategory): string;
 begin
   Result := cCategoryNames[ACategory];
+end;
+
+class function TAtlasFindings.RulelessOf(const AProblem: TAtlasProblem): TAtlasFindingRuleless;
+begin
+  if AProblem.Code <> '' then
+  begin
+    Result := TAtlasFindingRuleless.None;
+  end
+  else if AProblem.IsIde then
+  begin
+    Result := TAtlasFindingRuleless.Ide;
+  end
+  else if AProblem.IsCompiler then
+  begin
+    Result := TAtlasFindingRuleless.Compiler;
+  end
+  else
+  begin
+    Result := TAtlasFindingRuleless.Other;
+  end;
 end;
 
 { TAtlasFindingsLayout }

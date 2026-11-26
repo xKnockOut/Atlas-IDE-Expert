@@ -251,6 +251,9 @@ const
   cDefaultCommandKeys = 'Atlas.FindMethod=16452';
   /// <summary>Kein gespeicherter Wert (kann in keys.commands nicht vorkommen).</summary>
   cMissing = #1;
+  // Strg+Alt+D für das nächste Vorkommen der Mehrfachmarken; früher Strg+D (#2938).
+  cMultiCursorNextKey = $C044;
+  cFormerMultiCursorNextKey = $4044;
 
 { TAtlasPluginEditingKeysSettings }
 
@@ -294,7 +297,7 @@ begin
   Result.CompleteStatementKey := $600D; // Strg+Umschalt+Enter
   // Strg+Umschalt+Alt+F hat die Suche in der Methode (#877).
   Result.FormatCodeKey := $E04C; // Strg+Umschalt+Alt+L
-  Result.MultiCursorNextKey := $C044; // Strg+Alt+D (Strg+D gehört „Methode suchen …“, #2938)
+  Result.MultiCursorNextKey := cMultiCursorNextKey; // Strg+Alt+D (Strg+D gehört „Methode suchen …“, #2938)
   Result.MultiCursorSkipKey := $4044; // Strg+K, Strg+D
   Result.MultiCursorLineEndsKey := $A049; // Alt+Umschalt+I
   Result.MultiCursorAboveKey := $C026; // Strg+Alt+↑
@@ -392,9 +395,9 @@ begin
   // Mehrfachmarken noch die frühere Vorgabe Strg+D, bekommt es die neue; eine eigene Wahl bleibt.
   mFirst := not AIo.Writing and (AIo.Store.ReadString('CommandKeys', cMissing) = cMissing);
   AIo.Text('CommandKeys', CommandKeys);
-  if mFirst and (MultiCursorNextKey = $4044) then
+  if mFirst and (MultiCursorNextKey = cFormerMultiCursorNextKey) then
   begin
-    MultiCursorNextKey := $C044;
+    MultiCursorNextKey := cMultiCursorNextKey;
   end;
 end;
 

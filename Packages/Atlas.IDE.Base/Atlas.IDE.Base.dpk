@@ -603,6 +603,7 @@ contains
   Atlas.IDE.Diagnostics.SafeMode in 'Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.SafeMode.pas',
   Atlas.Core.Diagnostics.Edition in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Edition.pas',
   Atlas.UI.Diagnostics.Strings in 'Source\UI\Diagnostics\Atlas.UI.Diagnostics.Strings.pas',
+  Atlas.IDE.Diagnostics.AddressSpace in 'Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.AddressSpace.pas',
   Atlas.IDE.Diagnostics.Edition in 'Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.Edition.pas',
   Atlas.Core.Diagnostics.Timing in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Timing.pas',
   Atlas.Core.Diagnostics.PluginTimings in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.PluginTimings.pas',

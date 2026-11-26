@@ -274,6 +274,9 @@ type
     ExperimentalRead: Boolean;
     Modules: TArray<TAtlasModuleSwitch>;
     ModulesRead: Boolean;
+    /// <summary>Kennungen der wirksam ausgeschalteten Module; entsteht mit Effective. ModuleOn liest nur hier:
+    /// Die Feature-Tabelle fragt es je Teil und Modulanmeldung, auch während eines Builds.</summary>
+    OffModules: TArray<string>;
   end;
 
 var
@@ -356,6 +359,14 @@ begin
     TAtlasIdeSettings.QuickToggles), TAtlasIdeSettings.ModuleSwitches), TAtlasIdeSettings.ExperimentalEntries);
 end;
 
+/// <summary>Wirksame Werte neu bilden, dazu die ausgeschalteten Module. Einmal je Änderung: Ob ein Modul aus ist,
+/// liest TAtlasModuleSwitches aus allen gespeicherten Werten (TAtlasMemorySettingsStore.FromSettings).</summary>
+procedure UpdateEffective;
+begin
+  GState.Effective := EffectiveSettings;
+  GState.OffModules := TAtlasModuleSwitches.OffModules(GState.Effective, TAtlasIdeSettings.ModuleSwitches);
+end;
+
 { TAtlasIdeSettings }
 
 class procedure TAtlasIdeSettings.EnsureLoaded;
@@ -394,12 +405,12 @@ begin
   end;
   GState.Stored.Load(mStore);
   GState.Loaded := True;
-  GState.Effective := EffectiveSettings;
+  UpdateEffective;
 end;
 
 class procedure TAtlasIdeSettings.Changed;
 begin
-  GState.Effective := EffectiveSettings;
+  UpdateEffective;
   if Assigned(FOnChanged) then
   begin
     FOnChanged();
@@ -572,8 +583,9 @@ end;
 class function TAtlasIdeSettings.ModuleOn(const AModule: string): Boolean;
 begin
   EnsureLoaded;
-  // Der Schalter selbst gehört nicht zu seinen Mitgliedern: In GState.Effective steht sein Wert samt Sitzungswert.
-  Result := TAtlasModuleSwitches.IsOn(GState.Effective, ModuleSwitches, AModule);
+  // Der Schalter selbst gehört nicht zu seinen Mitgliedern: In GState.Effective steht sein Wert samt Sitzungswert,
+  // OffModules entsteht daraus bei jeder Änderung (UpdateEffective).
+  Result := TAtlasModuleSwitches.IsOnAmong(GState.OffModules, AModule);
 end;
 
 class function TAtlasIdeSettings.ExperimentalEntries: TArray<TAtlasCatalogEntry>;
@@ -641,6 +653,7 @@ begin
   GState.ExperimentalRead := False;
   GState.Modules := nil;
   GState.ModulesRead := False;
+  GState.OffModules := nil;
 end;
 
 class procedure TAtlasIdeSettings.Reload;

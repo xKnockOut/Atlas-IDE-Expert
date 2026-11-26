@@ -64,6 +64,9 @@ type
     /// wenn die Datei fehlt oder gesperrt ist; EReadError bei einem Lesefehler.
     /// </summary>
     class function ReadAllBytes(const AFileName: string): TBytes; static;
+    /// <summary>Wie ReadAllBytes ohne Ausnahme: False, wenn die Datei fehlt, gesperrt oder nicht lesbar ist.
+    /// </summary>
+    class function TryReadAllBytes(const AFileName: string; out ABytes: TBytes): Boolean; static;
     /// <summary>Löst EAtlasTextFileError für ein binäres Formular aus.</summary>
     class function Load(const AFileName: string; ADefaultCodePage: Integer): TAtlasTextFileContent; overload;
       static;
@@ -363,6 +366,11 @@ end;
 class function TAtlasTextFile.ReadAllBytes(const AFileName: string): TBytes;
 begin
   Result := TAtlasSharedRead.ReadAllBytes(AFileName);
+end;
+
+class function TAtlasTextFile.TryReadAllBytes(const AFileName: string; out ABytes: TBytes): Boolean;
+begin
+  Result := TAtlasSharedRead.TryReadAllBytes(AFileName, ABytes);
 end;
 
 class function TAtlasTextFile.Load(const AFileName: string; ADefaultCodePage: Integer): TAtlasTextFileContent;

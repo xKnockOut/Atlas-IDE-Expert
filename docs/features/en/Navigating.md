@@ -34,7 +34,7 @@ Back to the [README](../../../README.md)
 - Icons:
   - jump to the interface or implementation section (and back with "↩ 214")
   - “Go to uses clause” switches from one uses clause to the other (interface ↔ implementation); without the other clause it jumps to the `implementation` or `interface` keyword, and the next click returns. The tooltip names the target, and the return jump goes to the line before the first click
-  - find method
+  - find method, also local procedures and functions inside methods (listed as “TFoo.Bar › Local” right after their method)
   - navigation history
   - any palette command
 - Overflow menu, customizable
@@ -67,9 +67,9 @@ At the bottom of each editor window (state colours tuned separately for light an
 <a id="window-atlassearchreplace"></a>
 ## Finding
 
-- <a id="window-atlasoutline"></a>**Outline** as a dockable window with filter
+- <a id="window-atlasoutline"></a>**Outline** as a dockable window with filter; local procedures and functions appear below their method
 - **Quick open** of files and symbols (Ctrl+P) across project, project group and search path
-- Project-wide **symbol search**
+- Project-wide **symbol search**, also for local procedures and functions of the project units
 - **Unit search** (Ctrl+F12) in its own window with preview, groups, filters and "add to uses"
 - **TODO overview** of the project from `// TODO`, `// FIXME` and the IDE's to-do format
 
