@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.AssignFields.Tests;
+﻿unit Atlas.Common.Semantics.AssignFields.Tests;
 
 // Tests für „Alle Felder zuweisen“ (#491) ohne Namensauflösung: beschreibbare Mitglieder, Vorgaben, schon
 // zugewiesene Felder und der Text.
@@ -29,7 +29,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.AssignFields;
+  Atlas.Common.Semantics.AssignFields;
 
 function Member(const AName: string; AKind: TIndexSymbolKind; const ASignature, ATypeName: string;
   AVisibility: TIndexVisibility): TAssignMember;

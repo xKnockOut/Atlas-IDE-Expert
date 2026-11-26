@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.AssignFields;
+﻿unit Atlas.Common.Semantics.AssignFields;
 
 // Alle Felder eines Records bzw. einer Klasse zuweisen (#491), ohne Namensauflösung:
 //   - Merge, Writable: Aus den Mitgliedern des Typs (Vorfahren zuerst, in Deklarationsreihenfolge) die
@@ -407,6 +407,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.AssignFields', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.AssignFields', cTexts);
 
 end.

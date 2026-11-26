@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.DeclareUnknown.Tests;
+﻿unit Atlas.Common.Pascal.DeclareUnknown.Tests;
 
 // Tests für das Deklarieren unbekannter Namen (#471), Teil ohne Namensauflösung.
 
@@ -30,7 +30,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.DeclareUnknown,
+  Atlas.Common.Pascal.DeclareUnknown,
   Atlas.Tests.SourceText;
 
 /// <summary>Tokens ohne "|" und die Position des "|".</summary>

@@ -181,7 +181,7 @@ uses
   System.StrUtils,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.DeclaredTypes,
-  Atlas.Common.Editing.DeclareUnknown,
+  Atlas.Common.Pascal.DeclareUnknown,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Localization.Texts;
