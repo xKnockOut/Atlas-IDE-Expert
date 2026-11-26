@@ -20,7 +20,7 @@ uses
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Architecture,
   Atlas.Common.Lsp.Hotspots,
-  Atlas.Common.Lsp.Query,
+  Atlas.Common.Query.Requests,
   Atlas.Common.Lsp.UnitRelations,
   Atlas.Common.Lsp.SymbolPath,
   Atlas.Common.Semantics.Rationale,
@@ -92,7 +92,7 @@ type
     function MetricsSource: TLspMetricsSourceFunc;
     function ArchitectureSource: TLspArchitectureSourceFunc;
     function QuerySource: TQuerySourceFunc;
-    function QuerySettings: TLspQuerySettingsFunc;
+    function QuerySettings: TQueryRequestSettingsFunc;
     function HotspotSource: TLspHotspotSourceFunc;
     function UnitRelationsOptions: TLspUnitRelationsOptionsFunc;
     function SymbolPathSource: TLspSymbolPathSourceFunc;
@@ -418,14 +418,14 @@ begin
   Result := QuerySourceOf;
 end;
 
-function TShellSources.QuerySettings: TLspQuerySettingsFunc;
+function TShellSources.QuerySettings: TQueryRequestSettingsFunc;
 begin
   Result := QuerySettingsFor;
 end;
 
 /// <summary>Eingaben der Abfrage-Datenquelle aus den einzelnen Teilen.</summary>
 function QueryInput(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc; const ARoot: string;
-  const AFiles, ANamespaces: TArray<string>; const AReadText: TReferenceReadText): TLspQueryInput;
+  const AFiles, ANamespaces: TArray<string>; const AReadText: TReferenceReadText): TQueryRequestInput;
 begin
   Result.Index := AIndex;
   Result.EnsureUnit := AEnsureUnit;
@@ -464,7 +464,7 @@ begin
   finally
     System.TMonitor.Exit(FServices.Workspaces.Lock);
   end;
-  ASource := TLspQuery.Source(QueryInput(FServices.Index(), FServices.EnsureUnit, mRoot, mFiles, mNamespaces,
+  ASource := TQueryRequests.Source(QueryInput(FServices.Index(), FServices.EnsureUnit, mRoot, mFiles, mNamespaces,
     FServices.ReadText), mReferences);
   Result := True;
 end;

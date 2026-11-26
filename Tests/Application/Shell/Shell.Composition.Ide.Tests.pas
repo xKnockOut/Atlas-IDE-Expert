@@ -45,7 +45,7 @@ uses
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Compiler.IdeBuild,
-  Atlas.Common.Lsp.IdeProject,
+  Atlas.Common.Index.IdeProject,
   Atlas.Common.JsonRpc.TestSupport;
 
 function NoText(const AFileName: string; out AText: string): Boolean;
@@ -133,10 +133,10 @@ procedure TShellIdeTests.NamingChangeRefreshes;
 const
   cContext = '{"project":"C:\\P\\A.dproj","configuration":"Debug","platform":"Win32","active":true';
 begin
-  Notify(TLspIdeProject.cMethod, cContext + '}');
+  Notify(TIdeProjects.cMethod, cContext + '}');
   Assert.AreEqual('', FEvents, 'neuer Kontext lädt neu, prüft nicht nur neu');
   Assert.AreEqual('C:\P\A.dproj', FIde.Project.ActiveProject);
-  Notify(TLspIdeProject.cMethod, cContext + ',"naming":{"constant":"c"}}');
+  Notify(TIdeProjects.cMethod, cContext + ',"naming":{"constant":"c"}}');
   Assert.AreEqual('naming;', FEvents);
 end;
 

@@ -41,7 +41,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Lsp.WorkDoneProgress,
+  Atlas.Common.Index.WorkDoneProgress,
   Core.Workspace,
   Atlas.Common.Localization.Texts;
 
@@ -70,7 +70,7 @@ begin
   mServices.Logger := mLogger;
   mServices.Transport := AServices.Transport;
   mServices.Process := AServices.Process;
-  mServices.Progress := TLspWorkDoneProgress.Create(AServices.Transport, 'atlas-compile');
+  mServices.Progress := TWorkDoneProgress.Create(AServices.Transport, 'atlas-compile');
   mServices.JobFor :=
     function(const AFileName: string; out AJob: TCoreCompileJob; out AError: string): Boolean
     begin

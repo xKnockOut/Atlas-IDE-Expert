@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.AffectedTests.Tests;
+﻿unit Atlas.Common.Testing.AffectedTests.Tests;
 
 // Tests für die betroffenen Tests einer Änderung (#1353): Zuordnung geänderter Zeilen (interface,
 // implementation, initialization, Lücken, Kommentare), .dfm, .inc, Testprogramm, Verfolgung bis zum Test,
@@ -10,9 +10,9 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.AffectedTests,
-  Atlas.Common.Lsp.AffectedTests.Report,
-  Atlas.Common.Lsp.AffectedTests.Types;
+  Atlas.Common.Testing.AffectedTests,
+  Atlas.Common.Testing.AffectedTests.Report,
+  Atlas.Common.Testing.AffectedTests.Types;
 
 type
   [TestFixture]

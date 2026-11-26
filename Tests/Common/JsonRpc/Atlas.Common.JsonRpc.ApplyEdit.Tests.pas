@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.ApplyEdit.Tests;
+﻿unit Atlas.Common.JsonRpc.ApplyEdit.Tests;
 
 // Tests für workspace/applyEdit an den Client (#397) und Edits über mehrere Dateien (#297).
 
@@ -9,7 +9,7 @@ uses
 
 type
   [TestFixture]
-  TLspApplyEditTests = class
+  TApplyEditTests = class
   public
     [Test]
     procedure ChecksClientCapability;
@@ -27,46 +27,46 @@ uses
   System.Generics.Collections,
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Lsp.ApplyEdit;
+  Atlas.Common.JsonRpc.ApplyEdit;
 
 function Parse(const AJson: string): TJSONObject;
 begin
   Result := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
 end;
 
-{ TLspApplyEditTests }
+{ TApplyEditTests }
 
-procedure TLspApplyEditTests.ChecksClientCapability;
+procedure TApplyEditTests.ChecksClientCapability;
 var
   mParams: TJSONObject;
 begin
-  Assert.IsFalse(TLspApplyEdit.ClientSupports(nil));
+  Assert.IsFalse(TApplyEdit.ClientSupports(nil));
   mParams := Parse('{"capabilities":{"workspace":{"applyEdit":true}}}');
   try
-    Assert.IsTrue(TLspApplyEdit.ClientSupports(mParams));
+    Assert.IsTrue(TApplyEdit.ClientSupports(mParams));
   finally
     mParams.Free;
   end;
   mParams := Parse('{"capabilities":{"workspace":{"applyEdit":false}}}');
   try
-    Assert.IsFalse(TLspApplyEdit.ClientSupports(mParams));
+    Assert.IsFalse(TApplyEdit.ClientSupports(mParams));
   finally
     mParams.Free;
   end;
   mParams := Parse('{"capabilities":{}}');
   try
-    Assert.IsFalse(TLspApplyEdit.ClientSupports(mParams));
+    Assert.IsFalse(TApplyEdit.ClientSupports(mParams));
   finally
     mParams.Free;
   end;
 end;
 
-procedure TLspApplyEditTests.ReplacesWholeFile;
+procedure TApplyEditTests.ReplacesWholeFile;
 var
   mRequest, mChanges, mEdit: TJSONObject;
 begin
-  mRequest := TLspApplyEdit.Request('atlas/applyEdit/1', '/define TEST',
-    TLspApplyEdit.ReplaceAll('C:\P\Haupt.dproj', '<Project>'#13#10'  <A/>'#13#10'</Project>', '<Project/>'));
+  mRequest := TApplyEdit.Request('atlas/applyEdit/1', '/define TEST',
+    TApplyEdit.ReplaceAll('C:\P\Haupt.dproj', '<Project>'#13#10'  <A/>'#13#10'</Project>', '<Project/>'));
   try
     Assert.AreEqual('workspace/applyEdit', mRequest.GetValue<string>('method'));
     Assert.AreEqual('atlas/applyEdit/1', mRequest.GetValue<string>('id'));
@@ -86,7 +86,7 @@ begin
   end;
 end;
 
-procedure TLspApplyEditTests.ReadsClientAnswer;
+procedure TApplyEditTests.ReadsClientAnswer;
 
   function Read(const AJson: string; out AReason: string): Boolean;
   var
@@ -94,7 +94,7 @@ procedure TLspApplyEditTests.ReadsClientAnswer;
   begin
     mResponse := Parse(AJson);
     try
-      Result := TLspApplyEdit.ReadResult(mResponse, AReason);
+      Result := TApplyEdit.ReadResult(mResponse, AReason);
     finally
       mResponse.Free;
     end;
@@ -110,16 +110,16 @@ begin
   Assert.AreEqual('schreibgeschützt', mReason);
   Assert.IsFalse(Read('{"jsonrpc":"2.0","id":"a","error":{"code":-32601,"message":"unbekannt"}}', mReason));
   Assert.AreEqual('unbekannt', mReason);
-  Assert.IsFalse(TLspApplyEdit.ReadResult(nil, mReason));
+  Assert.IsFalse(TApplyEdit.ReadResult(nil, mReason));
 end;
 
-procedure TLspApplyEditTests.CreatesAndReplacesFiles;
+procedure TApplyEditTests.CreatesAndReplacesFiles;
 var
   mEdit, mItem: TJSONObject;
   mChanges: TJSONArray;
 begin
-  mEdit := TLspApplyEdit.Files([TLspFileChange.Create('C:\P\Neu.pas', '', 'unit Neu;', True),
-    TLspFileChange.Create('C:\P\App.dproj', '<A/>'#13#10'<B/>', '<C/>', False)]);
+  mEdit := TApplyEdit.Files([TApplyEditChange.Create('C:\P\Neu.pas', '', 'unit Neu;', True),
+    TApplyEditChange.Create('C:\P\App.dproj', '<A/>'#13#10'<B/>', '<C/>', False)]);
   try
     mChanges := mEdit.GetValue<TJSONArray>('documentChanges');
     // Anlegen, Füllen der neuen Datei, Ersetzen der vorhandenen.
@@ -142,6 +142,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspApplyEditTests);
+  TDUnitX.RegisterTestFixture(TApplyEditTests);
 
 end.

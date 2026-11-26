@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.ApplyEdit;
+﻿unit Atlas.Common.JsonRpc.ApplyEdit;
 
 // workspace/applyEdit an den Client (#397): Änderungen des Servers an Dateien
 // (etwa die .dproj bei /define) gehen in die Puffer der IDE statt auf die
@@ -14,17 +14,17 @@ uses
 
 type
   /// <summary>Eine Datei in einem WorkspaceEdit mit mehreren Dateien (#297).</summary>
-  TLspFileChange = record
+  TApplyEditChange = record
     FileName: string;
     /// <summary>Bisheriger Inhalt; bei New leer.</summary>
     OldText: string;
     NewText: string;
     /// <summary>Datei neu anlegen (documentChanges kind create).</summary>
     New: Boolean;
-    class function Create(const AFileName, AOldText, ANewText: string; ANew: Boolean): TLspFileChange; static;
+    class function Create(const AFileName, AOldText, ANewText: string; ANew: Boolean): TApplyEditChange; static;
   end;
 
-  TLspApplyEdit = class
+  TApplyEdit = class
   public const
     cMethod = 'workspace/applyEdit';
   public
@@ -35,7 +35,7 @@ type
     class function ReplaceAll(const AFileName, AOldText, ANewText: string): TJSONObject; static;
     /// <summary>WorkspaceEdit mit documentChanges: neue Dateien anlegen und füllen, vorhandene ganz ersetzen,
     /// in der Reihenfolge von AChanges. Der Aufrufer übernimmt das Objekt.</summary>
-    class function Files(const AChanges: TArray<TLspFileChange>): TJSONObject; static;
+    class function Files(const AChanges: TArray<TApplyEditChange>): TJSONObject; static;
     /// <summary>WorkspaceEdit mit den Änderungen AEdits in einer Datei (changes). Der Aufrufer übernimmt das
     /// Objekt.</summary>
     class function TextEdits(const AFileName: string; const AEdits: TArray<TTextEdit>): TJSONObject; static;
@@ -67,9 +67,9 @@ const
 
 {$SCOPEDENUMS OFF}
 
-{ TLspApplyEdit }
+{ TApplyEdit }
 
-class function TLspApplyEdit.ClientSupports(const AInitializeParams: TJSONObject): Boolean;
+class function TApplyEdit.ClientSupports(const AInitializeParams: TJSONObject): Boolean;
 var
   mValue: Boolean;
 begin
@@ -77,9 +77,9 @@ begin
     AInitializeParams.TryGetValue<Boolean>('capabilities.workspace.applyEdit', mValue) and mValue;
 end;
 
-{ TLspFileChange }
+{ TApplyEditChange }
 
-class function TLspFileChange.Create(const AFileName, AOldText, ANewText: string; ANew: Boolean): TLspFileChange;
+class function TApplyEditChange.Create(const AFileName, AOldText, ANewText: string; ANew: Boolean): TApplyEditChange;
 begin
   Result.FileName := AFileName;
   Result.OldText := AOldText;
@@ -87,7 +87,7 @@ begin
   Result.New := ANew;
 end;
 
-{ TLspApplyEdit }
+{ TApplyEdit }
 
 /// <summary>Bereich über den ganzen Text AText, Länge in UTF-16-Einheiten wie im LSP üblich.</summary>
 function WholeRange(const AText: string): TTextRange;
@@ -102,7 +102,7 @@ begin
   Result := TTextRange.Create(0, 0, High(mLines), Length(mLines[High(mLines)]));
 end;
 
-class function TLspApplyEdit.ReplaceAll(const AFileName, AOldText, ANewText: string): TJSONObject;
+class function TApplyEdit.ReplaceAll(const AFileName, AOldText, ANewText: string): TJSONObject;
 var
   mLines: TArray<string>;
   mLast: string;
@@ -128,11 +128,11 @@ begin
   Result.AddPair('changes', mChanges);
 end;
 
-class function TLspApplyEdit.Files(const AChanges: TArray<TLspFileChange>): TJSONObject;
+class function TApplyEdit.Files(const AChanges: TArray<TApplyEditChange>): TJSONObject;
 var
   mChanges, mEdits: TJSONArray;
   mCreation, mOptions, mDocument, mEdit, mItem: TJSONObject;
-  mChange: TLspFileChange;
+  mChange: TApplyEditChange;
   mUri: string;
   mRange: TTextRange;
 begin
@@ -172,7 +172,7 @@ begin
   Result.AddPair('documentChanges', mChanges);
 end;
 
-class function TLspApplyEdit.TextEdits(const AFileName: string; const AEdits: TArray<TTextEdit>): TJSONObject;
+class function TApplyEdit.TextEdits(const AFileName: string; const AEdits: TArray<TTextEdit>): TJSONObject;
 var
   mEdits: TJSONArray;
   mEdit: TJSONObject;
@@ -193,7 +193,7 @@ begin
   Result.AddPair('changes', mChanges);
 end;
 
-class function TLspApplyEdit.Request(const AId, ALabel: string; AEdit: TJSONObject): TJSONObject;
+class function TApplyEdit.Request(const AId, ALabel: string; AEdit: TJSONObject): TJSONObject;
 var
   mParams: TJSONObject;
 begin
@@ -210,7 +210,7 @@ begin
   Result.AddPair('params', mParams);
 end;
 
-class function TLspApplyEdit.ReadResult(const AResponse: TJSONObject; out AReason: string): Boolean;
+class function TApplyEdit.ReadResult(const AResponse: TJSONObject; out AReason: string): Boolean;
 var
   mApplied: Boolean;
 begin
@@ -237,6 +237,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.ApplyEdit', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.JsonRpc.ApplyEdit', cTexts);
 
 end.

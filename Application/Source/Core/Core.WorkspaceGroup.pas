@@ -143,7 +143,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Query.Service,
-  Atlas.Common.Lsp.Query,
+  Atlas.Common.Query.Requests,
   Core.Bootstrap,
   Core.Workspace.RuleProjects;
 
@@ -245,7 +245,7 @@ end;
 
 function TCoreWorkspaceGroup.QuerySource(out ASource: TQuerySource): Boolean;
 var
-  mInput: TLspQueryInput;
+  mInput: TQueryRequestInput;
 begin
   mInput.Index := FIndex;
   mInput.EnsureUnit := UnitLoader();
@@ -257,7 +257,7 @@ begin
     begin
       Result := Assigned(FReadText) and FReadText(AFileName, AText);
     end;
-  ASource := TLspQuery.Source(mInput, FMain.Configuration.Settings.References);
+  ASource := TQueryRequests.Source(mInput, FMain.Configuration.Settings.References);
   Result := True;
 end;
 

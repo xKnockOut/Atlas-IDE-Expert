@@ -28,8 +28,8 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Lsp.ApplyEdit,
-  Atlas.Common.Lsp.IdeProject,
+  Atlas.Common.JsonRpc.ApplyEdit,
+  Atlas.Common.Index.IdeProject,
   Atlas.Common.Editing.TestUnits.Protocol,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Pascal.FormatRoutines,
@@ -75,7 +75,7 @@ begin
   mServices.Slash.ClientAppliesEdits :=
     function: Boolean
     begin
-      Result := TLspApplyEdit.ClientSupports(AParts.Protocol.Lifecycle.InitializeParams);
+      Result := TApplyEdit.ClientSupports(AParts.Protocol.Lifecycle.InitializeParams);
     end;
   // Neu laden nur im Thread der Nachrichtenschleife; die Verbindung liest die Closure
   // erst beim Aufruf.

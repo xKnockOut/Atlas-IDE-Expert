@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.IdeProject;
+﻿unit Atlas.Common.Index.IdeProject;
 
 // Projektkontext aus der IDE (#396). In der IDE bestimmt die IDE, welche
 // Konfiguration und Plattform ein Projekt hat und welche Suchpfade,
@@ -79,7 +79,7 @@ type
 
   TIdeProjectChangedEvent = reference to procedure(const AContext: TIdeProjectContext);
 
-  TLspIdeProject = class
+  TIdeProjects = class
   public const
     cMethod = 'atlas/projectContext';
   private
@@ -323,23 +323,23 @@ begin
   Result := UniquePaths('', LibraryPaths, WithTarget(AVariables, AProject));
 end;
 
-{ TLspIdeProject }
+{ TIdeProjects }
 
-constructor TLspIdeProject.Create;
+constructor TIdeProjects.Create;
 begin
   inherited Create;
   FLock := TObject.Create;
   FContexts := TDictionary<string, TIdeProjectContext>.Create;
 end;
 
-destructor TLspIdeProject.Destroy;
+destructor TIdeProjects.Destroy;
 begin
   FContexts.Free;
   FLock.Free;
   inherited;
 end;
 
-procedure TLspIdeProject.HandleNotification(const AParams: TJSONValue);
+procedure TIdeProjects.HandleNotification(const AParams: TJSONValue);
 var
   mContext: TIdeProjectContext;
   mNamingChanged: Boolean;
@@ -362,12 +362,12 @@ begin
   end;
 end;
 
-procedure TLspIdeProject.Attach(ADispatcher: TJsonRpcDispatcher);
+procedure TIdeProjects.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterNotification(cMethod, HandleNotification);
 end;
 
-procedure TLspIdeProject.LoadInitialize(const AParams: TJSONValue);
+procedure TIdeProjects.LoadInitialize(const AParams: TJSONValue);
 var
   mOptions: TJSONObject;
   mItems: TJSONArray;
@@ -390,14 +390,14 @@ begin
   end;
 end;
 
-function TLspIdeProject.Update(const AContext: TIdeProjectContext): Boolean;
+function TIdeProjects.Update(const AContext: TIdeProjectContext): Boolean;
 var
   mNamingChanged: Boolean;
 begin
   Result := Update(AContext, mNamingChanged);
 end;
 
-function TLspIdeProject.Update(const AContext: TIdeProjectContext; out ANamingChanged: Boolean): Boolean;
+function TIdeProjects.Update(const AContext: TIdeProjectContext; out ANamingChanged: Boolean): Boolean;
 var
   mKnown: TIdeProjectContext;
   mKey: string;
@@ -426,7 +426,7 @@ begin
   end;
 end;
 
-function TLspIdeProject.Find(const AProjectFile: string; out AContext: TIdeProjectContext): Boolean;
+function TIdeProjects.Find(const AProjectFile: string; out AContext: TIdeProjectContext): Boolean;
 begin
   TMonitor.Enter(FLock);
   try
@@ -436,7 +436,7 @@ begin
   end;
 end;
 
-function TLspIdeProject.ActiveProject: string;
+function TIdeProjects.ActiveProject: string;
 begin
   TMonitor.Enter(FLock);
   try

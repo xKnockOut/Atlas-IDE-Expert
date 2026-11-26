@@ -71,7 +71,7 @@ uses
   Rules.Contract,
   Rules.Engine,
   Rules.Builtin,
-  Atlas.Common.Editing.EditorConfig,
+  Atlas.Common.Projects.EditorConfig,
   Atlas.Common.Editing.SmartIndent.Protocol,
   Atlas.Common.Pascal.TypeComments,
   Core.Workspace;

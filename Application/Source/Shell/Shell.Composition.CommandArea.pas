@@ -98,7 +98,7 @@ uses
   Atlas.Common.Editing.LearnedSuggestions,
   Atlas.Common.Editing.MethodOrder,
   Atlas.Common.Index.Scheduler,
-  Atlas.Common.Lsp.ServerActivity,
+  Atlas.Common.Diagnostics.ServerActivity,
   Rules.CheckContext,
   Rules.Contract.Api,
   Rules.Providers.OwnershipReport,

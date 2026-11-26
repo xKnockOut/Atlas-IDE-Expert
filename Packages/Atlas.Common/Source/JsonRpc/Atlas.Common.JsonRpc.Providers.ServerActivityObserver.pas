@@ -1,6 +1,6 @@
-﻿unit Atlas.Common.Lsp.Adapters.ServerActivityObserver;
+﻿unit Atlas.Common.JsonRpc.Providers.ServerActivityObserver;
 
-// Meldet jede Anfrage des JSON-RPC-Verteilers an die Aktivität des Servers (Atlas.Common.Lsp.ServerActivity), damit
+// Meldet jede Anfrage des JSON-RPC-Verteilers an die Aktivität des Servers (Atlas.Common.Diagnostics.ServerActivity), damit
 // die Statusdatei laufende Anfragen mit Dauer und die Zahl der Fehler zeigt; ANext (z. B. das Diagnoselog) bekommt
 // beide Aufrufe danach.
 
@@ -10,7 +10,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Lsp.ServerActivity;
+  Atlas.Common.Diagnostics.ServerActivity;
 
 type
   /// <summary>Beobachter am Verteiler: meldet Beginn und Ende jeder Anfrage an die Aktivität und reicht beides an

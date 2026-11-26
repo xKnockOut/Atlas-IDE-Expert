@@ -67,7 +67,7 @@ implementation
 
 uses
   Atlas.Common.JsonRpc.Watchdog,
-  Atlas.Common.Lsp.ServerActivity,
+  Atlas.Common.Diagnostics.ServerActivity,
   Atlas.Common.Product.Version,
   Platform.Server,
   Atlas.Text.LogMarks;

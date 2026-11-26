@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.WorkDoneProgress;
+﻿unit Atlas.Common.Index.WorkDoneProgress;
 
 // Fortschrittsanzeige über window/workDoneProgress/create und $/progress.
 // Die Antwort des Clients auf create wird nicht ausgewertet; Clients ohne
@@ -15,7 +15,7 @@ uses
   Atlas.Common.Index.Contract;
 
 type
-  TLspWorkDoneProgress = class
+  TWorkDoneProgress = class
   private
     FTransport: IJsonRpcTransport;
     FToken: string;
@@ -45,9 +45,9 @@ uses
   System.JSON,
   Atlas.Common.JsonRpc.Messages;
 
-{ TLspWorkDoneProgress }
+{ TWorkDoneProgress }
 
-constructor TLspWorkDoneProgress.Create(const ATransport: IJsonRpcTransport; const AToken: string);
+constructor TWorkDoneProgress.Create(const ATransport: IJsonRpcTransport; const AToken: string);
 begin
   inherited Create;
   FTransport := ATransport;
@@ -55,13 +55,13 @@ begin
   FLock := TObject.Create;
 end;
 
-destructor TLspWorkDoneProgress.Destroy;
+destructor TWorkDoneProgress.Destroy;
 begin
   FLock.Free;
   inherited;
 end;
 
-procedure TLspWorkDoneProgress.SendProgress(const AKind, ATitleOrMessage: string; APercent: Integer);
+procedure TWorkDoneProgress.SendProgress(const AKind, ATitleOrMessage: string; APercent: Integer);
 var
   mValue, mParams: TJSONObject;
   mNotification: TJSONObject;
@@ -92,7 +92,7 @@ begin
   end;
 end;
 
-procedure TLspWorkDoneProgress.Start(const ATitle: string);
+procedure TWorkDoneProgress.Start(const ATitle: string);
 var
   mRequest, mParams: TJSONObject;
 begin
@@ -119,7 +119,7 @@ begin
   end;
 end;
 
-procedure TLspWorkDoneProgress.Report(const AMessage: string; APercent: Integer);
+procedure TWorkDoneProgress.Report(const AMessage: string; APercent: Integer);
 begin
   TMonitor.Enter(FLock);
   try
@@ -138,7 +138,7 @@ begin
   end;
 end;
 
-procedure TLspWorkDoneProgress.Finish(const AMessage: string);
+procedure TWorkDoneProgress.Finish(const AMessage: string);
 begin
   TMonitor.Enter(FLock);
   try
@@ -153,7 +153,7 @@ begin
   end;
 end;
 
-function TLspWorkDoneProgress.AsIndexProgress: TIndexProgressEvent;
+function TWorkDoneProgress.AsIndexProgress: TIndexProgressEvent;
 begin
   Result :=
     procedure(AKind: TIndexProgressKind; const AMessage: string; APercent: Integer)

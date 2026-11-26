@@ -110,7 +110,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Lsp.ApplyEdit,
+  Atlas.Common.JsonRpc.ApplyEdit,
   Atlas.Common.Pascal.InactiveRegions,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
@@ -373,7 +373,7 @@ begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, mError);
   end;
   mAnswer := TJSONObject.Create;
-  mAnswer.AddPair('edit', TLspApplyEdit.TextEdits(mFileName, mEdits));
+  mAnswer.AddPair('edit', TApplyEdit.TextEdits(mFileName, mEdits));
   Result := mAnswer;
 end;
 
@@ -422,7 +422,7 @@ begin
       cTexts[TUnitRelationsText.IsUsedOrMissing].Text);
   end;
   mAnswer := TJSONObject.Create;
-  mAnswer.AddPair('edit', TLspApplyEdit.TextEdits(mFileName, [mEdit]));
+  mAnswer.AddPair('edit', TApplyEdit.TextEdits(mFileName, [mEdit]));
   Result := mAnswer;
 end;
 

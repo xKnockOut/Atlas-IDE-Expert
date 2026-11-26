@@ -11,7 +11,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.IdeProject,
+  Atlas.Common.Index.IdeProject,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.DprojReader,
   Core.Workspace.Setup,

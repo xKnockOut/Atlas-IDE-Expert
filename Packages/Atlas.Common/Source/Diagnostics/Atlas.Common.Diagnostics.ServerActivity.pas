@@ -1,7 +1,7 @@
-﻿unit Atlas.Common.Lsp.ServerActivity;
+﻿unit Atlas.Common.Diagnostics.ServerActivity;
 
 // Was der Server gerade tut, für seine Statusdatei (#1901): Art, Befehl und Ziel des Prozesses, laufende Anfragen
-// mit Dauer (über TServerActivityObserver am Verteiler, Atlas.Common.Lsp.Adapters.ServerActivityObserver), Fortschritt eines Kommandozeilenlaufs, Zähler für
+// mit Dauer (über TServerActivityObserver am Verteiler, Atlas.Common.JsonRpc.Providers.ServerActivityObserver), Fortschritt eines Kommandozeilenlaufs, Zähler für
 // Zeitüberschreitungen und Fehler, der Prozess, den der Profiler gerade misst. Der LSP-Server meldet zusätzlich eine
 // Funktion für seinen ausführlichen Status (SetDetails). Ein Prozess hat genau eine Aktivität (Shared);
 // TServerStatusHeartbeat liest sie alle paar Sekunden.

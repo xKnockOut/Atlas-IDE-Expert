@@ -35,8 +35,8 @@ implementation
 
 uses
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.AffectedTests.Report,
-  Atlas.Common.Lsp.AffectedTests.Types,
+  Atlas.Common.Testing.AffectedTests.Report,
+  Atlas.Common.Testing.AffectedTests.Types,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Localization.RequestTexts,

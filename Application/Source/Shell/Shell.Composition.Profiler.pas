@@ -34,7 +34,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Index.CacheDirectory,
-  Atlas.Common.Lsp.ServerActivity,
+  Atlas.Common.Diagnostics.ServerActivity,
   Atlas.Common.Profiling.Contract,
   Atlas.Text.Profile,
   Shell.Composition.Platform;

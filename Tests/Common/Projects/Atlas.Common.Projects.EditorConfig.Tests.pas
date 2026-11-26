@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.EditorConfig.Tests;
+﻿unit Atlas.Common.Projects.EditorConfig.Tests;
 
 // TFormatStyles.Resolve: Editor-Optionen als Grundlage, .editorconfig darüber, ausdrücklich gesetzte Werte zuoberst.
 
@@ -25,7 +25,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.EditorConfig;
+  Atlas.Common.Projects.EditorConfig;
 
 function Options: TJSONObject;
 begin

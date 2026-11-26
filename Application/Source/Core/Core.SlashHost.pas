@@ -126,7 +126,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.ApplyEdit,
+  Atlas.Common.JsonRpc.ApplyEdit,
   Atlas.Text.LogMarks,
   Atlas.Common.Localization.Texts;
 
@@ -198,7 +198,7 @@ begin
     Exit;
   end;
   mOldText := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
-  SendEdit(AUri, ExtractFileName(AFileName), TLspApplyEdit.ReplaceAll(AFileName, mOldText, AText), nil);
+  SendEdit(AUri, ExtractFileName(AFileName), TApplyEdit.ReplaceAll(AFileName, mOldText, AText), nil);
 end;
 
 var
@@ -284,7 +284,7 @@ var
   mReason: string;
   mTarget: TCoreWorkspace;
 begin
-  if not TLspApplyEdit.ReadResult(AResponse, mReason) then
+  if not TApplyEdit.ReadResult(AResponse, mReason) then
   begin
     Logger.Warning(Format('%s nicht geändert: %s', [TLogMarks.Text(Description), TLogMarks.Text(mReason)]));
     ShowNotChanged(Transport, Description, mReason);
@@ -333,7 +333,7 @@ begin
   mAnswer.After := AAfter;
   mAnswer.Reload := AReload;
   FDispatcher.ExpectResponse(mId, AnswerHandler(mAnswer));
-  mRequest := TLspApplyEdit.Request(mId, 'Atlas: Schnellbefehl', AEdit);
+  mRequest := TApplyEdit.Request(mId, 'Atlas: Schnellbefehl', AEdit);
   try
     try
       FTransport.WriteMessage(mRequest);
@@ -528,7 +528,7 @@ var
 begin
   if ClientWrites then
   begin
-    SendEdit(AUri, cTexts[TSlashHostText.ResourceUnit].Text, TLspApplyEdit.TextEdits(AFileName, [AEdit]), nil, False);
+    SendEdit(AUri, cTexts[TSlashHostText.ResourceUnit].Text, TApplyEdit.TextEdits(AFileName, [AEdit]), nil, False);
     Exit;
   end;
   TFileEncoding.LoadFromFile(AFileName, mFileFormat);
@@ -581,7 +581,7 @@ begin
 end;
 
 // Änderungen für workspace/applyEdit: neue Dateien und Ersetzen des bisherigen Inhalts.
-function FileChanges(const AFiles: TArray<TSlashFile>): TArray<TLspFileChange>;
+function FileChanges(const AFiles: TArray<TSlashFile>): TArray<TApplyEditChange>;
 var
   mItem: TSlashFile;
   mFormat: TFileFormat;
@@ -595,7 +595,7 @@ begin
     begin
       mOldText := TFileEncoding.LoadFromFile(mItem.FileName, mFormat);
     end;
-    Result := Result + [TLspFileChange.Create(mItem.FileName, mOldText, mItem.Text, mItem.New)];
+    Result := Result + [TApplyEditChange.Create(mItem.FileName, mOldText, mItem.Text, mItem.New)];
   end;
 end;
 
@@ -672,7 +672,7 @@ begin
     // In der IDE über das Plugin, damit neue und geänderte Dateien in ihren Puffern landen (#397).
     if ClientWrites then
     begin
-      SendEdit(AUri, mDescription, TLspApplyEdit.Files(FileChanges(AFiles)), ShowAfter(FTransport, AShow));
+      SendEdit(AUri, mDescription, TApplyEdit.Files(FileChanges(AFiles)), ShowAfter(FTransport, AShow));
       Exit;
     end;
     WriteToDisk(AUri, AFiles);

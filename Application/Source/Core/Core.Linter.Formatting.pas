@@ -50,7 +50,7 @@ uses
   System.IOUtils,
   Atlas.Common.Findings.Output,
   Atlas.Common.Editing.FormatCheck,
-  Atlas.Common.Editing.EditorConfig,
+  Atlas.Common.Projects.EditorConfig,
   Platform.Server,
   Core.Linter.Output,
   Core.Linter.Settings,

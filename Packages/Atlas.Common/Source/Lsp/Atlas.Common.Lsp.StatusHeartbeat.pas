@@ -12,7 +12,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.SyncObjs,
-  Atlas.Common.Lsp.ServerActivity;
+  Atlas.Common.Diagnostics.ServerActivity;
 
 type
   TServerStatusHeartbeat = class

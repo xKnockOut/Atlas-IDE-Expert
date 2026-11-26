@@ -47,7 +47,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Lsp.ApplyEdit,
+  Atlas.Common.JsonRpc.ApplyEdit,
   System.Generics.Collections,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json;
@@ -97,7 +97,7 @@ begin
   if AFile.Changed then
   begin
     Result.AddPair('diff', AFile.Diff);
-    Result.AddPair('edit', TLspApplyEdit.TextEdits(AFile.FileName, TTextChanges.Diff(AFile.OldText,
+    Result.AddPair('edit', TApplyEdit.TextEdits(AFile.FileName, TTextChanges.Diff(AFile.OldText,
       AFile.NewText)));
   end;
 end;

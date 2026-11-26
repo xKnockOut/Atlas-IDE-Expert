@@ -12,7 +12,7 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.WorkDoneProgress,
+  Atlas.Common.Index.WorkDoneProgress,
   Atlas.Common.Projects.UnitResolver,
   Atlas.Common.Projects.PackageLocator,
   Atlas.Common.Index.Contract,
@@ -44,7 +44,7 @@ type
   private
     FParts: TCoreIndexingParts;
     FService: TIndexService;
-    FProgress: TLspWorkDoneProgress;
+    FProgress: TWorkDoneProgress;
     FEncodings: TCoreEncodingReport;
     FResolver: TUnitResolver;
     /// <summary>Frühere Resolver: Der alte Builder bedient EnsureUnit, bis der neue veröffentlicht ist,
@@ -177,7 +177,7 @@ begin
   FRetiredResolvers := TObjectList<TUnitResolver>.Create(True);
   FEncodings := TCoreEncodingReport.Create(AParts.Name, AParts.Root, AParts.Logger, AParts.Transport, AParts.Index);
   FService := TIndexService.Create(AParts.Index, AParts.Setup.Factories.IndexFileSystem());
-  FProgress := TLspWorkDoneProgress.Create(AParts.Transport, AParts.ProgressToken);
+  FProgress := TWorkDoneProgress.Create(AParts.Transport, AParts.ProgressToken);
   Attach;
 end;
 

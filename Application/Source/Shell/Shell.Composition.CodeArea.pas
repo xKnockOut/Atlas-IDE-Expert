@@ -15,7 +15,7 @@ uses
   Atlas.Common.Editing.Contract,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.MissingUnit,
-  Atlas.Common.Lsp.IdeProject,
+  Atlas.Common.Index.IdeProject,
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Editing.Refactorings,
   Core.Workspace,

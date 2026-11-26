@@ -21,8 +21,8 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.Impact,
-  Atlas.Common.Lsp.AffectedTests,
-  Atlas.Common.Lsp.AffectedTests.Types,
+  Atlas.Common.Testing.AffectedTests,
+  Atlas.Common.Testing.AffectedTests.Types,
   Core.VersionControlChanges,
   Atlas.Common.Semantics.References;
 

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.AffectedTests;
+﻿unit Atlas.Common.Testing.AffectedTests;
 
 // Betroffene Tests einer Änderung (#1353): aus dem Unterschied zur Basis
 // (Git oder SVN, geänderte Zeilen aus Atlas.Common.History.ChangedFiles) die
@@ -43,7 +43,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.History.ChangedFiles,
-  Atlas.Common.Lsp.AffectedTests.Types,
+  Atlas.Common.Testing.AffectedTests.Types,
   Atlas.Common.Semantics.References;
 
 type
@@ -1370,6 +1370,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.AffectedTests', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Testing.AffectedTests', cTexts);
 
 end.

@@ -11,7 +11,7 @@ uses
   System.Diagnostics,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.JsonRpc.ServerStatus,
-  Atlas.Common.Lsp.ServerActivity,
+  Atlas.Common.Diagnostics.ServerActivity,
   Atlas.Text.LogMarks,
   Core.Workspace,
   Shell.Composition.Status.Contract;

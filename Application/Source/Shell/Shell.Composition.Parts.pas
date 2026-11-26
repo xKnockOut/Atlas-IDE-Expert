@@ -104,7 +104,7 @@ uses
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Diagnostics.StatusFile,
-  Atlas.Common.Lsp.ServerActivity,
+  Atlas.Common.Diagnostics.ServerActivity,
   Atlas.Common.Index.CacheDirectory,
   Shell.Composition.Refactorings,
   Platform.Server;

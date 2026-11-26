@@ -16,7 +16,7 @@ uses
   Atlas.Common.Compiler.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Compiler.IdeBuild,
-  Atlas.Common.Lsp.IdeProject,
+  Atlas.Common.Index.IdeProject,
   Atlas.Common.Lsp.Providers.IdeTypes,
   Atlas.Common.Lsp.IdeUnits,
   Core.Workspace,
@@ -52,7 +52,7 @@ type
   private
     FServices: TShellIdeServices;
     FBuild: TIdeBuildTracker;
-    FProject: TLspIdeProject;
+    FProject: TIdeProjects;
     FTypes: TLspIdeTypes;
     // Der Index ist einmal ganz aufgebaut; erst dann gilt eine Unit ohne Eintrag als ohne Quelltext.
     FIndexFinished: Boolean;
@@ -78,7 +78,7 @@ type
     /// <summary>Der Indexaufbau ist fertig: nach den Units ohne Quelltext fragen.</summary>
     procedure IndexFinished;
     property Build: TIdeBuildTracker read FBuild;
-    property Project: TLspIdeProject read FProject;
+    property Project: TIdeProjects read FProject;
     /// <summary>Typen aus den Packages der IDE (atlas/ideTypes).</summary>
     property Types: TLspIdeTypes read FTypes;
   end;
@@ -110,7 +110,7 @@ begin
   // verlorenes Ende, keine Steuerung.
   FBuild.OnCompiling := Compiling;
   // Konfiguration, Plattform und Optionen aus der IDE (#396): betroffene Projekte neu laden.
-  FProject := TLspIdeProject.Create;
+  FProject := TIdeProjects.Create;
   FProject.OnChanged := ProjectChanged;
   // Neue Präfixe aus .atlas (#1111): naming-prefix und shadowed-name prüfen neu, das Projekt bleibt geladen.
   FProject.OnNamingChanged := NamingChanged;

@@ -7,7 +7,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Common.Lsp.ServerActivity;
+  Atlas.Common.Diagnostics.ServerActivity;
 
 type
   [TestFixture]

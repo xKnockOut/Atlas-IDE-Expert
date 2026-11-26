@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.IdeProject.Tests;
+﻿unit Atlas.Common.Index.IdeProject.Tests;
 
 // Tests für den Projektkontext aus der IDE (#396).
 
@@ -9,7 +9,7 @@ uses
 
 type
   [TestFixture]
-  TLspIdeProjectTests = class
+  TIdeProjectsTests = class
   public
     [Test]
     procedure ReadsContext;
@@ -39,7 +39,7 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Index.Contract,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Lsp.IdeProject;
+  Atlas.Common.Index.IdeProject;
 
 const
   cSample = '{"project":"C:\\P\\A.dproj","configuration":"Release","platform":"Win64","bdsVersion":"23.0",' +
@@ -64,9 +64,9 @@ begin
   Result := [TPair<string, string>.Create('BDS', 'C:\RAD'), TPair<string, string>.Create('BDSLIB', 'C:\RAD\lib')];
 end;
 
-{ TLspIdeProjectTests }
+{ TIdeProjectsTests }
 
-procedure TLspIdeProjectTests.ReadsContext;
+procedure TIdeProjectsTests.ReadsContext;
 var
   mContext: TIdeProjectContext;
 begin
@@ -82,7 +82,7 @@ begin
   Assert.IsFalse(Parse('{"project":"C:\\P\\A.dproj"}').HasOptions);
 end;
 
-procedure TLspIdeProjectTests.AppliesOptionsToProject;
+procedure TIdeProjectsTests.AppliesOptionsToProject;
 var
   mProject: TProjectInfo;
   mPaths: TArray<string>;
@@ -101,7 +101,7 @@ begin
   Assert.AreEqual('C:\RAD\lib\Win64\release', string.Join(';', mPaths));
 end;
 
-procedure TLspIdeProjectTests.KeepsDprojValuesWithoutOptions;
+procedure TIdeProjectsTests.KeepsDprojValuesWithoutOptions;
 var
   mProject: TProjectInfo;
 begin
@@ -118,7 +118,7 @@ procedure Notify(ADispatcher: TJsonRpcDispatcher; const AParams: string);
 var
   mMessage: TJSONObject;
 begin
-  mMessage := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + TLspIdeProject.cMethod + '","params":' +
+  mMessage := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + TIdeProjects.cMethod + '","params":' +
     AParams + '}') as TJSONObject;
   try
     ADispatcher.DispatchMessage(mMessage).Free;
@@ -127,9 +127,9 @@ begin
   end;
 end;
 
-procedure TLspIdeProjectTests.LoadsInitializeAndReportsOnlyChanges;
+procedure TIdeProjectsTests.LoadsInitializeAndReportsOnlyChanges;
 var
-  mStore: TLspIdeProject;
+  mStore: TIdeProjects;
   mDispatcher: TJsonRpcDispatcher;
   mParams: TJSONValue;
   mContext: TIdeProjectContext;
@@ -138,7 +138,7 @@ begin
   mStore := nil;
   mDispatcher := nil;
   try
-    mStore := TLspIdeProject.Create;
+    mStore := TIdeProjects.Create;
     mDispatcher := TJsonRpcDispatcher.Create;
     mChanged := 0;
     mStore.OnChanged :=
@@ -169,9 +169,9 @@ begin
   end;
 end;
 
-procedure TLspIdeProjectTests.KeepsNamingWithoutReload;
+procedure TIdeProjectsTests.KeepsNamingWithoutReload;
 var
-  mStore: TLspIdeProject;
+  mStore: TIdeProjects;
   mDispatcher: TJsonRpcDispatcher;
   mContext: TIdeProjectContext;
   mChanged, mNamingChanged: Integer;
@@ -194,7 +194,7 @@ begin
   mStore := nil;
   mDispatcher := nil;
   try
-    mStore := TLspIdeProject.Create;
+    mStore := TIdeProjects.Create;
     mDispatcher := TJsonRpcDispatcher.Create;
     mChanged := 0;
     mNamingChanged := 0;
@@ -227,9 +227,9 @@ begin
   end;
 end;
 
-procedure TLspIdeProjectTests.TracksActiveProjectWithoutReload;
+procedure TIdeProjectsTests.TracksActiveProjectWithoutReload;
 var
-  mStore: TLspIdeProject;
+  mStore: TIdeProjects;
   mDispatcher: TJsonRpcDispatcher;
   mChanged: Integer;
 begin
@@ -238,7 +238,7 @@ begin
   mStore := nil;
   mDispatcher := nil;
   try
-    mStore := TLspIdeProject.Create;
+    mStore := TIdeProjects.Create;
     mDispatcher := TJsonRpcDispatcher.Create;
     mChanged := 0;
     mStore.OnChanged :=
@@ -264,9 +264,9 @@ begin
   end;
 end;
 
-procedure TLspIdeProjectTests.KeepsFormatFunctionsWithoutReload;
+procedure TIdeProjectsTests.KeepsFormatFunctionsWithoutReload;
 var
-  mStore: TLspIdeProject;
+  mStore: TIdeProjects;
   mDispatcher: TJsonRpcDispatcher;
   mContext: TIdeProjectContext;
   mChanged: Integer;
@@ -282,7 +282,7 @@ begin
   mStore := nil;
   mDispatcher := nil;
   try
-    mStore := TLspIdeProject.Create;
+    mStore := TIdeProjects.Create;
     mDispatcher := TJsonRpcDispatcher.Create;
     mChanged := 0;
     mStore.OnChanged :=
@@ -303,6 +303,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspIdeProjectTests);
+  TDUnitX.RegisterTestFixture(TIdeProjectsTests);
 
 end.
