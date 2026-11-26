@@ -52,6 +52,9 @@ type
 implementation
 
 uses
+  Atlas.Common.JsonRpc.Contract,
+  Atlas.Common.Configuration.Workspace,
+  Atlas.Common.Lsp.ConfigurationProtocol,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.Contract.UnitLookup,
   Atlas.Common.Projects.UnitLookup,
@@ -132,6 +135,12 @@ begin
 {$ENDIF}
 end;
 
+/// <summary>Fehler in atlas.json als publishDiagnostics an den Client.</summary>
+function ConfigurationPublisherOf(const ATransport: IJsonRpcTransport): TConfigurationIssuesPublisher;
+begin
+  Result := TLspConfigurationProtocol.Publisher(ATransport);
+end;
+
 class function TShellPlatformAdapters.WorkspaceFactories: TCoreWorkspaceFactories;
 begin
   Result := Default(TCoreWorkspaceFactories);
@@ -140,6 +149,7 @@ begin
   Result.IndexFileSystem := NewIndexFileSystem;
   Result.UnitLookup := UnitLookupOf;
   Result.GroupFiles := GroupFilesOf;
+  Result.ConfigurationPublisher := ConfigurationPublisherOf;
 end;
 
 class function TShellPlatformAdapters.VcsAccess: TCoreVcsAccess;

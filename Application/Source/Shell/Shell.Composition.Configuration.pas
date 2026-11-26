@@ -12,7 +12,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.Configuration,
+  Atlas.Common.Configuration.Workspace,
   Platform.Server,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings;
@@ -37,7 +37,7 @@ type
     FReplaySettingsFile: string;
     FGlobalSettingsFile: string;
     FFileWatcher: TFileWatcher;
-    FLooseConfiguration: TLspConfiguration;
+    FLooseConfiguration: TWorkspaceConfiguration;
     /// <summary>Meldungen der globalen Datei ins Log: Projekt-Schlüssel und fehlende Delphi-Version.</summary>
     procedure LogGlobalIssues(const AText: string);
     procedure DidChangeConfiguration(const AParams: TJSONValue);
@@ -71,6 +71,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,
+  Atlas.Common.Lsp.ConfigurationProtocol,
   Atlas.Common.Projects.DelphiVersions,
   Atlas.Common.Documents.Uris,
   Core.Bootstrap,
@@ -84,7 +85,8 @@ constructor TShellConfiguration.Create(const AServices: TShellConfigurationServi
 begin
   inherited Create;
   FServices := AServices;
-  FLooseConfiguration := TLspConfiguration.Create(FServices.Documents, FServices.Transport,
+  FLooseConfiguration := TWorkspaceConfiguration.Create(FServices.Documents,
+    TLspConfigurationProtocol.Publisher(FServices.Transport),
     function(const AFileName: string; out AText: string): Boolean
     begin
       AText := '';
@@ -123,7 +125,7 @@ procedure TShellConfiguration.DidChangeConfiguration(const AParams: TJSONValue);
 var
   mWorkspace: TCoreWorkspace;
 begin
-  FServices.Settings.SetEditorSettings(TLspConfiguration.EditorSettingsFromParams(AParams));
+  FServices.Settings.SetEditorSettings(TLspConfigurationProtocol.EditorSettingsFromParams(AParams));
   for mWorkspace in FServices.Workspaces.Items.ToArray do
   begin
     mWorkspace.Configuration.SetEditorSettings(FServices.Settings.EditorSettings);
@@ -132,7 +134,7 @@ end;
 
 procedure TShellConfiguration.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterNotification(TLspConfiguration.cDidChangeConfigurationMethod, DidChangeConfiguration);
+  ADispatcher.RegisterNotification(TLspConfigurationProtocol.cDidChangeConfigurationMethod, DidChangeConfiguration);
 end;
 
 procedure TShellConfiguration.UseReplaySettings(const AFileName: string);

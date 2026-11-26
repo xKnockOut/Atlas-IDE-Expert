@@ -155,7 +155,7 @@ class function TLinterSettings.ConfigFileOf(const ARoot: string): string;
 var
   mFolder, mParent: string;
 begin
-  // Wie der Editor (TLspConfiguration): Sonst galten bei --check Datei.pas in einem Unterordner andere Regeln als im
+  // Wie der Editor (TWorkspaceConfiguration): Sonst galten bei --check Datei.pas in einem Unterordner andere Regeln als im
   // Editor. Ohne Datei bleibt der Name im Ordner des Ziels.
   Result := ConfigFileIn(ARoot);
   mFolder := IncludeTrailingPathDelimiter(ARoot);

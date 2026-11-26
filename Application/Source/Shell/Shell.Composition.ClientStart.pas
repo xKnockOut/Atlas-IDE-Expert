@@ -25,7 +25,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Lsp.WorkspaceFolders,
-  Atlas.Common.Lsp.Configuration,
+  Atlas.Common.Lsp.ConfigurationProtocol,
   Atlas.Common.Lsp.Hover,
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.Completion.Details;
@@ -52,7 +52,7 @@ begin
   if AParams <> nil then
   begin
     AParts.Core.Settings.SetEditorSettings(
-      TLspConfiguration.EditorSettingsFromParams(AParams.GetValue('initializationOptions')));
+      TLspConfigurationProtocol.EditorSettingsFromParams(AParams.GetValue('initializationOptions')));
   end
   else
   begin

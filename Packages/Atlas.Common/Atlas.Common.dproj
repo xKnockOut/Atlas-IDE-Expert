@@ -700,7 +700,8 @@
         <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.ProjectOptions.pas"/>
         <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.TestListOptions.pas"/>
         <DCCReference Include="Source\Configuration\Atlas.Common.Configuration.Scopes.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Configuration.pas"/>
+        <DCCReference Include="Source\Configuration\Atlas.Common.Configuration.Workspace.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ConfigurationProtocol.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SettingsCommands.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Common.Documents.Uris.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Common.Documents.ChangeTracker.pas"/>

@@ -378,7 +378,7 @@ end;
 
 procedure TLspSyntaxDiagnostics.HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
 begin
-  // JSON-Dateien wie atlas.json prüft TLspConfiguration.
+  // JSON-Dateien wie atlas.json prüft TWorkspaceConfiguration.
   // Im Pull-Modus fragt der Client nach Änderungen selbst nach.
   if SameText(ExtractFileExt(ADocument.Uri), '.json') or FPullMode then
   begin

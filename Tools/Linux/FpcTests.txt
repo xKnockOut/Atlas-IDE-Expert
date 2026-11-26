@@ -946,3 +946,5 @@ Rules.Builtin.ForbiddenSymbols.Tests
 Shell.Mcp.RefactorHost.Tests
 Shell.Mcp.RefactorSources.Tests
 Atlas.Core.Editor.SnapshotPolicy.Tests
+Atlas.Common.Configuration.Workspace.Tests
+Atlas.Common.Lsp.ConfigurationProtocol.Tests
