@@ -372,6 +372,7 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.CaseCompletion.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.AssignFields.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeImports.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.EnumTypes.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ExpectedTypes.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.CallSites.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.RoutineBody.pas"/>
@@ -434,7 +435,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ResourceStringCommands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.EnumValueCommands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ValueEdit.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Refactorings.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Refactorings.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.DeclareUnknown.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ForwardDeclarations.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.OwnedFields.pas"/>
@@ -463,7 +464,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CompilerFixes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InvertBoolean.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Unwrap.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Unwrap.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Unwrap.Protocol.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StepTargets.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.InterfaceStubs.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StringLiteralCommands.pas"/>

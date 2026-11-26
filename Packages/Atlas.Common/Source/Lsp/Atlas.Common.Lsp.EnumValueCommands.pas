@@ -35,7 +35,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.Completion.Values,
+  Atlas.Common.Semantics.EnumTypes,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -87,7 +87,7 @@ begin
     mLookup.Text := mDocument.Text;
     mLookup.FileName := TDocumentUris.ToPath(mUri);
     mLookup.ReadText := AReadText;
-    TCompletionValues.EnumValuesAt(mLookup, TLspPositions.ReadPosition(AArguments.Items[1]), mValues);
+    TEnumTypes.EnumValuesAt(mLookup, TLspPositions.ReadPosition(AArguments.Items[1]), mValues);
   finally
     mResolver.Free;
   end;

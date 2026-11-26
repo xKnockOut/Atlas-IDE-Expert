@@ -14,7 +14,7 @@ uses
   Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.ConditionalSymbols,
-  Atlas.Common.Lsp.Refactorings,
+  Atlas.Common.Editing.Refactorings,
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.Completion.Hooks,
   Atlas.Common.Lsp.ExpressionCompletion,
@@ -137,7 +137,7 @@ begin
   AEdits := nil;
   mContext := FServices.RefactoringContextFor(ARequest.Uri);
   mContext.CaretMarker := True;
-  Result := mContext.Settings.ResolveWith and TLspRefactorings.WithAction(ARequest.Resolver, ARequest.Tree,
+  Result := mContext.Settings.ResolveWith and TEditingRefactorings.WithAction(ARequest.Resolver, ARequest.Tree,
     ARequest.Text, ARequest.Position, mContext, mAction);
   if Result then
   begin
@@ -156,7 +156,7 @@ begin
   AEdits := nil;
   mContext := FServices.RefactoringContextFor(ARequest.Uri);
   // Nur Änderungen in dieser Datei; die Klasse in einer anderen Unit bekommt die Code-Aktion.
-  Result := mContext.Settings.CreateMethod and TLspRefactorings.CreateMethod(ARequest.Resolver, ARequest.Tree,
+  Result := mContext.Settings.CreateMethod and TEditingRefactorings.CreateMethod(ARequest.Resolver, ARequest.Tree,
     ARequest.Text, ARequest.Position, mContext, mCreated) and (mCreated.FileEdits = nil);
   if Result then
   begin

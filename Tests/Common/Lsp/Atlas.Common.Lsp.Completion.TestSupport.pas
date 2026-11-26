@@ -16,6 +16,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Completion.Request,
   Atlas.Common.Lsp.Completion.Values,
+  Atlas.Common.Semantics.EnumTypes,
   Atlas.Common.Completion.Contract;
 
 const
@@ -99,7 +100,7 @@ function CollectWith(const AIndex: ISymbolIndex; const AText, AMarker: string;
 
 /// <summary>Unit Haupt mit ACode an der Stelle des Platzhalters.</summary>
 function WithCode(const ACode: string): string;
-/// <summary>Was TCompletionValues aus der Datei HauptFile braucht.</summary>
+/// <summary>Was TEnumTypes aus der Datei HauptFile braucht.</summary>
 function LookupOf(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree; const AText: string;
   const AReadText: TDocumentReadText): TEnumLookup;
 /// <summary>Anfrage an APosition mit Auflöser, Index, Baum und Lesen aus ALookup; der Aufrufer gibt sie frei.
@@ -247,7 +248,7 @@ begin
   Result := StringReplace(cUnitHaupt, '  { Kommentar Wert } |', ACode, []);
 end;
 
-/// <summary>Was TCompletionValues aus der Datei HauptFile braucht.</summary>
+/// <summary>Was TEnumTypes aus der Datei HauptFile braucht.</summary>
 function LookupOf(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree; const AText: string;
   const AReadText: TDocumentReadText): TEnumLookup;
 begin

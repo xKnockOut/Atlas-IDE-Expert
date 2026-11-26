@@ -764,6 +764,7 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.CaseCompletion.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.AssignFields.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.TypeImports.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.EnumTypes.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ExpectedTypes.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.CallSites.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.RoutineLocals.Tests.pas"/>
@@ -790,7 +791,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ResourceStringCommands.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.EnumValueCommands.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ValueEdit.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Refactorings.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Refactorings.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MoveClass.Protocol.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.UnitRename.Protocol.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.SmartPaste.Protocol.Tests.pas"/>
@@ -824,7 +825,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CompilerFixesGolden.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InvertBoolean.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Unwrap.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Unwrap.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Unwrap.Protocol.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.StepTargets.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.EnclosingConditions.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DebugVariables.Tests.pas"/>
