@@ -8,7 +8,7 @@ interface
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Editing.FormatCheck,
+  Atlas.Common.Formatting.Outcome,
   Core.CommandLine,
   Core.VersionControlChanges,
   Core.Linter.Host;

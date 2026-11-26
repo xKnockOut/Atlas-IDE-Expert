@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.FormatOutput;
+﻿unit Atlas.Common.Formatting.Output;
 
 // Ausgabe von --format-check und --format-write (#1358) als Text, JSON oder
 // vereinigter Diff, dazu der Exit-Code. Zeilen beginnen überall bei 1.
@@ -16,7 +16,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Common.Editing.FormatCheck;
+  Atlas.Common.Formatting.Outcome;
 
 type
   {$SCOPEDENUMS ON}
@@ -236,7 +236,7 @@ begin
     end;
     mFirst := False;
     ABuilder.Append('{"line":').Append(mDeviation.Line + 1);
-    ABuilder.Append(',"kind":').Append(TJsonText.Quote(TFormatCheck.KindName(mDeviation.Kind)));
+    ABuilder.Append(',"kind":').Append(TJsonText.Quote(TFormatDeviation.KindName(mDeviation.Kind)));
     ABuilder.Append(',"message":').Append(TJsonText.Quote(mDeviation.Message)).Append('}');
   end;
   ABuilder.Append(']}');
@@ -408,6 +408,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.FormatOutput', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Formatting.Output', cTexts);
 
 end.

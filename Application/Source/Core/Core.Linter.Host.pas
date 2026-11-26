@@ -14,6 +14,7 @@ uses
   Atlas.Common.Findings.Contract,
   Atlas.Common.Findings.Scopes,
   Atlas.Common.Checks.Contract,
+  Atlas.Common.Formatting.Outcome,
   Core.VersionControlChanges,
   Core.WorkspaceGroup;
 
@@ -65,6 +66,11 @@ type
     Infos: TCoreLinterRuleInfos;
   end;
 
+  /// <summary>Formatiert AScope von AText nach AStyle wie „Dokument formatieren“, prüft vorher mit Datei und Symbolen
+  /// aus ASource auf Syntaxfehler und beschreibt die Abweichungen (--format-check, --format-write).</summary>
+  TCoreLinterFormat = reference to function(const AText: string; const AStyle: TFormatStyle;
+    const AScope: TFormatScope; const ASource: TPascalSource): TFormatOutcome;
+
   TCoreLinterHost = record
     /// <summary>Installierte Delphi-Versionen (BDS-Nummern).</summary>
     InstalledVersions: TFunc<TArray<string>>;
@@ -73,6 +79,7 @@ type
     NewGroup: TCoreLinterGroupFactory;
     Instructions: TCoreLinterInstructions;
     Rules: TCoreLinterRules;
+    Formatter: TCoreLinterFormat;
   end;
 
 implementation

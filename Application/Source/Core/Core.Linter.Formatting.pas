@@ -5,7 +5,7 @@
 // --changed-lines nur die geänderten Zeilen. Formatregeln wie „Dokument formatieren“: format.* aus atlas.json über
 // .editorconfig über den Vorgaben (ohne die Einrückung der IDE-Optionen). Geschrieben wird atomar über eine
 // Nachbardatei; Kodierung und Zeilenenden bleiben, außer format.endOfLine verlangt andere. Exit-Codes in
-// Atlas.Common.Editing.FormatOutput.
+// Atlas.Common.Formatting.Output.
 
 interface
 
@@ -14,7 +14,7 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Findings.Filter,
-  Atlas.Common.Editing.FormatOutput,
+  Atlas.Common.Formatting.Output,
   Core.CommandLine,
   Core.VersionControlChanges,
   Core.Linter.Host;
@@ -29,6 +29,7 @@ type
     Filter: TFindingFilter;
     /// <summary>Mit --changed bzw. --diff geladen, sonst nil.</summary>
     Git: TVcsChanges;
+    Formatter: TCoreLinterFormat;
   end;
 
   TLinterFormatting = class
@@ -46,10 +47,9 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Pascal.Preprocessor,
   System.IOUtils,
   Atlas.Common.Findings.Output,
-  Atlas.Common.Editing.FormatCheck,
+  Atlas.Common.Formatting.Outcome,
   Atlas.Common.Projects.EditorConfig,
   Platform.Server,
   Core.Linter.Output,
@@ -181,8 +181,8 @@ begin
     end;
   end;
   mStyle := TFormatStyles.Resolve(nil, AFileName, ARun.Settings.Formatting, ReadEditorConfigFunc());
-  AItem := TFormattedFile.Create(ARelativePath, TFormatCheck.Run(mText, mStyle, mScope,
-    TPascalPreprocessor.SourceOptions(ARun.Sources(AFileName))));
+  AItem := TFormattedFile.Create(ARelativePath, ARun.Formatter(mText, mStyle, mScope,
+    ARun.Sources(AFileName)));
   if ARun.Options.FormatWrite and AItem.Outcome.Changed then
     try
       TLinterFormatting.WriteFormatted(AFileName, AItem.Outcome.Formatted, mFormat);
@@ -221,6 +221,7 @@ begin
   mRun := Default(TLinterFormatRun);
   mRun.Options := AOptions;
   mRun.Settings := ASettings;
+  mRun.Formatter := AHost.Formatter;
   mRun.Filter := Default(TFindingFilter);
   mRun.Filter.Units := AOptions.UnitFilter;
   mCandidates := TLinterFiles.Collect(AOptions.CheckTarget, ASettings, AHost.InstalledVersions, mRun.Root,

@@ -635,7 +635,8 @@
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Filter.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Rules.Checker.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Rules.Prompt.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.FormatOutput.Tests.pas"/>
+        <DCCReference Include="Common\Formatting\Atlas.Common.Formatting.Outcome.Tests.pas"/>
+        <DCCReference Include="Common\Formatting\Atlas.Common.Formatting.Output.Tests.pas"/>
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Baseline.Tests.pas"/>
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Scopes.Tests.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.RuleOptions.Tests.pas"/>
@@ -2962,7 +2963,7 @@
         <DCCReference Include="..\Application\Source\Features\Mcp\Tools\Mcp.Tools.Conventions.pas"/>
         <DCCReference Include="Application\Features\Mcp\Tools\Mcp.Tools.Conventions.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Diagnostics.pas"/>
-        <DCCReference Include="..\Application\Source\Core\Core.SlashHost.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Editing.SlashHost.pas"/>
         <DCCReference Include="..\Application\Source\Core\Core.Bootstrap.pas"/>
         <DCCReference Include="Application\Features\Mcp\Mcp.Freshness.Tests.pas"/>
         <DCCReference Include="Application\Features\Mcp\Mcp.EditTools.Tests.pas"/>
@@ -3002,7 +3003,7 @@
         <DCCReference Include="Application\Shell\Shell.Mcp.RefactorHost.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.RefactorSources.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Diagnostics.Tests.pas"/>
-        <DCCReference Include="Application\Core\Core.SlashHost.Tests.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Editing.SlashHost.Tests.pas"/>
         <DCCReference Include="Application\Core\Core.Workspace.Tests.pas"/>
         <DCCReference Include="Application\Core\Core.Workspace.Parts.Tests.pas"/>
         <DCCReference Include="Application\Core\Core.Workspace.Indexing.Tests.pas"/>

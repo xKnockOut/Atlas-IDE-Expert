@@ -56,6 +56,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Editing.Formatter,
+  Atlas.Common.Formatting.Outcome,
   Atlas.Common.Editing.FormatCheck,
   Atlas.Tests.Files;
 
@@ -70,7 +71,7 @@ begin
     begin
       Result := Result + ' | ';
     end;
-    Result := Result + Format('%d %s: %s', [mDeviation.Line + 1, TFormatCheck.KindName(mDeviation.Kind),
+    Result := Result + Format('%d %s: %s', [mDeviation.Line + 1, TFormatDeviation.KindName(mDeviation.Kind),
       mDeviation.Message]);
   end;
 end;
