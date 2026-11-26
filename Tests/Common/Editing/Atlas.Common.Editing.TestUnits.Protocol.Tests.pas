@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.TestUnits.Tests;
+﻿unit Atlas.Common.Editing.TestUnits.Protocol.Tests;
 
 // Tests für Code-Aktion und Befehl rund um Testunits (#274, #189): Gegenstück
 // finden, Gerüst samt Einträgen in .dpr und .dproj, Wechsel in beide Richtungen.
@@ -9,16 +9,16 @@ uses
   DUnitX.TestFramework,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.TestUnits;
+  Atlas.Common.Editing.TestUnits.Protocol;
 
 type
   [TestFixture]
-  TLspTestUnitsTests = class
+  TTestUnitsProtocolTests = class
   private
     FStore: IDocumentStore;
     FFiles: TDictionary<string, string>;
     FUnits: TDictionary<string, string>;
-    FTestUnits: TLspTestUnits;
+    FTestUnits: TTestUnitsProtocol;
     FTestProgram: string;
     function Context: TTestUnitContext;
   public
@@ -95,9 +95,9 @@ const
     'implementation'#10 +
     'end.';
 
-{ TLspTestUnitsTests }
+{ TTestUnitsProtocolTests }
 
-function TLspTestUnitsTests.Context: TTestUnitContext;
+function TTestUnitsProtocolTests.Context: TTestUnitContext;
 var
   mFiles, mUnits: TDictionary<string, string>;
 begin
@@ -130,7 +130,7 @@ begin
     end;
 end;
 
-procedure TLspTestUnitsTests.Setup;
+procedure TTestUnitsProtocolTests.Setup;
 begin
   FStore := TDocumentStore.Create;
   FFiles := TDictionary<string, string>.Create;
@@ -140,7 +140,7 @@ begin
   FUnits.Add('kunden', cKundenFile);
   FTestProgram := cTestsDpr;
   FStore.Open(TDocumentUris.FromPath(cKundenFile), 'pascal', 1, cKundenText);
-  FTestUnits := TLspTestUnits.Create(FStore,
+  FTestUnits := TTestUnitsProtocol.Create(FStore,
     function(const AUri: string; out AContext: TTestUnitContext): Boolean
     begin
       AContext := Context;
@@ -148,7 +148,7 @@ begin
     end);
 end;
 
-procedure TLspTestUnitsTests.TearDown;
+procedure TTestUnitsProtocolTests.TearDown;
 begin
   FTestUnits.Free;
   FUnits.Free;
@@ -157,11 +157,11 @@ begin
   FTestProgram := '';
 end;
 
-procedure TLspTestUnitsTests.MissingTestUnitCanBeCreated;
+procedure TTestUnitsProtocolTests.MissingTestUnitCanBeCreated;
 var
   mTarget: TTestUnitTarget;
 begin
-  mTarget := TLspTestUnits.Resolve(cKundenFile, cKundenText, 3, Context);
+  mTarget := TTestUnitsProtocol.Resolve(cKundenFile, cKundenText, 3, Context);
   Assert.AreEqual('Kunden', mTarget.UnitName);
   Assert.IsFalse(mTarget.IsTest);
   Assert.AreEqual('Kunden.Tests', mTarget.Counterpart);
@@ -170,7 +170,7 @@ begin
   Assert.AreEqual('C:\P\Tests\Kunden.Tests.pas', mTarget.NewFile);
   Assert.AreEqual('TKunde', mTarget.ClassName);
   Assert.IsTrue(mTarget.ClassAtLine);
-  mTarget := TLspTestUnits.Resolve(cKundenFile, cKundenText, 1, Context);
+  mTarget := TTestUnitsProtocol.Resolve(cKundenFile, cKundenText, 1, Context);
   Assert.AreEqual('TKunde', mTarget.ClassName, 'ohne Klasse an der Zeile: die erste');
   Assert.IsFalse(mTarget.ClassAtLine);
 end;
@@ -195,14 +195,14 @@ begin
   Result := TJSONObject(AChange.GetValue<TJSONArray>('edits').Items[0]).GetValue<string>('newText');
 end;
 
-procedure TLspTestUnitsTests.CreateEditAddsFileProgramAndProject;
+procedure TTestUnitsProtocolTests.CreateEditAddsFileProgramAndProject;
 var
   mEdit: TJSONObject;
   mChanges: TJSONArray;
   mNewUri, mKind: string;
   mChange: TJSONObject;
 begin
-  mEdit := TLspTestUnits.CreateEdit(TLspTestUnits.Resolve(cKundenFile, cKundenText, 3, Context), Context);
+  mEdit := TTestUnitsProtocol.CreateEdit(TTestUnitsProtocol.Resolve(cKundenFile, cKundenText, 3, Context), Context);
   try
     mChanges := mEdit.GetValue<TJSONArray>('documentChanges');
     Assert.AreEqual(4, Integer(mChanges.Count));
@@ -225,7 +225,7 @@ begin
   end;
 end;
 
-procedure TLspTestUnitsTests.FolderMirrorsSourceTree;
+procedure TTestUnitsProtocolTests.FolderMirrorsSourceTree;
 const
   cNested = 'C:\P\Quelle\Verwaltung\Kunden.pas';
 var
@@ -238,10 +238,10 @@ begin
   mContext.Settings.Folder := 'Tests\{path}';
   mContext.Settings.SourceRoot := 'Quelle';
   Assert.AreEqual('C:\P\Tests\Verwaltung\Kunden.Tests.pas',
-    TLspTestUnits.Resolve(cNested, cKundenText, 3, mContext).NewFile);
-  Assert.AreEqual('C:\P\Tests\Kunden.Tests.pas', TLspTestUnits.Resolve(cKundenFile, cKundenText, 3, mContext).NewFile,
+    TTestUnitsProtocol.Resolve(cNested, cKundenText, 3, mContext).NewFile);
+  Assert.AreEqual('C:\P\Tests\Kunden.Tests.pas', TTestUnitsProtocol.Resolve(cKundenFile, cKundenText, 3, mContext).NewFile,
     'direkt im Quellordner');
-  mEdit := TLspTestUnits.CreateEdit(TLspTestUnits.Resolve(cNested, cKundenText, 3, mContext), mContext);
+  mEdit := TTestUnitsProtocol.CreateEdit(TTestUnitsProtocol.Resolve(cNested, cKundenText, 3, mContext), mContext);
   try
     mChange := Find(mEdit.GetValue<TJSONArray>('documentChanges'), TDocumentUris.FromPath(cTestsDpr));
     Assert.IsNotNull(mChange, '.dpr');
@@ -251,10 +251,10 @@ begin
   end;
   mContext.Settings.SourceRoot := '';
   Assert.AreEqual('C:\P\Tests\Quelle\Verwaltung\Kunden.Tests.pas',
-    TLspTestUnits.Resolve(cNested, cKundenText, 3, mContext).NewFile, 'ohne Quellordner: ab der Wurzel');
+    TTestUnitsProtocol.Resolve(cNested, cKundenText, 3, mContext).NewFile, 'ohne Quellordner: ab der Wurzel');
 end;
 
-procedure TLspTestUnitsTests.CodeActionOnClassCreates;
+procedure TTestUnitsProtocolTests.CodeActionOnClassCreates;
 var
   mActions: TArray<TJSONObject>;
   mAction: TJSONObject;
@@ -264,7 +264,7 @@ begin
     Assert.AreEqual(1, Integer(Length(mActions)));
     Assert.AreEqual('DUnitX-Testunit für TKunde anlegen', mActions[0].GetValue<string>('title'));
     Assert.IsNotNull(mActions[0].GetValue('edit'));
-    Assert.AreEqual(TLspTestUnits.cOpenFileCommand, mActions[0].GetValue<string>('command.command'));
+    Assert.AreEqual(TTestUnitsProtocol.cOpenFileCommand, mActions[0].GetValue<string>('command.command'));
   finally
     for mAction in mActions do
     begin
@@ -276,7 +276,7 @@ begin
   Assert.AreEqual(0, Integer(Length(mActions)));
 end;
 
-procedure TLspTestUnitsTests.DraftActionCreatesTestUnitWithDraft;
+procedure TTestUnitsProtocolTests.DraftActionCreatesTestUnitWithDraft;
 var
   mActions: TArray<TJSONObject>;
   mChanges: TJSONArray;
@@ -299,7 +299,7 @@ begin
   end;
 end;
 
-procedure TLspTestUnitsTests.DraftActionAddsToExistingTestUnit;
+procedure TTestUnitsProtocolTests.DraftActionAddsToExistingTestUnit;
 const
   cTestText =
     'unit Kunden.Tests;'#13#10 +
@@ -342,7 +342,7 @@ begin
   end;
 end;
 
-procedure TLspTestUnitsTests.SwitchesBothWays;
+procedure TTestUnitsProtocolTests.SwitchesBothWays;
 var
   mActions: TArray<TJSONObject>;
   mAction: TJSONObject;
@@ -363,30 +363,30 @@ begin
       mAction.Free;
     end;
   end;
-  mTarget := TLspTestUnits.Resolve('C:\P\Tests\Kunden.Tests.pas', cKundenTestsText, 0, Context);
+  mTarget := TTestUnitsProtocol.Resolve('C:\P\Tests\Kunden.Tests.pas', cKundenTestsText, 0, Context);
   Assert.IsTrue(mTarget.IsTest);
   Assert.AreEqual('Kunden', mTarget.Counterpart);
   Assert.AreEqual(cKundenFile, mTarget.CounterpartFile);
   Assert.IsFalse(mTarget.CanCreate);
 end;
 
-procedure TLspTestUnitsTests.WithoutTestProjectNoCreate;
+procedure TTestUnitsProtocolTests.WithoutTestProjectNoCreate;
 var
   mTarget: TTestUnitTarget;
 begin
   FTestProgram := '';
-  mTarget := TLspTestUnits.Resolve(cKundenFile, cKundenText, 3, Context);
+  mTarget := TTestUnitsProtocol.Resolve(cKundenFile, cKundenText, 3, Context);
   Assert.IsFalse(mTarget.CanCreate);
   Assert.IsTrue(Pos('testUnits.project', mTarget.Reason) > 0, mTarget.Reason);
   Assert.AreEqual(0, Integer(Length(FTestUnits.Actions(TDocumentUris.FromPath(cKundenFile), 3))));
 end;
 
-procedure TLspTestUnitsTests.ProgramIsNoUnit;
+procedure TTestUnitsProtocolTests.ProgramIsNoUnit;
 begin
-  Assert.AreEqual('', TLspTestUnits.Resolve(cTestsDpr, cDprText, 0, Context).UnitName);
+  Assert.AreEqual('', TTestUnitsProtocol.Resolve(cTestsDpr, cDprText, 0, Context).UnitName);
 end;
 
-procedure TLspTestUnitsTests.CommandAnswers;
+procedure TTestUnitsProtocolTests.CommandAnswers;
 var
   mArguments: TJSONArray;
   mAnswer: TJSONValue;
@@ -412,6 +412,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspTestUnitsTests);
+  TDUnitX.RegisterTestFixture(TTestUnitsProtocolTests);
 
 end.

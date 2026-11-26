@@ -42,7 +42,7 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.TestUnits;
+  Atlas.Common.Editing.TestUnits.Protocol;
 
 { TShellTestUnitsTests }
 
@@ -105,7 +105,7 @@ begin
     mTestUnits := TShellTestUnits.Create(NewServices);
     mCommands := TLspCommands.Create;
     mTestUnits.RegisterCommand(mCommands);
-    for mName in TArray<string>.Create(TLspTestUnits.cCommand) do
+    for mName in TArray<string>.Create(TTestUnitsProtocol.cCommand) do
     begin
       Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
     end;
@@ -134,7 +134,7 @@ begin
     finally
       mCapability.Free;
     end;
-    Assert.IsTrue(Pos('"' + TLspTestUnits.cCommand + '"', mText) > 0);
+    Assert.IsTrue(Pos('"' + TTestUnitsProtocol.cCommand + '"', mText) > 0);
     Assert.AreEqual(0, Integer(Length(mTestUnits.Actions('file:///tmp/A.pas', 0))));
   finally
     mCommands.Free;

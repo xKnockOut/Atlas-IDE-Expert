@@ -14,8 +14,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.TestUnits,
-  Atlas.Common.Lsp.TestFromDebug,
+  Atlas.Common.Editing.TestUnits.Protocol,
+  Atlas.Common.Editing.TestFromDebug.Protocol,
   Core.Workspace,
   Shell.Composition.Contract;
 
@@ -39,9 +39,9 @@ type
   TShellTestUnits = class
   private
     FServices: TShellTestUnitServices;
-    FTestUnits: TLspTestUnits;
+    FTestUnits: TTestUnitsProtocol;
     /// <summary>Test aus dem Debug-Halt (#1873) über FTestUnits.</summary>
-    FFromDebug: TLspTestFromDebug;
+    FFromDebug: TTestFromDebugProtocol;
     /// <summary>Gefundenes Testprogramm je Wurzel mit Zeitpunkt (#274); Sperre ist das Objekt selbst.</summary>
     FTestPrograms: TDictionary<string, TPair<string, UInt64>>;
     function Workspace(const AFileName: string; var AContext: TTestUnitContext;
@@ -76,9 +76,9 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Editing.TestUnits,
-  Atlas.Common.Lsp.BoundaryTests,
+  Atlas.Common.Editing.BoundaryTests.Protocol,
   Atlas.Common.Lsp.TestCases,
-  Atlas.Common.Lsp.BoundaryCases,
+  Atlas.Common.Editing.BoundaryCases.Protocol,
   Atlas.Common.Lsp.Mutants,
   Atlas.Text.LogMarks;
 
@@ -93,8 +93,8 @@ begin
   inherited Create;
   FServices := AServices;
   FTestPrograms := TDictionary<string, TPair<string, UInt64>>.Create;
-  FTestUnits := TLspTestUnits.Create(FServices.Documents, ContextFor);
-  FFromDebug := TLspTestFromDebug.Create(FTestUnits);
+  FTestUnits := TTestUnitsProtocol.Create(FServices.Documents, ContextFor);
+  FFromDebug := TTestFromDebugProtocol.Create(FTestUnits);
 end;
 
 destructor TShellTestUnits.Destroy;
@@ -258,23 +258,27 @@ procedure TShellTestUnits.RegisterCommand(ACommands: TLspCommands);
 begin
   // Closure: Free Pascal bricht ab, wenn eine Methode einer Klasse aus einer anderen Unit als Referenz geht.
   // Nebenläufig: derselbe Weg wie die Code-Aktionen (sonst bis 9 s in der Schlange).
-  ACommands.RegisterConcurrent(TLspTestUnits.cCommand,
+  ACommands.RegisterConcurrent(TTestUnitsProtocol.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FTestUnits.Execute(AArguments);
     end);
-  ACommands.RegisterConcurrent(TLspTestFromDebug.cCommand,
+  ACommands.RegisterConcurrent(TTestFromDebugProtocol.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FFromDebug.Execute(AArguments);
     end);
-  TLspBoundaryTests.Attach(ACommands, FTestUnits);
+  ACommands.RegisterConcurrent(TBoundaryTestsProtocol.cCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TBoundaryTestsProtocol.Execute(FTestUnits, AArguments);
+    end);
 end;
 
 procedure TShellTestUnits.RegisterCaseCommands(ACommands: TLspCommands);
 var
   mReadText: TShellTestUnitReadText;
-  mReadUri: TLspTestCasesReadText;
+  mReadUri: TDocumentReadText;
 begin
   mReadText := FServices.ReadText;
   // Closure: Free Pascal bricht ab, wenn eine Methode einer Klasse aus einer anderen Unit als Referenz geht.
@@ -284,7 +288,11 @@ begin
       Result := mReadText(TDocumentUris.ToPath(AUri), AText);
     end;
   TLspTestCases.Attach(ACommands, mReadUri);
-  TLspBoundaryCases.Attach(ACommands, mReadUri);
+  TLspTestCases.AttachReading(ACommands, TBoundaryCasesProtocol.cCommand,
+    function(const AArguments: TJSONArray; const AReadText: TDocumentReadText): TJSONValue
+    begin
+      Result := TBoundaryCasesProtocol.Execute(AArguments, AReadText);
+    end, mReadUri);
   TLspMutants.Attach(ACommands, mReadUri);
 end;
 

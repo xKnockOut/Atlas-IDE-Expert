@@ -15,7 +15,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.Contract,
   Rules.CheckContext,
-  Atlas.Common.Lsp.TestUnits,
+  Atlas.Common.Editing.TestUnits.Protocol,
   Atlas.Common.Lsp.ResourceStringCommands,
   Core.SlashHost;
 
@@ -258,7 +258,7 @@ begin
     Result := False;
     Exit;
   end;
-  mTarget := TLspTestUnits.Resolve(TDocumentUris.ToPath(AUri), AText, -1, mContext);
+  mTarget := TTestUnitsProtocol.Resolve(TDocumentUris.ToPath(AUri), AText, -1, mContext);
   ATarget.UnitName := mTarget.Counterpart;
   ATarget.TestProgram := mContext.TestProgram;
   if mTarget.UnitName = '' then

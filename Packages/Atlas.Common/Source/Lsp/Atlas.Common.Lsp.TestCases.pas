@@ -20,17 +20,15 @@ interface
 uses
   System.SysUtils,
   System.JSON,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Testing.TestCases,
   Atlas.Common.Testing.TestCaseTable;
 
 type
-  /// <summary>Text des Dokuments AUri; False, wenn es nicht lesbar ist.</summary>
-  TLspTestCasesReadText = reference to function(const AUri: string; out AText: string): Boolean;
-
   /// <summary>Befehl, der Dokumente über AReadText liest.</summary>
   TLspTestCasesExecute = reference to function(const AArguments: TJSONArray;
-    const AReadText: TLspTestCasesReadText): TJSONValue;
+    const AReadText: TDocumentReadText): TJSONValue;
 
   TLspTestCases = class
   public const
@@ -39,24 +37,23 @@ type
     cFormNames: array[TTestCaseForm] of string = ('classic', 'valuesOnly', 'named');
   public
     /// <summary>Meldet den Befehl an (nebenläufig: liest nur).</summary>
-    class procedure Attach(ACommands: TLspCommands; const AReadText: TLspTestCasesReadText); static;
+    class procedure Attach(ACommands: TLspCommands; const AReadText: TDocumentReadText); static;
     /// <summary>Meldet ACommand nebenläufig an; AExecute bekommt AReadText (auch für Grenzwerte und Mutanten).
     /// </summary>
     class procedure AttachReading(ACommands: TLspCommands; const ACommand: string;
-      const AExecute: TLspTestCasesExecute; const AReadText: TLspTestCasesReadText); static;
+      const AExecute: TLspTestCasesExecute; const AReadText: TDocumentReadText); static;
     /// <summary>Tabelle als JSON. Der Aufrufer übernimmt das Objekt.</summary>
     class function TableToJson(const AUri: string; const ATable: TTestCaseTable): TJSONObject; static;
     /// <summary>Zeilen aus der Anfrage; neue übernehmen Form und Trennzeichen der letzten Zeile.</summary>
     class function RowsFromJson(const ATable: TTestCaseTable; AArray: TJSONArray): TArray<TTestCaseRow>; static;
     /// <summary>Befehl mit dem Text AText des Dokuments AArguments[0].</summary>
-    class function Execute(const AArguments: TJSONArray; const AReadText: TLspTestCasesReadText): TJSONValue; static;
+    class function Execute(const AArguments: TJSONArray; const AReadText: TDocumentReadText): TJSONValue; static;
   end;
 
 implementation
 
 uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
-  Atlas.Common.Documents.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
@@ -122,10 +119,10 @@ end;
 { TLspTestCases }
 
 class procedure TLspTestCases.AttachReading(ACommands: TLspCommands; const ACommand: string;
-  const AExecute: TLspTestCasesExecute; const AReadText: TLspTestCasesReadText);
+  const AExecute: TLspTestCasesExecute; const AReadText: TDocumentReadText);
 var
   mExecute: TLspTestCasesExecute;
-  mReadText: TLspTestCasesReadText;
+  mReadText: TDocumentReadText;
 begin
   mExecute := AExecute;
   mReadText := AReadText;
@@ -136,7 +133,7 @@ begin
     end);
 end;
 
-class procedure TLspTestCases.Attach(ACommands: TLspCommands; const AReadText: TLspTestCasesReadText);
+class procedure TLspTestCases.Attach(ACommands: TLspCommands; const AReadText: TDocumentReadText);
 begin
   AttachReading(ACommands, cCommand, Execute, AReadText);
 end;
@@ -250,7 +247,7 @@ begin
   end;
 end;
 
-class function TLspTestCases.Execute(const AArguments: TJSONArray; const AReadText: TLspTestCasesReadText): TJSONValue;
+class function TLspTestCases.Execute(const AArguments: TJSONArray; const AReadText: TDocumentReadText): TJSONValue;
 var
   mUri, mText: string;
   mLine: Integer;

@@ -116,8 +116,6 @@
         "Atlas.Common: Semantics < Mcp"
       ],
       "knownEdges": [
-        "Atlas.Common.Lsp.BoundaryCases -> Atlas.Common.Editing.BoundaryCases.Report",
-        "Atlas.Common.Lsp.BoundaryTests -> Atlas.Common.Editing.TestDrafts",
         "Atlas.Common.Lsp.Formatting -> Atlas.Common.Editing.Contract",
         "Atlas.Common.Lsp.Formatting -> Atlas.Common.Editing.EditorConfig",
         "Atlas.Common.Lsp.Formatting -> Atlas.Common.Editing.Formatter",
@@ -133,11 +131,6 @@
         "Atlas.Common.Lsp.SlashMenu -> Atlas.Common.Editing.Contract",
         "Atlas.Common.Lsp.SlashMenu -> Atlas.Common.Editing.SlashCommands",
         "Atlas.Common.Lsp.SlashMenu -> Atlas.Common.Editing.SlashMenu",
-        "Atlas.Common.Lsp.TestFromDebug -> Atlas.Common.Editing.TestDrafts",
-        "Atlas.Common.Lsp.TestFromDebug -> Atlas.Common.Editing.TestFromDebug",
-        "Atlas.Common.Lsp.TestUnits -> Atlas.Common.Editing.TestDrafts",
-        "Atlas.Common.Lsp.TestUnits -> Atlas.Common.Editing.TestUnits",
-        "Atlas.Common.Lsp.TestUnits -> Atlas.Common.Editing.UnitTemplates",
         "Atlas.Common.Lsp.Unwrap -> Atlas.Common.Editing.Unwrap",
         "Atlas.Common.Lsp.Unwrap -> Atlas.Common.Editing.WithResolution",
         "Atlas.Common.Lsp.WorkspaceSymbols -> Atlas.Common.Editing.Bookmarks"
