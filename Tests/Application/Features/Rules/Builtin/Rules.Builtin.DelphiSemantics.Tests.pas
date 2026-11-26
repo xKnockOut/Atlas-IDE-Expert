@@ -156,7 +156,8 @@ begin
     'function Ohne(const S: string): string;', 'var', '  I, N: Integer;', 'begin', '  SetLength(Result, Length(S));',
     '  N := 0;', '  for I := 1 to Length(S) do', '    if S[I] <> ''&'' then', '    begin', '      Inc(N);',
     '      Result[N] := S[I];', '    end;', '  SetLength(Result, N);', '  if (N > 0) and (Result[N] = ''.'') then',
-    '    SetLength(Result, N - 1);', 'end;']));
+    '    SetLength(Result, N - 1);', '  N := Length(Result);', '  if Copy(Result, N - 2, 3) = ''...'' then',
+    '    SetLength(Result, N - 3);', 'end;']));
   // Ohne Zähler bleibt das Lesen nur teilweise geschriebener Elemente ein Befund.
   TRuleAssert.Reports(TManagedResultReadRule.Create, UnitWith(['function Teil(const A: TArray<Integer>): ' +
     'TArray<Boolean>;', 'var', '  I, N: Integer;', 'begin', '  SetLength(Result, Length(A));', '  N := Length(A);',

@@ -410,11 +410,12 @@ end;
 /// <summary>Füllt ARoutine Result dicht von vorn? Muster: SetLength(Result, Anzahl), Elemente schreiben und dabei
 /// einen Zähler N mit Inc hochzählen, am Ende SetLength(Result, N) (Doppelte auslassen, Hotkeys entfernen,
 /// einsortieren). Elemente, die sie liest (Result[J] mit J &lt; N, Result[N] nach dem Kürzen), sind dann ihre
-/// eigenen Werte, nicht die des Aufrufers.</summary>
-function FillsElements(ARoutine: TSyntaxNode): Boolean;
+/// eigenen Werte, nicht die des Aufrufers. ACounter: der Zähler N.</summary>
+function FillsElements(ARoutine: TSyntaxNode; out ACounter: string): Boolean;
 var
   mCall: TSyntaxNode;
 begin
+  ACounter := '';
   if not WritesElement(ARoutine) then
   begin
     Exit(False);
@@ -424,6 +425,7 @@ begin
     if (mCall.ChildCount = 3) and IsName(mCall[0], 'SetLength') and IsName(mCall[1], 'Result') and
       (mCall[2].Kind = TSyntaxKind.Identifier) and CountsUp(ARoutine, mCall[2].Name) then
     begin
+      ACounter := mCall[2].Name;
       Exit(True);
     end;
   end;
@@ -442,6 +444,8 @@ type
     State: TResultState;
     /// <summary>Die Funktion füllt Result dicht von vorn (FillsElements).</summary>
     FillsItself: Boolean;
+    /// <summary>Zähler der gefüllten Elemente; SetLength(Result, Zähler) kürzt auf die eigenen Werte.</summary>
+    FillCounter: string;
     Sized: TSyntaxNode;
     Reader: TSyntaxNode;
     /// <summary>Wertet das nächste Vorkommen AResult aus; False = fertig.</summary>
@@ -493,6 +497,12 @@ begin
   begin
     // SetLength(Result, 0) leert wie Result := nil bzw. ''.
     if (State = TResultState.Unset) and (ACall.ChildCount = 3) and IsZero(ACall[2]) then
+    begin
+      State := TResultState.Done;
+      Exit(False);
+    end;
+    // Kürzen auf die selbst geschriebenen Elemente: Danach stammt kein Wert mehr vom Aufrufer.
+    if FillsItself and (ACall.ChildCount = 3) and IsName(ACall[2], FillCounter) then
     begin
       State := TResultState.Done;
       Exit(False);
@@ -579,7 +589,7 @@ begin
       Continue;
     end;
     mScan := Default(TResultScan);
-    mScan.FillsItself := FillsElements(mRoutine);
+    mScan.FillsItself := FillsElements(mRoutine, mScan.FillCounter);
     for mResult in BodyNodes(mRoutine, [TSyntaxKind.Identifier]) do
     begin
       if IsName(mResult, 'Result') and not mScan.Step(mResult) then
