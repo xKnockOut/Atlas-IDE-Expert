@@ -43,6 +43,9 @@ type
     procedure PropertySetterReachesAssignments;
     [Test]
     procedure PropertyAssignmentAndReadField;
+    /// <summary>Neu deklarierte Property ohne Zugriffe (property Name;): Setter und Feld der geerbten.</summary>
+    [Test]
+    procedure RedeclaredPropertyUsesInheritedAccessors;
     [Test]
     procedure FieldWrittenBySetter;
     [Test]
@@ -88,6 +91,7 @@ const
     '  public'#10 +
     '    property Name: string read FName write SetName;'#10 +
     '  end;'#10 +
+
     'function Summe(A: Integer; var B: Integer; out C: Integer): Integer;'#10 +
     'procedure Lies(out AWert: Integer);'#10 +
     'implementation'#10 +
@@ -123,6 +127,7 @@ const
     'var'#10 +
     '  Wert, Neben, Ergebnis, Ziel, Zaehler: Integer;'#10 +
     '  Kunde: TKunde;'#10 +
+
     '  P: ^Integer;'#10 +
     'begin'#10 +
     '  Wert := 1;'#10 +
@@ -131,6 +136,7 @@ const
     '  Ergebnis := Summe(Wert, Neben, Ziel);'#10 +
     '  Lies(Zaehler);'#10 +
     '  Kunde.Name := ''Meier'';'#10 +
+
     '  P := @Wert;'#10 +
     '  Move(Wert, Zaehler, 4);'#10 +
     '  Zaehler := Zaehler + 1;'#10 +
@@ -144,12 +150,21 @@ const
     'unit Pruefung;'#10 +
     'interface'#10 +
     'uses DUnitX.TestFramework, Daten;'#10 +
+    'type'#10 +
+    '  TStammkunde = class(TKunde)'#10 +
+    '  published'#10 +
+    '    property Name;'#10 +
+    '  end;'#10 +
     'implementation'#10 +
     'procedure Probe;'#10 +
     'var'#10 +
     '  N, Z: Integer;'#10 +
     'begin'#10 +
     '  Summe(7, N, Z);'#10 +
+    'end;'#10 +
+    'procedure Stamm(S: TStammkunde);'#10 +
+    'begin'#10 +
+    '  S.Name := ''Schulz'';'#10 +
     'end;'#10 +
     'end.';
 
@@ -346,6 +361,12 @@ procedure TLspDataFlowTests.PropertyAssignmentAndReadField;
 begin
   Assert.AreEqual('assignment[''Meier''](SetName)!lit; propertyRead[read FName]<-FName',
     Describe(Flow(cHauptFile, 'Name :=', TDataFlowDirection.Sources)));
+end;
+
+procedure TLspDataFlowTests.RedeclaredPropertyUsesInheritedAccessors;
+begin
+  Assert.AreEqual('assignment[''Schulz''](SetName)!lit; propertyRead[read FName]<-FName',
+    Describe(Flow(cPruefFile, 'Name := ''Schulz''', TDataFlowDirection.Sources)));
 end;
 
 procedure TLspDataFlowTests.FieldWrittenBySetter;
