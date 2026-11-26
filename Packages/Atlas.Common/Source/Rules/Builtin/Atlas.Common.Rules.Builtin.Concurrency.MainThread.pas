@@ -452,6 +452,10 @@ type
     function MentionsProcessMessages(ANode: TSyntaxNode): Boolean;
     function Where(ARoutine: TSyntaxNode): string;
     function IsBlockingCall(ACallee: TSyntaxNode): Boolean;
+    function IsFinishedOf(ANode: TSyntaxNode; const AReceiver: string): Boolean;
+    procedure FinishedMentions(ACondition: TSyntaxNode; const AReceiver: string; out ANegated, APlain: Boolean);
+    class function MentionsExit(ANode: TSyntaxNode): Boolean; static;
+    function FinishedKnown(ACallee, ARoutine: TSyntaxNode): Boolean;
     function TimeoutOf(const AName: string; AArgs: TSyntaxNode; out ATimeout: Integer): Boolean;
     procedure ReportBlocking(ACallee, AArgs, ARoutine: TSyntaxNode);
     procedure CheckCall(ACallee, AArgs: TSyntaxNode; ARoutine, ALoop: TSyntaxNode);
@@ -568,6 +572,83 @@ begin
   Result := Result and InList(FCalls, ACallee.Name);
 end;
 
+// Ist ANode AReceiver.Finished (Leerraum zählt nicht)?
+function TBlockingCallInMainThreadScan.IsFinishedOf(ANode: TSyntaxNode; const AReceiver: string): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.MemberAccess) and SameText(ANode.Name, 'Finished') and
+    (ANode.ChildCount = 1) and SameText(StringReplace(SourceText(FContext.Text, ANode[0]), ' ', '', [rfReplaceAll]),
+    AReceiver);
+end;
+
+// Ist der Thread vor WaitFor (ACallee) schon fertig? Ja hinter "if … not X.Finished … then … Exit" in derselben
+// Routine und in "if … X.Finished … then X.WaitFor": WaitFor wartet dann nicht mehr, sondern holt nur den
+// Ausgang ab (Abfrage per Timer).
+function TBlockingCallInMainThreadScan.FinishedKnown(ACallee, ARoutine: TSyntaxNode): Boolean;
+var
+  mNode: TSyntaxNode;
+  mReceiver: string;
+  mInThen, mNegated, mPlain: Boolean;
+begin
+  Result := False;
+  if (ACallee.Kind <> TSyntaxKind.MemberAccess) or (ACallee.ChildCount <> 1) then
+  begin
+    Exit;
+  end;
+  mReceiver := StringReplace(SourceText(FContext.Text, ACallee[0]), ' ', '', [rfReplaceAll]);
+  for mNode in TSyntaxNode.PreOrder(ARoutine) do
+  begin
+    if (mNode.Kind <> TSyntaxKind.IfStatement) or (mNode.ChildCount < 2) or
+      (mNode.StartOffset >= ACallee.StartOffset) then
+    begin
+      Continue;
+    end;
+    FinishedMentions(mNode[0], mReceiver, mNegated, mPlain);
+    mInThen := (ACallee.StartOffset >= mNode[1].StartOffset) and (ACallee.EndOffset <= mNode[1].EndOffset);
+    if (mPlain and mInThen) or (mNegated and (ACallee.StartOffset >= mNode.EndOffset) and MentionsExit(mNode[1])) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+// Fragt die Bedingung ACondition "not AReceiver.Finished" (ANegated) bzw. "AReceiver.Finished" ohne not (APlain) ab?
+procedure TBlockingCallInMainThreadScan.FinishedMentions(ACondition: TSyntaxNode; const AReceiver: string;
+  out ANegated, APlain: Boolean);
+var
+  mInner: TSyntaxNode;
+begin
+  ANegated := False;
+  APlain := False;
+  for mInner in TSyntaxNode.PreOrder(ACondition) do
+  begin
+    if (mInner.Kind = TSyntaxKind.UnaryExpr) and SameText(mInner.Name, 'not') and (mInner.ChildCount = 1) and
+      IsFinishedOf(mInner[0], AReceiver) then
+    begin
+      ANegated := True;
+    end
+    else if IsFinishedOf(mInner, AReceiver) and not ((mInner.Parent.Kind = TSyntaxKind.UnaryExpr) and
+      SameText(mInner.Parent.Name, 'not')) then
+    begin
+      APlain := True;
+    end;
+  end;
+end;
+
+// Steht in ANode ein Exit?
+class function TBlockingCallInMainThreadScan.MentionsExit(ANode: TSyntaxNode): Boolean;
+var
+  mInner: TSyntaxNode;
+begin
+  for mInner in TSyntaxNode.PreOrder(ANode) do
+  begin
+    if (mInner.Kind = TSyntaxKind.Identifier) and SameText(mInner.Name, 'Exit') then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 // Timeout des Aufrufs AName mit den Argumenten AArgs (MaxInt ohne Timeout-Argument); False bei Sleep ohne
 // Argument.
 function TBlockingCallInMainThreadScan.TimeoutOf(const AName: string; AArgs: TSyntaxNode;
@@ -600,6 +681,10 @@ begin
   end;
   if SameText(ACallee.Name, 'WaitFor') and ((AArgs = nil) or (AArgs.ChildCount = 1)) and (mReceiver <> '') then
   begin
+    if FinishedKnown(ACallee, ARoutine) then
+    begin
+      Exit;
+    end;
     FReport.Add(NameRange(ACallee), cTexts[TConcurrencyMainThreadText.WaitForSync].Fmt([Where(ARoutine), mReceiver]) +
       cTexts[TConcurrencyMainThreadText.BlockingCallAdvice].Text, TRuleConfidence.Medium);
     Exit;

@@ -912,7 +912,32 @@ begin
   end;
 end;
 
-/// <summary>Steht ANode in einem if oder while, dessen Bedingung IsConsole nennt?</summary>
+/// <summary>Verlässt ein früheres "if … IsConsole … then Exit" der Routine ARoutine vor ANode die Routine
+/// (if not IsConsole then Exit; WriteLn(S))?</summary>
+function ExitsWithoutConsole(ARoutine, ANode: TSyntaxNode): Boolean;
+var
+  mNode, mInner: TSyntaxNode;
+begin
+  Result := False;
+  for mNode in TSyntaxNode.PreOrder(ARoutine) do
+  begin
+    if (mNode.Kind <> TSyntaxKind.IfStatement) or (mNode.ChildCount < 2) or
+      (mNode.EndOffset > ANode.StartOffset) or not MentionsIsConsole(mNode[0]) then
+    begin
+      Continue;
+    end;
+    for mInner in TSyntaxNode.PreOrder(mNode[1]) do
+    begin
+      if (mInner.Kind = TSyntaxKind.Identifier) and SameText(mInner.Name, 'Exit') then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Steht ANode in einem if oder while, dessen Bedingung IsConsole nennt, oder hinter einem
+/// "if not IsConsole then Exit" derselben Routine?</summary>
 function Guarded(ANode: TSyntaxNode): Boolean;
 var
   mParent: TSyntaxNode;
@@ -923,8 +948,26 @@ begin
   begin
     Result := (mParent.Kind in [TSyntaxKind.IfStatement, TSyntaxKind.WhileStatement]) and (mParent.ChildCount > 0) and
       MentionsIsConsole(mParent[0]);
+    Result := Result or ((mParent.Kind = TSyntaxKind.RoutineDecl) and ExitsWithoutConsole(mParent, ANode));
     mParent := mParent.Parent;
   end;
+end;
+
+/// <summary>Legt das Programm selbst eine Konsole an oder hängt sich an die des Aufrufers (AllocConsole,
+/// AttachConsole)? Dann ist die Ausgabe gewollt und hat ein Ziel.</summary>
+function OpensConsole(const ATokens: TTokens): Boolean;
+var
+  mToken: TPascalToken;
+begin
+  for mToken in ATokens do
+  begin
+    if (mToken.Kind = TPascalTokenKind.Identifier) and (SameText(mToken.Text, 'AllocConsole') or
+      SameText(mToken.Text, 'AttachConsole')) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 // Innerhalb einer Methode: Read und Write können Methoden der Klasse sein (TStream.Read).
@@ -1304,6 +1347,10 @@ end;
 procedure TConsoleCallScan.Run;
 begin
   FTokens := FContext.Tree.Tokens;
+  if OpensConsole(FTokens) then
+  begin
+    Exit;
+  end;
   FReplacementText := TWritelnInGuiAppRule.Replacement(FContext.Options);
   FDeclared := nil;
   CollectDeclared(FContext.Tree.Root);
