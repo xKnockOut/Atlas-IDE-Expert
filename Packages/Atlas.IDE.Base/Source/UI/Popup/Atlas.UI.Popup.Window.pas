@@ -57,12 +57,17 @@ type
       /// <summary>CreateWnd hat entschieden, wer die Ecken rundet; vorher keine Region setzen.</summary>
       Known: Boolean;
     end;
+
+    /// <summary>Farben und Rahmen des Fensters.</summary>
+    TLook = record
+      Colors: TAtlasColors;
+      Border: TAtlasColor;
+      /// <summary>Farben über Colors gesetzt; sonst folgt das Fenster beim Zeigen dem Themendienst.</summary>
+      Own: Boolean;
+    end;
   private
-    FColors: TAtlasColors;
+    FLook: TLook;
     FUIFont: TFont;
-    FBorderColor: TAtlasColor;
-    /// <summary>Farben über Colors gesetzt; sonst folgt das Fenster beim Zeigen dem Themendienst.</summary>
-    FOwnColors: Boolean;
     FCorners: TCorners;
     FPPI: Integer;
     FAccess: TAccess;
@@ -74,8 +79,6 @@ type
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
     procedure SetColors(const AValue: TAtlasColors);
     procedure SetBorderColor(AValue: TAtlasColor);
-    /// <summary>Ohne eigene Farben die des Themendienstes übernehmen; ein abweichender Rahmen bleibt.</summary>
-    procedure FollowTheme;
     procedure UpdateCorners;
   protected
     procedure CreateParams(var Params: TCreateParams); override;
@@ -114,9 +117,9 @@ type
     function IsShown: Boolean;
     /// <summary>Arbeitsbereich des Monitors, auf dem APoint liegt.</summary>
     class function WorkAreaAt(const APoint: TPoint): TRect; static;
-    property Colors: TAtlasColors read FColors write SetColors;
+    property Colors: TAtlasColors read FLook.Colors write SetColors;
     /// <summary>Rahmenfarbe; Standard Akzent, im Fehlerzustand des Hints Fehlerfarbe.</summary>
-    property BorderColor: TAtlasColor read FBorderColor write SetBorderColor;
+    property BorderColor: TAtlasColor read FLook.Border write SetBorderColor;
     /// <summary>Wirksame Pixel je Zoll: Monitor-DPI mal Zoom; Schriften in AFontName/AFontSize (Punkt).</summary>
     procedure SetScaling(AMonitorPPI: Integer; AZoom: Double; const AFontName: string; AFontSize: Integer);
     /// <summary>Pixel je Zoll des Monitors, auf dem APoint liegt.</summary>
@@ -154,6 +157,25 @@ begin
   Result := Atlas.UI.Popup.Draw.ToColor(AColor);
 end;
 
+/// <summary>Ohne eigene Farben die des Themendienstes auf AWindow übernehmen; ein abweichender Rahmen
+/// (Fehlerzustand) bleibt.</summary>
+procedure FollowTheme(AWindow: TAtlasPopupWindow);
+var
+  mColors: TAtlasColors;
+begin
+  if AWindow.FLook.Own then
+  begin
+    Exit;
+  end;
+  mColors := TAtlasUiTheme.Colors;
+  if AWindow.FLook.Border = AWindow.FLook.Colors.Accent then
+  begin
+    AWindow.FLook.Border := mColors.Accent;
+  end;
+  AWindow.FLook.Colors := mColors;
+  AWindow.UpdateCorners;
+end;
+
 { TAtlasPopupWindow }
 
 constructor TAtlasPopupWindow.Create(AOwner: TComponent);
@@ -164,8 +186,8 @@ begin
   Visible := False;
   FUIFont := TFont.Create;
   FPPI := Screen.PixelsPerInch;
-  FColors := TAtlasUiTheme.Colors;
-  FBorderColor := FColors.Accent;
+  FLook.Colors := TAtlasUiTheme.Colors;
+  FLook.Border := FLook.Colors.Accent;
   Perform(CM_FONTCHANGED, 0, 0);
 end;
 
@@ -177,37 +199,20 @@ end;
 
 procedure TAtlasPopupWindow.SetColors(const AValue: TAtlasColors);
 begin
-  FOwnColors := True;
-  FColors := AValue;
-  FBorderColor := FColors.Accent;
+  FLook.Own := True;
+  FLook.Colors := AValue;
+  FLook.Border := AValue.Accent;
   UpdateCorners;
   Invalidate;
 end;
 
-procedure TAtlasPopupWindow.FollowTheme;
-var
-  mColors: TAtlasColors;
-begin
-  if FOwnColors then
-  begin
-    Exit;
-  end;
-  mColors := TAtlasUiTheme.Colors;
-  if FBorderColor = FColors.Accent then
-  begin
-    FBorderColor := mColors.Accent;
-  end;
-  FColors := mColors;
-  UpdateCorners;
-end;
-
 procedure TAtlasPopupWindow.SetBorderColor(AValue: TAtlasColor);
 begin
-  if FBorderColor = AValue then
+  if FLook.Border = AValue then
   begin
     Exit;
   end;
-  FBorderColor := AValue;
+  FLook.Border := AValue;
   UpdateCorners;
   Invalidate;
 end;
@@ -335,7 +340,7 @@ begin
   end;
   if FCorners.ByWindowManager then
   begin
-    mBorder := DWORD(FBorderColor);
+    mBorder := DWORD(FLook.Border);
     DwmSetWindowAttribute(Handle, cDWMWA_BORDER_COLOR, @mBorder, SizeOf(mBorder));
   end
   else
@@ -353,7 +358,7 @@ begin
   begin
     Exit;
   end;
-  FrameRounded(ClientRect, FBorderColor, cCornerRadius);
+  FrameRounded(ClientRect, FLook.Border, cCornerRadius);
 end;
 
 function TAtlasPopupWindow.Scale(AValue: Integer): Integer;
@@ -419,7 +424,7 @@ end;
 procedure TAtlasPopupWindow.ShowAt(const ABounds: TRect);
 begin
   HandleNeeded;
-  FollowTheme;
+  FollowTheme(Self);
   // Erst Größe, dann ohne Aktivierung zeigen; Visible bleibt False wie bei THintWindow.
   SetBounds(ABounds.Left, ABounds.Top, ABounds.Width, ABounds.Height);
   // SWP_NOOWNERZORDER: Ohne das sortiert Windows die ganze Gruppe der Fenster mit demselben Owner (IDE-
