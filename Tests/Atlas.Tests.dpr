@@ -118,6 +118,7 @@ uses
   Atlas.Common.Index.UsageCounts.Tests in 'Common\Index\Atlas.Common.Index.UsageCounts.Tests.pas',
   Atlas.Common.Index.Extractor.Conditions.Tests in 'Common\Index\Atlas.Common.Index.Extractor.Conditions.Tests.pas',
   Atlas.Common.Index.Extractor.InlineRefs.Tests in 'Common\Index\Atlas.Common.Index.Extractor.InlineRefs.Tests.pas',
+  Atlas.Common.Index.Extractor.LocalRoutines.Tests in 'Common\Index\Atlas.Common.Index.Extractor.LocalRoutines.Tests.pas',
   Atlas.Common.Index.Extractor.Routines.Tests in 'Common\Index\Atlas.Common.Index.Extractor.Routines.Tests.pas',
   Atlas.Common.Index.Extractor.ParamOwnership.Tests in 'Common\Index\Atlas.Common.Index.Extractor.ParamOwnership.Tests.pas',
   Atlas.Common.Index.Extractor.Patterns.Tests in 'Common\Index\Atlas.Common.Index.Extractor.Patterns.Tests.pas',

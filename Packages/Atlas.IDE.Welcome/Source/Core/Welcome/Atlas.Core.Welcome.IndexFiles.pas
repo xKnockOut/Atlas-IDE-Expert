@@ -51,7 +51,8 @@ type
     // die Willkommensseite fand deshalb keinen Cache. 30: inline-Routinen ohne Verweise (#1381).
     // 31: Typargumente je Vorfahr. 33: Folgemuster im Unit-Kopf (#1890). 34: Mitglied in Typverweisen der
     // InlineRefs (#2309). 35: Mitglieder von Parametern in den InlineRefs (#2309). 36: Besitz je Parameter.
-    cFormatVersion = 36;
+    // 37: lokale Routinen der Projekt-Units.
+    cFormatVersion = 37;
     cIndexFolder = 'Index';
     cLibraryFolder = 'Bibliothek';
   private
@@ -193,6 +194,7 @@ begin
   SkipPatterns(AReader);
   AReader.ReadVar; // Symbolzahl
   AReader.ReadVar; // nicht verfügbar
+  AReader.ReadVar; // lokale Routinen
   AReader.Skip(AReader.ReadCount); // Symbolblock
   AReader.ReadVar; // Verwendungszahl
   AReader.Skip(AReader.ReadCount); // Verwendungsblock

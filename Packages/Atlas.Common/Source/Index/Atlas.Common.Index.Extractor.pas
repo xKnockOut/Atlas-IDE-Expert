@@ -2,7 +2,9 @@
 
 // Liest aus dem Syntaxbaum einer Unit die Einträge für den Symbolindex:
 // Typen mit Mitgliedern und Vorfahren, Konstanten, Variablen, Routinen und
-// die uses-Listen. Lokale Deklarationen in Routinen gehören nicht dazu.
+// die uses-Listen. Lokale Deklarationen in Routinen gehören nicht dazu; nur
+// lokale Routinen der Projekt-Units stehen getrennt in LocalRoutines
+// (Atlas.Common.Index.Extractor.LocalRoutines, für die Projekt-Symbolsuche).
 //
 // Vor dem Parsen werden die inaktiven Zweige der bedingten Kompilierung
 // durch Leerzeichen ersetzt (Zeilenumbrüche bleiben), damit nur aktive
@@ -110,7 +112,8 @@ type
     class function Extract(ATree: TSyntaxTree; const AFileName: string): TUnitIndex; static;
     /// <summary>Parst AText mit den aktiven Symbolen ADefines und liefert den Eintrag. Mit AResolver werden
     /// $I-Dateien gelesen (#264): ihre $DEFINEs gelten, Includes listet sie auf. Mit AUsages kommen die
-    /// Verwendungen der Bezeichner dazu (#492), mit APatterns die Folgemuster der Anweisungen (#1890).</summary>
+    /// Verwendungen der Bezeichner dazu (#492), mit APatterns (Projekt-Units) die Folgemuster der Anweisungen
+    /// (#1890) und die lokalen Routinen.</summary>
     class function ExtractText(const AText, AFileName: string; const ADefines: TArray<string>;
       const AResolver: TIncludeResolver; AUsages, APatterns: Boolean): TUnitIndex; overload; static;
     /// <summary>Wie oben mit APatterns = False.</summary>
@@ -147,6 +150,7 @@ uses
   Atlas.Common.Index.Extractor.InlineRefs,
   Atlas.Common.Index.Extractor.ParamOwnership,
   Atlas.Common.Index.Extractor.Patterns,
+  Atlas.Common.Index.Extractor.LocalRoutines,
   Atlas.Text.Names,
   Atlas.Common.Pascal.SyntaxNodes;
 
@@ -1364,6 +1368,7 @@ begin
     if TExtractExtra.Patterns in AExtras then
     begin
       Result.Patterns := TIndexFollowPatterns.Collect(mTree);
+      Result.LocalRoutines := TIndexLocalRoutines.Collect(mTree);
     end;
     if Assigned(AResolver) and (Length(AStack) <= cMaxIncludeDepth) then
     begin

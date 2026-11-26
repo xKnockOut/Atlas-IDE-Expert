@@ -158,6 +158,7 @@
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.Conditions.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.InlineRefs.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.LocalRoutines.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.ParamOwnership.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.Routines.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.Patterns.pas"/>
