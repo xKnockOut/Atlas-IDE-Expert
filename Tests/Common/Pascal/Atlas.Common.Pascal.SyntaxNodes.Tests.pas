@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Pascal.SyntaxNodes.Tests;
 
 // Tests der gemeinsamen Abfragen am Syntaxbaum (Atlas.Common.Pascal.SyntaxNodes): Namen von Punktketten,
-// Klammern, umgebende Knoten, Kinder an einem Offset, Direktiven, Zugriffswurzeln und Knotensuche.
+// Klammern, umgebende Knoten, Kinder an einem Offset, Direktiven, Zugriffswurzeln, Knotensuche, Operandenketten
+// und Quelltext eines Knotens.
 
 interface
 
@@ -32,6 +33,8 @@ type
     procedure RoutinePathOfNestedRoutine;
     [Test]
     procedure BlockPathAndOneLineText;
+    [Test]
+    procedure OperandChainsAndSource;
   end;
 
 implementation
@@ -281,6 +284,35 @@ begin
     Assert.AreEqual('procedure…', TSyntaxNodes.OneLineText(cSource, mInner, 10));
     Assert.AreEqual('', TSyntaxNodes.OneLineText(cSource, nil, 10));
     mPath := nil;
+  finally
+    mTree.Free;
+  end;
+end;
+
+
+procedure TSyntaxNodesTests.OperandChainsAndSource;
+const
+  cChains = 'unit V;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  S := (A + B) + C;'#10 +
+    '  T := X * Y;'#10'end;'#10'end.';
+var
+  mTree: TSyntaxTree;
+  mPlus, mTimes: TSyntaxNode;
+begin
+  mTree := TPascalParser.Parse(cChains);
+  try
+    mPlus := Find(mTree.Root, TSyntaxKind.BinaryExpr, '+');
+    mTimes := Find(mTree.Root, TSyntaxKind.BinaryExpr, '*');
+    Assert.IsTrue(TSyntaxNodes.IsBinary(mPlus, '+'));
+    Assert.IsFalse(TSyntaxNodes.IsBinary(mPlus, '*'));
+    Assert.IsFalse(TSyntaxNodes.IsBinary(nil, '+'));
+    Assert.AreEqual('(A + B) + C', TSyntaxNodes.SourceOf(cChains, mPlus));
+    Assert.AreEqual('', TSyntaxNodes.SourceOf(cChains, nil));
+    Assert.AreEqual('A', TSyntaxNodes.SourceOf(cChains, TSyntaxNodes.FirstOperand(mPlus, '+')));
+    Assert.AreEqual('C', TSyntaxNodes.SourceOf(cChains, TSyntaxNodes.LastOperand(mPlus, '+')));
+    Assert.AreEqual('B', TSyntaxNodes.SourceOf(cChains, TSyntaxNodes.LastOperand(mPlus[0], '+')));
+    // Ein anderer Operator beendet die Kette: der Knoten selbst.
+    Assert.AreSame(mTimes, TSyntaxNodes.FirstOperand(mTimes, '+'));
+    Assert.AreSame(mTimes, TSyntaxNodes.LastOperand(mTimes, '+'));
   finally
     mTree.Free;
   end;

@@ -134,6 +134,8 @@
         <DCCReference Include="Source\Features\Rules\Builtin\Rules.Builtin.FormFields.pas"/>
         <DCCReference Include="Source\Features\Rules\Builtin\Rules.Builtin.FormReferences.pas"/>
         <DCCReference Include="Source\Features\Rules\Builtin\Rules.Builtin.FormatArgs.pas"/>
+        <DCCReference Include="Source\Features\Rules\Builtin\Rules.Builtin.Texts.Shared.pas"/>
+        <DCCReference Include="Source\Features\Rules\Builtin\Rules.Builtin.Texts.Concat.pas"/>
         <DCCReference Include="Source\Features\Rules\Builtin\Rules.Builtin.Forms.pas"/>
         <DCCReference Include="Source\Features\Rules\Builtin\Rules.Builtin.ForwardDeclarations.pas"/>
         <DCCReference Include="Source\Features\Rules\Builtin\Rules.Builtin.FreeFields.pas"/>

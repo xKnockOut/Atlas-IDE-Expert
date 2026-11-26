@@ -413,6 +413,8 @@ Rules.Builtin.CompilerTraps.Rtl.Tests
 Rules.Builtin.CompilerTraps.Scopes.Tests
 Rules.Builtin.CompilerTraps.MethodRefs.Tests
 Rules.Builtin.LineBreaks.Tests
+Rules.Builtin.Texts.Concat.Tests
+Rules.Builtin.Texts.Shared.Tests
 Rules.Builtin.Components.Tests
 Rules.Builtin.Components.Model.Tests
 Rules.Builtin.Concurrency.Syntax.Tests
