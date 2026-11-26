@@ -255,8 +255,6 @@ begin
   Assert.AreEqual('["file:///C:/P/A.pas",12]', TAtlasStepInto.Arguments('file:///C:/P/A.pas', 12));
   Assert.AreEqual('TKunde', TAtlasStepInto.Unquote('''TKunde'''));
   Assert.AreEqual('TKunde', TAtlasStepInto.Unquote(' TKunde '));
-  Assert.AreEqual('TInnen', TAtlasStepInto.ShortName('Unit.TAussen.TInnen'));
-  Assert.AreEqual('TList', TAtlasStepInto.ShortName('TList<Integer>'));
   Assert.IsTrue(TAtlasStepInto.IsLibraryFile('C:\RAD' + PathDelim + 'source' + PathDelim + 'rtl' + PathDelim +
     'System.pas', 'C:\RAD'));
   Assert.IsFalse(TAtlasStepInto.IsLibraryFile('C:\P\A.pas', 'C:\RAD'));

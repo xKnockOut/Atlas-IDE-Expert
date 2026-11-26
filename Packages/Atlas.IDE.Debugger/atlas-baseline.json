@@ -1,7 +1,4 @@
 {
   "version": 1,
-  "findings": [
-    {"path": "Source/Core/Debug/Atlas.Core.Debug.DisplayRules.pas", "rule": "duplicate-routine-body", "fingerprint": "827d5c23", "count": 1, "routine": "TAtlasDisplayRules.ShortName", "context": "80ecc303"},
-    {"path": "Source/Core/Debug/Atlas.Core.Debug.StepInto.pas", "rule": "duplicate-routine-body", "fingerprint": "f735411e", "count": 1, "routine": "TAtlasStepInto.ShortName", "context": "80ecc303"}
-  ]
+  "findings": []
 }

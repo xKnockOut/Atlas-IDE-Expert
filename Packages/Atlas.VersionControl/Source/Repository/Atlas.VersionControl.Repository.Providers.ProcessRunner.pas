@@ -30,7 +30,6 @@ type
   private
     FAllowMainThread: Boolean;
     FCancelled: TFunc<Boolean>;
-    function IsCancelled: Boolean;
     /// <summary>True, wenn gar nicht gestartet wird (Hauptthread, Programm fehlt, Abbruch); AOutcome sagt
     /// warum.</summary>
     function Refused(const AExecutable: string; out AOutcome: TAtlasVcsOutcome): Boolean;
@@ -53,7 +52,8 @@ uses
   System.Generics.Defaults,
   Atlas.WinBase.Process,
   Atlas.Text.CommandLine,
-  Atlas.VersionControl.Repository.ServerAccess;
+  Atlas.VersionControl.Repository.ServerAccess,
+  Atlas.VersionControl.Repository.Tools;
 
 const
   cSliceMs = 10;
@@ -202,16 +202,6 @@ begin
   FCancelled := ACancelled;
 end;
 
-function TAtlasVcsProcessRunner.IsCancelled: Boolean;
-begin
-  // CheckTerminated wirft im Hauptthread und in fremden Threads; dort gibt es nichts abzubrechen.
-  Result := not TThread.CurrentThread.ExternalThread and TThread.CheckTerminated;
-  if not Result and Assigned(FCancelled) then
-  begin
-    Result := FCancelled();
-  end;
-end;
-
 function TAtlasVcsProcessRunner.Refused(const AExecutable: string; out AOutcome: TAtlasVcsOutcome): Boolean;
 begin
   AOutcome := TAtlasVcsOutcome.Ok;
@@ -223,7 +213,7 @@ begin
   begin
     AOutcome := TAtlasVcsOutcome.ToolMissing;
   end
-  else if IsCancelled then
+  else if TAtlasVcsCancellation.Requested(FCancelled) then
   begin
     AOutcome := TAtlasVcsOutcome.Cancelled;
   end;
@@ -272,7 +262,7 @@ end;
 function Interruption(ARunner: TAtlasVcsProcessRunner; ADeadline: UInt64): TAtlasVcsOutcome;
 begin
   Result := TAtlasVcsOutcome.Ok;
-  if ARunner.IsCancelled then
+  if TAtlasVcsCancellation.Requested(ARunner.FCancelled) then
   begin
     Result := TAtlasVcsOutcome.Cancelled;
   end
