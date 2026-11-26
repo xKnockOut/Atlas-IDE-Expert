@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.PropertyFromAccessors.Tests;
+﻿unit Atlas.Common.Editing.PropertyFromAccessors.Protocol.Tests;
 
 // Tests für „Property aus Getter und Setter“ über das Protokoll (#682): Aufrufe
 // in mehreren Units umstellen, Methodenzeiger bleiben, Verbergen nur ohne
@@ -13,7 +13,7 @@ uses
 
 type
   [TestFixture]
-  TLspPropertyFromAccessorsTests = class
+  TPropertyFromAccessorsProtocolTests = class
   private
     FIndex: ISymbolIndex;
   public
@@ -51,7 +51,7 @@ uses
   Atlas.Text.Json,
   Atlas.Common.Lsp.Edits.TestSupport,
   Atlas.Common.Semantics.TypeKinds,
-  Atlas.Common.Lsp.PropertyFromAccessors;
+  Atlas.Common.Editing.PropertyFromAccessors.Protocol;
 
 const
   cPanelsFile = 'C:\P\Panels.pas';
@@ -169,7 +169,7 @@ begin
   mResolver := TNameResolver.Create(AIndex, nil);
   mAnswer := nil;
   try
-    mAnswer := TLspPropertyFromAccessors.Execute(mResolver, mTree, cPanelsFile, cUnitPanels, APosition, mContext);
+    mAnswer := TPropertyFromAccessorsProtocol.Execute(mResolver, mTree, cPanelsFile, cUnitPanels, APosition, mContext);
     for mItem in (mAnswer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray do
     begin
       mDocument := TJSONObject(mItem);
@@ -178,7 +178,7 @@ begin
     end;
     AWarnings := TJsonRead.Strings(mAnswer, 'warnings');
     Assert.IsNotNull(((mAnswer.GetValue('edit') as TJSONObject).GetValue('changeAnnotations') as TJSONObject)
-      .GetValue(TLspPropertyFromAccessors.cAnnotationId));
+      .GetValue(TPropertyFromAccessorsProtocol.cAnnotationId));
   finally
     mAnswer.Free;
     mResolver.Free;
@@ -186,9 +186,9 @@ begin
   end;
 end;
 
-{ TLspPropertyFromAccessorsTests }
+{ TPropertyFromAccessorsProtocolTests }
 
-procedure TLspPropertyFromAccessorsTests.Setup;
+procedure TPropertyFromAccessorsProtocolTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitPanels, cPanelsFile, nil));
@@ -196,12 +196,12 @@ begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitOther, cOtherFile, nil));
 end;
 
-procedure TLspPropertyFromAccessorsTests.TearDown;
+procedure TPropertyFromAccessorsProtocolTests.TearDown;
 begin
   FIndex := nil;
 end;
 
-procedure TLspPropertyFromAccessorsTests.ReplacesCallsInSeveralUnits;
+procedure TPropertyFromAccessorsProtocolTests.ReplacesCallsInSeveralUnits;
 var
   mResults, mWarnings: TArray<string>;
 begin
@@ -221,7 +221,7 @@ begin
   Assert.Contains(mWarnings[1], 'Main.pas, Zeile 18');
 end;
 
-procedure TLspPropertyFromAccessorsTests.WithoutCallsOnlyTheClassChanges;
+procedure TPropertyFromAccessorsProtocolTests.WithoutCallsOnlyTheClassChanges;
 var
   mResults, mWarnings: TArray<string>;
 begin
@@ -233,7 +233,7 @@ begin
   Assert.AreEqual(0, Integer(Length(mWarnings)));
 end;
 
-procedure TLspPropertyFromAccessorsTests.HidesOnlyUnusedAccessors;
+procedure TPropertyFromAccessorsProtocolTests.HidesOnlyUnusedAccessors;
 var
   mResults, mWarnings: TArray<string>;
   mOptions: TPropertyFromAccessorsOptions;
@@ -253,7 +253,7 @@ begin
   Assert.AreEqual(2, Integer(Length(mWarnings)), string.Join(#10, mWarnings));
 end;
 
-procedure TLspPropertyFromAccessorsTests.ActionsFollowSettings;
+procedure TPropertyFromAccessorsProtocolTests.ActionsFollowSettings;
 var
   mTree: TSyntaxTree;
   mActions: TArray<TJSONObject>;
@@ -274,27 +274,27 @@ var
 begin
   mTree := TPascalParser.Parse(cUnitPanels);
   try
-    mActions := TLspPropertyFromAccessors.Actions(mTree, cUnitPanels, 'file:///C:/P/Panels.pas',
+    mActions := TPropertyFromAccessorsProtocol.Actions(mTree, cUnitPanels, 'file:///C:/P/Panels.pas',
       TTextPosition.Create(8, 14), TPropertyFromAccessorsOptions.Default, TReplaceCalls.Ask);
     mAction := mActions[1];
-    Assert.AreEqual(TLspPropertyFromAccessors.cClientCommand,
+    Assert.AreEqual(TPropertyFromAccessorsProtocol.cClientCommand,
       (mAction.GetValue('command') as TJSONObject).GetValue('command').Value);
     Assert.AreEqual('Property Caption anlegen|Property Caption anlegen und Aufrufe umstellen|', Titles(mActions));
     Assert.AreEqual('Fehlende Properties anlegen (1) und Aufrufe umstellen|', Titles(
-      TLspPropertyFromAccessors.Actions(mTree, cUnitPanels, 'file:///C:/P/Panels.pas', TTextPosition.Create(4, 4),
+      TPropertyFromAccessorsProtocol.Actions(mTree, cUnitPanels, 'file:///C:/P/Panels.pas', TTextPosition.Create(4, 4),
       TPropertyFromAccessorsOptions.Default, TReplaceCalls.Always)));
-    Assert.AreEqual('Property Caption anlegen|', Titles(TLspPropertyFromAccessors.Actions(mTree, cUnitPanels,
+    Assert.AreEqual('Property Caption anlegen|', Titles(TPropertyFromAccessorsProtocol.Actions(mTree, cUnitPanels,
       'file:///C:/P/Panels.pas', TTextPosition.Create(9, 14), TPropertyFromAccessorsOptions.Default,
       TReplaceCalls.Never)));
     // Neben den Zugriffsmethoden: nichts.
-    Assert.AreEqual('', Titles(TLspPropertyFromAccessors.Actions(mTree, cUnitPanels, 'file:///C:/P/Panels.pas',
+    Assert.AreEqual('', Titles(TPropertyFromAccessorsProtocol.Actions(mTree, cUnitPanels, 'file:///C:/P/Panels.pas',
       TTextPosition.Create(10, 14), TPropertyFromAccessorsOptions.Default, TReplaceCalls.Ask)));
   finally
     mTree.Free;
   end;
 end;
 
-procedure TLspPropertyFromAccessorsTests.KnowsProceduralTypes;
+procedure TPropertyFromAccessorsProtocolTests.KnowsProceduralTypes;
 begin
   Assert.IsTrue(TResolvedTypeKinds.IsProceduralName('TTextFunc', FIndex));
   Assert.IsTrue(TResolvedTypeKinds.IsProceduralName('TProc<Integer>', FIndex));
@@ -304,6 +304,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspPropertyFromAccessorsTests);
+  TDUnitX.RegisterTestFixture(TPropertyFromAccessorsProtocolTests);
 
 end.

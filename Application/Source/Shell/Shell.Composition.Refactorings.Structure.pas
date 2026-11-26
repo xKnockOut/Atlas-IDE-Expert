@@ -62,12 +62,12 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.ChangeSignature,
+  Atlas.Common.Editing.ChangeSignature.Protocol,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Editing.PropertyFromAccessors,
   Atlas.Common.Semantics.InlineAccessor,
   Atlas.Common.Editing.MoveClass.Protocol,
-  Atlas.Common.Lsp.PropertyFromAccessors,
+  Atlas.Common.Editing.PropertyFromAccessors.Protocol,
   Atlas.Common.Editing.InlineAccessor.Protocol,
   Atlas.Common.Editing.SafeDelete.Protocol,
   Atlas.Common.Localization.Texts,
@@ -165,10 +165,10 @@ end;
 
 procedure TShellStructureRefactorings.Register(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspChangeSignature.cPrepareCommand, ChangeSignaturePrepare);
-  ACommands.Register(TLspChangeSignature.cApplyCommand, ChangeSignature);
+  ACommands.Register(TChangeSignatureProtocol.cPrepareCommand, ChangeSignaturePrepare);
+  ACommands.Register(TChangeSignatureProtocol.cApplyCommand, ChangeSignature);
   ACommands.Register(TMoveClassProtocol.cApplyCommand, MoveClass);
-  ACommands.Register(TLspPropertyFromAccessors.cApplyCommand, PropertyFromAccessors);
+  ACommands.Register(TPropertyFromAccessorsProtocol.cApplyCommand, PropertyFromAccessors);
   ACommands.Register(TInlineAccessorProtocol.cApplyCommand, InlineAccessor);
   ACommands.Register(TSafeDeleteProtocol.cPrepareCommand, SafeDeletePrepare);
   ACommands.Register(TSafeDeleteProtocol.cApplyCommand, SafeDelete);
@@ -215,7 +215,7 @@ begin
   end;
   mResolver := NewResolver;
   try
-    Result := TLspChangeSignature.Actions(True, mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+    Result := TChangeSignatureProtocol.Actions(True, mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(AUri), AUri, APosition);
   finally
     mResolver.Free;
@@ -237,7 +237,7 @@ begin
     'refactoring.changeSignature'));
   mResolver := NewResolver;
   try
-    Result := TLspChangeSignature.InfoToJson(TLspChangeSignature.Prepare(SignatureSource(mResolver, Index, mDocument,
+    Result := TChangeSignatureProtocol.InfoToJson(TChangeSignatureProtocol.Prepare(SignatureSource(mResolver, Index, mDocument,
       AArguments, ProjectFiles, Reader)), ParameterModeOf(mSettings), mSettings.VirtualOverload);
   finally
     mResolver.Free;
@@ -253,24 +253,24 @@ var
   mRequest: TChangeSignatureRequest;
   mOutcome: TChangeSignatureOutcome;
 begin
-  // Argumente: URI, Position, die neue Signatur (TLspChangeSignature.ReadRequest).
+  // Argumente: URI, Position, die neue Signatur (TChangeSignatureProtocol.ReadRequest).
   Require(AArguments, ['uri', 'position']);
   mUri := AArguments.Items[0].Value;
   mSettings := Settings(mUri);
   mDocument := Open(mUri, mSettings.ChangeSignature, Disabled(cTexts[TStructureRefactoringText.ChangeSignature].Text,
     'refactoring.changeSignature'));
   Require(AArguments, 3, cTexts[TStructureRefactoringText.SignatureMissing].Text);
-  mRequest := TLspChangeSignature.ReadRequest(AArguments.Items[2], ParameterModeOf(mSettings),
+  mRequest := TChangeSignatureProtocol.ReadRequest(AArguments.Items[2], ParameterModeOf(mSettings),
     mSettings.VirtualOverload);
   mResolver := NewResolver;
   try
-    mOutcome := TLspChangeSignature.Execute(SignatureSource(mResolver, Index, mDocument, AArguments, ProjectFiles,
+    mOutcome := TChangeSignatureProtocol.Execute(SignatureSource(mResolver, Index, mDocument, AArguments, ProjectFiles,
       Reader), mRequest, IsReadOnly);
   finally
     mResolver.Free;
   end;
   Log(Format('Signatur ändern: %d Änderungen, %d Warnungen', [Length(mOutcome.Edits), Length(mOutcome.Warnings)]));
-  Result := TLspChangeSignature.OutcomeToJson(mOutcome);
+  Result := TChangeSignatureProtocol.OutcomeToJson(mOutcome);
 end;
 
 function TShellStructureRefactorings.MoveClassActions(const AUri: string;
@@ -337,7 +337,7 @@ begin
   mSettings := Settings(AUri);
   if TryOpen(AUri, mSettings.PropertyFromAccessors, mDocument) then
   begin
-    Result := TLspPropertyFromAccessors.Actions(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
+    Result := TPropertyFromAccessorsProtocol.Actions(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
       AUri, APosition, PropertyOptionsOf(mSettings), ReplaceCallsOf(mSettings));
   end;
 end;
@@ -370,7 +370,7 @@ begin
   end;
   mResolver := NewResolver;
   try
-    mAnswer := TLspPropertyFromAccessors.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+    mAnswer := TPropertyFromAccessorsProtocol.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;

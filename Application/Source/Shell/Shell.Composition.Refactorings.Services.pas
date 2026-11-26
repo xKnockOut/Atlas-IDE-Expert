@@ -134,7 +134,6 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.LanguageFeatures,
   System.Generics.Collections,
@@ -186,7 +185,7 @@ function TShellRefactoringPart.Open(const AUri: string): ITextDocument;
 begin
   if not FServices.Documents.TryGet(AUri, Result) then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed, cTexts[TRefactoringServiceText.NotOpen].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, cTexts[TRefactoringServiceText.NotOpen].Text);
   end;
 end;
 
@@ -267,7 +266,7 @@ class procedure TShellRefactoringPart.Allow(AEnabled: Boolean; const ADisabled: 
 begin
   if not AEnabled then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed, ADisabled);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, ADisabled);
   end;
 end;
 

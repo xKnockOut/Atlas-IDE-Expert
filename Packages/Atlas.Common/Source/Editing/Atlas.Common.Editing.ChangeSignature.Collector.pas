@@ -1,9 +1,9 @@
-﻿unit Atlas.Common.Lsp.ChangeSignature.Collector;
+﻿unit Atlas.Common.Editing.ChangeSignature.Collector;
 
 // Sammelt für „Signatur ändern“ (#100) Ziel, Überschreibungen in Vor- und
 // Nachfahren, Interface-Deklarationen und -Implementierungen, Ereignistypen
 // gebundener Handler und alle Verwendungen über Index und Referenzsuche.
-// Atlas.Common.Lsp.ChangeSignature baut daraus die Änderungen.
+// Atlas.Common.Editing.ChangeSignature.Protocol baut daraus die Änderungen.
 
 interface
 
@@ -128,7 +128,6 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Names;
@@ -197,7 +196,7 @@ type
 
 function SignatureError(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, AMessage);
+  Result := EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, AMessage);
 end;
 
 function Within(const APosition: TTextPosition; const ARange: TTextRange): Boolean;
@@ -1111,6 +1110,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.ChangeSignature.Collector', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.ChangeSignature.Collector', cTexts);
 
 end.

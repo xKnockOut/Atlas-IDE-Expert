@@ -19,7 +19,7 @@
 //   - Übergaben an var- und out-Parameter und @X werden nur umbenannt und als
 //     Warnung gemeldet.
 // Welche Stellen dazugehören (Referenzsuche, Überschreibungen, Zugriffs-
-// methoden) bestimmt Atlas.Common.Lsp.InvertBoolean.
+// methoden) bestimmt Atlas.Common.Editing.InvertBoolean.Protocol.
 
 interface
 

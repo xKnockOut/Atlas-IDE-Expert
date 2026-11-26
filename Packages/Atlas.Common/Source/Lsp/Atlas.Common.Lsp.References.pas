@@ -12,7 +12,6 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Configuration.Contract,
@@ -47,21 +46,10 @@ type
     property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
   end;
 
-type
-  /// <summary>Datei einer Umbaurechnung mit Text und Baum; den Baum gibt sie nur mit OwnsTree frei (sonst gehört
-  /// er dem Dokumentspeicher).</summary>
-  TLspSourceFile = class
-  public
-    FileName: string;
-    Text: string;
-    Tree: TSyntaxTree;
-    OwnsTree: Boolean;
-    destructor Destroy; override;
-  end;
-
 implementation
 
 uses
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.Namespaces,
   System.StrUtils,
@@ -111,17 +99,6 @@ end;
 procedure TLspReferences.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(cMethod, HandleReferences);
-end;
-
-{ TLspSourceFile }
-
-destructor TLspSourceFile.Destroy;
-begin
-  if OwnsTree then
-  begin
-    Tree.Free;
-  end;
-  inherited;
 end;
 
 /// <summary>Antwort auf textDocument/references zu AFound.</summary>

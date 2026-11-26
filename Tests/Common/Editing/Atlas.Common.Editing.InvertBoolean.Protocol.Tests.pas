@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.InvertBoolean.Tests;
+﻿unit Atlas.Common.Editing.InvertBoolean.Protocol.Tests;
 
 // Tests für „Boolean umkehren“ über das Protokoll (#715): Property samt Feld,
 // Setter, default und Formular, Funktion mit Überschreibung, Parameter mit
@@ -13,7 +13,7 @@ uses
 
 type
   [TestFixture]
-  TLspInvertBooleanTests = class
+  TInvertBooleanProtocolTests = class
   private
     FIndex: ISymbolIndex;
   public
@@ -52,7 +52,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.InvertBoolean,
+  Atlas.Common.Editing.InvertBoolean.Protocol,
   Atlas.Text.Json,
   Atlas.Common.Lsp.Edits.TestSupport;
 
@@ -193,7 +193,7 @@ begin
   try
     mContext := Context(AIndex);
     mContext.NewName := ANewName;
-    mAnswer := TLspInvertBoolean.Execute(mResolver, mTree, AFileName, TextOf(AFileName), APosition, mContext);
+    mAnswer := TInvertBooleanProtocol.Execute(mResolver, mTree, AFileName, TextOf(AFileName), APosition, mContext);
     for mItem in (mAnswer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray do
     begin
       mDocument := TJSONObject(mItem);
@@ -222,21 +222,21 @@ begin
   Result := '';
 end;
 
-{ TLspInvertBooleanTests }
+{ TInvertBooleanProtocolTests }
 
-procedure TLspInvertBooleanTests.Setup;
+procedure TInvertBooleanProtocolTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitPanels, cPanelsFile, nil));
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
 end;
 
-procedure TLspInvertBooleanTests.TearDown;
+procedure TInvertBooleanProtocolTests.TearDown;
 begin
   FIndex := nil;
 end;
 
-procedure TLspInvertBooleanTests.PropertyWithFieldSetterAndForm;
+procedure TInvertBooleanProtocolTests.PropertyWithFieldSetterAndForm;
 var
   mResults, mWarnings: TArray<string>;
   mPanels, mMain, mForm: string;
@@ -262,7 +262,7 @@ begin
   Assert.Contains(string.Join(#10, mWarnings), 'published');
 end;
 
-procedure TLspInvertBooleanTests.FunctionWithOverride;
+procedure TInvertBooleanProtocolTests.FunctionWithOverride;
 var
   mResults, mWarnings: TArray<string>;
   mPanels, mMain: string;
@@ -278,7 +278,7 @@ begin
   Assert.Contains(mMain, '  P.Hidden := P.HasItems;');
 end;
 
-procedure TLspInvertBooleanTests.ParameterWithDefault;
+procedure TInvertBooleanProtocolTests.ParameterWithDefault;
 var
   mResults, mWarnings: TArray<string>;
   mPanels, mMain: string;
@@ -291,7 +291,7 @@ begin
   Assert.Contains(mMain, '    P.Show(False);'#10'  P.Show;');
 end;
 
-procedure TLspInvertBooleanTests.GlobalVariableGetsStartValue;
+procedure TInvertBooleanProtocolTests.GlobalVariableGetsStartValue;
 var
   mResults, mWarnings: TArray<string>;
   mPanels, mMain: string;
@@ -305,7 +305,7 @@ begin
   Assert.Contains(mMain, '  if not NotReady then');
 end;
 
-procedure TLspInvertBooleanTests.AccessorFieldIsRefused;
+procedure TInvertBooleanProtocolTests.AccessorFieldIsRefused;
 var
   mWarnings: TArray<string>;
 begin
@@ -322,7 +322,7 @@ begin
     end, EJsonRpcError);
 end;
 
-procedure TLspInvertBooleanTests.ActionFollowsSetting;
+procedure TInvertBooleanProtocolTests.ActionFollowsSetting;
 var
   mTree: TSyntaxTree;
   mResolver: TNameResolver;
@@ -332,12 +332,12 @@ begin
   mTree := TPascalParser.Parse(cUnitPanels);
   mResolver := TNameResolver.Create(FIndex, nil);
   try
-    mActions := TLspInvertBoolean.Actions(mResolver, mTree, cPanelsFile, 'file:///C:/P/Panels.pas',
+    mActions := TInvertBooleanProtocol.Actions(mResolver, mTree, cPanelsFile, 'file:///C:/P/Panels.pas',
       TTextPosition.Create(5, 5), Context(FIndex));
     try
       Assert.AreEqual(1, Integer(Length(mActions)));
       Assert.AreEqual('Bedeutung umkehren (FHidden → FVisible)', mActions[0].GetValue('title').Value);
-      Assert.AreEqual(TLspInvertBoolean.cClientCommand,
+      Assert.AreEqual(TInvertBooleanProtocol.cClientCommand,
         (mActions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
     finally
       for mAction in mActions do
@@ -345,7 +345,7 @@ begin
         mAction.Free;
       end;
     end;
-    Assert.AreEqual(0, Integer(Length(TLspInvertBoolean.Actions(mResolver, mTree, cPanelsFile,
+    Assert.AreEqual(0, Integer(Length(TInvertBooleanProtocol.Actions(mResolver, mTree, cPanelsFile,
       'file:///C:/P/Panels.pas', TTextPosition.Create(10, 15), Context(FIndex)))));
   finally
     mResolver.Free;
@@ -353,19 +353,19 @@ begin
   end;
 end;
 
-procedure TLspInvertBooleanTests.ReadsParameterModifiers;
+procedure TInvertBooleanProtocolTests.ReadsParameterModifiers;
 const
   cSignature = 'procedure Toggle(var A, B: Boolean; C: Integer; out D: Boolean; [ref] const E: Boolean)';
 begin
-  Assert.AreEqual('var', TLspInvertBoolean.ParameterModifier(cSignature, 0));
-  Assert.AreEqual('var', TLspInvertBoolean.ParameterModifier(cSignature, 1));
-  Assert.AreEqual('', TLspInvertBoolean.ParameterModifier(cSignature, 2));
-  Assert.AreEqual('out', TLspInvertBoolean.ParameterModifier(cSignature, 3));
-  Assert.AreEqual('', TLspInvertBoolean.ParameterModifier(cSignature, 4));
-  Assert.AreEqual('', TLspInvertBoolean.ParameterModifier('procedure Run', 0));
+  Assert.AreEqual('var', TInvertBooleanProtocol.ParameterModifier(cSignature, 0));
+  Assert.AreEqual('var', TInvertBooleanProtocol.ParameterModifier(cSignature, 1));
+  Assert.AreEqual('', TInvertBooleanProtocol.ParameterModifier(cSignature, 2));
+  Assert.AreEqual('out', TInvertBooleanProtocol.ParameterModifier(cSignature, 3));
+  Assert.AreEqual('', TInvertBooleanProtocol.ParameterModifier(cSignature, 4));
+  Assert.AreEqual('', TInvertBooleanProtocol.ParameterModifier('procedure Run', 0));
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspInvertBooleanTests);
+  TDUnitX.RegisterTestFixture(TInvertBooleanProtocolTests);
 
 end.

@@ -85,7 +85,6 @@ uses
   Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Pascal.CaseCompletion,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
@@ -123,7 +122,7 @@ const
 
 function Fail(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, AMessage);
+  Result := EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, AMessage);
 end;
 
 function CommandAction(const ATitle, AKind, ACommand: string; AArguments: TJSONArray): TJSONObject;
@@ -383,7 +382,7 @@ end;
 
 type
   /// <summary>Eine Datei für das Nachziehen; gibt einen selbst geparsten Baum frei.</summary>
-  TSyncFile = TLspSourceFile;
+  TSyncFile = TParsedFile;
 
 function Where(const AFileName, AText: string; AOffset: Integer): string;
 begin
