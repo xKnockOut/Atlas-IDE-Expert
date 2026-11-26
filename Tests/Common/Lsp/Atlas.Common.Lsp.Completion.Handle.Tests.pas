@@ -117,6 +117,7 @@ uses
   Atlas.Common.Completion.Contract,
   Atlas.Common.Editing.Completion.Slash,
   Atlas.Common.Editing.Completion.Declare,
+  Atlas.Common.Editing.Completion.Properties,
   Atlas.Tests.LspRules;
 
 const
@@ -244,8 +245,10 @@ begin
         AParams.Free;
       end;
     end;
-  // Deklarieren unbekannter Namen (#471) und Schnellbefehle meldet Editing als Quelle an (wie die Komposition).
+  // Deklarieren unbekannter Namen (#471), Property-Zugriffe (#31) und Schnellbefehle meldet Editing als Quelle
+  // an (wie die Komposition).
   FCompletion.Sources.Add(TCompletionSlot.Declare, TEditingDeclareCompletion.Source());
+  FCompletion.Sources.Add(TCompletionSlot.PropertyAccess, TEditingPropertyCompletion.Source());
   FCompletion.Sources.Add(TCompletionSlot.Slash, TEditingSlashCompletion.Source(nil,
     function(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean
     begin

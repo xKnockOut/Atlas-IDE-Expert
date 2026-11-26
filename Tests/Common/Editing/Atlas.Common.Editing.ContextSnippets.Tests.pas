@@ -57,7 +57,8 @@ uses
   Atlas.Tests.SourceText,
   Atlas.Common.Completion.Contract,
   Atlas.Common.Completion.Request,
-  Atlas.Common.Editing.Completion.ContextSnippets;
+  Atlas.Common.Editing.Completion.ContextSnippets,
+  Atlas.Text.Snippets;
 
 const
   cAnzeige =
@@ -252,8 +253,7 @@ begin
   Assert.AreEqual('X := $FF; a}b\c', TContextSnippets.ToPlain('X := \$FF; a\}b\\c'));
   Assert.AreEqual('Wert ja $FF', TContextSnippets.ToPlain('${1:Wert} ${2|ja,nein|} ${TM_SELECTED_TEXT}$FF${3}'));
   Assert.AreEqual('Liste.Free', TContextSnippets.ToPlain('${1:${2:Liste}.Free}'));
-  Assert.AreEqual('a\$b\}c\\', TContextSnippets.Escape('a$b}c\'));
-  Assert.AreEqual('$FF', TContextSnippets.ToPlain(TContextSnippets.Escape('$FF')));
+  Assert.AreEqual('$FF', TContextSnippets.ToPlain(TTextSnippets.Escape('$FF')));
 end;
 
 procedure TContextSnippetsTests.PropCommandWritesSameSetter;

@@ -108,9 +108,6 @@ function RequestOf(const ALookup: TEnumLookup; const APosition: TTextPosition): 
 /// <summary>TCompletionValues.EnumItems an APosition.</summary>
 function EnumAt(const ALookup: TEnumLookup; const APosition: TTextPosition; out AItems: TArray<TCompletionItem>;
   out ASetMode: Boolean): Boolean;
-/// <summary>TCompletionDeclarations.PropertyItems an APosition mit AMatching.</summary>
-function PropertyAt(const ALookup: TEnumLookup; const APosition: TTextPosition; AMatching: TCompletionMatching;
-  out AItems: TCompletionItems): Boolean;
 /// <summary>TCompletionDeclarations.OverrideItems an APosition.</summary>
 function OverrideAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
   out AItems: TCompletionItems): Boolean;
@@ -346,20 +343,6 @@ begin
   finally
     mRequest.Free;
     mTree.Free;
-  end;
-end;
-
-function PropertyAt(const ALookup: TEnumLookup; const APosition: TTextPosition; AMatching: TCompletionMatching;
-  out AItems: TCompletionItems): Boolean;
-var
-  mRequest: TCompletionRequest;
-begin
-  mRequest := RequestOf(ALookup, APosition);
-  try
-    mRequest.Matching := AMatching;
-    Result := TCompletionDeclarations.PropertyItems(mRequest, AItems);
-  finally
-    mRequest.Free;
   end;
 end;
 

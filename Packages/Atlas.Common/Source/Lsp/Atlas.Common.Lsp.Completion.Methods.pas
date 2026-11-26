@@ -50,7 +50,7 @@ uses
   Atlas.Common.Semantics.ClassCompletion,
   Atlas.Common.Pascal.InterfaceStubs,
   Atlas.Common.Lsp.CompletionCollector,
-  Atlas.Common.Lsp.Completion.TypeConversions,
+  Atlas.Common.Pascal.TypeConversions,
   Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Semantics.RtlMethodReferences,
   Atlas.Common.Localization.Texts,

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Completion.TypeConversions.Tests;
+﻿unit Atlas.Common.Pascal.TypeConversions.Tests;
 
 // Typverträglichkeit (#417) und Umwandlung in den erwarteten Typ (#490).
 
@@ -21,7 +21,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Lsp.Completion.TypeConversions;
+  Atlas.Common.Pascal.TypeConversions;
 
 { TTypeConversionsTests }
 
