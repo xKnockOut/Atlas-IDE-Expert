@@ -70,6 +70,7 @@ contains
   Atlas.Text.Csv in '..\Atlas.Text\Source\Csv\Atlas.Text.Csv.pas',
   Atlas.Text.IndexCache in '..\Atlas.Text\Source\IndexCache\Atlas.Text.IndexCache.pas',
   Atlas.Text.Names in '..\Atlas.Text\Source\Names\Atlas.Text.Names.pas',
+  Atlas.Text.Snippets in '..\Atlas.Text\Source\Snippets\Atlas.Text.Snippets.pas',
   Atlas.Text.Numbers in '..\Atlas.Text\Source\Numbers\Atlas.Text.Numbers.pas',
   Atlas.Text.Json in '..\Atlas.Text\Source\Json\Atlas.Text.Json.pas',
   Atlas.Text.Jsonc in '..\Atlas.Text\Source\Jsonc\Atlas.Text.Jsonc.pas',

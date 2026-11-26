@@ -28,6 +28,10 @@ type
     procedure RunningNamesGuardFeature;
     [Test]
     procedure StackScanMapsAddressesToModules;
+    /// <summary>Zeiger in die Daten eines Moduls (Konstanten, Klassen, Modul-Handle) sind keine Rahmen und machen
+    /// einen Hänger nicht zu einem mit Atlas.</summary>
+    [Test]
+    procedure StackScanSkipsDataOfModules;
     /// <summary>Ein Atlas-Rahmen unterhalb der 24 angezeigten zählt als beteiligt und steht im Bericht.</summary>
     [Test]
     procedure AtlasFrameBelowShownFramesCounts;
@@ -249,6 +253,45 @@ begin
   mFrames := TAtlasStackScan.Frames([$401234, $12, $50000100, $50000100, $400010], mModules);
   Assert.AreEqual('bds.exe+1234|Atlas.IDE.Expert.bpl+100|bds.exe+10', string.Join('|', mFrames));
   Assert.AreEqual(1, Integer(Length(TAtlasStackScan.Frames([$401234, $401235, $401236], mModules, 1))));
+end;
+
+procedure TAtlasHangTests.StackScanSkipsDataOfModules;
+var
+  mModules: TArray<TAtlasModuleRange>;
+  mAddresses: TArray<UInt64>;
+  mHang: TAtlasHang;
+begin
+  SetLength(mModules, 2);
+  mModules[0] := Default(TAtlasModuleRange);
+  mModules[0].Name := 'dcc64370.dll';
+  mModules[0].Base := $400000;
+  mModules[0].Size := $100000;
+  mModules[0].CodeStart := $1000;
+  mModules[0].CodeSize := $80000;
+  mModules[1] := Default(TAtlasModuleRange);
+  mModules[1].Name := 'Atlas.IDE.Base370.bpl';
+  mModules[1].Base := $50000000;
+  mModules[1].Size := $2000000;
+  mModules[1].CodeStart := $1000;
+  mModules[1].CodeSize := $1000000;
+  // Compile der IDE; darunter ein Zeiger in die Daten von Base und das Modul-Handle des Compilers.
+  mAddresses := TArray<UInt64>.Create($401234, $480010, $51D46F3A, $400000);
+  mHang := MakeHang(17633, '');
+  mHang.Frames := TAtlasStackScan.Frames(mAddresses, mModules);
+  mHang.AtlasFrame := TAtlasStackScan.FirstIn(mAddresses, mModules, 'Atlas');
+  Assert.AreEqual('dcc64370.dll+1234|dcc64370.dll+80010', string.Join('|', mHang.Frames));
+  Assert.AreEqual('', mHang.AtlasFrame);
+  Assert.IsFalse(TAtlasHangMonitor.InvolvesAtlas(mHang));
+  // Im Code von Base zählt die Adresse weiter.
+  Assert.AreEqual('Atlas.IDE.Base370.bpl+7EC5E0',
+    TAtlasStackScan.FirstIn(TArray<UInt64>.Create($507EC5E0), mModules, 'Atlas'));
+  // Ohne bekannten Codebereich (CodeSize 0) zählt das ganze Abbild wie bisher.
+  Assert.IsTrue(mModules[0].HoldsCode($401234));
+  mModules[0].CodeSize := 0;
+  Assert.IsTrue(mModules[0].HoldsCode($4F0000));
+  mAddresses := nil;
+  mModules := nil;
+  mHang := Default(TAtlasHang);
 end;
 
 procedure TAtlasHangTests.AtlasFrameBelowShownFramesCounts;

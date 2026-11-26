@@ -25,6 +25,7 @@ Atlas.Text.Locked.Tests
 Atlas.Text.Reporting.Tests
 Atlas.Text.IndexCache.Tests
 Atlas.Text.Names.Tests
+Atlas.Text.Snippets.Tests
 Atlas.Text.Numbers.Tests
 Atlas.Text.Json.Tests
 Atlas.Text.Jsonc.Tests
@@ -106,6 +107,7 @@ Atlas.Common.Editing.CreateMethod.Tests
 Atlas.Common.Editing.Completion.CreateMethod.Tests
 Atlas.Common.Editing.Completion.Slash.Tests
 Atlas.Common.Editing.Completion.Declare.Tests
+Atlas.Common.Editing.Completion.Properties.Tests
 Atlas.Common.Completion.Answer.Tests
 Atlas.Common.Dfm.DataFieldNames.Tests
 Atlas.Common.Pascal.DeclareUnknown.Tests
@@ -241,7 +243,7 @@ Atlas.Common.Lsp.CompilerSwitches.Tests
 Atlas.Common.Lsp.CodeActions.Tests
 Atlas.Common.Lsp.Completion.FormProposals.Tests
 Atlas.Common.Lsp.Completion.HiddenMembers.Tests
-Atlas.Common.Lsp.Completion.TypeConversions.Tests
+Atlas.Common.Pascal.TypeConversions.Tests
 Atlas.Common.Lsp.Completion.ProjectFrequency.Tests
 Atlas.Common.Lsp.Completion.TypeGuards.Tests
 Atlas.Common.Pascal.EnumSlots.Tests
@@ -256,6 +258,7 @@ Atlas.Common.Lsp.ValueEdit.Tests
 Atlas.Common.Lsp.FoldingRanges.Tests
 Atlas.Common.Lsp.BlockFolds.Tests
 Atlas.Common.Completion.FuzzyMatch.Tests
+Atlas.Common.Completion.SymbolKinds.Tests
 Atlas.Common.Lsp.HoverValues.Tests
 Atlas.Common.Semantics.RequestCancellation.Tests
 Atlas.Common.Semantics.Feature.Tests

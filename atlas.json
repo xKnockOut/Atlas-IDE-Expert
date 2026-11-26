@@ -118,10 +118,6 @@
       "knownEdges": [
         "Atlas.Common.Lsp.BoundaryCases -> Atlas.Common.Editing.BoundaryCases.Report",
         "Atlas.Common.Lsp.BoundaryTests -> Atlas.Common.Editing.TestDrafts",
-        "Atlas.Common.Lsp.Completion.Declarations -> Atlas.Common.Editing.AccessorCreation",
-        "Atlas.Common.Lsp.Completion.Declarations -> Atlas.Common.Editing.CommandSource",
-        "Atlas.Common.Lsp.Completion.Declarations -> Atlas.Common.Editing.ContextSnippets",
-        "Atlas.Common.Lsp.Completion.Declarations -> Atlas.Common.Editing.Contract",
         "Atlas.Common.Lsp.Formatting -> Atlas.Common.Editing.Contract",
         "Atlas.Common.Lsp.Formatting -> Atlas.Common.Editing.EditorConfig",
         "Atlas.Common.Lsp.Formatting -> Atlas.Common.Editing.Formatter",

@@ -71,6 +71,7 @@
         <DCCReference Include="Text\Atlas.Text.Csv.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.IndexCache.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Names.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Snippets.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Numbers.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Json.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Jsonc.Tests.pas"/>
@@ -227,6 +228,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.SmartIndent.Protocol.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.LearnedSuggestions.Protocol.Tests.pas"/>
         <DCCReference Include="Common\Completion\Atlas.Common.Completion.FuzzyMatch.Tests.pas"/>
+        <DCCReference Include="Common\Completion\Atlas.Common.Completion.SymbolKinds.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.DocWiki.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompilerDirectives.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ConditionalSymbols.Tests.pas"/>
@@ -322,8 +324,8 @@
         <DCCReference Include="Common\Completion\Atlas.Common.Completion.Request.Tests.pas"/>
         <DCCReference Include="Common\Completion\Atlas.Common.Completion.Answer.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionCollector.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.TypeConversions.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Internals.CompletionSource.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TypeConversions.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.EnclosingTypes.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SignatureHelp.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SignatureFormat.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Hierarchies.Tests.pas"/>
@@ -780,6 +782,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Completion.CreateMethod.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Completion.Slash.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Completion.Declare.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Completion.Properties.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CreateMethod.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameSuggestions.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.AccessorCreation.Tests.pas"/>

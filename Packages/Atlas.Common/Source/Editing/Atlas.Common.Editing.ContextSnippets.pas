@@ -41,8 +41,6 @@ type
     /// <summary>Vorlagen für die Cursorzeile AContext.Line bei Zeichen ACharacter. AContext.Text enthält die Zeile
     /// mit dem getippten Wort; AContext.Index für Vorfahren aus anderen Units (nil ohne).</summary>
     class function At(const AContext: TSlashContext; ACharacter: Integer): TArray<TContextSnippet>; static;
-    /// <summary>Maskiert "\", "$" und "}" für ein LSP-Snippet.</summary>
-    class function Escape(const AText: string): string; static;
     /// <summary>Klartext zu einem LSP-Snippet: Platzhalter und ${NAME:…} werden zu ihrer Vorgabe, Tabstopps
     /// entfallen, Masken werden aufgelöst; "$" vor einem Buchstaben bleibt Text.</summary>
     class function ToPlain(const ASnippet: string): string; static;
@@ -60,7 +58,8 @@ uses
   Atlas.Common.Editing.ClassCommands,
   Atlas.Common.Editing.TypeCommands,
   Atlas.Text.Chars,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Snippets;
 
 {$SCOPEDENUMS ON}
 
@@ -190,8 +189,8 @@ begin
     Result := Result + [Snippet('prop', 'prop ' + mName,
       cTexts[TContextSnippetsText.PropertyWithSetterWhichChecks].Fmt([mName, mTypeText, mSetter,
       NotifyText(mCall)]),
-      Format('property ${1:%s}: %s read %s write %s;$0', [TContextSnippets.Escape(mName),
-      TContextSnippets.Escape(mTypeText), mField.Name, mSetter]), mEdits)];
+      Format('property ${1:%s}: %s read %s write %s;$0', [TTextSnippets.Escape(mName),
+      TTextSnippets.Escape(mTypeText), mField.Name, mSetter]), mEdits)];
   end;
 end;
 
@@ -282,7 +281,7 @@ begin
       mOwner := '(Self)';
     end;
     mLines := mLines + [Format('%s := ${%d:%s}.Create%s;', [mField.Name, mNumber,
-      TContextSnippets.Escape(FullType(mField)), mOwner])];
+      TTextSnippets.Escape(FullType(mField)), mOwner])];
   end;
   if mNumber = 0 then
   begin
@@ -410,24 +409,6 @@ begin
     end;
   finally
     mSource.Free;
-  end;
-end;
-
-class function TContextSnippets.Escape(const AText: string): string;
-var
-  C: Char;
-begin
-  Result := '';
-  for C in AText do
-  begin
-    if CharInSet(C, ['\', '$', '}']) then
-    begin
-      Result := Result + '\' + C;
-    end
-    else
-    begin
-      Result := Result + C;
-    end;
   end;
 end;
 

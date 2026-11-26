@@ -87,7 +87,7 @@ uses
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Lsp.Completion.TypeGuards,
-  Atlas.Common.Lsp.Internals.CompletionSource;
+  Atlas.Common.Semantics.EnclosingTypes;
 
 const
   /// <summary>Höchstens so viele Komponenten prüfen, ob sie von hier aus als Feld sichtbar sind.</summary>
