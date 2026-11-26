@@ -99,7 +99,8 @@ uses
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json,
   Atlas.Common.CodeActions.Json,
-  Atlas.Common.Pascal.TreeHandles;
+  Atlas.Common.Pascal.TreeHandles,
+  Atlas.Common.Semantics.Contract;
 
 {$SCOPEDENUMS ON}
 
@@ -207,13 +208,13 @@ type
     /// <summary>Index aus dem Umfeld der Prüfregeln; nil ohne.</summary>
     function Index: ISymbolIndex;
     /// <summary>Stelle der Anfrage für die Aktionen aus SourceActions.</summary>
-    function Site: TLspCodeActionSite;
+    function Site: TCodeActionSite;
     procedure AddPromptActions;
     procedure AddSourceActions;
     procedure AddExtraActions;
     /// <summary>Aktionen an der Stelle, die der Client bei jeder Cursorbewegung anfragt: Regeln, Klasse, Felder,
     /// Prompt.</summary>
-    procedure AddEditingActions(const ASite: TLspCodeActionSite);
+    procedure AddEditingActions(const ASite: TCodeActionSite);
   public
     constructor Create(AOwner: TLspCodeActions; const AUri: string; const ARange: TTextRange;
       const ADocument: ITextDocument; ATree: TSyntaxTree);
@@ -382,9 +383,9 @@ begin
   end;
 end;
 
-function TCodeActionBuilder.Site: TLspCodeActionSite;
+function TCodeActionBuilder.Site: TCodeActionSite;
 begin
-  Result := Default(TLspCodeActionSite);
+  Result := Default(TCodeActionSite);
   Result.Uri := FUri;
   Result.Text := FText;
   Result.Tree := TSyntaxTreeHandles.Wrap(FTree);
@@ -445,7 +446,7 @@ begin
   end;
 end;
 
-procedure TCodeActionBuilder.AddEditingActions(const ASite: TLspCodeActionSite);
+procedure TCodeActionBuilder.AddEditingActions(const ASite: TCodeActionSite);
 begin
   AddRuleActions(ASite.Refactoring, ASite.Style);
   // Klassen-Aktionen (#42) und Felder im Destruktor freigeben (#666).
@@ -462,7 +463,7 @@ function TCodeActionBuilder.Build(const AOnly: TArray<string>;
   const ACancellation: IJsonRpcCancellationToken): TJSONArray;
 var
   mSources: ILspSourceActions;
-  mSite: TLspCodeActionSite;
+  mSite: TCodeActionSite;
   mCompletion: TCodeAction;
   mHasCompletion: Boolean;
   mUsesActions: TArray<TCodeAction>;

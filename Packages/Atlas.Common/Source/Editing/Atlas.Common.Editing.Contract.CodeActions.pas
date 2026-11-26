@@ -55,43 +55,23 @@ type
     ClassEnvironmentFor: TEditingClassEnvironmentFunc;
   end;
 
-  /// <summary>Stelle einer Anfrage nach Code-Aktionen in einer Unit; der Baum geht nur als IPascalSyntaxTree über die
-  /// Grenze.</summary>
-  TEditingCodeActionSite = record
-    Uri: string;
-    Text: string;
-    /// <summary>Baum zu Text; der Aufrufer hält ihn am Leben, solange die Anfrage läuft.</summary>
-    Tree: IPascalSyntaxTree;
-    Range: TTextRange;
-    /// <summary>Index aus dem Umfeld der Prüfregeln; nil ohne.</summary>
-    Index: ISymbolIndex;
-    Style: TFormatStyle;
-    Refactoring: TRefactoringSettings;
-    /// <summary>Die Prüfregeln bieten in der Zeile von Range schon „Feld im Destruktor freigeben“ an.</summary>
-    RuleFreesField: Boolean;
-    /// <summary>Der Client fragt Schnellkorrekturen und Umbauten an (quickfix, refactor.*).</summary>
-    WantsEditing: Boolean;
-    /// <summary>Der Client fragt ausdrücklich source.removeUnusedImports an (#284).</summary>
-    WantsRemoveUnused: Boolean;
-  end;
-
   /// <summary>Code-Aktionen an einer Stelle; die Gruppen stehen in der Reihenfolge, in der der Sprachserver sie
   /// zeigt.</summary>
   IEditingCodeActions = interface
     ['{CAFE6DF7-1D67-4EE5-ABB5-499139B74CC7}']
     /// <summary>Klassen-Aktionen (Getter/Setter/Feld, Interface-Methoden, Überschreiben) und Felder im Destruktor
     /// freigeben, je nach ASite.Refactoring.</summary>
-    function Structure(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
+    function Structure(const ASite: TCodeActionSite): TArray<TCodeAction>;
     /// <summary>Fehlende Methodenrümpfe am Anfang von ASite.Range (#1834).</summary>
-    function MissingBodies(const ASite: TEditingCodeActionSite; out AAction: TCodeAction): Boolean;
+    function MissingBodies(const ASite: TCodeActionSite; out AAction: TCodeAction): Boolean;
     /// <summary>Zuweisung tauschen und Aktionen an String-Literalen (#312).</summary>
-    function Statements(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
+    function Statements(const ASite: TCodeActionSite): TArray<TCodeAction>;
     /// <summary>uses-Aktionen (#284, #621): fehlende Unit ergänzen, verschieben, entfernen.</summary>
-    function UsesActions(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
+    function UsesActions(const ASite: TCodeActionSite): TArray<TCodeAction>;
     /// <summary>Dokumentationskommentar (#88) und Klassenmitglieder ordnen (#89).</summary>
-    function Declarations(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
+    function Declarations(const ASite: TCodeActionSite): TArray<TCodeAction>;
     /// <summary>source.organizeImports (#182); False, wenn es nichts aufzuräumen gibt.</summary>
-    function OrganizeImports(const ASite: TEditingCodeActionSite; out AAction: TCodeAction): Boolean;
+    function OrganizeImports(const ASite: TCodeActionSite; out AAction: TCodeAction): Boolean;
   end;
 
 implementation
