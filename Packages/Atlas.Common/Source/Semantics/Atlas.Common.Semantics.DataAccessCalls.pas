@@ -4,7 +4,7 @@
 // Empfänger.Methode bzw. Empfänger.Methode(…) einer Unit, deren Methodenname in
 // einer Liste steht (Open, ExecSQL, Post …). Ob der Empfänger zu einer
 // beobachteten Klasse gehört, entscheidet erst die Namensauflösung
-// (Atlas.Common.Lsp.DataAccessSites).
+// (Lsp.DataAccessSites).
 //
 // Gezählt werden nur Aufrufe mit Empfänger vor dem Punkt: Aufrufe ohne
 // Empfänger (im eigenen Nachfahren oder in with) bleiben außen vor, weil der

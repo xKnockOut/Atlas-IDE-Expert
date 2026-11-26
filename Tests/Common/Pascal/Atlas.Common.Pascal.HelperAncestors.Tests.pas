@@ -41,7 +41,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.HoverTypes,
+  Lsp.HoverTypes,
   Atlas.Tests.SourceText,
   Atlas.Common.Pascal.TestSupport;
 

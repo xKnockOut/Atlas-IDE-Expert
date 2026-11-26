@@ -2,7 +2,7 @@
 
 // Internals-Rolle Shell: Befehle des Stichproben-Profilers (#2057) atlas.server.profilerStart, …Status und …Stop.
 // Gemessen wird im Server, weil er unter Windows ein 64-Bit-Prozess ist (Prober aus Platform.Server); die Läufe liegen
-// im Cache unter profiles, wo auch get_profile sie liest. Logik in Atlas.Common.Lsp.Profiler. Den gemessenen Prozess
+// im Cache unter profiles, wo auch get_profile sie liest. Logik in Lsp.Profiler. Den gemessenen Prozess
 // meldet der Teil an die Statusdatei (AtlasMonitor warnt dann vor dem Beenden); StopRun hält den Lauf beim Ende des
 // Servers an.
 
@@ -11,8 +11,8 @@ interface
 uses
   System.JSON,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.Profiler,
+  Lsp.Commands,
+  Lsp.Profiler,
   Shell.Composition.Refactorings.Services;
 
 type

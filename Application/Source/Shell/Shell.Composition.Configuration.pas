@@ -71,7 +71,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,
-  Atlas.Common.Lsp.ConfigurationProtocol,
+  Lsp.ConfigurationProtocol,
   Atlas.Common.Projects.DelphiVersions,
   Atlas.Common.Documents.Uris,
   Core.Bootstrap,

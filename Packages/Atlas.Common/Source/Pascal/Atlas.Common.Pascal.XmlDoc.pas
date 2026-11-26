@@ -18,7 +18,7 @@
 //
 // Zeilenumbrüche im Kommentar sind Fließtext; Einrückung und Zeilen bleiben
 // nur in <code> erhalten. <inheritdoc/> setzt InheritDoc; die Doku des
-// Vorfahren löst der Server auf (Atlas.Common.Lsp.Documentation).
+// Vorfahren löst der Server auf (Lsp.Documentation).
 
 interface
 

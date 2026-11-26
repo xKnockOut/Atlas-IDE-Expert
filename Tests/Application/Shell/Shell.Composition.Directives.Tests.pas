@@ -44,8 +44,8 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Lsp.ConditionalSymbols,
-  Atlas.Common.Lsp.CompilerSwitches;
+  Lsp.ConditionalSymbols,
+  Lsp.CompilerSwitches;
 
 const
   cFile = 'C:\Projekt\A.pas';

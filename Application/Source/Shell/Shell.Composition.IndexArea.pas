@@ -14,8 +14,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Diagnostics.Anonymizer,
-  Atlas.Common.Lsp.WorkspaceFolders,
-  Atlas.Common.Lsp.IdeUnits,
+  Lsp.WorkspaceFolders,
+  Lsp.IdeUnits,
   Shell.Composition.Core,
   Shell.Composition.DiagnosticsArea;
 
@@ -84,7 +84,7 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Lsp.Adapters.IdeIndex,
+  Lsp.Adapters.IdeIndex,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Pascal.Preprocessor,
   Core.Workspace;

@@ -25,7 +25,7 @@ uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Lsp.Contract,
+  Lsp.Contract,
   Rules.Contract.Api,
   Rules.Providers.DocumentActions,
   Adapters.Lsp.RuleActions;

@@ -30,7 +30,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.Completion.Lists,
+  Lsp.Completion.Lists,
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
@@ -43,10 +43,10 @@ uses
   Atlas.Common.Index.Cache,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.CompletionJson,
-  Atlas.Common.Lsp.Completion,
-  Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.DocumentSymbols,
+  Lsp.CompletionJson,
+  Lsp.Completion,
+  Lsp.Contract,
+  Lsp.DocumentSymbols,
   Atlas.Common.Completion.Contract,
   Atlas.Common.Completion.Request;
 

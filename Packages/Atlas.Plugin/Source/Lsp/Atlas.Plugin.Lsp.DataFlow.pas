@@ -1,7 +1,7 @@
 ﻿unit Atlas.Plugin.Lsp.DataFlow;
 
 // Datenfluss (#690) auf der Seite des Plugins: Anfrage und Antwort von atlas/dataFlow als Werttypen, ohne VCL
-// und Open Tools API. Der Server (Atlas.Common.Lsp.DataFlow) liefert zum Symbol an einer Stelle die Stellen,
+// und Open Tools API. Der Server (Lsp.DataFlow) liefert zum Symbol an einer Stelle die Stellen,
 // aus denen sein Wert kommt (Sources) bzw. in die er geht (Targets), jede mit Fundorten und den Symbolen, die
 // sich weiter aufklappen lassen. Positionen sind 0-basiert in UTF-16-Einheiten.
 

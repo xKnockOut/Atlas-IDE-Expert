@@ -3,7 +3,7 @@
 // Stichproben-Profiler (#2057) im Plugin, Fachlogik ohne IDE:
 // - TAtlasProfilerProtocol: Argumente und Antworten der Serverbefehle atlas.server.profilerStart, …Status und
 //   …Stop (workspace/executeCommand mit genau einem Argument-Objekt) an den Server, der die Proben nimmt (Win64,
-//   sieht auch 64-Bit-Programme). Die Namen stehen im Server in Atlas.Common.Lsp.Profiler, das das Plugin nicht
+//   sieht auch 64-Bit-Programme). Die Namen stehen im Server in Lsp.Profiler, das das Plugin nicht
 //   einbinden darf.
 // - TAtlasProfileTable: Zeilen für das Fenster „Atlas: Profil“ aus der Auswertung eines Laufs
 //   (Atlas.Text.ProfileReport), allein oder im Vergleich mit dem vorigen Lauf, und die Wahl des vorigen Laufs.

@@ -12,7 +12,7 @@ uses
   System.JSON,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
-  Atlas.Common.Lsp.CoveredBy,
+  Lsp.CoveredBy,
   Shell.Composition.AffectedTests;
 
 type

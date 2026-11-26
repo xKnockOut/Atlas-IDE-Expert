@@ -24,7 +24,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.Contract,
+  Lsp.Contract,
   Rules.Builtin,
   Rules.CheckContext,
   Rules.Contract.Api,

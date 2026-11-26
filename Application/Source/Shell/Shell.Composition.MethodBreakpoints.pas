@@ -8,8 +8,8 @@ interface
 uses
   System.JSON,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.MethodBreakpoints,
+  Lsp.Commands,
+  Lsp.MethodBreakpoints,
   Shell.Composition.Refactorings.Services;
 
 type

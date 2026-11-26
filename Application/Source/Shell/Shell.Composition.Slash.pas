@@ -16,7 +16,7 @@ uses
   Editing.Contract,
   Rules.CheckContext,
   Editing.TestUnits.Protocol,
-  Atlas.Common.Lsp.ResourceStringCommands,
+  Lsp.ResourceStringCommands,
   Adapters.Editing.SlashHost;
 
 type

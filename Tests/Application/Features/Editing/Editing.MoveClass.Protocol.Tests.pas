@@ -41,7 +41,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.JsonRpc.Positions,
   Editing.MoveClass.Protocol,
-  Atlas.Common.Lsp.Edits.TestSupport;
+  Lsp.Edits.TestSupport;
 
 const
   cBasisFile = 'C:\P\Basis.pas';

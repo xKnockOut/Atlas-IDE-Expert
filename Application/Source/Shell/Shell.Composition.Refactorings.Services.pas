@@ -17,12 +17,12 @@ uses
   Atlas.Common.Projects.MissingUnit,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.CodeActions,
+  Lsp.Commands,
+  Lsp.CodeActions,
   Editing.Refactorings,
   Atlas.Common.Semantics.References,
   Atlas.Common.Semantics.Contract,
-  Atlas.Common.Lsp.SyntaxDiagnostics;
+  Lsp.SyntaxDiagnostics;
 
 type
   /// <summary>Liste von Namen, z. B. Dateien des Projekts oder Namensräume.</summary>

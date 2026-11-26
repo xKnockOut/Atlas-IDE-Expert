@@ -14,12 +14,12 @@ uses
   Atlas.Common.Configuration.Contract,
   Editing.Contract,
   Atlas.Common.Semantics.TypeInfoClasses,
-  Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.Completion,
-  Atlas.Common.Lsp.DocumentSymbols,
-  Atlas.Common.Lsp.FoldingRanges,
-  Atlas.Common.Lsp.BlockFolds,
-  Atlas.Common.Lsp.SelectionRanges,
+  Lsp.Commands,
+  Lsp.Completion,
+  Lsp.DocumentSymbols,
+  Lsp.FoldingRanges,
+  Lsp.BlockFolds,
+  Lsp.SelectionRanges,
   Editing.Formatting.Protocol,
   Editing.SlashMenu.Protocol;
 

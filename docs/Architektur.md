@@ -46,31 +46,20 @@ Die Regeln für die Packages prüft `Tools/Check-PackageDependencies.ps1` (uses-
 - **Kopien-Sperre:** Außerhalb von `Packages/Atlas.Text` entsteht keine neue Routine wie `LineBreakOf`, `SplitLines`, `IndentOf`, `IsWordChar`, `IsIdentChar`, `IsUtf8`, `PercentDecode` oder `DecodeEntities`. Ausnahmen (Fassaden mit eigenem Typ, öffentliche Weiterleitungen, SQL-Bezeichner, Block Rules) stehen mit Grund in `$AllowedLocal`; die Liste soll nur schrumpfen.
 - **Kopien-Sperre JSON:** JSON-Lesehelfer (`TextOf`, `StringOf`, `NumberOf`, `IntOf`, `FlagOf`, `ObjectOf`, `ArrayOf` usw. mit einem `TJSONObject` und einem Namen) gibt es nur als `TJsonRead` in `Atlas.Text.Json`: nachsichtig, `nil`, fehlender Wert, `null` und falscher Typ geben die Vorgabe, Ganzzahlen auch aus `12.0` und `"12"`. Ausnahmen mit eigenem Verhalten stehen mit Grund in `$AllowedJsonLocal`.
 
-### Ausnahme: Atlas.Common als Fachcode-Package des Servers
+### Fachcode des Servers als Hosted-Features
 
-Nach der Rollenregel enthält ein Platform-Package nur technische Abstraktionen; der Fachcode des Servers
-(LSP-Methoden in `Lsp`, Prüfregeln in `Rules`, Refactoring- und Schnellbefehle in `Editing`,
-Namensauflösung in `Semantics`, MCP-Werkzeuge in `Mcp`) gehörte als Hosted-Features in die Anwendung.
-`Rules`, `Mcp` und `Editing` sind umgezogen (`Application/Source/Features/Rules`, `.../Mcp` bzw. `.../Editing`, Units
-`Rules.*`, `Mcp.*` bzw. `Editing.*`, die Werkzeuge des MCP-Modus als `Mcp.Tools.*`); der übrige Fachcode liegt
-bewusst weiter in `Atlas.Common`:
+Nach der Rollenregel enthält ein Platform-Package nur technische Abstraktionen. Der Fachcode des Servers liegt deshalb
+als Hosted-Features in der Anwendung: LSP-Methoden in `Lsp`, Prüfregeln in `Rules`, Refactoring- und Schnellbefehle in
+`Editing`, MCP-Werkzeuge in `Mcp` (`Application/Source/Features/<Feature>`, Units `Lsp.*`, `Rules.*`, `Editing.*` und
+`Mcp.*`, die Werkzeuge des MCP-Modus als `Mcp.Tools.*`). In `Atlas.Common` bleiben nur Platform-Features, darunter
+`Semantics` (Namensauflösung, Datenfluss).
 
-- Die Verschiebung beträfe rund 300 Dateien mit Tests, jede `uses`-Klausel, alle Projektdateien und
-  `Check-PackageDependencies.ps1`. Ohne Compiler in der Cloud fällt jeder vergessene Import erst
-  lokal auf, und jeder parallele Branch an `Lsp`, `Rules` oder `Editing` bekäme Konflikte, die Git
-  nicht als Umbenennung erkennt.
-- Die Abhängigkeitsregeln gelten trotzdem: `Atlas.Common` bleibt frei von Windows und VCL, die
-  Rollenmatrix wird geprüft, und zwischen den Fach-Features gilt eine feste Richtung (unten).
-
-Bedingungen für den späteren Umzug nach `Application/Source/Features/<Feature>/`: der Rollen-Checker
-läuft in der CI, und der Umzug geschieht
-lokal mit Compiler als rein mechanischer Commit je Feature (zuerst Namenspräfix, dann `git mv`).
-
-Featurerichtung zwischen den Fach-Features: `Lsp`, `Rules`, `Editing` und `Mcp` werden Hosted-Features und
-verwenden einander nie (`Atlas.Common: Lsp | Rules | Editing | Mcp`). `Semantics` bleibt Platform-Feature in
-`Atlas.Common`; Platform-Features verwenden nie ein Hosted-Feature (`Atlas.Common: Semantics < Lsp` usw.), Hosted-
-Features dürfen `Semantics` verwenden. Was zwei Hosted-Features teilen, liegt in einem Platform-Feature (`Pascal`,
-`Documents`, `Semantics` …) oder als Interface im Contract des anbietenden Features, das der Host verbindet.
+Featurerichtung: `Lsp`, `Rules`, `Editing` und `Mcp` verwenden einander nie, Platform-Features verwenden nie ein
+Hosted-Feature, Hosted-Features dürfen `Semantics` und die anderen Platform-Features verwenden. Das prüft die
+Rollenregel (`architecture-role-import` mit `hostedFeatures`, `Tools/Check-PackageDependencies.ps1`); eigene
+`directions` braucht `architecture-feature-cycle` dafür nicht mehr. Was zwei Hosted-Features teilen, liegt in einem
+Platform-Feature (`Pascal`, `Documents`, `Semantics` …) oder als Interface im Contract des anbietenden Features, das
+der Host verbindet.
 
 Die Kanten von heute stehen als schrumpfende Liste unter `knownEdges` der Regel `architecture-feature-cycle` in
 `atlas.json` (Stand des Umbaus: 0 Kanten, kein Zyklus; die Liste ist leer). Eine neue Kante ist ein Befund, eine abgebaute wird gestrichen.
@@ -136,7 +125,7 @@ Application/
     Core/                          Host-Core: Abläufe ohne Adapter (Kommandozeile, Start, Arbeitsbereich, Linter, MCP-Werkzeuge)
     Adapters/                      Host-Adapters: implementieren Contracts von Platform- und Hosted-Features
     Platform/                      Host-Platform: Plattformdienste des Servers (Platform.Server)
-    Features/<Feature>/            Hosted-Features der Anwendung (Replay, Monitor, Update, Rules, Mcp, Editing)
+    Features/<Feature>/            Hosted-Features der Anwendung (Replay, Monitor, Update, Rules, Mcp, Editing, Lsp)
     Shell/                         Einstiegspunkte und Komposition (Shell.Composition.*), erzeugt alle Adapter
 Setup/                             Daten des Release-Pakets: Tipps, Vorlagen, Profile, Beispiele, tips.json (der Installer AtlasSetup ist seit 1.2.0 entfernt)
 Tests/
@@ -221,7 +210,7 @@ Die Matrix wird zweimal umgesetzt und gegen dieselbe Fallliste `Tests/Data/Archi
 - Die Prüfregeln `architecture-role-import` und `architecture-contract-content` (`Rules.Builtin.Architecture`, `TArchitectureMatrix`) zeigen Verstöße im Editor und in der Selbstprüfung des Servers. Sie sind experimentell und ohne `prefixes` stumm.
 - Für die Fachcode-Packages tragen beide Regeln dieselben Optionen (das Skript prüft die Gleichheit): `domainPackages` (Base und alle Modul-Packages, gleich den Ordnern unter `Packages/Atlas.IDE.*`), `basePackage` (`Atlas.IDE.Base`), `layerPrefixes` (`Atlas.Core`, `Atlas.UI`, `Atlas.IDE`), `layerPackages` (Teilmenge von `domainPackages`) und `frameworks` (Namen oder Namensanfänge vor einem Punkt, z. B. `Vcl`, `ToolsAPI`, `DesignIntf`). Die Fallliste deckt jede Zelle von Host- und Hosted-Feature-Matrix in einem Fachcode-Package sowie Modul → Base ab.
 
-Eingeordnet wird nach `Ausgabeartefakt.Feature.Rolle.Sache`: längstes passendes Präfix, dann Feature, dann der erste Rollenbezeichner an beliebiger Stelle danach oder Root (`Atlas.Common.Lsp.Hover.Contract` ist ein Contract von `Lsp`); jeder weitere Rollenbezeichner eröffnet eine [Verschachtelung](#verschachtelung). Units ohne Präfix mit einer Host-Rolle als erstem Segment gehören zum Host; alles andere (RTL, VCL, `Setup.*`, Tests) wird nicht geprüft. Contract-Units, auch Sub-Contracts, dürfen im interface keine Klassen deklarieren und kein Framework (VCL, FMX, Windows-API, Open Tools API) einbinden, außer genehmigten Ausnahmen. Gemeinsame Typen mehrerer Units eines Features, die kein Vertrag nach außen sind, heißen `…<Sache>.Types` (Root), nicht `…<Sache>.Contract`.
+Eingeordnet wird nach `Ausgabeartefakt.Feature.Rolle.Sache`: längstes passendes Präfix, dann Feature, dann der erste Rollenbezeichner an beliebiger Stelle danach oder Root (`Lsp.Hover.Contract` ist ein Contract von `Lsp`); jeder weitere Rollenbezeichner eröffnet eine [Verschachtelung](#verschachtelung). Units ohne Präfix mit einer Host-Rolle als erstem Segment gehören zum Host; alles andere (RTL, VCL, `Setup.*`, Tests) wird nicht geprüft. Contract-Units, auch Sub-Contracts, dürfen im interface keine Klassen deklarieren und kein Framework (VCL, FMX, Windows-API, Open Tools API) einbinden, außer genehmigten Ausnahmen. Gemeinsame Typen mehrerer Units eines Features, die kein Vertrag nach außen sind, heißen `…<Sache>.Types` (Root), nicht `…<Sache>.Contract`.
 
 ### Rollen Adapters und Providers (#1443)
 
@@ -254,7 +243,7 @@ Jedes Plugin-Package (`Packages/Atlas.IDE.*`) hat eine eigene `atlas.json` und `
 Auch über implementation-uses bilden die Units unter `Packages/` und `Application/` keinen Zyklus: `AtlasServer --check . --units 'Packages/**,Application/**' --rules uses-cycle` meldet nichts. Eine Unit eines Zyklus ließe sich weder allein testen noch austauschen. Die Muster dafür:
 
 - Gemeinsame Typen eines Features stehen in seiner Contract-Unit. `Editing.Contract` trägt die Typen der Schnellbefehle (`TSlashContext`, `TSlashCommand`, `ISlashHost`, `TSlashSettings` …) und den Kontext der uses-Aktionen (`TUsesContext`). Die Befehls-Units (`*Commands`) binden nur den Contract ein und melden ihre Befehle über `TSlashRegister`; nur das Register `Editing.SlashCommands` bindet alle Befehls-Units ein. Es bleibt eine Root-Unit, weil Lsp, Rules und `ClassActions` es nutzen (eine Composition dürften sie nach der Matrix nicht einbinden).
-- Was zwei Units gemeinsam brauchen, kommt in eine tiefere Unit: `TLspSymbolKind` in `Atlas.Common.Lsp.Contract`, die Formularprüfung in `Editing.FormMentions`, JSON-Strings schreiben und JSON nachsichtig lesen in `Atlas.Text.Json`, Dateiadressen des Plugins in `Atlas.Plugin.Lsp.Uris`, die Steuerelemente `Atlas.Vcl.Options.ChoiceBox` und `Atlas.UI.Tracker.DocBox`.
+- Was zwei Units gemeinsam brauchen, kommt in eine tiefere Unit: `TLspSymbolKind` in `Lsp.Contract`, die Formularprüfung in `Editing.FormMentions`, JSON-Strings schreiben und JSON nachsichtig lesen in `Atlas.Text.Json`, Dateiadressen des Plugins in `Atlas.Plugin.Lsp.Uris`, die Steuerelemente `Atlas.Vcl.Options.ChoiceBox` und `Atlas.UI.Tracker.DocBox`.
 - Eine Funktion gehört zu ihren Daten: Die Nutzung je Befehl fragt `TAtlasIdeCommandUsage.UsageOf`, nicht die Tastenkürzel-Tipps; der Rückruf „Testen“ des Abfragedialogs (`TAtlasQueryTestEvent`) steht beim Dialog, nicht auf der Seite, die ihn öffnet.
 
 ### Genehmigte Ausnahmen
@@ -293,7 +282,7 @@ Verweise zeigen nur auf Quellen, die im Repository liegen oder öffentlich sind 
 
 - Unit-Tests mit DUnitX je Unit in `Tests/<Ausgabeartefakt>/<Feature>/`.
 - Testunits ohne Windows- und VCL-Bezug laufen zusätzlich unter FPC (`Tools/Linux/Test-Fpc.sh`, Liste `Tools/Linux/FpcTests.txt`) in jedem Pull Request; neue gehören in die Liste, sobald sie dort grün sind.
-- Protokolltests: `Tests/Data/Protocol/*.json` enthalten Schritte `send` und `expect`; `Atlas.Common.Lsp.ProtocolReplay` spielt sie gegen den Server ohne Threads ab und vergleicht die Antworten feldweise. Neue Aufzeichnung = neue JSON-Datei, kein Code nötig.
+- Protokolltests: `Tests/Data/Protocol/*.json` enthalten Schritte `send` und `expect`; `Lsp.ProtocolReplay` spielt sie gegen den Server ohne Threads ab und vergleicht die Antworten feldweise. Neue Aufzeichnung = neue JSON-Datei, kein Code nötig.
 - Fuzzing: zufällig beschädigter Code (fester Startwert) darf den Parser weder abstürzen noch hängen lassen.
 - Korpustest: parst RTL und VCL aus `$(BDS)\source` oder dem Ordner in `ATLAS_CORPUS`; ohne beides wird er übersprungen.
 - Leistungsmessung mit festen Zielwerten (Syntaxfehler < 200 ms, Gliederung und Faltbereiche < 100 ms).
@@ -344,10 +333,11 @@ Neue LSP-Methoden registrieren ihre Handler in `Shell.Composition` am Dispatcher
 
 ## Schichten
 
-Innerhalb von `Atlas.Common` hängen die Features in dieser Richtung voneinander ab (nur nach unten):
+Der Server hängt in dieser Richtung ab (nur nach unten); `Lsp` ist ein Hosted-Feature der Anwendung, darunter liegen
+die Features von `Atlas.Common`:
 
 ```text
-Lsp            LSP-Methoden, Capabilities, Positionen
+Lsp            LSP-Methoden, Capabilities, Positionen (Hosted, Application/Source/Features/Lsp)
 Architecture   Uses-Graph, Architekturübersicht (nutzt Index und die uses-Leser aus Pascal)
 Semantics      Namensauflösung, Kontrollfluss
 Index          Symbolindex, Cache, Aufbau

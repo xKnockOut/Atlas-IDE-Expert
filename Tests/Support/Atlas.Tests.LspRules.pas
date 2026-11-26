@@ -7,7 +7,7 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.Contract,
+  Lsp.Contract,
   Rules.CheckContext;
 
 type

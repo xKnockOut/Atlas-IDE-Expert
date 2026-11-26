@@ -8,7 +8,7 @@ interface
 
 uses
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Lsp.Contract,
+  Lsp.Contract,
   Rules.Contract.Api;
 
 type

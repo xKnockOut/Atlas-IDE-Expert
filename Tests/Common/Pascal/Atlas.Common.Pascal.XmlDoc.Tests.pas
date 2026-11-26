@@ -71,7 +71,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.XmlDoc,
-  Atlas.Common.Lsp.Completion.Details;
+  Lsp.Completion.Details;
 
 const
   cListeFile = 'C:\P\Liste.pas';

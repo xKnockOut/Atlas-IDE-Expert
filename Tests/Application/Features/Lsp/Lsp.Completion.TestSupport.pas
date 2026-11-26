@@ -1,0 +1,465 @@
+﻿unit Lsp.Completion.TestSupport;
+
+// Gemeinsame Hilfen der Vervollständigungstests (Lsp.Completion.Tests und .Proposals.Tests).
+
+interface
+
+uses
+  System.SysUtils,
+  DUnitX.TestFramework,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Semantics.NameResolver,
+  Lsp.Completion,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Completion.Request,
+  Lsp.Completion.Values,
+  Atlas.Common.Semantics.EnumTypes,
+  Atlas.Common.Completion.Contract;
+
+const
+  cHauptFile = 'C:\P\Haupt.pas';
+
+  cUnitWerkzeug =
+    'unit Werkzeug;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TBasis = class'#10 +
+    '    Zaehler: Integer;'#10 +
+    '    procedure Melde;'#10 +
+    '  end;'#10 +
+    'procedure Rechne;'#10 +
+    'implementation'#10 +
+    'procedure Versteckt;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'procedure Rechne;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'procedure TBasis.Melde;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'end.';
+
+  cUnitHaupt =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'uses Werkzeug;'#10 +
+    'type'#10 +
+    '  TFoo = class(TBasis)'#10 +
+    '    Name: string;'#10 +
+    '    procedure Bar(Anzahl: Integer);'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TFoo.Bar(Anzahl: Integer);'#10 +
+    'var'#10 +
+    '  Wert: TFoo;'#10 +
+    'begin'#10 +
+    '  { Kommentar Wert } |'#10 +
+    'end;'#10 +
+    'end.';
+
+{ TLspCompletionTests }
+
+type
+  /// <summary>Gemeinsamer Aufbau der Vervollständigungstests: Index mit der Unit Werkzeug und Namensauflöser.
+  /// </summary>
+  TLspCompletionTestCase = class
+  protected
+    FIndex: ISymbolIndex;
+    FResolver: TNameResolver;
+    /// <summary>Index mit Werkzeug und Auflöser anlegen.</summary>
+    procedure Prepare;
+    /// <summary>Index und Auflöser freigeben.</summary>
+    procedure Release;
+    /// <summary>Vorschläge an AMarker mit Präfix-Abgleich.</summary>
+    function ItemsAt(const AText, AMarker: string): TCompletionItems; overload;
+    /// <summary>Vorschläge an AMarker mit dem Abgleich AMatching.</summary>
+    function ItemsAt(const AText, AMarker: string; AMatching: TCompletionMatching): TCompletionItems; overload;
+    /// <summary>Namen der Vorschläge, durch Leerzeichen getrennt.</summary>
+    function Names(const AItems: TCompletionItems): string;
+    /// <summary>Vorschlag „alle Felder zuweisen“ an AMarker.</summary>
+    function AssignItem(const AText, AMarker: string; ASnippets, AOn: Boolean; out AItem: TCompletionItem): Boolean;
+  end;
+
+/// <summary>Position direkt hinter AMarker in AText; Ausnahme, wenn AMarker fehlt.</summary>
+function PositionOf(const AText, AMarker: string): TTextPosition;
+/// <summary>Namen der Vorschläge, durch Leerzeichen getrennt.</summary>
+function ItemNames(const AItems: TCompletionItems): string; overload;
+function ItemNames(const AItems: TArray<TCompletionItem>): string; overload;
+/// <summary>Vorschlag mit dem Namen AName (Groß-/Kleinschreibung zählt); False, wenn es keinen gibt.</summary>
+function FindItem(const AItems: TCompletionItems; const AName: string; out AItem: TCompletionItem): Boolean;
+/// <summary>Anzahl der Vorschläge mit dem Namen AName (Groß-/Kleinschreibung egal).</summary>
+function CountItems(const AItems: TCompletionItems; const AName: string): Integer;
+/// <summary>Vorschläge der Liste hinter dem letzten Vorkommen von AMarker in einer Zeile, mit Präfix-Abgleich,
+/// Index AIndex und Einstellungen ASettings (Datei HauptFile).</summary>
+function CollectWith(const AIndex: ISymbolIndex; const AText, AMarker: string;
+  const ASettings: TCompletionSettings): TCompletionItems;
+
+/// <summary>Unit Haupt mit ACode an der Stelle des Platzhalters.</summary>
+function WithCode(const ACode: string): string;
+/// <summary>Was TEnumTypes aus der Datei HauptFile braucht.</summary>
+function LookupOf(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree; const AText: string;
+  const AReadText: TDocumentReadText): TEnumLookup;
+/// <summary>Anfrage an APosition mit Auflöser, Index, Baum und Lesen aus ALookup; der Aufrufer gibt sie frei.
+/// </summary>
+function RequestOf(const ALookup: TEnumLookup; const APosition: TTextPosition): TCompletionRequest;
+/// <summary>TCompletionValues.EnumItems an APosition.</summary>
+function EnumAt(const ALookup: TEnumLookup; const APosition: TTextPosition; out AItems: TArray<TCompletionItem>;
+  out ASetMode: Boolean): Boolean;
+/// <summary>TCompletionDeclarations.OverrideItems an APosition.</summary>
+function OverrideAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  out AItems: TCompletionItems): Boolean;
+/// <summary>TCompletionDeclarations.InterfaceItems an APosition mit Abschnitt ASection.</summary>
+function InterfaceAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  ASection: TCompletionInterfaceSection; out AItems: TArray<TCompletionItem>; out ABatch: Boolean): Boolean;
+
+/// <summary>TCompletionMethods.EventItems an APosition.</summary>
+function EventsAt(const ALookup: TEnumLookup; const APosition: TTextPosition; out AItems: TCompletionItems): Boolean;
+/// <summary>TCompletionForms.ComponentItems an APosition, das Formular ohne Zwischenspeicher über ALookup.ReadText.
+/// </summary>
+function ComponentsAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  out AItems: TArray<TCompletionItem>): Boolean;
+/// <summary>TCompletionCases.SenderItems an APosition mit Typumwandlung ACast, das Formular ohne Zwischenspeicher.
+/// </summary>
+function SendersAt(const ALookup: TEnumLookup; const APosition: TTextPosition; ACast: TCompletionSenderCast;
+  out AItems: TCompletionItems): Boolean;
+/// <summary>TCompletionForms.DataNameItems an APosition.</summary>
+function DataNamesAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  out AItems: TCompletionItems): Boolean;
+/// <summary>TCompletionGuard.GuardItems an APosition mit Freigabe AStyle.</summary>
+function GuardAt(const ALookup: TEnumLookup; const APosition: TTextPosition; AStyle: TCompletionFreeStyle;
+  ANewLine: Boolean; out AItems: TCompletionItems): Boolean;
+/// <summary>TCompletionLists.Collect an APosition mit Fuzzy-Matching.</summary>
+function CollectAt(const ALookup: TEnumLookup; const APosition: TTextPosition; const APostfix: TPostfixOptions;
+  const AOnPartial: TCompletionPartialProc): TCompletionItems;
+
+implementation
+
+uses
+  Atlas.Tests.SourceText,
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
+  Lsp.Completion.Lists,
+  Lsp.Completion.Cases,
+  Lsp.Completion.Declarations,
+  Lsp.Completion.Forms,
+  Lsp.Completion.Methods,
+  Lsp.Completion.Guard;
+
+function PositionOf(const AText, AMarker: string): TTextPosition;
+begin
+  Result := TTestSource.PositionAfter(AText, AMarker);
+end;
+
+function ItemNames(const AItems: TCompletionItems): string;
+begin
+  Result := ItemNames(AItems.Items);
+end;
+
+function ItemNames(const AItems: TArray<TCompletionItem>): string;
+var
+  mItem: TCompletionItem;
+begin
+  Result := '';
+  for mItem in AItems do
+  begin
+    Result := Result + ' ' + mItem.Name;
+  end;
+  Result := Result.Trim;
+end;
+
+function FindItem(const AItems: TCompletionItems; const AName: string; out AItem: TCompletionItem): Boolean;
+var
+  mItem: TCompletionItem;
+begin
+  for mItem in AItems.Items do
+  begin
+    if mItem.Name = AName then
+    begin
+      AItem := mItem;
+      Exit(True);
+    end;
+  end;
+  AItem := Default(TCompletionItem);
+  Result := False;
+end;
+
+function CountItems(const AItems: TCompletionItems; const AName: string): Integer;
+var
+  mItem: TCompletionItem;
+begin
+  Result := 0;
+  for mItem in AItems.Items do
+  begin
+    if SameText(mItem.Name, AName) then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
+function CollectWith(const AIndex: ISymbolIndex; const AText, AMarker: string;
+  const ASettings: TCompletionSettings): TCompletionItems;
+var
+  mResolver: TNameResolver;
+  mRequest: TCompletionRequest;
+  mTree: TSyntaxTree;
+  mLines: TArray<string>;
+  mLine: Integer;
+  mPosition: TTextPosition;
+  mPostfix: TPostfixOptions;
+begin
+  mLines := AText.Split([#10]);
+  mPosition := TTextPosition.Create(0, 0);
+  for mLine := 0 to High(mLines) do
+  begin
+    if Pos(AMarker, mLines[mLine]) > 0 then
+    begin
+      mPosition := TTextPosition.Create(mLine, Pos(AMarker, mLines[mLine]) - 1 + Length(AMarker));
+    end;
+  end;
+  mTree := nil;
+  mResolver := nil;
+  mRequest := nil;
+  try
+    mTree := TSyntaxTreeCache.Parse(AText);
+    mResolver := TNameResolver.Create(AIndex);
+    mRequest := TCompletionRequest.Create(AText, cHauptFile, mPosition);
+    mRequest.Tree := mTree;
+    mRequest.Resolver := mResolver;
+    mRequest.Index := AIndex;
+    mRequest.Matching := TCompletionMatching.Prefix;
+    mRequest.Settings := ASettings;
+    mPostfix := Default(TPostfixOptions);
+    Result := TCompletionLists.Collect(mRequest, mPostfix, nil);
+  finally
+    mRequest.Free;
+    mResolver.Free;
+    mTree.Free;
+  end;
+end;
+
+function WithCode(const ACode: string): string;
+begin
+  Result := StringReplace(cUnitHaupt, '  { Kommentar Wert } |', ACode, []);
+end;
+
+/// <summary>Was TEnumTypes aus der Datei HauptFile braucht.</summary>
+function LookupOf(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree; const AText: string;
+  const AReadText: TDocumentReadText): TEnumLookup;
+begin
+  Result.Resolver := AResolver;
+  Result.Index := AIndex;
+  Result.Tree := ATree;
+  Result.Text := AText;
+  Result.FileName := cHauptFile;
+  Result.ReadText := AReadText;
+end;
+
+/// <summary>Anfrage an APosition mit Auflöser, Index, Baum und Lesen aus ALookup; der Aufrufer gibt sie frei.
+/// </summary>
+function RequestOf(const ALookup: TEnumLookup; const APosition: TTextPosition): TCompletionRequest;
+begin
+  Result := TCompletionRequest.Create(ALookup.Text, ALookup.FileName, APosition);
+  Result.Tree := ALookup.Tree;
+  Result.Resolver := ALookup.Resolver;
+  Result.Index := ALookup.Index;
+  Result.ReadText := ALookup.ReadText;
+  Result.Matching := TCompletionMatching.Fuzzy;
+end;
+
+/// <summary>TCompletionValues.EnumItems an APosition.</summary>
+function EnumAt(const ALookup: TEnumLookup; const APosition: TTextPosition; out AItems: TArray<TCompletionItem>;
+  out ASetMode: Boolean): Boolean;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    Result := TCompletionValues.EnumItems(mRequest, AItems, ASetMode);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+{ TLspCompletionTestCase }
+
+procedure TLspCompletionTestCase.Prepare;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, 'C:\P\Werkzeug.pas', nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TLspCompletionTestCase.Release;
+begin
+  FreeAndNil(FResolver);
+  FIndex := nil;
+end;
+
+function TLspCompletionTestCase.ItemsAt(const AText, AMarker: string): TCompletionItems;
+begin
+  Result := ItemsAt(AText, AMarker, TCompletionMatching.Prefix);
+end;
+
+function TLspCompletionTestCase.ItemsAt(const AText, AMarker: string;
+  AMatching: TCompletionMatching): TCompletionItems;
+var
+  mTree: TSyntaxTree;
+begin
+  mTree := TPascalParser.Parse(AText);
+  try
+    Result := TCompletionLists.Collect(FResolver, FIndex, mTree, cHauptFile, PositionOf(AText, AMarker), AMatching);
+  finally
+    mTree.Free;
+  end;
+end;
+
+function TLspCompletionTestCase.Names(const AItems: TCompletionItems): string;
+begin
+  Result := ItemNames(AItems);
+end;
+
+function TLspCompletionTestCase.AssignItem(const AText, AMarker: string; ASnippets, AOn: Boolean;
+  out AItem: TCompletionItem): Boolean;
+var
+  mTree: TSyntaxTree;
+  mRequest: TCompletionRequest;
+  mSettings: TCompletionSettings;
+begin
+  mTree := TPascalParser.Parse(AText);
+  mRequest := TCompletionRequest.Create(AText, cHauptFile, PositionOf(AText, AMarker));
+  try
+    mRequest.Tree := mTree;
+    mRequest.Resolver := FResolver;
+    mRequest.Index := FIndex;
+    mSettings := TCompletionSettings.Default;
+    mSettings.AssignAllFields := AOn;
+    mRequest.Settings := mSettings;
+    Result := TCompletionValues.AssignAllItem(mRequest, ASnippets, AItem);
+  finally
+    mRequest.Free;
+    mTree.Free;
+  end;
+end;
+
+function OverrideAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  out AItems: TCompletionItems): Boolean;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    Result := TCompletionDeclarations.OverrideItems(mRequest, AItems);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+function InterfaceAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  ASection: TCompletionInterfaceSection; out AItems: TArray<TCompletionItem>; out ABatch: Boolean): Boolean;
+var
+  mRequest: TCompletionRequest;
+  mSettings: TCompletionSettings;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    mSettings := mRequest.Settings;
+    mSettings.InterfaceSection := ASection;
+    mRequest.Settings := mSettings;
+    Result := TCompletionDeclarations.InterfaceItems(mRequest, AItems, ABatch);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+function EventsAt(const ALookup: TEnumLookup; const APosition: TTextPosition; out AItems: TCompletionItems): Boolean;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    Result := TCompletionMethods.EventItems(mRequest, AItems);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+function ComponentsAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  out AItems: TArray<TCompletionItem>): Boolean;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    Result := TCompletionForms.ComponentItems(mRequest, TCompletionForms.Uncached(ALookup.ReadText), AItems);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+function SendersAt(const ALookup: TEnumLookup; const APosition: TTextPosition; ACast: TCompletionSenderCast;
+  out AItems: TCompletionItems): Boolean;
+var
+  mRequest: TCompletionRequest;
+  mSettings: TCompletionSettings;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    mSettings := mRequest.Settings;
+    mSettings.SenderCast := ACast;
+    mRequest.Settings := mSettings;
+    Result := TCompletionCases.SenderItems(mRequest, TCompletionForms.Uncached(ALookup.ReadText), AItems);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+function DataNamesAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  out AItems: TCompletionItems): Boolean;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    Result := TCompletionForms.DataNameItems(mRequest, AItems);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+function GuardAt(const ALookup: TEnumLookup; const APosition: TTextPosition; AStyle: TCompletionFreeStyle;
+  ANewLine: Boolean; out AItems: TCompletionItems): Boolean;
+var
+  mRequest: TCompletionRequest;
+  mSettings: TCompletionSettings;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    mSettings := mRequest.Settings;
+    mSettings.FreeStyle := AStyle;
+    mRequest.Settings := mSettings;
+    Result := TCompletionGuard.GuardItems(mRequest, ANewLine, AItems);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+function CollectAt(const ALookup: TEnumLookup; const APosition: TTextPosition; const APostfix: TPostfixOptions;
+  const AOnPartial: TCompletionPartialProc): TCompletionItems;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    Result := TCompletionLists.Collect(mRequest, APostfix, AOnPartial);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+end.

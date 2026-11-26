@@ -8,7 +8,7 @@ interface
 
 uses
   System.JSON,
-  Atlas.Common.Lsp.Contract,
+  Lsp.Contract,
   Rules.Contract.Api;
 
 type

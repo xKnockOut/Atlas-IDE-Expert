@@ -11,7 +11,7 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.Commands,
+  Lsp.Commands,
   Shell.Composition.Refactorings.Services,
   Shell.Composition.Refactorings;
 
@@ -78,13 +78,13 @@ uses
   Editing.SafeDelete.Protocol,
   Editing.TypeAlias.Protocol,
   Editing.DisableWarning.Protocol,
-  Atlas.Common.Lsp.StepFilter,
-  Atlas.Common.Lsp.MethodBreakpoints,
+  Lsp.StepFilter,
+  Lsp.MethodBreakpoints,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Index.Extractor,
   Editing.UnitRename.Protocol,
   Editing.RaiseVisibility.Protocol,
-  Atlas.Common.Lsp.Profiler,
+  Lsp.Profiler,
   Shell.Composition.Profiler,
   Shell.Composition.Refactorings.TestSupport;
 

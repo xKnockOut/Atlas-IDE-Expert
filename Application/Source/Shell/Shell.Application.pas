@@ -23,7 +23,7 @@ uses
   Atlas.Common.Index.PublishedMembers,
   Atlas.Common.Diagnostics.ServerActivity,
   Atlas.Common.Diagnostics.StatusFile,
-  Atlas.Common.Lsp.StatusHeartbeat,
+  Lsp.StatusHeartbeat,
   Atlas.Common.Index.CacheDirectory,
   Platform.Server,
   Core.CommandLine,

@@ -42,7 +42,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.Completion;
+  Lsp.Completion;
 
 const
   cUri = 'file:///tmp/A.pas';

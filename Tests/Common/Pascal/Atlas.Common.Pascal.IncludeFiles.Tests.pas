@@ -43,7 +43,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.Completion.Lists,
+  Lsp.Completion.Lists,
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
@@ -58,7 +58,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.Definitions,
-  Atlas.Common.Lsp.Completion,
+  Lsp.Completion,
   Atlas.Common.Completion.Contract;
 
 const

@@ -14,9 +14,9 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Compiler.Contract,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
-  Atlas.Common.Lsp.PullDiagnostics,
-  Atlas.Common.Lsp.WorkspaceCheck,
+  Lsp.SyntaxDiagnostics,
+  Lsp.PullDiagnostics,
+  Lsp.WorkspaceCheck,
   Shell.Composition.Core,
   Shell.Composition.Folders;
 

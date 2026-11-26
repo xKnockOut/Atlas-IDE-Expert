@@ -40,7 +40,7 @@ uses
   System.JSON,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Logging.Providers.Logger,
-  Atlas.Common.Lsp.PullDiagnostics;
+  Lsp.PullDiagnostics;
 
 function NoTimeout: Cardinal;
 begin

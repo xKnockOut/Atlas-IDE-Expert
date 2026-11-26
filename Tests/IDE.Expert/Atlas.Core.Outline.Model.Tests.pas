@@ -38,7 +38,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Lsp.DocumentSymbols,
+  Lsp.DocumentSymbols,
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.TestSupport;
 

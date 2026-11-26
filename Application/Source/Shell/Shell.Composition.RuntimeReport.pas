@@ -3,13 +3,13 @@
 // Befehle atlas.server.runtimeReport und atlas.server.runtimeReport.clear (#74) der Komposition: Projekt zur URI aus
 // den Arbeitsbereichen wie bei atlas.server.leakSetup; Map neben der EXE der Konfiguration Debug, wenn weder map
 // noch exe kommen; Dateien im Projekt über die Quelldateien des Projekts (Unitname bzw. Dateiname). Logik in
-// Atlas.Common.Diagnostics.RuntimeReport und Atlas.Common.Lsp.RuntimeReport.
+// Atlas.Common.Diagnostics.RuntimeReport und Lsp.RuntimeReport.
 
 interface
 
 uses
-  Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.RuntimeReport,
+  Lsp.Commands,
+  Lsp.RuntimeReport,
   Atlas.Common.Compiler.Results,
   Shell.Composition.LeakSetup;
 
@@ -41,7 +41,7 @@ uses
   System.JSON,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Leaks.Setup,
-  Atlas.Common.Lsp.Contract,
+  Lsp.Contract,
   Atlas.Common.Diagnostics.Contract;
 
 type

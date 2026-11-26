@@ -4,7 +4,7 @@
 // Argumente für atlas.server.suggestNext und atlas.server.learnedPatterns
 // bauen, die Antworten lesen und den Schattentext führen.
 // - Der Server liefert die Zeilen für die leere Zeile nach dem Auslöser samt
-//   Einrückung und die Stelle der Schreibmarke danach (Atlas.Common.Lsp.
+//   Einrückung und die Stelle der Schreibmarke danach (Lsp.
 //   LearnedSuggestions).
 // - Der Editor zeichnet nur eine Zeile: Der Schattentext ist der Block in
 //   einer Zeile („try … finally X.Free; end;“), die leere Zeile des Rumpfs

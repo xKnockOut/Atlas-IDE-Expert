@@ -10,7 +10,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.Commands,
+  Lsp.Commands,
   Shell.Composition.Refactorings.Services;
 
 type
@@ -47,7 +47,7 @@ uses
   Atlas.Common.Projects.MissingUnit,
   Editing.DisableWarning.Protocol,
   Editing.CompilerFixes.Protocol,
-  Atlas.Common.Lsp.MissingUnit,
+  Lsp.MissingUnit,
   Atlas.Common.Localization.Texts,
   Atlas.Common.CodeActions.Json,
   Atlas.Common.Semantics.InferredTypes,

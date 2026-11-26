@@ -10,7 +10,7 @@ interface
 uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Semantics.Contract,
-  Atlas.Common.Lsp.Contract,
+  Lsp.Contract,
   Editing.Contract.CodeActions;
 
 type

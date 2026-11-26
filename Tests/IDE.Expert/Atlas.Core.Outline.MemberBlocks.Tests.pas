@@ -36,7 +36,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Lsp.DocumentSymbols,
+  Lsp.DocumentSymbols,
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.TypeText,
   Atlas.Core.Outline.Breadcrumbs,

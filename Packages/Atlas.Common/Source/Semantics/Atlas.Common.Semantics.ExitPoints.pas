@@ -2,7 +2,7 @@
 
 // Austrittspunkte einer Routine (#698), gemeinsam für die Hervorhebung im
 // IDE-Plugin (atlas.server.exitPoints) und textDocument/documentHighlight
-// (#307, Atlas.Common.Lsp.KeywordHighlights):
+// (#307, Lsp.KeywordHighlights):
 // - Auf Exit, raise, Abort, Halt, RunError oder dem Namen der Routine in ihrem
 //   Kopf: alle Stellen, an denen die Routine verlassen wird. Dazu zählen
 //   Aufrufe von Routinen, die immer auslösen: Routinen derselben Unit, deren

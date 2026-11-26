@@ -60,7 +60,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.Completion;
+  Lsp.Completion;
 
 const
   cFileName = 'C:\P\Foo.pas';

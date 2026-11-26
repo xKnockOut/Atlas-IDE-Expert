@@ -27,7 +27,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Lsp.DocumentSymbols,
+  Lsp.DocumentSymbols,
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.Interfaces,
   Atlas.Core.Outline.TestSupport;

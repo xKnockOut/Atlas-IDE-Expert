@@ -4,7 +4,7 @@
 // atlas.server.runtimeReport und .clear und die Antwort als Records. Der Server löst den Bericht auf und hängt
 // die Diagnosen an; das Plugin zeigt die Stapel in der Meldungsansicht mit anklickbaren Zeilen.
 //
-// Antwort des Servers (Atlas.Common.Lsp.RuntimeReport):
+// Antwort des Servers (Lsp.RuntimeReport):
 //   { kind: "leaks" | "crash" | "none", source, title, mapStatus, map, diagnostics,
 //     crash?: {exceptionClass, message, address, module},
 //     groups?: [{name, kind, count, size, site, frames}], threads?: [{name, crashed, site, frames}] }

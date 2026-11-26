@@ -27,7 +27,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Documents.Providers.DocumentStore,
-  Atlas.Common.Lsp.Commands,
+  Lsp.Commands,
   Editing.SlashMenu.Protocol;
 
 function NewServices: TShellEditingServices;

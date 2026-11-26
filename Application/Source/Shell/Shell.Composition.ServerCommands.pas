@@ -12,8 +12,8 @@ uses
   System.JSON,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Compiler.Backend,
-  Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.Processes,
+  Lsp.Commands,
+  Lsp.Processes,
   Core.Workspace;
 
 type
@@ -98,10 +98,10 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.CacheDirectory,
   Atlas.Common.JsonRpc.ServerStatus,
-  Atlas.Common.Lsp.SettingsCommands,
+  Lsp.SettingsCommands,
   Rules.SettingsCatalog,
-  Atlas.Common.Lsp.PullDiagnostics,
-  Atlas.Common.Lsp.FormFiles,
+  Lsp.PullDiagnostics,
+  Lsp.FormFiles,
   Platform.Server,
   Core.CrashCases,
   Core.Commands.Build,

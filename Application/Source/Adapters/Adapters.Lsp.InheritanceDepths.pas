@@ -9,7 +9,7 @@ interface
 uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Metrics.Contract,
-  Atlas.Common.Lsp.Contract,
+  Lsp.Contract,
   Rules.Contract.Api;
 
 type

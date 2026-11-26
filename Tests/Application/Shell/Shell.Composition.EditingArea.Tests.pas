@@ -37,7 +37,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.DocumentSymbols,
+  Lsp.DocumentSymbols,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Logging.Providers.Logger,
   Shell.Composition.TestSupport;

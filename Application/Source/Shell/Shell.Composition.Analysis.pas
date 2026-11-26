@@ -11,19 +11,19 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.Commands,
+  Lsp.Commands,
   Atlas.Common.Semantics.References,
-  Atlas.Common.Lsp.SignatureHelp,
+  Lsp.SignatureHelp,
   Atlas.Common.Semantics.Hierarchies,
   Atlas.Common.Semantics.Impact,
-  Atlas.Common.Lsp.DataFlow,
-  Atlas.Common.Lsp.AccessChains,
-  Atlas.Common.Lsp.Implementations,
-  Atlas.Common.Lsp.InlayHints,
-  Atlas.Common.Lsp.CodeLens,
-  Atlas.Common.Lsp.Metrics,
-  Atlas.Common.Lsp.Todos,
-  Atlas.Common.Lsp.SemanticTokens;
+  Lsp.DataFlow,
+  Lsp.AccessChains,
+  Lsp.Implementations,
+  Lsp.InlayHints,
+  Lsp.CodeLens,
+  Lsp.Metrics,
+  Lsp.Todos,
+  Lsp.SemanticTokens;
 
 type
   TShellAnalysisReadText = reference to function(const AFileName: string; out AText: string): Boolean;
@@ -91,7 +91,7 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Lsp.Contract,
+  Lsp.Contract,
   Rules.Contract.Api,
   Rules.Providers.InheritanceDepths,
   Adapters.Lsp.InheritanceDepths,

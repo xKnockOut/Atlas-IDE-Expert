@@ -17,7 +17,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Diagnostics.Contract,
-  Atlas.Common.Lsp.Lifecycle,
+  Lsp.Lifecycle,
   Platform.Server,
   Shell.Diagnostics;
 

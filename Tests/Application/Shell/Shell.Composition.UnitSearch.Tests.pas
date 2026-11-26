@@ -40,8 +40,8 @@ uses
   Atlas.Common.Compiler.Contract,
   System.JSON,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.UnitSearch;
+  Lsp.Commands,
+  Lsp.UnitSearch;
 
 { TShellUnitSearchTests }
 

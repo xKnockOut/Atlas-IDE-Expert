@@ -19,7 +19,7 @@
 // Setter. Anonyme Methoden und @Routine rufen nichts auf.
 // Welche Stelle wirklich ein Aufruf ist (Methode, Funktion, Getter, Setter)
 // und nicht Variable, Feld oder Typumwandlung, entscheidet erst die
-// Namensauflösung (Atlas.Common.Lsp.StepTargets).
+// Namensauflösung (Lsp.StepTargets).
 //
 // Folgeanweisung: die nächste Anweisung derselben Liste; am Ende einer Liste
 // der Kopf der umgebenden Schleife, die until-Zeile, die erste Anweisung des

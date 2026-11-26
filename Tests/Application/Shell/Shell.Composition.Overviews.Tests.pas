@@ -40,16 +40,16 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.Architecture,
+  Lsp.Commands,
+  Lsp.Architecture,
   Atlas.Common.Query.Requests,
-  Atlas.Common.Lsp.Hotspots,
-  Atlas.Common.Lsp.UnitRelations,
-  Atlas.Common.Lsp.SymbolPath,
-  Atlas.Common.Lsp.DebugDisplay,
-  Atlas.Common.Lsp.EventHandlers,
-  Atlas.Common.Lsp.DataAccessSites,
-  Atlas.Common.Lsp.Recursion;
+  Lsp.Hotspots,
+  Lsp.UnitRelations,
+  Lsp.SymbolPath,
+  Lsp.DebugDisplay,
+  Lsp.EventHandlers,
+  Lsp.DataAccessSites,
+  Lsp.Recursion;
 
 const
   cRecursiveUnit = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  P;'#10'end;'#10'end.'#10;

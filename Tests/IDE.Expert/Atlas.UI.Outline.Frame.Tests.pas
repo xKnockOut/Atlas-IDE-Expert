@@ -51,7 +51,7 @@ uses
   Vcl.Menus,
   Atlas.UI.Outline.Strings,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Lsp.DocumentSymbols,
+  Lsp.DocumentSymbols,
   Atlas.Core.Outline.Model,
   Atlas.Vcl.Controls.ListBox,
   Atlas.Core.Outline.TestSupport;

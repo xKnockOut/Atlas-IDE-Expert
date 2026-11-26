@@ -40,7 +40,7 @@ uses
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Query.Contract,
   Atlas.Common.Index.IdeProject,
-  Atlas.Common.Lsp.WatchedFiles,
+  Lsp.WatchedFiles,
   Atlas.Common.Diagnostics.ServerActivity,
   Atlas.Common.Projects.Selection,
   Atlas.Common.Diagnostics.Anonymizer,

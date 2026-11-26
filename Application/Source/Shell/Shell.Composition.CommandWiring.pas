@@ -34,7 +34,7 @@ uses
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Compiler.Backend,
   Atlas.Common.JsonRpc.ServerStatus,
-  Atlas.Common.Lsp.WorkspaceCheck,
+  Lsp.WorkspaceCheck,
   Shell.Composition.CommandArea,
   Atlas.Common.Semantics.Contract;
 

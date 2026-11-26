@@ -28,7 +28,7 @@ uses
   System.JSON,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.DocumentSymbols;
+  Lsp.DocumentSymbols;
 
 { TOutlineTest }
 

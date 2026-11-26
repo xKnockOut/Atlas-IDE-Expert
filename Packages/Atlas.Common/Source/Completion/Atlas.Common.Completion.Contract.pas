@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Completion.Contract;
 
-// Contract des Features Completion: die Werte der Vervollständigung, die Sprachserver (Atlas.Common.Lsp.Completion)
+// Contract des Features Completion: die Werte der Vervollständigung, die Sprachserver (Lsp.Completion)
 // und Editing (Quellen der Vervollständigung) teilen: Kontext am Cursor, Eintrag, Liste, Teilergebnisse und die
 // Typen aus den Packages der IDE, Ergebnis eines Falls und die Stellen der Quellen. Die Anfrage ist
 // Atlas.Common.Completion.Request, die Antwort im Aufbau Atlas.Common.Completion.Answer.

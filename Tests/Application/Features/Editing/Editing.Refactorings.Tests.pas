@@ -83,7 +83,7 @@ uses
   Atlas.Common.Documents.TextChanges,
   Editing.Extract,
   Editing.NestedRoutines,
-  Atlas.Common.Lsp.Completion,
+  Lsp.Completion,
   Atlas.Common.Completion.Contract,
   Editing.Completion.CreateMethod,
   Atlas.Common.Completion.Request;

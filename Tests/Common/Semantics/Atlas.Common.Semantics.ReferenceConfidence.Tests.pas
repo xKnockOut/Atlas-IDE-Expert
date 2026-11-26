@@ -107,7 +107,7 @@ uses
   Mcp.Confirm,
   Mcp.EditTools,
   Atlas.Tests.SourceText,
-  Atlas.Common.Lsp.References;
+  Lsp.References;
 
 const
   cKundenFile = 'C:\P\Kunden.pas';

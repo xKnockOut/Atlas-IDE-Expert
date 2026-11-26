@@ -54,7 +54,7 @@ uses
   Atlas.Common.JsonRpc.Positions,
   Editing.InvertBoolean.Protocol,
   Atlas.Text.Json,
-  Atlas.Common.Lsp.Edits.TestSupport;
+  Lsp.Edits.TestSupport;
 
 const
   cPanelsFile = 'C:\P\Panels.pas';

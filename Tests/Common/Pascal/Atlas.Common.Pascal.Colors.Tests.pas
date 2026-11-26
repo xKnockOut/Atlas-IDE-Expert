@@ -42,7 +42,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Pascal.Colors,
-  Atlas.Common.Lsp.Colors;
+  Lsp.Colors;
 
 function Rgb(AR, AG, AB: Byte): TRgbColor;
 begin

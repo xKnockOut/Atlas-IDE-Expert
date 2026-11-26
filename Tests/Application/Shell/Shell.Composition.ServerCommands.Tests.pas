@@ -54,12 +54,12 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Lsp.Commands,
+  Lsp.Commands,
   Atlas.Common.JsonRpc.ServerStatus,
-  Atlas.Common.Lsp.Processes,
-  Atlas.Common.Lsp.SettingsCommands,
-  Atlas.Common.Lsp.PullDiagnostics,
-  Atlas.Common.Lsp.FormFiles,
+  Lsp.Processes,
+  Lsp.SettingsCommands,
+  Lsp.PullDiagnostics,
+  Lsp.FormFiles,
   Core.CrashCases;
 
 type

@@ -40,8 +40,8 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.RuntimeReport,
+  Lsp.Commands,
+  Lsp.RuntimeReport,
   Atlas.Common.Logging.Providers.Logger,
   Shell.Composition.RuntimeReport;
 

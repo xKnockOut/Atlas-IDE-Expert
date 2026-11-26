@@ -52,7 +52,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Semantics.Impact,
   Editing.TestUnits.Protocol,
-  Atlas.Common.Lsp.CoveredBy,
+  Lsp.CoveredBy,
   Atlas.Common.Logging.Providers.Logger,
   Shell.Composition.CoveredBy;
 

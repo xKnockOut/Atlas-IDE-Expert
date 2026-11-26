@@ -35,7 +35,7 @@ uses
   System.JSON,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.TextDocumentSync,
+  Lsp.TextDocumentSync,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Compiler.Contract,

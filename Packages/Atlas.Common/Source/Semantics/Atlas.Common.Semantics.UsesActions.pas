@@ -354,7 +354,7 @@ begin
     Result := cInImplementationPart;
   end;
   // Qualifizierter Zugriff wie SysUtils.Format oder System.SysUtils.Format. Nur mit Punkt dahinter: Eine
-  // Methode, die wie die Unit heißt (UsesActions in Atlas.Common.Lsp.CodeActions), benutzt sie nicht.
+  // Methode, die wie die Unit heißt (UsesActions in Lsp.CodeActions), benutzt sie nicht.
   if AIdentifiers.TryGetValue(cQualifierKey + LowerCase(Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt)),
     mMask) then
   begin

@@ -9,7 +9,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.Commands,
+  Lsp.Commands,
   Shell.Composition.Refactorings.Services;
 
 type
@@ -39,7 +39,7 @@ uses
   Editing.TypeAlias,
   Atlas.Common.JsonRpc.Positions,
   Editing.TypeAlias.Protocol,
-  Atlas.Common.Lsp.EnumTables,
+  Lsp.EnumTables,
   Editing.Overloads.Protocol,
   Atlas.Common.Localization.Texts;
 

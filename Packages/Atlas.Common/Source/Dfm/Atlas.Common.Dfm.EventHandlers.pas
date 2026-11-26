@@ -12,7 +12,7 @@
 //   nil und Methoden fremder Objekte (Form1.Tick) zählen nicht.
 // Den Rumpf sucht die Unit selbst (Klasse.Methode mit begin); fehlt er
 // (geerbtes Formular, Handler im Vorfahren), bleibt Line -1, und die
-// Server-Seite (Atlas.Common.Lsp.EventHandlers) sucht über den Index weiter.
+// Server-Seite (Lsp.EventHandlers) sucht über den Index weiter.
 // Bei Timern steht Interval aus der Formulardatei dabei (-1 = Vorgabe 1000).
 
 interface

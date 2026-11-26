@@ -2,7 +2,7 @@
 
 // Referenzsuche (#29): alle Stellen im Projekt, die zur selben Deklaration auflösen
 // wie der Bezeichner an einer Stelle; die Anfrage textDocument/references
-// beantwortet Atlas.Common.Lsp.References.
+// beantwortet Lsp.References.
 //
 // Durchsucht werden die Projektdateien und die geöffneten Dokumente; Dateien,
 // in denen der Name nicht einmal als Text vorkommt, werden nicht geparst.

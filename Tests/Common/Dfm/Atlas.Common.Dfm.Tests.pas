@@ -52,7 +52,7 @@ uses
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.Navigation,
-  Atlas.Common.Lsp.FormFiles;
+  Lsp.FormFiles;
 
 const
   cForm =

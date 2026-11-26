@@ -30,7 +30,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Lsp.DocumentSymbols,
+  Lsp.DocumentSymbols,
   Atlas.Core.Editor.Metrics,
   Atlas.Core.Outline.Model,
   Atlas.Core.Editor.CrumbCard,

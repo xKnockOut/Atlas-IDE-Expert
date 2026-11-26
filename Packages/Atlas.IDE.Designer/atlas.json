@@ -24,7 +24,8 @@
         "Update",
         "Rules",
         "Mcp",
-        "Editing"
+        "Editing",
+        "Lsp"
       ],
       "prefixes": [
         "Atlas.Text",
@@ -140,7 +141,8 @@
         "Update",
         "Rules",
         "Mcp",
-        "Editing"
+        "Editing",
+        "Lsp"
       ],
       "prefixes": [
         "Atlas.Text",

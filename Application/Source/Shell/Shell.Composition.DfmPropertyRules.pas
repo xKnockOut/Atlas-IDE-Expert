@@ -10,7 +10,7 @@ uses
   System.JSON,
   Atlas.Common.Logging.Contract,
   Rules.Contract,
-  Atlas.Common.Lsp.Commands,
+  Lsp.Commands,
   Shell.Composition.Workspaces,
   Shell.Composition.RuleContext,
   Atlas.Common.Semantics.References,
@@ -52,7 +52,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Rules.CheckContext,
-  Atlas.Common.Lsp.DfmPropertyRules,
+  Lsp.DfmPropertyRules,
   Core.Workspace,
   Atlas.Common.Localization.RequestTexts;
 
