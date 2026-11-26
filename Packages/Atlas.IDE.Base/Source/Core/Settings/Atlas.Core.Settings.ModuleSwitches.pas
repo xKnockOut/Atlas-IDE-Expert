@@ -61,6 +61,7 @@ type
 implementation
 
 uses
+  System.StrUtils, // MatchText; FPC findet es über SysUtils, Delphi nicht (E2003)
   Atlas.Core.Settings.Groups,
   Atlas.Core.Settings.History;
 

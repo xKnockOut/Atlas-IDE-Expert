@@ -141,7 +141,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.StickyPaint,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.Core.Editor.GuideStroke;
 
 const
   cTickMs = 100;
