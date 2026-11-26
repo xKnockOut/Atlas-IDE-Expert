@@ -51,7 +51,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.IDE.Foundation.EditorCover,
   System.Math,
   Winapi.Windows,
   Vcl.Graphics,

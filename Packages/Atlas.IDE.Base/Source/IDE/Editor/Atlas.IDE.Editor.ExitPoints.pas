@@ -117,7 +117,6 @@ implementation
 
 uses
   System.Math,
-  Atlas.IDE.Foundation.EditorCover,
   System.JSON,
   Atlas.Text.Lines,
   Atlas.Plugin.Style.Palette,

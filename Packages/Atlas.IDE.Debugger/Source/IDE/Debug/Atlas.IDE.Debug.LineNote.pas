@@ -66,7 +66,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.IDE.Foundation.EditorCover,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
@@ -156,7 +155,7 @@ begin
     Exit;
   end;
   // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
-  if TAtlasIdeEditorCover.Covers(Rect, Context) then
+  if TAtlasDebugLineEnd.Covered(Rect, Context) then
   begin
     Exit;
   end;

@@ -60,7 +60,6 @@ implementation
 
 uses
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.IDE.Foundation.EditorCover,
   Winapi.Windows,
   Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Elements,

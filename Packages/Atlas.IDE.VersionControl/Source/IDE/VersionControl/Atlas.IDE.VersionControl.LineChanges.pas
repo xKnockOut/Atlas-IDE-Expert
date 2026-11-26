@@ -82,7 +82,7 @@ implementation
 
 uses
   Atlas.VersionControl.Repository.Contract,
-  Atlas.IDE.Foundation.EditorCover,
+  Atlas.ToolsApi.Editor.Refresh,
   System.Classes,
   System.Types,
   System.Generics.Collections,

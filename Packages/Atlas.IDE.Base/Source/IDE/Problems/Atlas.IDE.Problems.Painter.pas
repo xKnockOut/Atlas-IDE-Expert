@@ -110,7 +110,6 @@ implementation
 
 uses
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.IDE.Foundation.EditorCover,
   Winapi.Windows,
   System.Math,
   Atlas.Plugin.Style.Color,

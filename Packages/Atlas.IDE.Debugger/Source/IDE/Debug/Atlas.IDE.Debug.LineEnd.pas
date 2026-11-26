@@ -29,6 +29,10 @@ type
     class function Matches(const AContext: INTACodeEditorPaintContext; const AStored: string): Boolean; static;
     /// <summary>Den obersten Editor neu zeichnen lassen.</summary>
     class procedure Invalidate; static;
+    /// <summary>Zeile ARect liegt oben unter dem mitlaufenden Kopf (TAtlasIdeEditorCover): nicht zeichnen.</summary>
+    class function Covered(const ARect: TRect; const AContext: INTACodeEditorPaintContext): Boolean; static;
+    /// <summary>Zeile ARect liegt oben unter dem mitlaufenden Kopf (TAtlasIdeEditorCover): nicht zeichnen.</summary>
+    class function Covered(const ARect: TRect; const AContext: INTACodeEditorPaintContext): Boolean; static;
   end;
 
 implementation
@@ -66,6 +70,16 @@ begin
     mSample := COLORREF(ColorToRGB(AContext.Canvas.Brush.Color));
   end;
   AStyle.Ensure(mSample, AContext.Canvas.Font);
+end;
+
+class function TAtlasDebugLineEnd.Covered(const ARect: TRect; const AContext: INTACodeEditorPaintContext): Boolean;
+begin
+  Result := TAtlasIdeEditorCover.Covers(ARect, AContext);
+end;
+
+class function TAtlasDebugLineEnd.Covered(const ARect: TRect; const AContext: INTACodeEditorPaintContext): Boolean;
+begin
+  Result := TAtlasIdeEditorCover.Covers(ARect, AContext);
 end;
 
 class procedure TAtlasDebugLineEnd.Finish(AOwner: TObject; const AKey: string; ARight: Integer);

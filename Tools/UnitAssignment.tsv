@@ -563,7 +563,6 @@ Atlas.IDE.Base	Atlas.IDE.Forms.Designer	IDE/Forms/Atlas.IDE.Forms.Designer.pas	O
 Atlas.IDE.Base	Atlas.IDE.Foundation.Adapters.ActiveEditor	IDE/Foundation/Atlas.IDE.Foundation.Adapters.ActiveEditor.pas	Ordner `IDE/Foundation`
 Atlas.IDE.Base	Atlas.IDE.Foundation.Adapters.EditorFiles	IDE/Foundation/Atlas.IDE.Foundation.Adapters.EditorFiles.pas	Ordner `IDE/Foundation`
 Atlas.IDE.Base	Atlas.IDE.Foundation.Adapters.RegistryStore	IDE/Foundation/Atlas.IDE.Foundation.Adapters.RegistryStore.pas	Ordner `IDE/Foundation`
-Atlas.IDE.Base	Atlas.IDE.Foundation.EditorCover	IDE/Foundation/Atlas.IDE.Foundation.EditorCover.pas	Ordner `IDE/Foundation`; überdeckte Zeilen oben im Editor für alle Zeichner
 Atlas.IDE.Base	Atlas.IDE.Foundation.EditorSettings	IDE/Foundation/Atlas.IDE.Foundation.EditorSettings.pas	Ordner `IDE/Foundation`; Schalter des Editors aus den wirksamen Einstellungen
 Atlas.IDE.Base	Atlas.IDE.Foundation.EditorSnapshot	IDE/Foundation/Atlas.IDE.Foundation.EditorSnapshot.pas	Ordner `IDE/Foundation`
 Atlas.IDE.Base	Atlas.IDE.Foundation.Elements	IDE/Foundation/Atlas.IDE.Foundation.Elements.pas	Ordner `IDE/Foundation`

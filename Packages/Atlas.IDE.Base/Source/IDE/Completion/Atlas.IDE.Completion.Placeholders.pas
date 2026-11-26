@@ -101,7 +101,6 @@ implementation
 
 uses
   Atlas.Plugin.Diagnostics.MainThread,
-  Atlas.IDE.Foundation.EditorCover,
   System.Math,
   Vcl.Graphics,
   Atlas.Plugin.Diagnostics.Guard,

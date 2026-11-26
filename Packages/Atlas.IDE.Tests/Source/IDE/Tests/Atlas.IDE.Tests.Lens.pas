@@ -193,7 +193,6 @@ implementation
 
 uses
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.IDE.Foundation.EditorCover,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Style.Palette,
   Atlas.Text.Columns,

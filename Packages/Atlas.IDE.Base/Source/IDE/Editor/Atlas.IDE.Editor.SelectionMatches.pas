@@ -100,7 +100,6 @@ implementation
 
 uses
   System.Math,
-  Atlas.IDE.Foundation.EditorCover,
   Atlas.Text.Lines,
   Atlas.Plugin.Style.Palette,
   Atlas.Plugin.Diagnostics.Guard,

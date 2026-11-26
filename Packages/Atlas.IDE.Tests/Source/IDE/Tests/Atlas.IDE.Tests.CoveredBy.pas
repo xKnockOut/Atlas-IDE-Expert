@@ -133,7 +133,6 @@ implementation
 
 uses
   Vcl.Graphics,
-  Atlas.IDE.Foundation.EditorCover,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Deadline,

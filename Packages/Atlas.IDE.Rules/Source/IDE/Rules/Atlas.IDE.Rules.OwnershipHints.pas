@@ -109,7 +109,6 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.IDE.Foundation.EditorCover,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.ToolsApi.Editor.CloseRules,
   Atlas.Core.Editor.Elements,

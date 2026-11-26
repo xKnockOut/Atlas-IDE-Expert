@@ -35,9 +35,12 @@
 // - Andere Zeichner: Die IDE ruft die Zeichner von plsEndPaint in der
 //   Reihenfolge ihrer Anmeldung auf, Module nach Base. Was sie hinter dem Kopf
 //   malten (Werte beim Debuggen, Inlay-Hints, Code Lens …), lag über ihm. Der
-//   Kopf meldet seine Zeilen deshalb bei TAtlasIdeEditorCover an
-//   (Atlas.IDE.Foundation.EditorCover), gerechnet zur obersten Zeile der
-//   gerade gezeichneten Ansicht; jeder Zeichner lässt überdeckte Zeilen aus.
+//   Kopf meldet sich deshalb bei TAtlasIdeEditorCover an
+//   (Atlas.ToolsApi.Editor.Refresh); jeder Zeichner lässt überdeckte Zeilen
+//   aus. Gerechnet wird zur obersten Zeile der gerade gezeichneten Ansicht,
+//   nicht aus dem letzten Bild: Nach einem Bildlauf stimmt die Zahl der
+//   Kopfzeilen so schon mit der ersten neu gemalten Zeile, gleich ob der Kopf
+//   vor oder nach dem fragenden Zeichner an der Reihe ist.
 // - Klick (links, ohne Umschalttasten) auf eine Kopfzeile springt nach dem
 //   Loslassen der Maustaste zum Namen im Kopf und verwirft die Markierung, die
 //   der Editor ab der verdeckten Zeile begonnen hat (ein Sprung bei noch
@@ -62,7 +65,8 @@
 interface
 
 uses
-  ToolsAPI;
+  ToolsAPI,
+  ToolsAPI.Editor;
 
 type
   {$SCOPEDENUMS ON}
@@ -87,6 +91,9 @@ type
     /// <summary>IDE-Thema gewechselt: Farbschema und Hintergrund neu bestimmen, Editor neu zeichnen.</summary>
     class procedure ThemeChanged; static;
     class function Enabled: Boolean; static;
+    /// <summary>Kopfzeilen, die der Kopf in der Ansicht von AContext zu ihrer obersten Zeile zeichnet; 0 ohne Kopf.
+    /// Die Blocklinien des Editors bleiben dort weg, der Kopf zeichnet sie selbst.</summary>
+    class function CoverRows(const AContext: INTACodeEditorPaintContext): Integer; static;
     /// <summary>True, wenn die Blocklinie in Spalte AColumn in der ersten Zeile unter dem Kopf spitz beginnen soll:
     /// Ihr Element ist hinter dem Kopf verschwunden, und ihre Spitze läge im Text der letzten Kopfzeile.</summary>
     class function TaperBelow(const AFileName: string; AColumn: Integer): Boolean; static;
@@ -116,7 +123,6 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.ExtCtrls,
-  ToolsAPI.Editor,
   Atlas.Text.Lines,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
@@ -133,7 +139,6 @@ uses
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorCover,
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.StickyPaint,
   Atlas.ToolsApi.Editor.Refresh,
@@ -959,17 +964,14 @@ end;
 
 { TAtlasIdeStickyScroll }
 
-/// <summary>Überdeckte Zeilen für TAtlasIdeEditorCover: die des Kopfs, solange er installiert ist.</summary>
-function StickyCoverRows: TAtlasEditorCoverRows;
+/// <summary>Überdeckt für TAtlasIdeEditorCover: die Zeilen des Kopfs, solange er installiert ist.</summary>
+function StickyCovers: TAtlasEditorCoverTest;
 begin
   Result :=
-    function(const AContext: INTACodeEditorPaintContext): Integer
+    function(const ARect: TRect; const AContext: INTACodeEditorPaintContext): Boolean
     begin
-      Result := 0;
-      if TAtlasIdeStickyScroll.FState <> nil then
-      begin
-        Result := TStickyState(TAtlasIdeStickyScroll.FState).CoverRows(AContext);
-      end;
+      Result := TAtlasGuideStroke.UnderHeader(TAtlasGuideStroke.RowIndex(ARect.Top, ARect.Height),
+        TAtlasIdeStickyScroll.CoverRows(AContext));
     end;
 end;
 
@@ -978,13 +980,13 @@ begin
   if FState = nil then
   begin
     FState := TStickyState.Create;
-    TAtlasIdeEditorCover.SetRows(StickyCoverRows());
+    TAtlasIdeEditorCover.SetCovers(StickyCovers());
   end;
 end;
 
 class procedure TAtlasIdeStickyScroll.Uninstall;
 begin
-  TAtlasIdeEditorCover.SetRows(nil);
+  TAtlasIdeEditorCover.SetCovers(nil);
   FreeAndNil(FState);
 end;
 
@@ -1010,6 +1012,15 @@ var
 begin
   mSettings := TAtlasIdeSettings.Current;
   Result := mSettings.Enabled and mSettings.StickyScroll;
+end;
+
+class function TAtlasIdeStickyScroll.CoverRows(const AContext: INTACodeEditorPaintContext): Integer;
+begin
+  Result := 0;
+  if (FState <> nil) and (AContext <> nil) then
+  begin
+    Result := TStickyState(FState).CoverRows(AContext);
+  end;
 end;
 
 class function TAtlasIdeStickyScroll.TaperBelow(const AFileName: string; AColumn: Integer): Boolean;

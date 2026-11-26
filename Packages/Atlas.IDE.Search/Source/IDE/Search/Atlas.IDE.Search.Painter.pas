@@ -48,7 +48,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.IDE.Foundation.EditorCover,
+  Atlas.ToolsApi.Editor.Refresh,
   Winapi.Windows,
   Vcl.Graphics,
   ToolsAPI,

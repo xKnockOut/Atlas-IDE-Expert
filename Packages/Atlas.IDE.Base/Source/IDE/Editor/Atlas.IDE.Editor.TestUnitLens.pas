@@ -87,7 +87,6 @@ implementation
 
 uses
   Atlas.Plugin.Diagnostics.MainThread,
-  Atlas.IDE.Foundation.EditorCover,
   Vcl.Graphics,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,

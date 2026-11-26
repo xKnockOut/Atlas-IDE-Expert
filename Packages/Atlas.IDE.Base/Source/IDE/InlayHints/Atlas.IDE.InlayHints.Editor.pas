@@ -159,7 +159,6 @@ implementation
 
 uses
   System.Math,
-  Atlas.IDE.Foundation.EditorCover,
   Vcl.Forms,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Style.Color,

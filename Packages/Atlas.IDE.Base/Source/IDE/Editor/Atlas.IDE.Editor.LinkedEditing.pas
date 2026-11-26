@@ -121,7 +121,6 @@ implementation
 
 uses
   System.Math,
-  Atlas.IDE.Foundation.EditorCover,
   Vcl.Forms,
   Vcl.Graphics,
   Atlas.Text.Lines,

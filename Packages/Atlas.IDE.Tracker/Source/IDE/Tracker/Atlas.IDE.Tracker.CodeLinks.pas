@@ -132,7 +132,6 @@ implementation
 
 uses
   Vcl.Clipbrd,
-  Atlas.IDE.Foundation.EditorCover,
   Atlas.Text.Lines,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,

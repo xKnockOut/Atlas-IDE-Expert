@@ -221,7 +221,6 @@ uses
   Atlas.IDE.Foundation.Elements,
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Outline.StickyScroll,
-  Atlas.IDE.Foundation.EditorCover,
   Atlas.IDE.Problems.Controller,
   Atlas.Text.Columns;
 
@@ -1134,7 +1133,7 @@ begin
   mPaint.Opacity := FPaint.Settings.PairGuideOpacity;
   mPaint.Width := TAtlasGuides.PenWidth(FPaint.Settings.PairGuideWidth, AContext.CellSize.cy,
     FBaseTextHeight);
-  mPaint.Covered := TAtlasIdeEditorCover.Rows(AContext);
+  mPaint.Covered := TAtlasIdeStickyScroll.CoverRows(AContext);
   mPaint.Back := TAtlasColor(ColorToRGB(FBackdrop.Color));
   mPaint.HasBack := FBackdrop.Known;
   mPaint.Nesting := FNesting;

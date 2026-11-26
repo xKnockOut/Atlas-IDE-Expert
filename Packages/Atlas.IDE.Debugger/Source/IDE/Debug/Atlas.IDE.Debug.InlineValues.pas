@@ -136,7 +136,6 @@ implementation
 
 uses
   Atlas.IDE.Debug.Session,
-  Atlas.IDE.Foundation.EditorCover,
   Atlas.Core.Debug.StopProgress,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,

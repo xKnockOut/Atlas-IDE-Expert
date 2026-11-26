@@ -72,7 +72,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.IDE.Foundation.EditorCover,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,

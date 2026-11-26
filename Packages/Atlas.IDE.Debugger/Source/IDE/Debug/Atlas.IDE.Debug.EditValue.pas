@@ -108,7 +108,6 @@ implementation
 
 uses
   System.UITypes,
-  Atlas.IDE.Foundation.EditorCover,
   Vcl.Dialogs,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
@@ -538,7 +537,7 @@ begin
     Exit;
   end;
   // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
-  if TAtlasIdeEditorCover.Covers(Rect, Context) then
+  if TAtlasDebugLineEnd.Covered(Rect, Context) then
   begin
     Exit;
   end;

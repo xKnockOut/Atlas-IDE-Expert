@@ -93,7 +93,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.IDE.Foundation.EditorCover,
   Winapi.Messages,
   ToolsAPI,
   Atlas.ToolsApi.Editor.Buffer,

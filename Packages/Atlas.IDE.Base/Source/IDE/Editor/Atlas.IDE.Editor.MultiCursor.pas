@@ -138,7 +138,6 @@ implementation
 
 uses
   Atlas.Core.Editor.MultiCursor,
-  Atlas.IDE.Foundation.EditorCover,
   Atlas.Core.Editor.MultiCursorKeys,
   System.Math,
   Vcl.Forms,
