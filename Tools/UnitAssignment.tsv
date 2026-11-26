@@ -870,6 +870,7 @@ Atlas.IDE.Debugger	Atlas.Core.Debug.DataBreak	Core/Debug/Atlas.Core.Debug.DataBr
 Atlas.IDE.Debugger	Atlas.Core.Debug.DataBreakPatterns	Core/Debug/Atlas.Core.Debug.DataBreakPatterns.pas	Anhalten bei Datenzugriff: Musterabgleich SQL/HTTP, Zeichenketten des Debuggers, #870
 Atlas.IDE.Debugger	Atlas.Core.Debug.DataBreakpoint	Core/Debug/Atlas.Core.Debug.DataBreakpoint.pas	Ordner `Core/Debug`
 Atlas.IDE.Debugger	Atlas.Core.Debug.DataBreakWatch	Core/Debug/Atlas.Core.Debug.DataBreakWatch.pas	Anhalten bei Datenzugriff: neuer Halt, Auswertung und Entscheidung an einer Haltestelle, #870
+Atlas.IDE.Debugger	Atlas.Core.Debug.DataSetTable	Core/Debug/Atlas.Core.Debug.DataSetTable.pas	Ordner `Core/Debug`
 Atlas.IDE.Debugger	Atlas.Core.Debug.Deadlocks	Core/Debug/Atlas.Core.Debug.Deadlocks.pas	Ordner `Core/Debug`
 Atlas.IDE.Debugger	Atlas.Core.Debug.DialogCompletion	Core/Debug/Atlas.Core.Debug.DialogCompletion.pas	Ordner `Core/Debug`
 Atlas.IDE.Debugger	Atlas.Core.Debug.DialogInput	Core/Debug/Atlas.Core.Debug.DialogInput.pas	Debugger-Dialoge: Beschriftung, Liste nach einer Eingabe, Tasten, Übernehmen, #1967
@@ -988,6 +989,7 @@ Atlas.IDE.Debugger	Atlas.IDE.Debug.ConsoleCapture	IDE/Debug/Atlas.IDE.Debug.Cons
 Atlas.IDE.Debugger	Atlas.IDE.Debug.ConsoleProcess	IDE/Debug/Atlas.IDE.Debug.ConsoleProcess.pas	Konsolenprogramm mit Pipes starten, lesen, Eingabe senden, #581
 Atlas.IDE.Debugger	Atlas.IDE.Debug.DataBreak	IDE/Debug/Atlas.IDE.Debug.DataBreak.pas	Ordner `IDE/Debug`
 Atlas.IDE.Debugger	Atlas.IDE.Debug.DataBreakpoint	IDE/Debug/Atlas.IDE.Debug.DataBreakpoint.pas	Ordner `IDE/Debug`
+Atlas.IDE.Debugger	Atlas.IDE.Debug.DataSetTable	IDE/Debug/Atlas.IDE.Debug.DataSetTable.pas	Ordner `IDE/Debug`
 Atlas.IDE.Debugger	Atlas.IDE.Debug.Deadlocks	IDE/Debug/Atlas.IDE.Debug.Deadlocks.pas	Ordner `IDE/Debug`
 Atlas.IDE.Debugger	Atlas.IDE.Debug.DialogCompletion	IDE/Debug/Atlas.IDE.Debug.DialogCompletion.pas	Ordner `IDE/Debug`
 Atlas.IDE.Debugger	Atlas.IDE.Debug.DisplayRules	IDE/Debug/Atlas.IDE.Debug.DisplayRules.pas	Ordner `IDE/Debug`
@@ -1096,6 +1098,8 @@ Atlas.IDE.Debugger	Atlas.UI.Debug.ConsoleFrame	UI/Debug/Atlas.UI.Debug.ConsoleFr
 Atlas.IDE.Debugger	Atlas.UI.Debug.DataBreak	UI/Debug/Atlas.UI.Debug.DataBreak.pas	Ordner `UI/Debug`
 Atlas.IDE.Debugger	Atlas.UI.Debug.DataBreak.Strings	UI/Debug/Atlas.UI.Debug.DataBreak.Strings.pas	Texte des Debuggers: Anhalten bei Datenzugriff, Sprache von Base, #870
 Atlas.IDE.Debugger	Atlas.UI.Debug.DataBreakpoints.Strings	UI/Debug/Atlas.UI.Debug.DataBreakpoints.Strings.pas	Texte des Debuggers: Datenhaltepunkte, Sprache von Base, #1455
+Atlas.IDE.Debugger	Atlas.UI.Debug.DataSetTable	UI/Debug/Atlas.UI.Debug.DataSetTable.pas	Ordner `UI/Debug`
+Atlas.IDE.Debugger	Atlas.UI.Debug.DataSetTable.Strings	UI/Debug/Atlas.UI.Debug.DataSetTable.Strings.pas	Ordner `UI/Debug`
 Atlas.IDE.Debugger	Atlas.UI.Debug.Deadlocks	UI/Debug/Atlas.UI.Debug.Deadlocks.pas	Ordner `UI/Debug`
 Atlas.IDE.Debugger	Atlas.UI.Debug.EditValueDialog	UI/Debug/Atlas.UI.Debug.EditValueDialog.pas	Ordner `UI/Debug`
 Atlas.IDE.Debugger	Atlas.UI.Debug.Elapsed.Strings	UI/Debug/Atlas.UI.Debug.Elapsed.Strings.pas	Texte des Debuggers: Laufzeit zwischen Haltepunkten, Sprache von Base, #579

@@ -563,6 +563,12 @@ type
     property DebugEvaluateWindow: Boolean read FDebug.DebugEvaluateWindow write FDebug.DebugEvaluateWindow;
     property DebugEvaluateReplaceCtrlF7: Boolean read FDebug.DebugEvaluateReplaceCtrlF7
       write FDebug.DebugEvaluateReplaceCtrlF7;
+    property DebugEvaluateDataSetTable: Boolean read FDebug.DebugEvaluateDataSetTable
+      write FDebug.DebugEvaluateDataSetTable;
+    property DebugEvaluateDataSetTablePageSize: Integer read FDebug.DebugEvaluateDataSetTablePageSize
+      write FDebug.DebugEvaluateDataSetTablePageSize;
+    property DebugEvaluateDataSetTableMoveCursor: string read FDebug.DebugEvaluateDataSetTableMoveCursor
+      write FDebug.DebugEvaluateDataSetTableMoveCursor;
     property DebugExplainAccessViolation: Boolean read FDebug.DebugExplainAccessViolation
       write FDebug.DebugExplainAccessViolation;
     property DebugExplainAccessViolationAllowCalls: Boolean read FDebug.DebugExplainAccessViolationAllowCalls

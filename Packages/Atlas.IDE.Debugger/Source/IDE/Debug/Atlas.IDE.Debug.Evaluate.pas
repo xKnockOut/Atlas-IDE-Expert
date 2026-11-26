@@ -36,6 +36,9 @@
 //     Umschalttaste (auch beim Klick im Menü), mit dem Befehl
 //     Atlas.DebugEvaluateIdeDialog und ausgeschaltet öffnet die IDE ihren
 //     Dialog.
+//   - Tabelle (#3024, debug.evaluateWindow.dataSetTable): Knopf „Tabelle …“
+//     zeigt die Datenmenge der Zeile in TAtlasIdeDebugDataSetTable; nach
+//     Springen oder Ändern dort wertet das Fenster neu aus.
 //   - Kein Zugriff (#840): Scheitert eine Auswertung mit einem bekannten Text,
 //     steht „‹kein Zugriff›“ vor der Meldung (TAtlasIdeDebugUnavailable).
 // Ohne debug.evaluateWindow ist nichts angemeldet. Nur im Hauptthread verwenden.
@@ -54,7 +57,8 @@ uses
   Atlas.IDE.Debug.StopView,
   Atlas.IDE.Debug.EvaluateHook,
   Atlas.IDE.Debug.EvaluateStore,
-  Atlas.IDE.Debug.FieldRequests;
+  Atlas.IDE.Debug.FieldRequests,
+  Atlas.IDE.Debug.DataSetTable;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -114,6 +118,8 @@ type
     FPlace: TPlace;
     FSideEffects: Boolean;
     FStore: TAtlasIdeEvaluateStore;
+    /// <summary>Fenster „Datenmenge als Tabelle“ (#3024).</summary>
+    FTable: TAtlasIdeDebugDataSetTable;
     constructor Create(const ASession: TAtlasEvaluateSessionFunc);
     procedure CancelWork;
     procedure StartEvaluate;
@@ -123,6 +129,7 @@ type
     procedure Expand(const AKey: string);
     procedure AcceptFields(ARequest: Integer; const AKey: string; const AFields: TArray<string>);
     procedure Modify(ANode: TAtlasEvalNode);
+    procedure ShowTable(ANode: TAtlasEvalNode);
     procedure SetSideEffects(AValue: Boolean);
     procedure SyncPinned;
     /// <summary>Strg+F7 über die Aktion der IDE an Atlas (AValue) bzw. wieder an die IDE.</summary>
@@ -319,6 +326,25 @@ begin
     end;
 end;
 
+/// <summary>„Tabelle …“ (#3024): nur mit debug.evaluateWindow.dataSetTable; ohne Hook blendet der Frame den Knopf
+/// aus.</summary>
+procedure WireTable(AFrame: TAtlasDebugEvaluateFrame);
+begin
+  if not TAtlasIdeSettings.Current.DebugEvaluateDataSetTable then
+  begin
+    AFrame.Hooks.Table := nil;
+    Exit;
+  end;
+  AFrame.Hooks.Table :=
+    procedure(ANode: TAtlasEvalNode)
+    begin
+      if TAtlasIdeDebugEvaluate.FInstance <> nil then
+      begin
+        TAtlasIdeDebugEvaluate.FInstance.ShowTable(ANode);
+      end;
+    end;
+end;
+
 /// <summary>Werte aufklappen, ändern, als Zeilen zeigen; Nebenwirkungen und Dialog der IDE.</summary>
 procedure WireValues(AFrame: TAtlasDebugEvaluateFrame);
 begin
@@ -357,6 +383,7 @@ begin
     begin
       TAtlasIdeDebugEvaluate.OpenIdeDialog;
     end;
+  WireTable(AFrame);
 end;
 
 /// <summary>AFrame an die Instanz hängen (nach jedem Anlegen des Fensters).</summary>
@@ -450,12 +477,22 @@ begin
   FThread := TAtlasIdeDebugSession.NewEvaluator;
   FWorkers := TAtlasIdeDebugFieldRequests.Create;
   FStore := TAtlasIdeEvaluateStore.Create;
+  FTable := TAtlasIdeDebugDataSetTable.Create(
+    procedure
+    begin
+      // Gesprungen oder geändert: Zeilen neu auswerten wie nach einem Halt.
+      if StillStopped then
+      begin
+        SessionStopped;
+      end;
+    end);
   CreateTimer(cTickMs);
 end;
 
 destructor TAtlasIdeDebugEvaluate.Destroy;
 begin
   SetHooked(False);
+  FreeAndNil(FTable);
   // FWorkers entsteht als letztes Teil der Auswertung: ohne ihn ist nichts zu beenden.
   if FWorkers <> nil then
   begin
@@ -769,6 +806,14 @@ begin
   end;
 end;
 
+procedure TAtlasIdeDebugEvaluate.ShowTable(ANode: TAtlasEvalNode);
+begin
+  if (ANode <> nil) and (ANode.Expression <> '') then
+  begin
+    FTable.Show(ANode.Expression, FPlace.FileName, FPlace.Line + 1);
+  end;
+end;
+
 procedure TAtlasIdeDebugEvaluate.SyncPinned;
 var
   mProject: string;
@@ -878,6 +923,15 @@ begin
     Exit;
   end;
   FInstance.SetHooked(Enabled and TAtlasIdeSettings.Current.DebugEvaluateReplaceCtrlF7);
+  if not Enabled or not TAtlasIdeSettings.Current.DebugEvaluateDataSetTable then
+  begin
+    FInstance.FTable.CloseForm;
+  end;
+  if Frame <> nil then
+  begin
+    WireTable(Frame);
+    Frame.Detail.UpdateButtons;
+  end;
   if not Enabled then
   begin
     TAtlasIdeDebugEvaluateWindow.Hide;

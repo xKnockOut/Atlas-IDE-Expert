@@ -46,6 +46,13 @@ const
   cMinHoverMaxChildren = 10;
   cMaxHoverMaxChildren = 1000;
   cDefaultHoverMaxChildren = 100;
+  /// <summary>Grenzen und Vorgabe für debug.evaluateWindow.dataSetTable.pageSize (#3024).</summary>
+  cMinDataSetTablePageSize = 1;
+  cMaxDataSetTablePageSize = 1000;
+  cDefaultDataSetTablePageSize = 50;
+  /// <summary>Werte von debug.evaluateWindow.dataSetTable.moveCursor (#3024); die Vorgabe ist „ask“.</summary>
+  cDataSetTableMoveCursorValues: array[0..2] of string = ('never', 'ask', 'always');
+  cDefaultDataSetTableMoveCursor = 'ask';
   /// <summary>Vorgabe von debug.eventLogColors (#580): Muster=Farbe, durch „;“ getrennt.</summary>
   cDefaultEventLogColors = '[FEHLER]=#D13438; [ERROR]=#D13438; [WARN]=#C19C00';
   /// <summary>Grenzen für tests.fromDebugStop.maxArray (#1873).</summary>
@@ -214,6 +221,14 @@ type
     /// unter dem Cursor statt des Dialogs „Auswerten/Ändern“; mit Umschalttaste bzw. Befehl
     /// Atlas.DebugEvaluateIdeDialog kommt der Dialog der IDE. Aus = Strg+F7 gehört der IDE.</summary>
     DebugEvaluateReplaceCtrlF7: Boolean;
+    /// <summary>Datenmenge als Tabelle (#3024, debug.evaluateWindow.dataSetTable): Knopf „Tabelle …“ im Fenster
+    /// „Auswerten“ öffnet ein Fenster mit den Datensätzen eines TDataSet. Aus = kein Knopf.</summary>
+    DebugEvaluateDataSetTable: Boolean;
+    /// <summary>Zeilen je Seite der Tabelle (#3024, debug.evaluateWindow.dataSetTable.pageSize).</summary>
+    DebugEvaluateDataSetTablePageSize: Integer;
+    /// <summary>Cursor zum Lesen bewegen (#3024, debug.evaluateWindow.dataSetTable.moveCursor): never, ask, always.
+    /// </summary>
+    DebugEvaluateDataSetTableMoveCursor: string;
     /// <summary>debug.explainAccessViolation (#865): Beim Halt wegen einer Zugriffsverletzung in eigenem Code die
     /// Zugriffsketten der Zeile auswerten und das nil-Glied, ein freigegebenes Objekt oder einen Index außerhalb in
     /// der Exception-Leiste bzw. in den Meldungen nennen.</summary>
@@ -460,6 +475,7 @@ implementation
 
 uses
   System.Math,
+  System.StrUtils,
   System.SysUtils,
   Atlas.Plugin.Settings.EventBreakNames,
   Atlas.Plugin.Settings.DataBreakClasses,
@@ -496,6 +512,9 @@ begin
   Result.DebugCompletionInDialogs := True;
   Result.DebugEvaluateWindow := True;
   Result.DebugEvaluateReplaceCtrlF7 := True;
+  Result.DebugEvaluateDataSetTable := True;
+  Result.DebugEvaluateDataSetTablePageSize := cDefaultDataSetTablePageSize;
+  Result.DebugEvaluateDataSetTableMoveCursor := cDefaultDataSetTableMoveCursor;
   Result.DebugExplainAccessViolation := True;
   Result.DebugExplainAccessViolationAllowCalls := False;
   Result.DebugAsyncOrigin := False;
@@ -527,6 +546,13 @@ begin
   DebugParallelStacksWaitRoutines := Trim(DebugParallelStacksWaitRoutines);
   DebugParallelStacksMaxThreads := EnsureRange(DebugParallelStacksMaxThreads, cMinParallelStacksThreads,
     cMaxParallelStacksThreads);
+  DebugEvaluateDataSetTablePageSize := EnsureRange(DebugEvaluateDataSetTablePageSize, cMinDataSetTablePageSize,
+    cMaxDataSetTablePageSize);
+  DebugEvaluateDataSetTableMoveCursor := LowerCase(Trim(DebugEvaluateDataSetTableMoveCursor));
+  if not MatchText(DebugEvaluateDataSetTableMoveCursor, cDataSetTableMoveCursorValues) then
+  begin
+    DebugEvaluateDataSetTableMoveCursor := cDefaultDataSetTableMoveCursor;
+  end;
   DebugLogpointPrefix := Trim(DebugLogpointPrefix);
   DebugLogpointsRecordLimit := EnsureRange(DebugLogpointsRecordLimit, cMinLogpointRecordLimit,
     cMaxLogpointRecordLimit);
@@ -593,6 +619,9 @@ begin
   AIo.Flag('DebugCompletionInDialogs', DebugCompletionInDialogs);
   AIo.Flag('DebugEvaluateWindow', DebugEvaluateWindow);
   AIo.Flag('DebugEvaluateReplaceCtrlF7', DebugEvaluateReplaceCtrlF7);
+  AIo.Flag('DebugEvaluateDataSetTable', DebugEvaluateDataSetTable);
+  AIo.Number('DebugEvaluateDataSetTablePageSize', DebugEvaluateDataSetTablePageSize);
+  AIo.Text('DebugEvaluateDataSetTableMoveCursor', DebugEvaluateDataSetTableMoveCursor);
   AIo.Flag('DebugExplainAccessViolation', DebugExplainAccessViolation);
   AIo.Flag('DebugExplainAccessViolationAllowCalls', DebugExplainAccessViolationAllowCalls);
   AIo.Flag('DebugModuleOfAddress', DebugModuleOfAddress);

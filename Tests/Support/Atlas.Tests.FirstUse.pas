@@ -35,6 +35,10 @@ uses
   System.RegularExpressionsCore,
   System.Messaging,
   System.NetEncoding,
+  System.Variants,
+  Data.DB,
+  Datasnap.DBClient,
+  MidasLib,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Metrics.DuplicateCatalog,
@@ -479,6 +483,30 @@ begin
   end;
 end;
 
+/// <summary>TClientDataSet mit MidasLib (Tests von Setup/Vorlagen/Atlas.Debug.DataSets, #3024): Midas und Data.DB legen
+/// beim ersten Anlegen einer Datenmenge Klassenfabriken und Zwischenspeicher an, die bis zu ihrer Finalisierung
+/// leben.</summary>
+procedure WarmUpClientDataSet;
+var
+  mData: TClientDataSet;
+begin
+  mData := TClientDataSet.Create(nil);
+  try
+    mData.FieldDefs.Add('ID', ftInteger);
+    mData.FieldDefs.Add('Name', ftString, 20);
+    mData.CreateDataSet;
+    mData.AppendRecord([1, Null]);
+    mData.Edit;
+    mData.Fields[1].AsString := 'x';
+    mData.Post;
+    mData.First;
+    mData.MoveBy(1);
+    mData.Bookmark := mData.Bookmark;
+  finally
+    mData.Free;
+  end;
+end;
+
 /// <summary>Windows-Version der RTL (System.SysUtils, Win32Platform und Win32CSDVersion): InitPlatformId legt beim
 /// ersten Zugriff den Text des Service Packs an, den SysUtils bis zur Finalisierung hält. Ausgelöst etwa von
 /// TRegistry.GetKeyInfo (TDelphiInstallation.Versions beim Lesen der globalen Einstellungen).</summary>
@@ -505,6 +533,7 @@ begin
   WarmUpIndexCacheReplace;
   WarmUpDefaultEncoding;
   WarmUpDuplicateCatalog;
+  WarmUpClientDataSet;
   WarmUpOverdueThreads;
   WarmUpPackageLocator;
   WarmUpRegexErrors;
