@@ -22,7 +22,8 @@
         "Replay",
         "Monitor",
         "Update",
-        "Rules"
+        "Rules",
+        "Mcp"
       ],
       "prefixes": [
         "Atlas.Text",
@@ -136,7 +137,8 @@
         "Replay",
         "Monitor",
         "Update",
-        "Rules"
+        "Rules",
+        "Mcp"
       ],
       "prefixes": [
         "Atlas.Text",
