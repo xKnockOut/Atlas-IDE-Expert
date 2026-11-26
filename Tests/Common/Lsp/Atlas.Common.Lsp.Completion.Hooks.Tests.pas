@@ -38,7 +38,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.PostfixTemplates,
+  Atlas.Common.Pascal.PostfixTemplates,
   Atlas.Common.Lsp.Completion.Postfix;
 
 const

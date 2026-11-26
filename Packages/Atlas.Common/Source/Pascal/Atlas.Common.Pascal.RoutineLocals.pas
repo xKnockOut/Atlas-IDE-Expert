@@ -63,12 +63,25 @@ type
     /// Zeile, beim letzten Eintrag auch "var").</summary>
     class procedure RemoveVariables(ATree: TSyntaxTree; ADecl: TSyntaxNode;
       const ARemoved: TArray<string>; var AEdits: TArray<TTextEdit>); static;
+    /// <summary>Innerste Routine mit Rumpf, in deren begin…end Zeile ALine steht; nil sonst.</summary>
+    class function RoutineAround(ARoot: TSyntaxNode; ALine: Integer): TSyntaxNode; static;
+    /// <summary>Lokale Deklaration ADeclaration in den Abschnitt AKind (var- oder const-Abschnitt) von ARoutine;
+    /// fehlt er, entsteht er mit AKeyword vor dem Rumpf. ALines sind die Zeilen des Texts, getrennt mit ALineBreak.
+    /// </summary>
+    class function SectionDeclaration(const ALines: TArray<string>; const ALineBreak: string; ARoutine: TSyntaxNode;
+      AKind: TSyntaxKind; const AKeyword, ADeclaration: string): TTextEdit; static;
+    /// <summary>Wie SectionDeclaration für die Routine um Zeile ALine von AText; die Zeile zählt als leer (dort
+    /// steht die angefangene Eingabe). False außerhalb eines Rumpfs.</summary>
+    class function DeclareAround(const AText: string; ALine: Integer; AKind: TSyntaxKind;
+      const AKeyword, ADeclaration: string; out AEdit: TTextEdit): Boolean; static;
   end;
 
 implementation
 
 uses
   System.StrUtils,
+  Atlas.Text.Lines,
+  Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Pascal.TokenCursor;
 
@@ -538,6 +551,128 @@ begin
   else
   begin
     AEdits := AEdits + [EntryRemoval(ATree, ADecl)];
+  end;
+end;
+
+/// <summary>ANode ist eine Routine, in deren begin…end die Zeile ALine steht.</summary>
+function IsRoutineAround(ANode: TSyntaxNode; ALine: Integer): Boolean;
+var
+  mBlock: TSyntaxNode;
+begin
+  Result := False;
+  if ANode.Kind = TSyntaxKind.RoutineDecl then
+  begin
+    mBlock := ANode.FindChild(TSyntaxKind.Block);
+    Result := (mBlock <> nil) and (mBlock.StartPos.Line < ALine) and (mBlock.EndPos.Line >= ALine);
+  end;
+end;
+
+/// <summary>Legt ANode als erledigt und darüber seine Kinder, die ALine überdecken, auf APending.</summary>
+procedure PushCovering(APending: TStack<TSyntaxPostOrderEntry>; ANode: TSyntaxNode; ALine: Integer);
+var
+  mIndex: Integer;
+begin
+  APending.Push(TSyntaxPostOrderEntry.Create(ANode, True));
+  for mIndex := ANode.ChildCount - 1 downto 0 do
+  begin
+    if (ANode[mIndex].StartPos.Line <= ALine) and (ANode[mIndex].EndPos.Line >= ALine) then
+    begin
+      APending.Push(TSyntaxPostOrderEntry.Create(ANode[mIndex], False));
+    end;
+  end;
+end;
+
+class function TRoutineLocals.RoutineAround(ARoot: TSyntaxNode; ALine: Integer): TSyntaxNode;
+var
+  mPending: TStack<TSyntaxPostOrderEntry>;
+  mEntry: TSyntaxPostOrderEntry;
+begin
+  // Eigener Stapel statt Rekursion: Die innerste Routine gewinnt, also wird ein Knoten erst nach
+  // seinen Kindern geprüft; unter ARoot nur Knoten, die ALine überdecken.
+  Result := nil;
+  if ARoot = nil then
+  begin
+    Exit;
+  end;
+  mPending := TStack<TSyntaxPostOrderEntry>.Create;
+  try
+    mPending.Push(TSyntaxPostOrderEntry.Create(ARoot, False));
+    while mPending.Count > 0 do
+    begin
+      mEntry := mPending.Pop;
+      if not mEntry.Done then
+      begin
+        PushCovering(mPending, mEntry.Node, ALine);
+      end
+      else if IsRoutineAround(mEntry.Node, ALine) then
+      begin
+        Exit(mEntry.Node);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+class function TRoutineLocals.SectionDeclaration(const ALines: TArray<string>; const ALineBreak: string;
+  ARoutine: TSyntaxNode; AKind: TSyntaxKind; const AKeyword, ADeclaration: string): TTextEdit;
+var
+  mIndex, mLine: Integer;
+  mSection: TSyntaxNode;
+  mIndent: string;
+begin
+  mIndent := TTextLines.IndentOf(ALines[ARoutine.StartPos.Line]);
+  mSection := nil;
+  for mIndex := 0 to ARoutine.ChildCount - 1 do
+  begin
+    if ARoutine[mIndex].Kind = AKind then
+    begin
+      mSection := ARoutine[mIndex];
+    end;
+  end;
+  if mSection <> nil then
+  begin
+    // Hinter die letzte Zeile des Abschnitts.
+    mLine := mSection.EndPos.Line;
+    Result := TTextEdit.Create(TTextRange.Create(mLine, Length(ALines[mLine]), mLine, Length(ALines[mLine])),
+      ALineBreak + mIndent + '  ' + ADeclaration);
+  end
+  else
+  begin
+    // Neuer Abschnitt vor begin.
+    mLine := ARoutine.FindChild(TSyntaxKind.Block).StartPos.Line;
+    Result := TTextEdit.Create(TTextRange.Create(mLine, 0, mLine, 0),
+      mIndent + AKeyword + ALineBreak + mIndent + '  ' + ADeclaration + ALineBreak);
+  end;
+end;
+
+class function TRoutineLocals.DeclareAround(const AText: string; ALine: Integer; AKind: TSyntaxKind;
+  const AKeyword, ADeclaration: string; out AEdit: TTextEdit): Boolean;
+var
+  mLineBreak: string;
+  mLines: TArray<string>;
+  mTree: TSyntaxTree;
+  mRoutine: TSyntaxNode;
+begin
+  AEdit := Default(TTextEdit);
+  mLineBreak := TTextLines.LineBreakOf(AText);
+  mLines := AText.Split([mLineBreak]);
+  if (ALine < 0) or (ALine > High(mLines)) then
+  begin
+    Exit(False);
+  end;
+  // Die angefangene Eingabe als Leerzeichen, damit der Parser sie nicht als Fehler sieht und die Positionen bleiben.
+  mLines[ALine] := StringOfChar(' ', Length(mLines[ALine]));
+  mTree := TSyntaxTreeCache.Parse(string.Join(mLineBreak, mLines));
+  try
+    mRoutine := RoutineAround(mTree.Root, ALine);
+    Result := mRoutine <> nil;
+    if Result then
+    begin
+      AEdit := SectionDeclaration(mLines, mLineBreak, mRoutine, AKind, AKeyword, ADeclaration);
+    end;
+  finally
+    mTree.Free;
   end;
 end;
 

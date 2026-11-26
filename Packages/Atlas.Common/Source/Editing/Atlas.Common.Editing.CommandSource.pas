@@ -111,14 +111,14 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.RoutineLocals;
 
 {$SCOPEDENUMS ON}
 
@@ -219,65 +219,9 @@ begin
   Result := TTextEdit.Create(TTextRange.Create(ALine, 0, ALine, 0), ANewText + FLineBreak);
 end;
 
-/// <summary>Legt ANode als erledigt und darüber seine Kinder, die ALine überdecken, auf APending.</summary>
-procedure PushCovering(APending: TStack<TSyntaxPostOrderEntry>; ANode: TSyntaxNode; ALine: Integer);
-var
-  mIndex: Integer;
-begin
-  APending.Push(TSyntaxPostOrderEntry.Create(ANode, True));
-  for mIndex := ANode.ChildCount - 1 downto 0 do
-  begin
-    if (ANode[mIndex].StartPos.Line <= ALine) and (ANode[mIndex].EndPos.Line >= ALine) then
-    begin
-      APending.Push(TSyntaxPostOrderEntry.Create(ANode[mIndex], False));
-    end;
-  end;
-end;
-
-/// <summary>ANode ist eine Routine, in deren begin…end die Zeile ALine steht.</summary>
-function IsRoutineAround(ANode: TSyntaxNode; ALine: Integer): Boolean;
-var
-  mBlock: TSyntaxNode;
-begin
-  Result := False;
-  if ANode.Kind = TSyntaxKind.RoutineDecl then
-  begin
-    mBlock := ANode.FindChild(TSyntaxKind.Block);
-    Result := (mBlock <> nil) and (mBlock.StartPos.Line < ALine) and (mBlock.EndPos.Line >= ALine);
-  end;
-end;
-
-function FindRoutine(ANode: TSyntaxNode; ALine: Integer): TSyntaxNode;
-var
-  mPending: TStack<TSyntaxPostOrderEntry>;
-  mEntry: TSyntaxPostOrderEntry;
-begin
-  // Eigener Stapel statt Rekursion: Die innerste Routine gewinnt, also wird ein Knoten erst nach
-  // seinen Kindern geprüft; unter ANode nur Knoten, die ALine überdecken.
-  Result := nil;
-  mPending := TStack<TSyntaxPostOrderEntry>.Create;
-  try
-    mPending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
-    while mPending.Count > 0 do
-    begin
-      mEntry := mPending.Pop;
-      if not mEntry.Done then
-      begin
-        PushCovering(mPending, mEntry.Node, ALine);
-      end
-      else if IsRoutineAround(mEntry.Node, ALine) then
-      begin
-        Exit(mEntry.Node);
-      end;
-    end;
-  finally
-    mPending.Free;
-  end;
-end;
-
 function TCommandSource.RoutineAt: TSyntaxNode;
 begin
-  Result := FindRoutine(FTree.Root, Line);
+  Result := TRoutineLocals.RoutineAround(FTree.Root, Line);
 end;
 
 function TCommandSource.ClassAt(out AClass: TIndexSymbol): Boolean;
@@ -675,29 +619,9 @@ end;
 /// <summary>Lokale Deklaration in den Abschnitt AKind der Routine; legt ihn vor begin an.</summary>
 function AddLocal(ASource: TCommandSource; ARoutine: TSyntaxNode; AKind: TSyntaxKind; const AKeyword,
   ADeclaration: string): TTextEdit;
-var
-  mIndex: Integer;
-  mSection: TSyntaxNode;
-  mIndent: string;
 begin
-  mIndent := ASource.Indent(ARoutine.StartPos.Line);
-  mSection := nil;
-  for mIndex := 0 to ARoutine.ChildCount - 1 do
-  begin
-    if ARoutine[mIndex].Kind = AKind then
-    begin
-      mSection := ARoutine[mIndex];
-    end;
-  end;
-  if mSection <> nil then
-  begin
-    Result := ASource.AfterLine(mSection.EndPos.Line, mIndent + '  ' + ADeclaration);
-  end
-  else
-  begin
-    Result := ASource.BeforeLine(ARoutine.FindChild(TSyntaxKind.Block).StartPos.Line,
-      mIndent + AKeyword + ASource.LineBreak + mIndent + '  ' + ADeclaration);
-  end;
+  Result := TRoutineLocals.SectionDeclaration(ASource.Lines, ASource.LineBreak, ARoutine, AKind, AKeyword,
+    ADeclaration);
 end;
 
 /// <summary>Trägt die fehlenden AUnits in das uses des Abschnitts an Zeile ALine ein.</summary>

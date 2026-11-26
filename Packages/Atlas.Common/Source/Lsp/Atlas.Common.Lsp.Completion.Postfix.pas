@@ -10,7 +10,7 @@ interface
 
 uses
   System.JSON,
-  Atlas.Common.Editing.PostfixTemplates,
+  Atlas.Common.Pascal.PostfixTemplates,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.CompletionRequest;
 
@@ -42,17 +42,16 @@ type
 implementation
 
 uses
-  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443),
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Index.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.CommandSource,
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Lsp.CompletionCollector,
-  Atlas.Common.Pascal.TypeTexts;
+  Atlas.Common.Pascal.TypeTexts,
+  Atlas.Common.Pascal.RoutineLocals;
 
 type
   TSymbolKinds = set of TIndexSymbolKind;
@@ -312,27 +311,9 @@ begin
 end;
 
 function TPostfixBuilder.DeclarationEdit(const ADeclaration: string; out AEdit: TTextEdit): Boolean;
-var
-  mSlash: TSlashContext;
-  mSource: TCommandSource;
-  mRoutine: TSyntaxNode;
 begin
-  AEdit := Default(TTextEdit);
-  mSlash := Default(TSlashContext);
-  mSlash.Text := FRequest.Text;
-  mSlash.Line := FRequest.Position.Line;
-  mSlash.LineText := FLine.LineText;
-  mSource := TCommandSource.Create(mSlash);
-  try
-    mRoutine := mSource.RoutineAt;
-    Result := mRoutine <> nil;
-    if Result then
-    begin
-      AEdit := AddLocal(mSource, mRoutine, TSyntaxKind.VarSection, 'var', ADeclaration);
-    end;
-  finally
-    mSource.Free;
-  end;
+  Result := TRoutineLocals.DeclareAround(FRequest.Text, FRequest.Position.Line, TSyntaxKind.VarSection, 'var',
+    ADeclaration, AEdit);
 end;
 
 function TPostfixBuilder.ItemOf(const ATemplate: TPostfixTemplate; out AItem: TCompletionItem): Boolean;

@@ -13,7 +13,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.PostfixTemplates,
+  Atlas.Common.Pascal.PostfixTemplates,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.CompletionRequest,
