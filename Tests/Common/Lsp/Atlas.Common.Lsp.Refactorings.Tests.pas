@@ -84,6 +84,8 @@ uses
   Atlas.Common.Editing.Extract,
   Atlas.Common.Editing.NestedRoutines,
   Atlas.Common.Lsp.Completion,
+  Atlas.Common.Completion.Contract,
+  Atlas.Common.Editing.Completion.CreateMethod,
   Atlas.Common.Completion.Request;
 
 const
@@ -641,7 +643,7 @@ begin
   try
     mCompletion := TLspCompletion.Create(mStore, FIndex);
     mDispatcher := TJsonRpcDispatcher.Create;
-    mCompletion.Hooks.CreateFor :=
+    mCompletion.Sources.Add(TCompletionSlot.CreateMethod, TEditingCreateMethodCompletion.Source(
       function(ARequest: TCompletionRequest; out ATitle, ADetail: string; out AEdits: TArray<TTextEdit>): Boolean
       var
         Rechner: TRefactoringContext;
@@ -656,7 +658,7 @@ begin
         ATitle := Created.Title;
         ADetail := Created.Detail;
         AEdits := Created.Edits;
-      end;
+      end));
     mCompletion.Attach(mDispatcher);
     mAnswer := Ask(14, 24, '(');
     Assert.IsTrue(mAnswer.Contains('"label":"Methode CalcDiscount anlegen"'), mAnswer);

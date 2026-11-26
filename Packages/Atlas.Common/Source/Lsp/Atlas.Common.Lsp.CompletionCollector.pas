@@ -27,22 +27,6 @@ uses
   Atlas.Common.Completion.Contract;
 
 const
-  // CompletionItemKind
-  cKindMethod = 2;
-  cKindFunction = 3;
-  cKindConstructor = 4;
-  cKindField = 5;
-  cKindVariable = 6;
-  cKindClass = 7;
-  cKindInterface = 8;
-  cKindModule = 9;
-  cKindProperty = 10;
-  cKindEnum = 13;
-  cKindEnumMember = 20;
-  cKindConstant = 21;
-  cKindStruct = 22;
-  cKindKeyword = 14;
-  cKindSnippet = 15;
   /// <summary>Abzüge vom Trefferwert, die die Gruppenreihenfolge festlegen: eingebunden vor
   /// Schlüsselwörtern vor Projekt-Import vor Bibliotheks-Import vor nicht verfügbaren Einträgen.</summary>
   cPenaltyKeyword = 50;

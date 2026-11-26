@@ -119,7 +119,6 @@
         "Atlas.Common.Lsp.BoundaryCases -> Atlas.Common.Editing.BoundaryCases.Report",
         "Atlas.Common.Lsp.BoundaryTests -> Atlas.Common.Editing.TestDrafts",
         "Atlas.Common.Lsp.ChangeSignature -> Atlas.Common.Editing.ClassCompletion",
-        "Atlas.Common.Lsp.Completion.Cases -> Atlas.Common.Editing.CreateMethod",
         "Atlas.Common.Lsp.Completion.Declarations -> Atlas.Common.Editing.AccessorCreation",
         "Atlas.Common.Lsp.Completion.Declarations -> Atlas.Common.Editing.ClassCompletion",
         "Atlas.Common.Lsp.Completion.Declarations -> Atlas.Common.Editing.CommandSource",

@@ -10,47 +10,30 @@ interface
 {$SCOPEDENUMS ON}
 
 uses
-  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Completion.Request,
+  Atlas.Common.Completion.Answer,
   Atlas.Common.Lsp.Completion.Forms,
   Atlas.Common.Lsp.Completion.Postfix,
   Atlas.Common.Lsp.Completion.Hooks,
   Atlas.Common.Completion.Contract;
 
 type
-  /// <summary>Ergebnis eines Falls der Vervollständigung: weiter mit dem nächsten Fall oder
-  /// fertig mit TCompletionAnswer.Exclusive.</summary>
-  TCompletionOutcome = (Next, Answered);
-
-  /// <summary>Antwort im Aufbau (4.2 Schritt 5): Hinweise oben, vorab bestimmte Einträge
-  /// (Aufzählungswerte, Komponenten; bei Staffelung schon gesendet), die allgemeine Liste und der Schluss
-  /// (Code-Vorlagen, Deklarieren). Ein exklusiver Fall antwortet mit Exclusive allein.</summary>
-  TCompletionAnswer = class
+  /// <summary>Antwort im Aufbau mit den Teilen, die nur die Fälle des Sprachservers brauchen: Postfix-Vorlagen,
+  /// Formulare, Rückrufe und die angemeldeten Quellen anderer Features.</summary>
+  TLspCompletionAnswer = class(TCompletionAnswer)
   public
-    Hints: TArray<TCompletionItem>;
-    Prefetched: TArray<TCompletionItem>;
-    Body: TArray<TCompletionItem>;
-    Tail: TArray<TCompletionItem>;
-    Incomplete: Boolean;
-    /// <summary>Passende Mitglieder, die nur wegen der Sichtbarkeit fehlen (#2108).</summary>
-    Hidden: TArray<TCompletionHiddenMember>;
-    Exclusive: TCompletionItems;
     /// <summary>Postfix-Vorlagen des Dokuments (#188), gesetzt vor der allgemeinen Liste.</summary>
     Postfix: TPostfixOptions;
-    /// <summary>partialResultToken (#616); '' ohne Staffelung.</summary>
-    Token: string;
-    /// <summary>Schon als $/progress gesendete Einträge; die Antwort setzt sortText dahinter fort.</summary>
-    SentCount: Integer;
-    Partial: TCompletionPartialProc;
-    Cancellation: IJsonRpcCancellationToken;
     Forms: TCompletionFormFunc;
     /// <summary>Rückrufe und Schalter der Vervollständigung; gehört der TLspCompletion.</summary>
     Hooks: TCompletionHooks;
+    /// <summary>Angemeldete Quellen je Stelle; gehören der TLspCompletion.</summary>
+    Sources: TCompletionSources;
   end;
 
   /// <summary>Ein Fall von textDocument/completion; die Reihenfolge legen TextCases und TreeCases fest.
   /// </summary>
-  TCompletionCase = reference to function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+  TCompletionCase = reference to function(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 
   TCompletionCases = class
   public
@@ -61,7 +44,7 @@ type
     class function TreeCases: TArray<TCompletionCase>; static;
     /// <summary>Läuft ACases der Reihe nach, bis einer antwortet; True dann.</summary>
     class function Run(const ACases: TArray<TCompletionCase>; ARequest: TCompletionRequest;
-      AAnswer: TCompletionAnswer): Boolean; static;
+      AAnswer: TLspCompletionAnswer): Boolean; static;
     /// <summary>"Sender." in einem Ereignisbehandler mit "Sender: TObject" (#480): Ist die Methode im Formular
     /// Komponenten zugewiesen, die Mitglieder des nächsten gemeinsamen Vorfahren ihrer Typen. Jeder Eintrag
     /// ersetzt "Sender.Na" (TextEdit) durch die Umwandlung nach Settings.SenderCast und den Namen. False ohne
@@ -80,7 +63,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.CreateMethod,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Pascal.DocComments,
   Atlas.Common.Localization.Texts,
@@ -113,14 +95,6 @@ begin
   begin
     Result := TCompletionOutcome.Answered;
   end;
-end;
-
-/// <summary>AAnswer antwortet mit AItem allein.</summary>
-function AnswerWith(AAnswer: TCompletionAnswer; const AItem: TCompletionItem): TCompletionOutcome;
-begin
-  AAnswer.Exclusive := Default(TCompletionItems);
-  AAnswer.Exclusive.Items := [AItem];
-  Result := TCompletionOutcome.Answered;
 end;
 
 /// <summary>AItems ohne die Schlüsselwörter aus AddKeywords (#31).</summary>
@@ -259,41 +233,8 @@ begin
   AItem.AdditionalEdits := mAction.Edits;
 end;
 
-/// <summary>„Methode aus Aufruf anlegen“ (#472) als Eintrag: Nach dem Auslöser "(" bleibt der Text an der
-/// Aufrufstelle, mit Strg+Leer auf dem Namen ersetzt der Eintrag ihn durch sich selbst. Deklaration und Rumpf
-/// kommen als Zusatzänderungen; "$0" darin setzt den Cursor in den Rumpf.</summary>
-function CreateItem(ARequest: TCompletionRequest; const ACreateFor: TCompletionCreateFunc;
-  out AItem: TCompletionItem): Boolean;
-var
-  mSite: TCreateCallSite;
-  mTitle, mDetail: string;
-  mEdits: TArray<TTextEdit>;
-begin
-  AItem := Default(TCompletionItem);
-  Result := (ARequest.Tree <> nil) and TCreateMethod.Site(ARequest.Tree.Tokens, ARequest.Position, mSite) and
-    ACreateFor(ARequest, mTitle, mDetail, mEdits);
-  if not Result then
-  begin
-    Exit;
-  end;
-  AItem.Name := mTitle;
-  AItem.Kind := cKindMethod;
-  AItem.Detail := mDetail;
-  AItem.Fits := True;
-  AItem.Pinned := True;
-  AItem.Action := 'create';
-  AItem.Unknown := mSite.Name;
-  AItem.HasTextEdit := True;
-  AItem.TextEdit := TTextEdit.Create(mSite.NameRange, mSite.Name);
-  if ARequest.Trigger = '(' then
-  begin
-    AItem.TextEdit := TTextEdit.Create(TTextRange.Create(ARequest.Position, ARequest.Position), '');
-  end;
-  AItem.AdditionalEdits := mEdits;
-end;
-
 /// <summary>Sendet AItems als $/progress und zählt sie zu den gesendeten.</summary>
-procedure SendProgress(AAnswer: TCompletionAnswer; const AItems: TArray<TCompletionItem>);
+procedure SendProgress(AAnswer: TLspCompletionAnswer; const AItems: TArray<TCompletionItem>);
 var
   mParams: TJSONObject;
 begin
@@ -305,7 +246,7 @@ begin
 end;
 
 /// <summary>Teilergebnisse als $/progress (#616); zwischen den Stufen bricht eine veraltete Anfrage ab.</summary>
-function PartialSender(AAnswer: TCompletionAnswer): TCompletionPartialProc;
+function PartialSender(AAnswer: TLspCompletionAnswer): TCompletionPartialProc;
 begin
   Result :=
     procedure(const AItems: TArray<TCompletionItem>)
@@ -324,7 +265,7 @@ end;
 
 { Fälle ohne Syntaxbaum }
 
-function SlashCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function SlashCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 var
   mDisabled: TArray<string>;
 begin
@@ -335,7 +276,7 @@ begin
       AAnswer.Exclusive));
 end;
 
-function DirectiveCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function DirectiveCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 var
   mContext: TConditionalContext;
 begin
@@ -353,14 +294,14 @@ begin
   end;
 end;
 
-function DataNameCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function DataNameCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 begin
   Result := AnsweredIf(TCompletionForms.DataNameItems(ARequest, AAnswer.Exclusive));
 end;
 
 /// <summary>Platzhalter in Wertdarstellungen (#854): in // atlas-debug: bzw. [AtlasDebugDisplay] nur die
 /// Mitglieder des Typs.</summary>
-function DebugDisplayCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function DebugDisplayCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 begin
   Result := AnsweredIf(TCompletionDebugDisplay.Items(ARequest, AAnswer.Exclusive));
 end;
@@ -369,7 +310,7 @@ end;
 
 /// <summary>„Parameter abgleichen“ (#88): Strg+Leer in einem ///-Block, dessen Routine andere Parameter hat; dann
 /// nur dieses Angebot (die Tags liefert das Plugin selbst).</summary>
-function DocParamsCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function DocParamsCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 var
   mItem: TCompletionItem;
 begin
@@ -377,13 +318,13 @@ begin
   if (not Assigned(AAnswer.Hooks.DocCommentsFor) or AAnswer.Hooks.DocCommentsFor(ARequest.Uri)) and
     DocParamsItem(ARequest, mItem) then
   begin
-    Result := AnswerWith(AAnswer, mItem);
+    Result := AAnswer.AnswerWith(mItem);
   end;
 end;
 
 /// <summary>String als resourcestring auslagern (#473): Strg+Leer im String-Literal; sonst bietet die Liste dort
 /// nichts.</summary>
-function ResourceStringCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function ResourceStringCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 begin
   Result := AnsweredIf(TCompletionDeclarations.ResourceStringItems(ARequest, AAnswer.Hooks.SnippetSupport,
     AAnswer.Exclusive));
@@ -391,7 +332,7 @@ end;
 
 /// <summary>Freigabe absichern (#489): Das Plugin fragt nach dem ";" bzw. dem Zeilenende (#10) hinter einem
 /// übernommenen Konstruktor mit diesem Auslöser; dann gibt es nur dieses Angebot oder nichts.</summary>
-function GuardCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function GuardCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 begin
   Result := TCompletionOutcome.Next;
   if (ARequest.Trigger <> ';') and (ARequest.Trigger <> #10) then
@@ -408,7 +349,7 @@ end;
 
 /// <summary>Anonyme Methoden (#468): Erwartet das Argument einen Methodenreferenztyp, nach "(" nur das Gerüst
 /// (dort gibt es keine unbekannte Methode anzulegen), mit Strg+Leer ganz oben in der Liste.</summary>
-function AnonymousCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function AnonymousCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 var
   mItem: TCompletionItem;
 begin
@@ -420,37 +361,13 @@ begin
   end;
   if ARequest.Trigger = '(' then
   begin
-    Exit(AnswerWith(AAnswer, mItem));
+    Exit(AAnswer.AnswerWith(mItem));
   end;
   AAnswer.Hints := AAnswer.Hints + [mItem];
 end;
 
-/// <summary>Methode aus Aufruf anlegen (#472): Nach "(" (Auslöser des Plugins) gibt es nur dieses Angebot oder
-/// nichts, mit Strg+Leer auf dem Namen eines Aufrufs steht es oben in der Liste.</summary>
-function CreateCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
-var
-  mItem: TCompletionItem;
-  mFound: Boolean;
-begin
-  Result := TCompletionOutcome.Next;
-  mFound := Assigned(AAnswer.Hooks.CreateFor) and CreateItem(ARequest, AAnswer.Hooks.CreateFor, mItem);
-  if ARequest.Trigger = '(' then
-  begin
-    AAnswer.Exclusive := Default(TCompletionItems);
-    if mFound then
-    begin
-      AAnswer.Exclusive.Items := [mItem];
-    end;
-    Result := TCompletionOutcome.Answered;
-  end
-  else if mFound then
-  begin
-    AAnswer.Hints := AAnswer.Hints + [mItem];
-  end;
-end;
-
 /// <summary>with auflösen (#50): auf dem Wort with oben in der Liste, die übrige Liste bleibt.</summary>
-function WithCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function WithCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 var
   mItem: TCompletionItem;
 begin
@@ -463,7 +380,7 @@ end;
 
 /// <summary>Alle Felder zuweisen (#491): hinter "Ausdruck." am Anweisungsanfang ganz oben, die übrige Liste
 /// bleibt.</summary>
-function AssignAllCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function AssignAllCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 var
   mItem: TCompletionItem;
 begin
@@ -476,32 +393,32 @@ end;
 
 /// <summary>Namensvorschläge (#452): an der Namensposition einer Deklaration mit bekanntem Typ nur die Namen.
 /// </summary>
-function NameCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function NameCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 begin
   Result := AnsweredIf(TCompletionNames.NameItems(ARequest, AAnswer.Hooks.NamingFor, AAnswer.Exclusive));
 end;
 
 /// <summary>Methoden überschreiben (#443) vor der allgemeinen Vervollständigung.</summary>
-function OverrideCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function OverrideCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 begin
   Result := AnsweredIf(TCompletionDeclarations.OverrideItems(ARequest, AAnswer.Exclusive));
 end;
 
 /// <summary>Property-Zugriffe (#31): nach read bzw. write nur passende Felder und Methoden.</summary>
-function PropertyCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function PropertyCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 begin
   Result := AnsweredIf(TCompletionDeclarations.PropertyItems(ARequest, AAnswer.Exclusive));
 end;
 
 /// <summary>Ereignis-Zuweisung (#444).</summary>
-function EventCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function EventCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 begin
   Result := AnsweredIf(TCompletionMethods.EventItems(ARequest, AAnswer.Exclusive));
 end;
 
 /// <summary>Interface implementieren (#466): auf leerer Zeile der Klasse nur die fehlenden Methoden mit
 /// Kontrollkästchen; bei angefangenem Wort ein Hinweis oben in der normalen Liste.</summary>
-function InterfaceCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function InterfaceCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 var
   mItems: TArray<TCompletionItem>;
   mBatch: Boolean;
@@ -523,7 +440,7 @@ end;
 /// <summary>Aufzählungen und Mengen (#448): im Mengenkonstruktor nur dessen Werte; sonst die Werte des erwarteten
 /// Aufzählungstyps vorab und vor der übrigen Liste. Atlas fragt bei "[" mit triggerCharacter: ohne Menge nichts.
 /// </summary>
-function EnumCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function EnumCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 var
   mItems: TArray<TCompletionItem>;
   mSetMode: Boolean;
@@ -546,7 +463,7 @@ end;
 
 /// <summary>Komponenten aus dem Formular (#455) wie die Aufzählungswerte vorab und vor der übrigen Liste.
 /// </summary>
-function ComponentCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function ComponentCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 var
   mItems: TArray<TCompletionItem>;
 begin
@@ -559,7 +476,7 @@ end;
 
 /// <summary>Nach einer Typprüfung (#2107): die Mitglieder, die nur der geprüfte Typ hat, wie die
 /// Aufzählungswerte vorab und vor der übrigen Liste.</summary>
-function TypeGuardCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function TypeGuardCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 var
   mItems: TArray<TCompletionItem>;
 begin
@@ -572,7 +489,7 @@ end;
 
 /// <summary>Nach "X is " bzw. "X as " (#2107): die Typen, Nachfahren des Typs von X markiert. Exklusiv, weil
 /// erst die ganze Liste geprüft wird.</summary>
-function DescendantCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function DescendantCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 begin
   Result := AnsweredIf(TCompletionTypeGuards.DescendantItems(ARequest, AAnswer.Exclusive));
 end;
@@ -595,7 +512,7 @@ end;
 /// <summary>Postfix-Vorlagen je Dokument; gestaffelt (#616), wenn der Client einen partialResultToken
 /// mitschickt: Teilergebnisse als $/progress mit CompletionItem[], die vorab bestimmten Einträge zuerst, der
 /// Rest in der Antwort.</summary>
-function PostfixCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function PostfixCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 begin
   Result := TCompletionOutcome.Next;
   AAnswer.Postfix := AAnswer.Hooks.PostfixOf(ARequest.Uri);
@@ -612,7 +529,7 @@ end;
 
 /// <summary>Sender mit Typumwandlung (#480): statt der Mitglieder von TObject die des zugewiesenen
 /// Komponententyps.</summary>
-function SenderCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function SenderCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 begin
   // Eine is-Prüfung auf Sender (#2107) sagt mehr als das Formular.
   if HasNarrowed(AAnswer.Prefetched) then
@@ -624,7 +541,7 @@ end;
 
 /// <summary>Die allgemeine Liste ohne die vorab bestimmten Namen; Schlüsselwörter abschaltbar (#31,
 /// completion.keywords).</summary>
-function ListCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function ListCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 var
   mCollected: TCompletionItems;
 begin
@@ -640,7 +557,7 @@ begin
 end;
 
 /// <summary>Kontextabhängige Code-Vorlagen (#51) am Ende der Liste.</summary>
-function ContextCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function ContextCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 begin
   Result := TCompletionOutcome.Next;
   AAnswer.Tail := AAnswer.Tail + TCompletionLists.ContextItems(ARequest, AAnswer.Hooks.Namespaces,
@@ -649,7 +566,7 @@ end;
 
 /// <summary>Unbekannter Name (#471): Deklarieren am Ende. Die Einträge hängen am getippten Namen, deshalb neu
 /// fragen.</summary>
-function DeclareCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+function DeclareCase(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome;
 var
   mDeclares: TArray<TCompletionItem>;
 begin
@@ -667,6 +584,20 @@ procedure AddCase(var ACases: TArray<TCompletionCase>; const ACase: TCompletionC
 begin
   SetLength(ACases, Length(ACases) + 1);
   ACases[High(ACases)] := ACase;
+end;
+
+/// <summary>Fall an ASlot: die dort angemeldeten Quellen der Reihe nach.</summary>
+function SlotCase(ASlot: TCompletionSlot): TCompletionCase;
+begin
+  Result :=
+    function(ARequest: TCompletionRequest; AAnswer: TLspCompletionAnswer): TCompletionOutcome
+    begin
+      Result := TCompletionOutcome.Next;
+      if AAnswer.Sources <> nil then
+      begin
+        Result := AAnswer.Sources.Run(ASlot, ARequest, AAnswer);
+      end;
+    end;
 end;
 
 { TCompletionCases }
@@ -687,7 +618,7 @@ begin
   AddCase(Result, ResourceStringCase);
   AddCase(Result, GuardCase);
   AddCase(Result, AnonymousCase);
-  AddCase(Result, CreateCase);
+  AddCase(Result, SlotCase(TCompletionSlot.CreateMethod));
   AddCase(Result, WithCase);
   AddCase(Result, AssignAllCase);
   AddCase(Result, NameCase);
@@ -707,7 +638,7 @@ begin
 end;
 
 class function TCompletionCases.Run(const ACases: TArray<TCompletionCase>; ARequest: TCompletionRequest;
-  AAnswer: TCompletionAnswer): Boolean;
+  AAnswer: TLspCompletionAnswer): Boolean;
 var
   mStep: TCompletionCase;
 begin
