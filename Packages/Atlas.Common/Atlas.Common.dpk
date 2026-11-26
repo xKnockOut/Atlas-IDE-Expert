@@ -380,7 +380,7 @@ contains
   Atlas.Common.Editing.Inlining.Method in 'Source\Editing\Atlas.Common.Editing.Inlining.Method.pas',
   Atlas.Common.Editing.WithResolution in 'Source\Editing\Atlas.Common.Editing.WithResolution.pas',
   Atlas.Common.Editing.CreateMethod in 'Source\Editing\Atlas.Common.Editing.CreateMethod.pas',
-  Atlas.Common.Editing.NameSuggestions in 'Source\Editing\Atlas.Common.Editing.NameSuggestions.pas',
+  Atlas.Common.Semantics.NameSuggestions in 'Source\Semantics\Atlas.Common.Semantics.NameSuggestions.pas',
   Atlas.Common.Editing.AccessorCreation in 'Source\Editing\Atlas.Common.Editing.AccessorCreation.pas',
   Atlas.Common.Pascal.ResourceStrings in 'Source\Pascal\Atlas.Common.Pascal.ResourceStrings.pas',
   Atlas.Common.Lsp.ResourceStringCommands in 'Source\Lsp\Atlas.Common.Lsp.ResourceStringCommands.pas',

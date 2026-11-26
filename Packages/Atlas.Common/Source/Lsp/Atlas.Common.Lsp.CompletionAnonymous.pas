@@ -66,7 +66,7 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.NameSuggestions,
+  Atlas.Common.Semantics.NameSuggestions,
   Atlas.Common.Pascal.TokenCursor;
 
 /// <summary>Tokens ohne Kommentare und Direktiven.</summary>

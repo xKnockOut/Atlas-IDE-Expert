@@ -21,6 +21,8 @@ type
     procedure SubstitutesBindings;
     [Test]
     procedure GenericNames;
+    [Test]
+    procedure NamesFromTypes;
   end;
 
 implementation
@@ -72,6 +74,16 @@ begin
   Assert.AreEqual('TPair<string, Integer>', TPascalTypeTexts.GenericName('TPair',
     TArray<string>.Create('K=string', 'V=Integer')));
   Assert.AreEqual('IComparer', TPascalTypeTexts.GenericName('IComparer', nil));
+end;
+
+procedure TPascalTypeTextsTests.NamesFromTypes;
+begin
+  Assert.AreEqual('Customer', TPascalTypeTexts.NameFromType('TCustomer'));
+  Assert.AreEqual('Exporter', TPascalTypeTexts.NameFromType('IExporter'));
+  Assert.AreEqual('List', TPascalTypeTexts.NameFromType('System.Generics.Collections.TList<TKunde>'));
+  Assert.AreEqual('Text', TPascalTypeTexts.NameFromType('string'));
+  Assert.AreEqual('Value', TPascalTypeTexts.NameFromType('Integer'));
+  Assert.AreEqual('Value', TPascalTypeTexts.NameFromType('{Typ}'));
 end;
 
 initialization
