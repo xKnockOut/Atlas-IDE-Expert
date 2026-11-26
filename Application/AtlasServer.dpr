@@ -369,6 +369,7 @@ uses
   Adapters.Lsp.OwnershipReport in 'Source\Adapters\Adapters.Lsp.OwnershipReport.pas',
   Adapters.Lsp.RuleDiagnostics in 'Source\Adapters\Adapters.Lsp.RuleDiagnostics.pas',
   Adapters.Lsp.RuleActions in 'Source\Adapters\Adapters.Lsp.RuleActions.pas',
+  Adapters.Lsp.SourceActions in 'Source\Adapters\Adapters.Lsp.SourceActions.pas',
   Adapters.Lsp.RuleCatalog in 'Source\Adapters\Adapters.Lsp.RuleCatalog.pas',
   Adapters.Lsp.FindingsPrompt in 'Source\Adapters\Adapters.Lsp.FindingsPrompt.pas',
   Adapters.Lsp.BulkFix in 'Source\Adapters\Adapters.Lsp.BulkFix.pas',

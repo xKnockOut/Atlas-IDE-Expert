@@ -2,7 +2,8 @@
 
 // textDocument/codeAction über den Dispatcher (#42): try/finally und die
 // Klassen-Aktionen kommen mit, refactoring.tryFinally und
-// refactoring.classActions schalten sie ab.
+// refactoring.classActions schalten sie ab. Die Aktionen aus Editing kommen wie in der Shell über
+// TLspSourceActionsAdapter.
 
 interface
 
@@ -12,6 +13,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.Editing.Contract.CodeActions,
   Atlas.Common.Lsp.CodeActions;
 
 type
@@ -25,6 +27,8 @@ type
     FId: Integer;
     /// <summary>Titel aller Aktionen in Zeile ALine, mit "|" getrennt.</summary>
     function Titles(const AText: string; ALine: Integer): string;
+    /// <summary>Aktionen aus Editing mit ASettings, wie die Shell sie anmeldet.</summary>
+    procedure UseSources(const ASettings: TEditingCodeActionSettings);
   public
     [Setup]
     procedure Setup;
@@ -53,7 +57,9 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.CodeActions.Contract,
   Atlas.Tests.LspRules,
-  Atlas.Common.Semantics.Contract;
+  Atlas.Common.Semantics.Contract,
+  Atlas.Common.Editing.Composition,
+  Adapters.Lsp.SourceActions;
 
 const
   cLB = #13#10;
@@ -110,6 +116,11 @@ begin
   end;
 end;
 
+procedure TLspCodeActionsTests.UseSources(const ASettings: TEditingCodeActionSettings);
+begin
+  FActions.SourceActions := TLspSourceActionsAdapter.Wrap(TEditingComposition.CodeActions(ASettings));
+end;
+
 procedure TLspCodeActionsTests.Setup;
 begin
   FStore := TDocumentStore.Create;
@@ -121,6 +132,7 @@ begin
     begin
       Result := FSettings;
     end;
+  UseSources(Default(TEditingCodeActionSettings));
   FDispatcher := TJsonRpcDispatcher.Create;
   FActions.Attach(FDispatcher);
 end;
@@ -202,11 +214,13 @@ const
   cUsesText = 'unit Haupt;' + cLB + 'interface' + cLB + 'uses' + cLB + '  Vcl.Grids, Vcl.Menus, {$IFDEF X}Vcl.Forms, {$ENDIF}Vcl.Dialogs;' +
     cLB + 'implementation' + cLB + 'end.';
 var
+  mSettings: TEditingCodeActionSettings;
   mUri, mTags: string;
   mRequest, mResponse: TJSONObject;
   mItem, mData: TJSONValue;
 begin
-  FActions.UsesContextFor :=
+  mSettings := Default(TEditingCodeActionSettings);
+  mSettings.UsesContextFor :=
     function(const AUri: string; out AContext: TUsesContext): Boolean
     begin
       AContext := Default(TUsesContext);
@@ -220,12 +234,13 @@ begin
       Result := True;
     end;
   // Projekt ohne X: der Zweig mit Vcl.Forms ist inaktiv.
-  FActions.DefinesFor :=
+  mSettings.DefinesFor :=
     function(const AUri: string; out ADefines: TArray<string>): Boolean
     begin
       ADefines := ['DEBUG'];
       Result := True;
     end;
+  UseSources(mSettings);
   mUri := TDocumentUris.FromPath(cFileName);
   FStore.Open(mUri, 'delphi', 1, cUsesText);
   mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":7,"method":"textDocument/codeAction","params":' +

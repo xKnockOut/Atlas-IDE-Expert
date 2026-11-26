@@ -15,6 +15,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.CodeActions,
+  Atlas.Common.Editing.Contract.CodeActions,
   Atlas.Common.Mcp.EditTools,
   Atlas.Common.Mcp.RefactorTools,
   Shell.Composition.Refactorings.Services,
@@ -60,6 +61,7 @@ type
     function Settings(const AUri: string): TServerSettings;
     function LanguageLevel(const AUri: string): string;
     function RefactoringServices: TShellRefactoringServices;
+    function SourceActionSettings: TEditingCodeActionSettings;
     procedure ConfigureCodeActions;
     function Source: TMcpRefactorSource;
   public
@@ -79,7 +81,8 @@ uses
   Rules.Contract.Api,
   Rules.Providers.DocumentActions,
   Adapters.Lsp.RuleActions,
-  Atlas.Common.Editing.ClassActions,
+  Adapters.Lsp.SourceActions,
+  Atlas.Common.Editing.Composition,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Semantics.Contract;
@@ -185,6 +188,18 @@ begin
   Result.NewNamesFor := FServices.NewNamesFor;
 end;
 
+function TMcpRefactorHost.SourceActionSettings: TEditingCodeActionSettings;
+begin
+  Result := Default(TEditingCodeActionSettings);
+  Result.ClassEnvironmentFor :=
+    function(const AUri: string): TEditingClassEnvironment
+    begin
+      Result := Default(TEditingClassEnvironment);
+      Result.Index := FServices.Index;
+      Result.DelphiVersion := LanguageLevel(AUri);
+    end;
+end;
+
 procedure TMcpRefactorHost.ConfigureCodeActions;
 begin
   FCodeActions.FormatStyleFor := FServices.FormatStyleFor;
@@ -193,14 +208,8 @@ begin
     begin
       Result := Settings(AUri).Refactoring;
     end;
-  FCodeActions.ClassActionContextFor :=
-    function(const AUri: string): TClassActionContext
-    begin
-      Result := TClassActionContext.Default;
-      Result.Index := FServices.Index;
-      Result.DelphiVersion := LanguageLevel(AUri);
-      Result.Uri := AUri;
-    end;
+  // Klasse, Anweisung und Deklarationen aus Editing; ohne uses-Umfeld keine uses-Aktionen.
+  FCodeActions.SourceActions := TLspSourceActionsAdapter.Wrap(TEditingComposition.CodeActions(SourceActionSettings));
   // Actions ist virtuell: über eine anonyme Methode (FPC übersetzt die direkte Zuweisung nicht).
   FCodeActions.ExtraActions :=
     function(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>

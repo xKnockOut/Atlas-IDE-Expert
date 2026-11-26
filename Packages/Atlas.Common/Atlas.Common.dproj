@@ -477,8 +477,10 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Providers.CompilerFixes.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Composition.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.ClassActions.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.CodeActions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.ClassCompletion.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Providers.ClassActions.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Providers.CodeActions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Providers.ClassCompletion.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.MethodWithoutSelf.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.MethodOrder.pas"/>

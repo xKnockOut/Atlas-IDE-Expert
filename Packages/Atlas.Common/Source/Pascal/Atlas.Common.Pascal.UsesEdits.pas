@@ -36,24 +36,6 @@ uses
   Atlas.Common.Pascal.Contract;
 
 type
-  /// <summary>Was Rewrite mit den Listen tut.</summary>
-  TUsesRewrite = record
-    Dedupe: Boolean;
-    Sort: Boolean;
-    /// <summary>Mit Sort: erst nach Namespace (System, Vcl, ...), Units ohne Namespace zuletzt.</summary>
-    ByNamespace: Boolean;
-    /// <summary>Diese Units entfallen.</summary>
-    Drop: TArray<string>;
-    /// <summary>Mit Sort: nach Herkunft gliedern (#2794); nil = nicht.</summary>
-    GroupOf: TUsesGroupFunc;
-    /// <summary>Darstellung der Gruppen mit GroupOf.</summary>
-    GroupStyle: TUsesGroupStyle;
-    /// <summary>Mit GroupOf: längere Zeilen einer Gruppe umbrechen; 0 = cDefaultLineLength.</summary>
-    MaxLineLength: Integer;
-  public const
-    cDefaultLineLength = 120;
-  end;
-
   TPascalUsesEdits = class
   public
     /// <summary>Schreibt die schlichten Listen nach AOptions um; False ohne Änderung.</summary>

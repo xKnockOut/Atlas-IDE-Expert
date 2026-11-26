@@ -15,8 +15,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Pascal.UsesGroups,
-  Atlas.Common.Pascal.UsesEdits,
-  Atlas.Common.Editing.ClassActions,
+  Atlas.Common.Editing.Contract.CodeActions,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Rules.CheckContext,
   Atlas.Common.Lsp.CodeActions,
@@ -52,8 +51,8 @@ type
     Index: ISymbolIndex;
     EnsureUnit: TEnsureUnitFunc;
     RuleContextFor: TRuleContextProvider;
-    StringLiteralFor: TStringLiteralProvider;
-    DocCommentsFor: TDocCommentsProvider;
+    StringLiteralFor: TEditingStringLiteralFunc;
+    DocCommentsFor: TEditingDocCommentsFunc;
     FormatStyleFor: TCodeActionStyleProvider;
     RefactoringFor: TCodeActionRefactoringProvider;
     DefinesFor: TDefinesProvider;
@@ -75,7 +74,8 @@ type
     FCodeActions: TLspCodeActions;
     FDocumentLinks: TDocumentLinksProtocol;
     FColors: TLspColors;
-    function ClassActionContextOf(const AUri: string): TClassActionContext;
+    function ClassEnvironmentOf(const AUri: string): TEditingClassEnvironment;
+    function SourceActionSettings: TEditingCodeActionSettings;
     function MemberOrderOf(const AUri: string): TMemberOrderSettings;
     function UsesOrderOf(const AUri: string): TUsesRewrite;
     function GroupOf(const AUri: string): TUsesGroupFunc;
@@ -101,6 +101,8 @@ uses
   Rules.Contract.Api,
   Rules.Providers.DocumentActions,
   Adapters.Lsp.RuleActions,
+  Adapters.Lsp.SourceActions,
+  Atlas.Common.Editing.Composition,
   Atlas.Common.Lsp.FormFiles,
   Atlas.Common.Semantics.UsesUsage,
   Core.Bootstrap,
@@ -159,16 +161,11 @@ begin
   mRules := TRuleCodeActionsProvider.Create(FServices.RuleContextFor);
   FCodeActions := TLspCodeActions.Create(FServices.Documents, TLspRuleActionsAdapter.Wrap(mRules));
   FCodeActions.FormActions := FormActionsFunc();
-  FCodeActions.StringLiteralFor := FServices.StringLiteralFor;
-  FCodeActions.DocCommentsFor := FServices.DocCommentsFor;
   // try/finally rückt wie das Formatieren ein (#42, #43).
   FCodeActions.FormatStyleFor := FServices.FormatStyleFor;
   FCodeActions.RefactoringFor := FServices.RefactoringFor;
-  FCodeActions.ClassActionContextFor := ClassActionContextOf;
-  FCodeActions.MemberOrderFor := MemberOrderOf;
-  FCodeActions.UsesOrderFor := UsesOrderOf;
-  FCodeActions.UsesContextFor := UsesContextOf;
-  FCodeActions.DefinesFor := FServices.DefinesFor;
+  // Klasse, Anweisung, uses und Deklarationen: Editing meldet die Aktionen an, Lsp kennt Editing nicht.
+  FCodeActions.SourceActions := TLspSourceActionsAdapter.Wrap(TEditingComposition.CodeActions(SourceActionSettings));
   FCodeActions.ExtraActions := FServices.ExtraActions;
   FDocumentLinks := TDocumentLinksProtocol.Create(FServices.Documents, IncludePathsOf);
   FColors := TLspColors.Create(FServices.Documents, PlatformSystemColor);
@@ -182,13 +179,38 @@ begin
   inherited Destroy;
 end;
 
-function TShellCodeActions.ClassActionContextOf(const AUri: string): TClassActionContext;
+function TShellCodeActions.ClassEnvironmentOf(const AUri: string): TEditingClassEnvironment;
 begin
-  Result := TClassActionContext.Default;
+  Result := Default(TEditingClassEnvironment);
   Result.Index := FServices.Index;
   Result.DelphiVersion := FServices.LanguageLevelFor(AUri);
-  Result.Uri := AUri;
   Result.Host := FServices.SlashHost;
+end;
+
+/// <summary>Symbole des Projekts aus ADefinesFor für die uses-Aktionen; nil ohne.</summary>
+function EditingDefines(const ADefinesFor: TDefinesProvider): TEditingDefinesFunc;
+begin
+  Result := nil;
+  if Assigned(ADefinesFor) then
+  begin
+    Result :=
+      function(const AUri: string; out ADefines: TArray<string>): Boolean
+      begin
+        Result := ADefinesFor(AUri, ADefines);
+      end;
+  end;
+end;
+
+function TShellCodeActions.SourceActionSettings: TEditingCodeActionSettings;
+begin
+  Result := Default(TEditingCodeActionSettings);
+  Result.StringLiteralFor := FServices.StringLiteralFor;
+  Result.DocCommentsFor := FServices.DocCommentsFor;
+  Result.ClassEnvironmentFor := ClassEnvironmentOf;
+  Result.MemberOrderFor := MemberOrderOf;
+  Result.UsesOrderFor := UsesOrderOf;
+  Result.UsesContextFor := UsesContextOf;
+  Result.DefinesFor := EditingDefines(FServices.DefinesFor);
 end;
 
 function TShellCodeActions.MemberOrderOf(const AUri: string): TMemberOrderSettings;

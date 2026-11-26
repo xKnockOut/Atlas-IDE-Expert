@@ -1,0 +1,120 @@
+﻿unit Adapters.Lsp.SourceActions.Tests;
+
+// Tests für den Host-Adapter, der dem Sprachserver die Code-Aktionen aus Editing gibt.
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TLspSourceActionsAdapterTests = class
+  public
+    [Test]
+    procedure DelegatesToEditing;
+    [Test]
+    procedure WrapOfNilIsNil;
+  end;
+
+implementation
+
+uses
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Lsp.Contract,
+  Atlas.Common.Editing.Contract.CodeActions,
+  Adapters.Lsp.SourceActions;
+
+type
+  /// <summary>Jede Gruppe liefert eine Aktion mit ihrem Namen und der URI der Stelle.</summary>
+  TNamedEditingActions = class(TInterfacedObject, IEditingCodeActions)
+  private
+    function Named(const AName: string; const ASite: TEditingCodeActionSite): TCodeAction;
+  public
+    function Structure(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
+    function MissingBodies(const ASite: TEditingCodeActionSite; out AAction: TCodeAction): Boolean;
+    function Statements(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
+    function UsesActions(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
+    function Declarations(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
+    function OrganizeImports(const ASite: TEditingCodeActionSite; out AAction: TCodeAction): Boolean;
+  end;
+
+function TNamedEditingActions.Named(const AName: string; const ASite: TEditingCodeActionSite): TCodeAction;
+begin
+  Result := Default(TCodeAction);
+  Result.Title := AName + '@' + ASite.Uri;
+end;
+
+function TNamedEditingActions.Structure(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
+begin
+  SetLength(Result, 1);
+  Result[0] := Named('Structure', ASite);
+end;
+
+function TNamedEditingActions.MissingBodies(const ASite: TEditingCodeActionSite; out AAction: TCodeAction): Boolean;
+begin
+  AAction := Named('MissingBodies', ASite);
+  Result := True;
+end;
+
+function TNamedEditingActions.Statements(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
+begin
+  SetLength(Result, 1);
+  Result[0] := Named('Statements', ASite);
+end;
+
+function TNamedEditingActions.UsesActions(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
+begin
+  SetLength(Result, 1);
+  Result[0] := Named('Uses', ASite);
+end;
+
+function TNamedEditingActions.Declarations(const ASite: TEditingCodeActionSite): TArray<TCodeAction>;
+begin
+  SetLength(Result, 1);
+  Result[0] := Named('Declarations', ASite);
+end;
+
+function TNamedEditingActions.OrganizeImports(const ASite: TEditingCodeActionSite; out AAction: TCodeAction): Boolean;
+begin
+  AAction := Named('Organize', ASite);
+  Result := False;
+end;
+
+{ TLspSourceActionsAdapterTests }
+
+procedure TLspSourceActionsAdapterTests.DelegatesToEditing;
+var
+  mEditing: IEditingCodeActions;
+  mLsp: ILspSourceActions;
+  mSite: TLspCodeActionSite;
+  mAction: TCodeAction;
+begin
+  mEditing := TNamedEditingActions.Create;
+  mLsp := TLspSourceActionsAdapter.Wrap(mEditing);
+  mSite := Default(TLspCodeActionSite);
+  mSite.Uri := 'u';
+  Assert.AreEqual('Structure@u', mLsp.Structure(mSite)[0].Title);
+  Assert.AreEqual('Statements@u', mLsp.Statements(mSite)[0].Title);
+  Assert.AreEqual('Uses@u', mLsp.UsesActions(mSite)[0].Title);
+  Assert.AreEqual('Declarations@u', mLsp.Declarations(mSite)[0].Title);
+  Assert.IsTrue(mLsp.MissingBodies(mSite, mAction));
+  Assert.AreEqual('MissingBodies@u', mAction.Title);
+  Assert.IsFalse(mLsp.OrganizeImports(mSite, mAction));
+  Assert.AreEqual('Organize@u', mAction.Title);
+  mSite := Default(TLspCodeActionSite);
+  mAction := Default(TCodeAction);
+end;
+
+procedure TLspSourceActionsAdapterTests.WrapOfNilIsNil;
+var
+  mLsp: IInterface;
+begin
+  mLsp := TLspSourceActionsAdapter.Wrap(nil);
+  Assert.IsNull(mLsp);
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TLspSourceActionsAdapterTests);
+
+end.

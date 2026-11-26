@@ -21,7 +21,8 @@ uses
   Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.Refactorings,
   Atlas.Common.Semantics.References,
-  Atlas.Common.Semantics.Contract;
+  Atlas.Common.Semantics.Contract,
+  Atlas.Common.Lsp.SyntaxDiagnostics;
 
 type
   /// <summary>Liste von Namen, z. B. Dateien des Projekts oder Namensräume.</summary>
