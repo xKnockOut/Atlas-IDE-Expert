@@ -717,6 +717,21 @@ Einstellungen: `debug.completionInDialogs`
 
 Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 
+<a id="dataset-table"></a>
+##### Datenmenge als Tabelle
+
+Ist der gewählte Ausdruck ein `TDataSet` (Query, Tabelle, ClientDataSet …), öffnet der Knopf „Table …“ die Datensätze in einem eigenen, größeren Fenster (#3024).
+
+- Kopfzeile mit Ausdruck, Zustand und „Datensatz x von y“; der aktuelle Datensatz ist mit ▶ markiert, NULL steht als „(NULL)“.
+- Gelesen wird seitenweise („Weitere n laden“), in kleinen Schritten, damit die IDE bedienbar bleibt; „Abbrechen“ hält an.
+- Ohne Zusatz liest Atlas nur den aktuellen Datensatz. Für mehr muss es den Cursor bewegen (dabei laufen `BeforeScroll`, `AfterScroll` und `OnCalcFields`) und fragt deshalb vorher; danach steht der Cursor wieder auf dem Ausgangsdatensatz.
+- Schneller und ohne sichtbare Cursorbewegung mit der freiwilligen Unit `Atlas.Debug.DataSets` aus `Setup/Vorlagen`, am besten nur in Debug-Builds: `{$IFDEF DEBUG} Atlas.Debug.DataSets, {$ENDIF}`. Sie hängt Scroll-Ereignisse und gebundene Steuerelemente während des Lesens ab und stellt den Datensatz wieder her.
+- „Zum Datensatz springen“ setzt den Cursor des Programms, „Wert ändern …“ setzt ein Feld (Edit, Post); beides nur nach Rückfrage.
+- „Als CSV kopieren“, „Als JSON kopieren“ und Strg+C für markierte Zeilen.
+- Datenmengen im Bearbeiten und unidirektionale werden nicht bewegt.
+
+Einstellungen: `debug.evaluateWindow.dataSetTable`, `debug.evaluateWindow.dataSetTable.pageSize`, `debug.evaluateWindow.dataSetTable.moveCursor` (`never`, `ask`, `always`)
+
 <a id="window-atlasvariables"></a>
 #### Fenster „Variablen“
 

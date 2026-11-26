@@ -36,6 +36,9 @@
 //     Umschalttaste (auch beim Klick im Menü), mit dem Befehl
 //     Atlas.DebugEvaluateIdeDialog und ausgeschaltet öffnet die IDE ihren
 //     Dialog.
+//   - Tabelle (#3024, debug.evaluateWindow.dataSetTable): Knopf „Tabelle …“
+//     zeigt die Datenmenge der Zeile (TAtlasIdeDebugDataSetTable.ShowFor); nach
+//     Springen oder Ändern dort wertet das Fenster neu aus.
 //   - Kein Zugriff (#840): Scheitert eine Auswertung mit einem bekannten Text,
 //     steht „‹kein Zugriff›“ vor der Meldung (TAtlasIdeDebugUnavailable).
 // Ohne debug.evaluateWindow ist nichts angemeldet. Nur im Hauptthread verwenden.
@@ -163,20 +166,20 @@ uses
   Atlas.UI.Debug.EvaluateFrame,
   Vcl.Controls,
   Vcl.Dialogs,
-  ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.EvaluateRows,
   Atlas.Core.Debug.StopProgress,
   Atlas.Core.Settings.Plugin,
-  Atlas.ToolsApi.Editor.Buffer,
   Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.Unavailable,
   Atlas.IDE.Debug.DialogCompletion,
   Atlas.IDE.Debug.EvaluateWindow,
+  Atlas.IDE.Debug.CursorExpression,
+  Atlas.IDE.Debug.DataSetTable,
   Atlas.UI.Debug.Evaluate.Strings;
 
 /// <summary>Das Fenster, falls es schon besteht; sonst nil.</summary>
@@ -206,35 +209,6 @@ end;
 function Unavailable: TAtlasEvalUnavailable;
 begin
   Result := TAtlasEvalUnavailable.Create(TAtlasIdeDebugUnavailable.InlineCaption, TAtlasIdeDebugUnavailable.Patterns);
-end;
-
-/// <summary>Einzeilige Markierung, sonst der Ausdruck unter dem Cursor des obersten Editors.</summary>
-function CursorExpression: string;
-var
-  mView: IOTAEditView;
-  mBlock: IOTAEditBlock;
-  mCursor: TOTAEditPos;
-  mLine: string;
-begin
-  Result := '';
-  mView := TAtlasEditorBuffer.ActiveView;
-  if mView = nil then
-  begin
-    Exit;
-  end;
-  mBlock := mView.Block;
-  if (mBlock <> nil) and mBlock.IsValid and (mBlock.Size > 0) and (mBlock.StartingRow = mBlock.EndingRow) then
-  begin
-    Result := Trim(mBlock.Text);
-    if Result <> '' then
-    begin
-      Exit;
-    end;
-  end;
-  mCursor := mView.CursorPos;
-  mLine := TAtlasEditorBuffer.LineText(mView, mCursor.Line);
-  Result := TAtlasEvalText.ExpressionAt(mLine, TLspSession.ColumnToIndex(mLine, mCursor.Col,
-    TAtlasEditorBuffer.TabWidth(mView.Buffer)));
 end;
 
 /// <summary>Strg+F7 an Atlas statt an die IDE? (Die Umschalttaste prüft der Haken.)</summary>
@@ -319,6 +293,35 @@ begin
     end;
 end;
 
+/// <summary>Nach Springen oder Ändern in der Tabelle (#3024): Zeilen neu auswerten wie nach einem Halt.</summary>
+procedure TableChanged;
+begin
+  if (TAtlasIdeDebugEvaluate.FInstance <> nil) and StillStopped then
+  begin
+    TAtlasIdeDebugEvaluate.FInstance.SessionStopped;
+  end;
+end;
+
+/// <summary>„Tabelle …“ (#3024): nur mit debug.evaluateWindow.dataSetTable; ohne Hook blendet der Frame den Knopf
+/// aus.</summary>
+procedure WireTable(AFrame: TAtlasDebugEvaluateFrame);
+begin
+  if not TAtlasIdeSettings.Current.DebugEvaluateDataSetTable then
+  begin
+    AFrame.Hooks.Table := nil;
+    Exit;
+  end;
+  AFrame.Hooks.Table :=
+    procedure(ANode: TAtlasEvalNode)
+    begin
+      if (TAtlasIdeDebugEvaluate.FInstance <> nil) and (ANode <> nil) and (ANode.Expression <> '') then
+      begin
+        TAtlasIdeDebugDataSetTable.ShowFor(ANode.Expression, TAtlasIdeDebugEvaluate.FInstance.FPlace.FileName,
+          TAtlasIdeDebugEvaluate.FInstance.FPlace.Line + 1, TableChanged);
+      end;
+    end;
+end;
+
 /// <summary>Werte aufklappen, ändern, als Zeilen zeigen; Nebenwirkungen und Dialog der IDE.</summary>
 procedure WireValues(AFrame: TAtlasDebugEvaluateFrame);
 begin
@@ -357,6 +360,7 @@ begin
     begin
       TAtlasIdeDebugEvaluate.OpenIdeDialog;
     end;
+  WireTable(AFrame);
 end;
 
 /// <summary>AFrame an die Instanz hängen (nach jedem Anlegen des Fensters).</summary>
@@ -456,6 +460,7 @@ end;
 destructor TAtlasIdeDebugEvaluate.Destroy;
 begin
   SetHooked(False);
+  TAtlasIdeDebugDataSetTable.Release;
   // FWorkers entsteht als letztes Teil der Auswertung: ohne ihn ist nichts zu beenden.
   if FWorkers <> nil then
   begin
@@ -878,6 +883,15 @@ begin
     Exit;
   end;
   FInstance.SetHooked(Enabled and TAtlasIdeSettings.Current.DebugEvaluateReplaceCtrlF7);
+  if not Enabled or not TAtlasIdeSettings.Current.DebugEvaluateDataSetTable then
+  begin
+    TAtlasIdeDebugDataSetTable.Release;
+  end;
+  if Frame <> nil then
+  begin
+    WireTable(Frame);
+    Frame.Detail.UpdateButtons;
+  end;
   if not Enabled then
   begin
     TAtlasIdeDebugEvaluateWindow.Hide;
@@ -899,7 +913,7 @@ begin
     Exit;
   end;
   // Vor dem Zeigen lesen: Danach hat das Fenster den Fokus, nicht mehr der Editor.
-  mExpression := CursorExpression;
+  mExpression := TAtlasIdeDebugCursorExpression.Current;
   mShown := TAtlasIdeDebugEvaluateWindow.Show;
   if mShown = nil then
   begin

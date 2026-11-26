@@ -82,6 +82,8 @@
         <DCCReference Include="Text\Atlas.Text.DebugDisplay.Tests.pas"/>
         <DCCReference Include="..\Setup\Vorlagen\Atlas.Debug.Attributes.pas"/>
         <DCCReference Include="Text\Atlas.Debug.Attributes.Tests.pas"/>
+        <DCCReference Include="..\Setup\Vorlagen\Atlas.Debug.DataSets.pas"/>
+        <DCCReference Include="Text\Atlas.Debug.DataSets.Tests.pas"/>
         <DCCReference Include="..\Setup\Vorlagen\Atlas.Testing.Approval.pas"/>
         <DCCReference Include="Text\Atlas.Testing.Approval.Tests.pas"/>
         <DCCReference Include="..\Setup\Vorlagen\Atlas.Testing.Log.pas"/>
@@ -3425,9 +3427,14 @@
         <DCCReference Include="Support\Atlas.Tests.DebugEvaluatorFake.pas"/>
         <DCCReference Include="Support\Atlas.Tests.MutationShadowFake.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EvalSlices.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.DataSetTable.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.DataSetTable.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Evaluate.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.EvaluateTree.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.EvaluatePanels.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.DataSetTable.Strings.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.DataSetTable.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.DataSetTable.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.EvaluateTreeView.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.VariablesParts.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.EvaluateTree.Tests.pas"/>

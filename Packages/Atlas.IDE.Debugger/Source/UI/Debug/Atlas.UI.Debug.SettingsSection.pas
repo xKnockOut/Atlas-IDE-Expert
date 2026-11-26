@@ -39,6 +39,8 @@ type
     /// <summary>Werte beim Halt: Fenster „Variablen“, Vorhersage, Werte ändern, Debug-Hover.</summary>
     procedure BuildStopValues;
     procedure BuildExceptions;
+    /// <summary>Datenmenge als Tabelle (#3024): Schalter, Zeilen je Seite, Cursor bewegen.</summary>
+    procedure BuildDataSetTable;
   protected
     procedure BuildRows; override;
   public
@@ -67,6 +69,7 @@ uses
   Atlas.Core.Debug.EventLog,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Debug.Leaks.Strings,
+  Atlas.UI.Debug.DataSetTable.Strings,
   Atlas.UI.Debug.Settings.Strings,
   Atlas.UI.Debug.Values.Strings,
   Atlas.UI.Debug.Stepping.Strings,
@@ -301,6 +304,21 @@ begin
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugBreakpointRules));
 end;
 
+procedure TAtlasDebugSettingsSection.BuildDataSetTable;
+begin
+  Switch('debug.evaluateWindow.dataSetTable',
+    TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.SettingsDataSetTable));
+  Number('debug.evaluateWindow.dataSetTable.pageSize',
+    TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.SettingsPageSize));
+  Choice('debug.evaluateWindow.dataSetTable.moveCursor',
+    TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.SettingsMoveCursor),
+    TArray<string>.Create(TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.MoveCursorNever),
+    TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.MoveCursorAsk),
+    TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.MoveCursorAlways)),
+    TArray<string>.Create(cDataSetTableMoveCursorValues[0], cDataSetTableMoveCursorValues[1],
+    cDataSetTableMoveCursorValues[2]));
+end;
+
 procedure TAtlasDebugSettingsSection.BuildMore;
 begin
   // „kein Zugriff auf Wert“ erklären (#840), Vervollständigung in Debugger-Dialogen (#538), Fenster „Auswerten“
@@ -313,6 +331,7 @@ begin
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugEvaluateWindow));
   Switch('debug.evaluateWindow.replaceCtrlF7',
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugEvaluateReplaceCtrlF7));
+  BuildDataSetTable;
   Switch('debug.explainAccessViolation',
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExplainAccessViolation));
   Switch('debug.explainAccessViolation.allowCalls',
