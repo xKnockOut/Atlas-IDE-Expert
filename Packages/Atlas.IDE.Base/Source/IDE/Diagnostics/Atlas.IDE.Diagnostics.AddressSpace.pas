@@ -23,7 +23,7 @@ type
     LargestFreeMb: Int64;
     /// <summary>Adressraum des eigenen Prozesses; alle Werte 0, wenn die Abfrage scheitert.</summary>
     class function Measure: TAtlasAddressSpace; static;
-    /// <summary>„belegt 2900 von 4096 MB, größter freier Block 120 MB“.</summary>
+    /// <summary>„used 2900 of 4096 MB, largest free block 120 MB“.</summary>
     function Text: string;
   end;
 
@@ -84,19 +84,19 @@ end;
 
 function TAtlasAddressSpace.Text: string;
 begin
-  Result := Format('belegt %d von %d MB, größter freier Block %d MB', [UsedMb, TotalMb, LargestFreeMb]);
+  Result := Format('used %d of %d MB, largest free block %d MB', [UsedMb, TotalMb, LargestFreeMb]);
 end;
 
 { TAtlasAddressSpaceLog }
 
 procedure TAtlasAddressSpaceLog.GroupStarted(AKind: TAtlasCompileKind);
 begin
-  TAtlasGuard.Log('Adressraum vor dem Build: ' + TAtlasAddressSpace.Measure.Text);
+  TAtlasGuard.Log('Address space before build: ' + TAtlasAddressSpace.Measure.Text);
 end;
 
 procedure TAtlasAddressSpaceLog.GroupFinished(ASucceeded: Boolean; ADurationMs: Int64);
 begin
-  TAtlasGuard.Log('Adressraum nach dem Build: ' + TAtlasAddressSpace.Measure.Text);
+  TAtlasGuard.Log('Address space after build: ' + TAtlasAddressSpace.Measure.Text);
 end;
 
 end.
