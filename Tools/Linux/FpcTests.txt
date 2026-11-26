@@ -261,6 +261,7 @@ Atlas.Common.Lsp.BlockFolds.Tests
 Atlas.Common.Completion.FuzzyMatch.Tests
 Atlas.Common.Completion.SymbolKinds.Tests
 Atlas.Common.Lsp.HoverValues.Tests
+Atlas.Common.Lsp.Hover.Tests
 Atlas.Common.Semantics.RequestCancellation.Tests
 Atlas.Common.Semantics.Feature.Tests
 Atlas.Common.Lsp.KeywordHighlights.Tests
