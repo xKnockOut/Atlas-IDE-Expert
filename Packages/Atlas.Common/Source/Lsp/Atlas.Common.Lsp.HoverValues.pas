@@ -34,12 +34,20 @@ type
     class function BaseTypeCount(const ABaseType: string): Integer; static;
     /// <summary>Hinweis zu deprecated/platform/experimental in der Deklaration; '' ohne Direktive.</summary>
     class function Deprecation(const ADeclaration: string): string; static;
+    /// <summary>Deklaration nur für AName aus einer Namensliste mit Typ: "A, B: Integer;" ergibt für B
+    /// "B: Integer;", "const C, D: string" für D "const D: string". ADeclaration ist genau der Text der
+    /// Deklaration (Variablen, Felder, Parameter). False bei anderen Deklarationen (Routinen, Typen,
+    /// Konstanten, Properties) und wenn AName nicht in der Liste steht.</summary>
+    class function NameDeclaration(const ADeclaration, AName: string; out AResult: string): Boolean; static;
   end;
 
 implementation
 
 uses
   System.StrUtils,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -616,6 +624,62 @@ begin
     begin
       Result := DirectiveHint(ADeclaration, LowerCase(Copy(ADeclaration, mStart, mIndex - mStart)), mIndex);
     end;
+  end;
+end;
+
+/// <summary>Steht an AIndex ein Wort vor den Namen (const, var, out, class var …), dem ein weiteres Wort folgt?
+/// "out, B: Integer" beginnt dagegen mit dem Namen out.</summary>
+function IsModifierAt(const ACursor: TTokenCursor; AIndex: Integer): Boolean;
+begin
+  Result := MatchText(ACursor.At(AIndex).Text, ['class', 'var', 'const', 'threadvar', 'out', 'constref']) and
+    (ACursor.At(ACursor.NextCode(AIndex + 1)).Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]);
+end;
+
+/// <summary>Liest die Namensliste "A, B, C:" ab AIndex; AColon ist danach das Token ":". False, wenn dort keine
+/// Namensliste mit Doppelpunkt steht oder AName nicht darin vorkommt.</summary>
+function ReadNameList(const ACursor: TTokenCursor; AIndex: Integer; const AName: string;
+  out AColon: Integer): Boolean;
+var
+  mFound: Boolean;
+begin
+  AColon := -1;
+  mFound := False;
+  while ACursor.At(AIndex).Kind = TPascalTokenKind.Identifier do
+  begin
+    mFound := mFound or SameText(TPascalLexer.PlainName(ACursor.At(AIndex).Text), TPascalLexer.PlainName(AName));
+    AIndex := ACursor.NextCode(AIndex + 1);
+    if ACursor.Is_(AIndex, ':') then
+    begin
+      AColon := AIndex;
+      Break;
+    end;
+    if not ACursor.Is_(AIndex, ',') then
+    begin
+      Break;
+    end;
+    AIndex := ACursor.NextCode(AIndex + 1);
+  end;
+  Result := mFound and (AColon >= 0);
+end;
+
+class function THoverValues.NameDeclaration(const ADeclaration, AName: string; out AResult: string): Boolean;
+var
+  mCursor: TTokenCursor;
+  mFirst, mColon: Integer;
+begin
+  AResult := '';
+  mCursor := TTokenCursor.Create(TPascalLexer.Tokenize(ADeclaration));
+  mFirst := mCursor.NextCode(0);
+  while IsModifierAt(mCursor, mFirst) do
+  begin
+    mFirst := mCursor.NextCode(mFirst + 1);
+  end;
+  Result := ReadNameList(mCursor, mFirst, AName, mColon);
+  if Result then
+  begin
+    // Wörter davor (const, var) bleiben, die Liste wird zum einen Namen.
+    AResult := Copy(ADeclaration, 1, mCursor.At(mFirst).Offset) + AName +
+      Copy(ADeclaration, mCursor.At(mColon).Offset + 1, MaxInt);
   end;
 end;
 
