@@ -6,7 +6,7 @@
 // Protokoll prüfen, ob trotz Markierung die ganze Unit formatiert wurde.
 // Anonym: nur Zahlen, weder Dateiname noch Quelltext. Zeilen 1-basiert wie im
 // Editor; ein Bereich, der am Anfang einer Zeile endet, schließt diese Zeile
-// nicht ein (wie beim Server, Atlas.Common.Lsp.Formatting).
+// nicht ein (wie beim Server, Atlas.Common.Editing.Formatting.Protocol).
 
 interface
 

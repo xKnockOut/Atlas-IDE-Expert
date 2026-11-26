@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Formatting.Tests;
+﻿unit Atlas.Common.Editing.Formatting.Protocol.Tests;
 
 interface
 
@@ -7,7 +7,7 @@ uses
 
 type
   [TestFixture]
-  TLspFormattingTests = class
+  TFormattingProtocolTests = class
   public
     /// <summary>Abgebrochen, bevor Schnellbefehle Projekt und Platte ändern.</summary>
     [Test]
@@ -37,7 +37,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Editing.MaintenanceCommands,
-  Atlas.Common.Lsp.Formatting;
+  Atlas.Common.Editing.Formatting.Protocol;
 
 const
   cCancelUri = 'file:///C:/P/Unit1.pas';
@@ -112,12 +112,12 @@ begin
   end;
 end;
 
-{ TLspFormattingTests }
+{ TFormattingProtocolTests }
 
-procedure TLspFormattingTests.OnTypeStopsBeforeSlashCommandsWhenCancelled;
+procedure TFormattingProtocolTests.OnTypeStopsBeforeSlashCommandsWhenCancelled;
 var
   mStore: IDocumentStore;
-  mFormatting: TLspFormatting;
+  mFormatting: TFormattingProtocol;
   mDispatcher: TJsonRpcDispatcher;
   mSlashAsked: Boolean;
 begin
@@ -128,7 +128,7 @@ begin
   mFormatting := nil;
   try
     mDispatcher := TJsonRpcDispatcher.Create;
-    mFormatting := TLspFormatting.Create(mStore, nil, nil);
+    mFormatting := TFormattingProtocol.Create(mStore, nil, nil);
     // Ohne Scheduler läuft die Anfrage in DispatchMessage; abgebrochen wird mitten im Handler.
     mFormatting.DelphiVersionFor :=
       function(const AUri: string): string
@@ -161,10 +161,10 @@ begin
   end;
 end;
 
-procedure TLspFormattingTests.FormattingStopsWhenCancelled;
+procedure TFormattingProtocolTests.FormattingStopsWhenCancelled;
 var
   mStore: IDocumentStore;
-  mFormatting: TLspFormatting;
+  mFormatting: TFormattingProtocol;
   mDispatcher: TJsonRpcDispatcher;
 begin
   mStore := TDocumentStore.Create;
@@ -173,7 +173,7 @@ begin
   mFormatting := nil;
   try
     mDispatcher := TJsonRpcDispatcher.Create;
-    mFormatting := TLspFormatting.Create(mStore,
+    mFormatting := TFormattingProtocol.Create(mStore,
       function(const AUri: string): TFormatStyle
       var
         Id: TJSONValue;
@@ -196,13 +196,13 @@ begin
   end;
 end;
 
-procedure TLspFormattingTests.DocCommentAfterSlashIsSwitchable;
+procedure TFormattingProtocolTests.DocCommentAfterSlashIsSwitchable;
 const
   cRequest = '{"jsonrpc":"2.0","id":1,"method":"textDocument/onTypeFormatting","params":{"textDocument":{"uri":"' +
     cCancelUri + '"},"position":{"line":3,"character":5},"ch":"/"}}';
 var
   mStore: IDocumentStore;
-  mFormatting: TLspFormatting;
+  mFormatting: TFormattingProtocol;
   mDispatcher: TJsonRpcDispatcher;
   mEnabled: Boolean;
 begin
@@ -213,7 +213,7 @@ begin
   mFormatting := nil;
   try
     mDispatcher := TJsonRpcDispatcher.Create;
-    mFormatting := TLspFormatting.Create(mStore, nil, nil);
+    mFormatting := TFormattingProtocol.Create(mStore, nil, nil);
     mEnabled := True;
     mFormatting.DocCommentsFor :=
       function(const AUri: string): Boolean
@@ -231,14 +231,14 @@ begin
   end;
 end;
 
-procedure TLspFormattingTests.SlashCommandFollowsEditorOptions;
+procedure TFormattingProtocolTests.SlashCommandFollowsEditorOptions;
 const
   cRequest = '{"jsonrpc":"2.0","id":1,"method":"textDocument/onTypeFormatting","params":{"textDocument":{"uri":"' +
     cCancelUri + '"},"position":{"line":9,"character":1},"ch":"\n",' +
     '"options":{"tabSize":4,"insertSpaces":false}}}';
 var
   mStore: IDocumentStore;
-  mFormatting: TLspFormatting;
+  mFormatting: TFormattingProtocol;
   mDispatcher: TJsonRpcDispatcher;
   mMessage_, mResponse: TJSONObject;
 begin
@@ -250,7 +250,7 @@ begin
   mFormatting := nil;
   try
     mDispatcher := TJsonRpcDispatcher.Create;
-    mFormatting := TLspFormatting.Create(mStore, nil, nil);
+    mFormatting := TFormattingProtocol.Create(mStore, nil, nil);
     mFormatting.Attach(mDispatcher);
     mMessage_ := TJSONObject.ParseJSONValue(cRequest) as TJSONObject;
     try
@@ -270,7 +270,7 @@ begin
   end;
 end;
 
-procedure TLspFormattingTests.FormattingSortsUsesWhenSwitchedOn;
+procedure TFormattingProtocolTests.FormattingSortsUsesWhenSwitchedOn;
 const
   cWhole = '{"jsonrpc":"2.0","id":1,"method":"textDocument/formatting","params":{"textDocument":{"uri":"' +
     cCancelUri + '"},"options":{"tabSize":2,"insertSpaces":true}}}';
@@ -279,7 +279,7 @@ const
     '"options":{"tabSize":2,"insertSpaces":true}}}';
 var
   mStore: IDocumentStore;
-  mFormatting: TLspFormatting;
+  mFormatting: TFormattingProtocol;
   mDispatcher: TJsonRpcDispatcher;
   mSortUses: Boolean;
   mResult: string;
@@ -293,7 +293,7 @@ begin
   try
     mDispatcher := TJsonRpcDispatcher.Create;
     mSortUses := True;
-    mFormatting := TLspFormatting.Create(mStore,
+    mFormatting := TFormattingProtocol.Create(mStore,
       function(const AUri: string): TFormatStyle
       begin
         Result := TFormatStyle.Default;
@@ -317,6 +317,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspFormattingTests);
+  TDUnitX.RegisterTestFixture(TFormattingProtocolTests);
 
 end.

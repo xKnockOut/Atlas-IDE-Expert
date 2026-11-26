@@ -73,13 +73,13 @@ Features dürfen `Semantics` verwenden. Was zwei Hosted-Features teilen, liegt i
 `Documents`, `Semantics` …) oder als Interface im Contract des anbietenden Features, das der Host verbindet.
 
 Die Kanten von heute stehen als schrumpfende Liste unter `knownEdges` der Regel `architecture-feature-cycle` in
-`atlas.json` (Stand des Umbaus: 8 Kanten, kein Zyklus). Eine neue Kante ist ein Befund, eine abgebaute wird gestrichen.
+`atlas.json` (Stand des Umbaus: 0 Kanten, kein Zyklus; die Liste ist leer). Eine neue Kante ist ein Befund, eine abgebaute wird gestrichen.
 
 | Von | Nach | Erlaubt | Stand |
 |---|---|---|---|
-| `Lsp` | `Rules`, `Editing` | nein | heute die meisten Kanten: Der Server ruft Prüfregeln und Refactorings direkt |
-| `Mcp` | `Lsp`, `Editing` | nein | MCP-Werkzeuge nutzen heute dieselben Dienste wie die LSP-Methoden |
-| `Rules` | `Editing` | nein | Korrekturen nutzen heute Editing-Helfer (uses-Listen, Klassenvervollständigung, Code-Aktionen) |
+| `Lsp` | `Rules`, `Editing` | nein | ohne Kante: Die Protokollseiten der Refactorings liegen als `Editing.<X>.Protocol` in Editing, die Komposition meldet ihre Befehle und Vervollständigungsquellen an; Gemeinsames liegt tiefer (`Semantics.EnumTypes`, `Pascal.TreeCache.TParsedFile`) |
+| `Mcp` | `Lsp`, `Editing` | nein | ohne Kante |
+| `Rules` | `Editing` | nein | ohne Kante: Korrekturen erreichen Editing nur über den Host-Adapter (`Adapters.Checks.Refactorings`) |
 | `Editing`, `Rules` | ein Hosted-Feature weiter oben | nein | schon heute ohne Kante: gemeinsame Wertetypen liegen tiefer (`TTextEdit` in `Documents.Contract`, `TDeclaredTypes` in `Pascal.DeclaredTypes`), Links ins Wiki im Index (`Index.DocWiki`), die Unit-Suche bei den Regeln (`Rules.Providers.UnitLookup`) |
 | `Lsp`, `Rules`, `Editing`, `Mcp` | `Semantics` | ja | Namensauflösung und Datenfluss sind Platform |
 | `Semantics` | `Lsp`, `Rules`, `Editing`, `Mcp` | nein | ohne Kante |

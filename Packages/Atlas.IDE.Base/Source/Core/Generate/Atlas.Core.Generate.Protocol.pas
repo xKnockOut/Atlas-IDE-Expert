@@ -2,7 +2,7 @@
 
 // Erzeugen-Menü (#719): Austausch mit dem Server und Einträge aus Code-
 // Vorlagen und Code-Aktionen, ohne VCL und Open Tools API.
-// Befehle des Servers (Atlas.Common.Lsp.SlashMenu) über workspace/executeCommand:
+// Befehle des Servers (Atlas.Common.Editing.SlashMenu.Protocol) über workspace/executeCommand:
 //   atlas.server.slashMenu [uri, position, endLine]: Orte und passende Schnellbefehle,
 //   atlas.server.slashChoices [uri, position, endLine, name]: mögliche Argumente,
 //   atlas.server.slashRun [uri, position, endLine, name, arguments]: Änderungen oder Grund.

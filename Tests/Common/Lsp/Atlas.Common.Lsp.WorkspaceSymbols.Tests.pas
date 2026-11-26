@@ -35,6 +35,10 @@ type
     procedure MapsKinds;
     [Test]
     procedure WritesSymbolInformation;
+    /// <summary>Benannte Stellen (Lesezeichen, #306) nach Güte der Übereinstimmung, mit Unit aus dem Dateinamen.
+    /// </summary>
+    [Test]
+    procedure SearchesPlaces;
   end;
 
 implementation
@@ -43,6 +47,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.JSON,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor;
@@ -178,6 +183,22 @@ begin
   finally
     mJson.Free;
   end;
+end;
+
+procedure TLspWorkspaceSymbolsTests.SearchesPlaces;
+var
+  mPlace: TWorkspacePlace;
+  mFound: TArray<TWorkspaceSymbol>;
+begin
+  mPlace.Name := 'Abrechnung';
+  mPlace.FileName := 'C:\P\Kasse.pas';
+  mPlace.Range := TTextRange.Create(2, 0, 2, 23);
+  mFound := TLspWorkspaceSymbols.SearchPlaces([mPlace], 'Abrechnung');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.IsTrue(mFound[0].Place);
+  Assert.AreEqual('Kasse', mFound[0].UnitName);
+  Assert.AreEqual(2, mFound[0].Symbol.Range.StartPos.Line);
+  Assert.AreEqual(0, Integer(Length(TLspWorkspaceSymbols.SearchPlaces([mPlace], 'Lieferung'))));
 end;
 
 initialization

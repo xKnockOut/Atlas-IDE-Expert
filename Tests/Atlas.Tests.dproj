@@ -224,7 +224,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.HoverValues.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.LinkedEditing.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InlineValues.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Formatting.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Formatting.Protocol.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.SmartIndent.Protocol.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.LearnedSuggestions.Protocol.Tests.pas"/>
         <DCCReference Include="Common\Completion\Atlas.Common.Completion.FuzzyMatch.Tests.pas"/>
@@ -261,7 +261,7 @@
         <DCCReference Include="Application\Features\Rules\Rules.Ownership.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Rules.CallOwnership.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Ownership.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SlashMenu.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.SlashMenu.Protocol.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.UnitSearch.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WinApiDocs.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.KeywordReference.Tests.pas"/>
