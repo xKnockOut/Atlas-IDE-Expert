@@ -39,12 +39,19 @@ type
     /// Deklaration (Variablen, Felder, Parameter). False bei anderen Deklarationen (Routinen, Typen,
     /// Konstanten, Properties) und wenn AName nicht in der Liste steht.</summary>
     class function NameDeclaration(const ADeclaration, AName: string; out AResult: string): Boolean; static;
+    /// <summary>Deklaration ab ALines[ALine], Zeichen ACharacter (ab 0), deren Klammern in der ersten Zeile offen
+    /// bleiben (Aufzählung, Parameterliste oder Vorfahren über mehrere Zeilen), in einer Zeile ohne Kommentare:
+    /// "TFarbe = (Rot, Gruen, Blau);". Sehr lange Listen enden nach dem letzten passenden Element mit "…".
+    /// False, wenn die erste Zeile die Klammern schließt oder sie nicht bis zum Ende geschlossen werden.</summary>
+    class function SpannedDeclaration(const ALines: TArray<string>; ALine, ACharacter: Integer;
+      out AResult: string): Boolean; static;
   end;
 
 implementation
 
 uses
   System.StrUtils,
+  System.Math,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TokenCursor,
@@ -680,6 +687,150 @@ begin
     // Wörter davor (const, var) bleiben, die Liste wird zum einen Namen.
     AResult := Copy(ADeclaration, 1, mCursor.At(mFirst).Offset) + AName +
       Copy(ADeclaration, mCursor.At(mColon).Offset + 1, MaxInt);
+  end;
+end;
+
+const
+  /// <summary>So viele Zeilen liest SpannedDeclaration höchstens.</summary>
+  cSpannedMaxLines = 200;
+  /// <summary>Ab dieser Länge kürzt SpannedDeclaration die Liste mit "…".</summary>
+  cSpannedMaxLength = 400;
+
+type
+  /// <summary>Zusammengezogene Deklaration aus SpannedDeclaration: Text und Stellen zum Kürzen.</summary>
+  TSpannedText = record
+    Text: string;
+    /// <summary>Länge von Text hinter jedem Komma der äußersten Klammer.</summary>
+    Commas: TArray<Integer>;
+    /// <summary>Länge von Text vor der schließenden äußersten Klammer; -1 ohne.</summary>
+    Closer: Integer;
+    procedure Append(const AToken: TPascalToken; AGap: Boolean);
+    function Shortened(AMaxLength: Integer): string;
+  end;
+
+procedure TSpannedText.Append(const AToken: TPascalToken; AGap: Boolean);
+var
+  mLast: Char;
+begin
+  mLast := TTextChars.CharAt(Text, Length(Text));
+  if AGap and (Text <> '') and (mLast <> '(') and (mLast <> '[') and
+    not MatchText(AToken.Text, [')', ']', ',', ';', '.)']) then
+  begin
+    Text := Text + ' ';
+  end;
+  Text := Text + AToken.Text;
+end;
+
+function TSpannedText.Shortened(AMaxLength: Integer): string;
+var
+  mIndex, mCut: Integer;
+begin
+  Result := Text;
+  if (Length(Text) <= AMaxLength) or (Closer < 0) then
+  begin
+    Exit;
+  end;
+  mCut := -1;
+  for mIndex := 0 to High(Commas) do
+  begin
+    if Commas[mIndex] + Length(Text) - Closer + 2 <= AMaxLength then
+    begin
+      mCut := Commas[mIndex];
+    end;
+  end;
+  if mCut > 0 then
+  begin
+    Result := Copy(Text, 1, mCut) + ' …' + Copy(Text, Closer + 1, MaxInt);
+  end;
+end;
+
+/// <summary>Zeilen ab ALine (die erste ab ACharacter), höchstens cSpannedMaxLines, mit #10 verbunden.</summary>
+function SpannedSource(const ALines: TArray<string>; ALine, ACharacter: Integer): string;
+var
+  mLine: Integer;
+  mBuilder: TStringBuilder;
+begin
+  mBuilder := TStringBuilder.Create;
+  try
+    mBuilder.Append(Copy(ALines[ALine], ACharacter + 1, MaxInt));
+    for mLine := ALine + 1 to Min(High(ALines), ALine + cSpannedMaxLines) do
+    begin
+      mBuilder.Append(#10).Append(ALines[mLine]);
+    end;
+    Result := mBuilder.ToString;
+  finally
+    mBuilder.Free;
+  end;
+end;
+
+/// <summary>Neue Klammertiefe nach AToken; merkt sich Kommas und schließende Klammer der äußersten Ebene.</summary>
+function SpannedDepth(const AToken: TPascalToken; ADepth: Integer; var AText: TSpannedText): Integer;
+begin
+  Result := ADepth;
+  if AToken.IsSymbol('(') or AToken.IsSymbol('[') then
+  begin
+    Inc(Result);
+  end
+  else if AToken.IsSymbol(')') or AToken.IsSymbol(']') then
+  begin
+    Dec(Result);
+    if Result = 0 then
+    begin
+      AText.Closer := Length(AText.Text) - Length(AToken.Text);
+    end;
+  end
+  else if (ADepth = 1) and AToken.IsSymbol(',') then
+  begin
+    AText.Commas := AText.Commas + [Length(AText.Text)];
+  end;
+end;
+
+class function THoverValues.SpannedDeclaration(const ALines: TArray<string>; ALine, ACharacter: Integer;
+  out AResult: string): Boolean;
+var
+  mTokens: TArray<TPascalToken>;
+  mText: TSpannedText;
+  mIndex, mDepth, mEnd, mClosedLine: Integer;
+begin
+  AResult := '';
+  Result := False;
+  if (ALine < 0) or (ALine > High(ALines)) then
+  begin
+    Exit;
+  end;
+  mTokens := TPascalLexer.Tokenize(SpannedSource(ALines, ALine, ACharacter));
+  mText := Default(TSpannedText);
+  mText.Closer := -1;
+  mDepth := 0;
+  mEnd := 0;
+  mClosedLine := -1;
+  for mIndex := 0 to High(mTokens) do
+  begin
+    if (mClosedLine >= 0) and (mTokens[mIndex].StartPos.Line > mClosedLine) then
+    begin
+      Break;
+    end;
+    if mTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    begin
+      Continue;
+    end;
+    if (mDepth = 0) and (mTokens[mIndex].StartPos.Line > 0) and (mClosedLine < 0) then
+    begin
+      // Die erste Zeile schließt ihre Klammern selbst: nichts zusammenzuziehen.
+      Exit;
+    end;
+    mText.Append(mTokens[mIndex], mTokens[mIndex].Offset > mEnd);
+    mEnd := mTokens[mIndex].Offset + Length(mTokens[mIndex].Text);
+    mDepth := SpannedDepth(mTokens[mIndex], mDepth, mText);
+    if (mDepth = 0) and (mClosedLine < 0) and (mTokens[mIndex].StartPos.Line > 0) then
+    begin
+      mClosedLine := mTokens[mIndex].StartPos.Line;
+    end;
+  end;
+  Result := mClosedLine > 0;
+  if Result then
+  begin
+    AResult := mText.Shortened(cSpannedMaxLength);
   end;
 end;
 
