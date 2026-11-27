@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools.IdeContext;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), Zustand der laufenden IDE für KI-Assistenten (get_ide_context, #2050):
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), Zustand der laufenden IDE für KI-Assistenten (get_ide_context, #2050):
 // wo der Entwickler gerade ist. Die Dateien liest Mcp.Tools.Ide, Auswahl und Ausgabe Mcp.IdeContext.
 
 interface

@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools.Navigation;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), Werkzeuge zur Navigation im Symbolindex:
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), Werkzeuge zur Navigation im Symbolindex:
 // Symbole, Deklarationen, Hierarchien, Verweise, Umsetzungen (#2635), Auswirkungen und qualifizierte Namen.
 
 interface

@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools.Changes;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), Units und Änderungen für die Prompts (#1357): Auflösung von
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), Units und Änderungen für die Prompts (#1357): Auflösung von
 // Unit-Namen und Pfaden (#99) und die geänderten Dateien samt Befunden für prepare_commit.
 
 interface

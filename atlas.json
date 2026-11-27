@@ -102,8 +102,8 @@
     "architecture-feature-cycle": {
       "severity": "warning",
       "exclude": ["Tests/**", "Tools/**", "Setup/**", "docs/**"],
-      "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Core", "Atlas.UI",
-        "Atlas.IDE"],
+      "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Plugin", "Atlas.Vcl",
+        "Atlas.ToolsApi", "Atlas.VersionControl", "Atlas.Core", "Atlas.UI", "Atlas.IDE"],
       "known": [],
       "knownEdges": []
     },

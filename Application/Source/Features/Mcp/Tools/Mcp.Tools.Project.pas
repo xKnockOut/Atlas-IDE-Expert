@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools.Project;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), Werkzeuge über das ganze Projekt: Status (#1356), Code-Abfragen
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), Werkzeuge über das ganze Projekt: Status (#1356), Code-Abfragen
 // (#1351), toter Code, betroffene Tests (#1353), Hotspots (#1354) siehe Mcp.Tools.Change.
 
 interface

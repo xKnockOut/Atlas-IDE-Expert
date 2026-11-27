@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools.Report;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), Werkzeuge für Laufzeitberichte (#74): resolve_address löst Adressen
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), Werkzeuge für Laufzeitberichte (#74): resolve_address löst Adressen
 // über die Map-Datei auf, analyze_report wertet einen Leck- oder Absturzbericht aus. Hier nur Dateien (Map, EXE,
 // Bericht) und Projekt; Auswertung und Ausgabe in Mcp.ReportTools.
 

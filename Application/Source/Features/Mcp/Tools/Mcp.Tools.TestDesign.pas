@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools.TestDesign;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), Mutanten einer Unit (get_mutants, #1460) und Grenzfälle einer Routine als
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), Mutanten einer Unit (get_mutants, #1460) und Grenzfälle einer Routine als
 // Testfälle (suggest_test_cases, #2173).
 
 interface

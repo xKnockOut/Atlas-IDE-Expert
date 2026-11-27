@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools.TestRun;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), DUnitX-Testläufe (run_tests, #69) und der letzte Testlauf der IDE
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), DUnitX-Testläufe (run_tests, #69) und der letzte Testlauf der IDE
 // (get_last_tests, #2409).
 
 interface

@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools.Conventions;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), Ressource „Projektkonventionen“ (#272): Regelprofil, Formatstil,
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), Ressource „Projektkonventionen“ (#272): Regelprofil, Formatstil,
 // Benennungsregeln, aktive Prüfregeln und geschützte Dateien (#2608) des Projekts als Markdown. Name und
 // Beschreibung der Ressource in der Sprache der Oberfläche (#1458). Den Teil der Prüfregeln liefert IMcpConventions
 // (Rules über den Host-Adapter Adapters.Mcp.Conventions).

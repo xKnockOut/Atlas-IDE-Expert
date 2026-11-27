@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools.Ide;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), Verbindung zur laufenden IDE über die Dateien des Plugins:
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), Verbindung zur laufenden IDE über die Dateien des Plugins:
 // ungespeicherte Dateien (editor-dirty-<pid>.json), Schreiben am Editor vorbei, Builds und Debuggen über das Plugin,
 // Zustand der IDE (ide-context-<pid>.json, #2050), Änderungen an ungespeicherten Dateien zurückhalten (#2605) und
 // Rückfragen an den Menschen in der IDE (ask_user, #2620). Jeder Auftrag an die IDE trägt die Herkunft (Client und

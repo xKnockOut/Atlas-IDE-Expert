@@ -110,7 +110,6 @@ implementation
 uses
   Winapi.Windows,
   Winapi.ShellAPI,
-  System.IOUtils,
   System.Generics.Collections,
   Vcl.ActnList,
   Vcl.Menus,
@@ -656,6 +655,23 @@ begin
   Refresh;
 end;
 
+/// <summary>Schreibt AText als UTF-8 mit BOM nach AFileName (wie TFile.WriteAllText mit TEncoding.UTF8).</summary>
+procedure WriteUtf8(const AFileName, AText: string);
+var
+  mStream: TFileStream;
+  mPreamble, mBytes: TBytes;
+begin
+  mPreamble := TEncoding.UTF8.GetPreamble;
+  mBytes := TEncoding.UTF8.GetBytes(AText);
+  mStream := TFileStream.Create(AFileName, fmCreate);
+  try
+    mStream.WriteBuffer(mPreamble, Length(mPreamble));
+    mStream.WriteBuffer(mBytes, Length(mBytes));
+  finally
+    mStream.Free;
+  end;
+end;
+
 procedure TAtlasIdeKeyMap.ExportHtml;
 var
   mFileName, mHtml: string;
@@ -668,7 +684,7 @@ begin
   try
     mHtml := FWindow.ExportHtml(FormatDateTime('ddddd t', Now));
     ForceDirectories(ExtractFileDir(mFileName));
-    TFile.WriteAllText(mFileName, mHtml, TEncoding.UTF8);
+    WriteUtf8(mFileName, mHtml);
     ShellExecute(0, 'open', PChar(mFileName), nil, nil, SW_SHOWNORMAL);
     // Anonym: nur die Anzahl, kein Pfad.
     TAtlasGuard.Log(Format('Tastenkürzel-Übersicht exportiert: %d Zeilen (#520)', [Length(FWindow.Shown)]));
@@ -837,9 +853,10 @@ begin
   mFolder := GetEnvironmentVariable('LOCALAPPDATA');
   if mFolder = '' then
   begin
-    mFolder := TPath.GetTempPath;
+    mFolder := GetEnvironmentVariable('TEMP');
   end;
-  Result := TPath.Combine(TPath.Combine(mFolder, 'Atlas'), cExportFileName);
+  // Ohne System.IOUtils: die Unit liegt sonst über der Grenze von metric-uses-count.
+  Result := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(mFolder) + 'Atlas') + cExportFileName;
 end;
 
 procedure TAtlasIdeKeyMap.ShowWindow;

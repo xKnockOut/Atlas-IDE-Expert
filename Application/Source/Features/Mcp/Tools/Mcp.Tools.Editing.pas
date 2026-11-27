@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools.Editing;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), schreibende Werkzeuge (rename_symbol, apply_code_action,
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), schreibende Werkzeuge (rename_symbol, apply_code_action,
 // fix_findings, format_code, extract_method, refactor); mit dryRun nur der Diff. Geschützte Dateien (#2608), Befunde
 // nach dem Schreiben (#2603) und die Ressource delphi://edits/last.
 

@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), meldet alle Werkzeuge in der Reihenfolge von tools/list an.
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), meldet alle Werkzeuge in der Reihenfolge von tools/list an.
 
 interface
 
