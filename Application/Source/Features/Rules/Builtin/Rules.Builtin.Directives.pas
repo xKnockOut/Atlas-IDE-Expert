@@ -36,7 +36,8 @@
 //
 // Die Regel liest die Direktiven-Token des ganzen Textes, auch in inaktiven
 // Zweigen; dort zählt Delphi die Verschachtelung ebenfalls. Unbekannte Namen prüft sie nicht in Zweigen, deren
-// Bedingung FPC abfragt ({$IFDEF FPC}{$MODE DELPHI}{$ENDIF}) und in Zweigen, die unter den Defines des Projekts
+// Bedingung FPC abfragt ({$IFDEF FPC}{$MODE DELPHI}{$ENDIF}), in Programmen mit {$MODE} außerhalb jedes bedingten
+// Zweigs (nur für Free Pascal) und in Zweigen, die unter den Defines des Projekts
 // nicht gelten (TRuleContext.InactiveRanges); dort prüft sie auch {$DEFINE}, {$UNDEF}, {$ALIGN}, {$WARN} und Schalter
 // nicht. In anderen bedingten Zweigen meldet sie sie mit niedriger Konfidenz, weil dcc sie in nicht geltenden Zweigen
 // überspringt. {$PUSHOPT}/{$POPOPT} prüft sie nur, wenn keines davon
@@ -323,6 +324,10 @@ type
     FOptions: TArray<Integer>;
     FOptionInBranch: Boolean;
     FLineBreak, FUnknownCode: string;
+    /// <summary>Programm für Free Pascal: {$MODE …} steht außerhalb jedes bedingten Zweigs eines Programms. Delphi
+    /// übersetzt es nicht (fpc Datei.dpr); unbekannte Namen sind dort Direktiven von FPC. Eine Unit mit {$MODE}
+    /// ohne Zweig bleibt gemeldet: Sie kann in einem Delphi-Projekt stehen.</summary>
+    FFpcSource: Boolean;
     function RangeOf(AIndex: Integer): TTextRange;
     function InFpcBranch: Boolean;
     function InInactive(AIndex: Integer): Boolean;
@@ -526,12 +531,44 @@ begin
   end;
 end;
 
+/// <summary>Steht {$MODE …} außerhalb jedes bedingten Zweigs? Dann ist die Datei Quelltext für Free Pascal.
+/// </summary>
+function UnguardedFpcMode(const ATokens: TArray<TPascalToken>): Boolean;
+var
+  mToken: TPascalToken;
+  mDepth: Integer;
+  mName: string;
+begin
+  mDepth := 0;
+  for mToken in ATokens do
+  begin
+    if mToken.Kind <> TPascalTokenKind.Directive then
+    begin
+      Continue;
+    end;
+    mName := UpperCase(TDirectiveNames.LeadingName(TDirectiveNames.Body(mToken.Text)));
+    if MatchStr(mName, ['IF', 'IFDEF', 'IFNDEF', 'IFOPT']) then
+    begin
+      Inc(mDepth);
+    end
+    else if MatchStr(mName, ['ENDIF', 'IFEND']) and (mDepth > 0) then
+    begin
+      Dec(mDepth);
+    end
+    else if (mName = 'MODE') and (mDepth = 0) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 procedure TConditionalDirectiveUnbalancedScan.CheckUnknown(AIndex: Integer; const AName: string);
 var
   mClosest: string;
   mFix: TRuleFix;
 begin
-  if InFpcBranch or TDirectiveNames.IsDirective(AName) then
+  if InFpcBranch or FFpcSource or TDirectiveNames.IsDirective(AName) then
   begin
     Exit;
   end;
@@ -768,6 +805,8 @@ begin
   FStack := nil;
   FOptions := nil;
   FOptionInBranch := False;
+  FFpcSource := (FContext.Tree.Root <> nil) and (FContext.Tree.Root.Kind = TSyntaxKind.ProgramFile) and
+    UnguardedFpcMode(FTokens);
   // Delphi 13 meldet unbekannte Direktiven und {$WARN}-Bezeichner als Fehler E1030, ältere Versionen als W1030
   // (#1382).
   FUnknownCode := 'W1030';

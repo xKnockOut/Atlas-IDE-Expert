@@ -1,7 +1,8 @@
 ﻿unit Rules.Builtin.Concurrency.QueueRemove.Tests;
 
-// Tests für queue-without-remove: Queue am eigenen Thread ohne RemoveQueuedEvents, Entfernen im Destruktor, in
-// DoTerminate, im Vorfahren und durch den Besitzer, Queue(nil, …), Synchronize und die Korrektur.
+// Tests für queue-without-remove: Queue am eigenen Thread ohne RemoveQueuedEvents bei einem Destruktor ohne
+// inherited, TThread.Destroy entfernt selbst, Entfernen im Destruktor, in DoTerminate, im Vorfahren und durch den
+// Besitzer, Queue(nil, …), Synchronize und die Korrektur.
 
 interface
 
@@ -14,6 +15,8 @@ type
   public
     [Test]
     procedure IssueExampleReports;
+    [Test]
+    procedure ThreadDestroyRemoves;
     [Test]
     procedure FixAddsRemoveToDestructor;
     [Test]
@@ -54,6 +57,8 @@ const
   cQueueExecute = 'procedure TOrderWorker.Execute;'#10'begin'#10 +
     '  Queue(procedure begin FForm.Caption := ''fertig'' end);'#10'end;'#10;
   cDestroy = 'destructor TOrderWorker.Destroy;'#10'begin'#10'  inherited;'#10'end;'#10;
+  // Ohne inherited erreicht die Freigabe TThread.Destroy nicht, das RemoveQueuedEvents(Self) aufruft.
+  cDestroyAlone = 'destructor TOrderWorker.Destroy;'#10'begin'#10'  FLog.Free;'#10'end;'#10;
 
 { TQueueWithoutRemoveRuleTests }
 
@@ -62,7 +67,7 @@ var
   mFindings: TArray<TRuleFinding>;
 begin
   mFindings := TRuleAssert.Findings(TQueueWithoutRemoveRule.Create,
-    WorkerUnit(cDestructorDecl, cQueueExecute + cDestroy));
+    WorkerUnit(cDestructorDecl, cQueueExecute + cDestroyAlone));
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('queue-without-remove', mFindings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
@@ -76,36 +81,36 @@ begin
   Assert.AreEqual(7, mFindings[0].Range.EndPos.Character);
 end;
 
+procedure TQueueWithoutRemoveRuleTests.ThreadDestroyRemoves;
+begin
+  // TThread.Destroy ruft RemoveQueuedEvents(Self): Destruktor mit inherited oder ganz ohne Destruktor.
+  TRuleAssert.Silent(TQueueWithoutRemoveRule.Create, WorkerUnit(cDestructorDecl, cQueueExecute + cDestroy));
+  TRuleAssert.Silent(TQueueWithoutRemoveRule.Create, WorkerUnit('', cQueueExecute));
+  TRuleAssert.Silent(TQueueWithoutRemoveRule.Create, WorkerUnit(cDestructorDecl, cQueueExecute +
+    'destructor TOrderWorker.Destroy;'#10'begin'#10'  FLog.Free;'#10'  inherited Destroy;'#10'end;'#10));
+end;
+
 procedure TQueueWithoutRemoveRuleTests.FixAddsRemoveToDestructor;
 var
   mSource, mFixed: string;
   mFindings: TArray<TRuleFinding>;
 begin
-  mSource := WorkerUnit(cDestructorDecl, cQueueExecute + cDestroy);
+  mSource := WorkerUnit(cDestructorDecl, cQueueExecute + cDestroyAlone);
   mFindings := TRuleAssert.Findings(TQueueWithoutRemoveRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('RemoveQueuedEvents(Self) im Destruktor ergänzen', mFindings[0].Fixes[0].Title);
   mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
-  Assert.Contains(mFixed, '  RemoveQueuedEvents(Self);'#10'  inherited;');
-  TRuleAssert.Silent(TQueueWithoutRemoveRule.Create, mFixed);
-  // Ohne Destruktor legt die Korrektur ihn hinter dem Konstruktor an.
-  mSource := WorkerUnit('  public'#10'    constructor Create;'#10, cQueueExecute +
-    'constructor TOrderWorker.Create;'#10'begin'#10'  inherited Create(True);'#10'end;'#10);
-  mFindings := TRuleAssert.Findings(TQueueWithoutRemoveRule.Create, mSource);
-  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
-  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
-  Assert.Contains(mFixed, 'destructor Destroy; override;');
-  Assert.Contains(mFixed, 'RemoveQueuedEvents(Self);');
+  Assert.Contains(mFixed, '  RemoveQueuedEvents(Self);');
   TRuleAssert.Silent(TQueueWithoutRemoveRule.Create, mFixed);
 end;
 
 procedure TQueueWithoutRemoveRuleTests.RemovedInDestructorOrDoTerminate;
 begin
   TRuleAssert.Silent(TQueueWithoutRemoveRule.Create, WorkerUnit(cDestructorDecl, cQueueExecute +
-    'destructor TOrderWorker.Destroy;'#10'begin'#10'  RemoveQueuedEvents(Self);'#10'  inherited;'#10'end;'#10));
-  TRuleAssert.Silent(TQueueWithoutRemoveRule.Create, WorkerUnit('    procedure DoTerminate; override;'#10,
-    cQueueExecute + 'procedure TOrderWorker.DoTerminate;'#10'begin'#10'  TThread.RemoveQueuedEvents(Self);'#10 +
-    '  inherited;'#10'end;'#10));
+    'destructor TOrderWorker.Destroy;'#10'begin'#10'  RemoveQueuedEvents(Self);'#10'end;'#10));
+  TRuleAssert.Silent(TQueueWithoutRemoveRule.Create, WorkerUnit('    procedure DoTerminate; override;'#10 +
+    cDestructorDecl, cQueueExecute + cDestroyAlone + 'procedure TOrderWorker.DoTerminate;'#10'begin'#10 +
+    '  TThread.RemoveQueuedEvents(Self);'#10'  inherited;'#10'end;'#10));
 end;
 
 procedure TQueueWithoutRemoveRuleTests.RemovedInAncestor;
@@ -117,9 +122,9 @@ const
     '  inherited;'#10'end;'#10 + cQueueExecute + 'end.';
 begin
   TRuleAssert.Silent(TQueueWithoutRemoveRule.Create, cSource);
-  // Ohne Entfernen im Vorfahren meldet die Regel die Nachfahrin.
+  // Ohne Entfernen und ohne inherited im Vorfahren meldet die Regel die Nachfahrin.
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TQueueWithoutRemoveRule.Create,
-    StringReplace(cSource, '  RemoveQueuedEvents(Self);'#10, '', [])))));
+    StringReplace(cSource, '  RemoveQueuedEvents(Self);'#10'  inherited;'#10, '  FLog.Free;'#10, [])))));
 end;
 
 procedure TQueueWithoutRemoveRuleTests.RemovedByOwner;
@@ -129,7 +134,8 @@ const
     '  TThread.RemoveQueuedEvents(FWorker);'#10'  FWorker.Free;'#10'end;'#10;
 begin
   // Der Besitzer räumt beim Anhalten auf (Problems, Build.Target, Updates.Check).
-  TRuleAssert.Silent(TQueueWithoutRemoveRule.Create, WorkerUnit('', cOwner + cQueueExecute));
+  TRuleAssert.Silent(TQueueWithoutRemoveRule.Create, WorkerUnit(cDestructorDecl, cOwner + cQueueExecute +
+    cDestroyAlone));
 end;
 
 procedure TQueueWithoutRemoveRuleTests.QueueForms;
@@ -140,7 +146,8 @@ begin
     '  ForceQueue(Melden, 10);'#10, '  Self.Queue(Melden);'#10, '  TThread.ForceQueue(TThread.Current, Melden);'#10) do
   begin
     Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TQueueWithoutRemoveRule.Create,
-      WorkerUnit('', 'procedure TOrderWorker.Execute;'#10'begin'#10 + mBody + 'end;'#10)))), mBody);
+      WorkerUnit(cDestructorDecl, 'procedure TOrderWorker.Execute;'#10'begin'#10 + mBody + 'end;'#10 +
+      cDestroyAlone)))), mBody);
   end;
 end;
 
@@ -166,7 +173,7 @@ procedure TQueueWithoutRemoveRuleTests.OffAndExclude;
 var
   mSource: string;
 begin
-  mSource := WorkerUnit(cDestructorDecl, cQueueExecute + cDestroy);
+  mSource := WorkerUnit(cDestructorDecl, cQueueExecute + cDestroyAlone);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TQueueWithoutRemoveRule.Create, mSource,
     '{"rules": {"queue-without-remove": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TQueueWithoutRemoveRule.Create, mSource,

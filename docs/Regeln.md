@@ -4881,7 +4881,7 @@ TAtlasMainThread.Queue(
 
 **Thread reiht ein, entfernt die Einträge aber nie** · Bug · Warnung · Gruppe Threads
 
-Ein Nachfahr von TThread reiht am eigenen Thread in den Hauptthread ein (Queue(…), ForceQueue(…), TThread.Queue(Self, …) oder TThread.Queue(CurrentThread, …)), aber niemand entfernt die Einträge mit RemoveQueuedEvents. Was beim Anhalten des Threads noch wartet, läuft danach mit freigegebenen Objekten bzw. nach dem Entladen des Packages in fremdem Speicher. Als Entfernen zählt ein Aufruf in einer Methode der Klasse oder eines Vorfahren der Unit, ein Aufruf mit einem anderen Argument als Self oder nil an anderer Stelle der Unit (der Besitzer räumt beim Anhalten auf, TThread.RemoveQueuedEvents(FWorker)) und eine andere Unit des Projekts, die Klasse und RemoveQueuedEvents nennt (Index mit index.usages). Synchronize wartet und wird nicht gemeldet; Queue(nil, …) meldet queue-nil-in-package; eine eigene Methode namens Queue zählt nicht. Sicherheit hoch; niedrig, wenn ein Vorfahr aus einer anderen Unit die Einträge entfernen könnte. Korrektur: RemoveQueuedEvents(Self) im Destruktor vor inherited ergänzen (legt den Destruktor hinter dem letzten Konstruktor an, wenn er fehlt; nicht bei eingebetteten Klassen).
+Ein Nachfahr von TThread reiht am eigenen Thread in den Hauptthread ein (Queue(…), ForceQueue(…), TThread.Queue(Self, …) oder TThread.Queue(CurrentThread, …)), aber niemand entfernt die Einträge mit RemoveQueuedEvents. Was beim Anhalten des Threads noch wartet, läuft danach mit freigegebenen Objekten bzw. nach dem Entladen des Packages in fremdem Speicher. TThread.Destroy ruft selbst RemoveQueuedEvents(Self) (Delphi und Free Pascal); die Regel meldet deshalb nur, wenn ein Destruktor der Klasse oder eines Vorfahren der Unit inherited nicht aufruft. Als Entfernen zählt außerdem ein Aufruf in einer Methode der Klasse oder eines Vorfahren der Unit, ein Aufruf mit einem anderen Argument als Self oder nil an anderer Stelle der Unit (der Besitzer räumt beim Anhalten auf, TThread.RemoveQueuedEvents(FWorker)) und eine andere Unit des Projekts, die Klasse und RemoveQueuedEvents nennt (Index mit index.usages). Synchronize wartet und wird nicht gemeldet; Queue(nil, …) meldet queue-nil-in-package; eine eigene Methode namens Queue zählt nicht. Sicherheit hoch; niedrig, wenn ein Vorfahr aus einer anderen Unit die Einträge entfernen könnte. Korrektur: RemoveQueuedEvents(Self) im Destruktor vor inherited ergänzen (legt den Destruktor hinter dem letzten Konstruktor an, wenn er fehlt; nicht bei eingebetteten Klassen).
 
 Mit Treffer:
 
@@ -4893,7 +4893,7 @@ end;
 
 destructor TOrderWorker.Destroy;
 begin
-  inherited;
+  FLog.Free;
 end;
 ```
 
@@ -4907,7 +4907,7 @@ end;
 
 destructor TOrderWorker.Destroy;
 begin
-  RemoveQueuedEvents(Self);
+  FLog.Free;
   inherited;
 end;
 ```

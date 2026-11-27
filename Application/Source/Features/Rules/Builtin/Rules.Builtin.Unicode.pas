@@ -90,13 +90,13 @@ procedure RegisterUnicodeRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
-  System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Pascal.StringLiterals,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.FormModel,
@@ -326,7 +326,7 @@ begin
     for mIndex := mToken.Offset + 1 to mLast do
     begin
       Result[mIndex] := mPlace;
-      AMultiLine[mIndex] := StartsStr('''''''', mToken.Text);
+      AMultiLine[mIndex] := TStringLiterals.IsMultilineToken(mToken.Text);
       ATokenStart[mIndex] := mToken.Offset + 1;
       ATokenEnd[mIndex] := mLast + 1;
     end;

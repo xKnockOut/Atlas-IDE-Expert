@@ -95,6 +95,8 @@ type
     procedure WritelnInGuiAppSilentCases;
     [Test]
     procedure WritelnInGuiAppOptions;
+    [Test]
+    procedure WritelnInGuiAppConsoleGuards;
   end;
 
   /// <summary>Regeln zu Umwandlungen, Dictionary, DelimitedText, CreateProcess und globalen FormatSettings.</summary>
@@ -963,6 +965,22 @@ begin
     GuiUnit('  Write(Buffer, 4);'#10'  Stream.Read(Buffer, 4);'#10'  Log.Writeln(''x'');'),
     TApplicationKind.Gui))));
   TRuleAssert.Silent(TWritelnInGuiAppRule.Create, 'library L;'#10'begin'#10'  Writeln(''x'');'#10'end.');
+end;
+
+procedure TRtlTypePatternRulesTests.WritelnInGuiAppConsoleGuards;
+const
+  cOut = 'procedure Aus(const S: string);'#10'begin'#10'  if not IsConsole then'#10'    Exit;'#10 +
+    '  Writeln(S);'#10'end;'#10;
+begin
+  // Früher Ausstieg ohne Konsole und ein Programm, das sich selbst eine Konsole anlegt.
+  TRuleAssert.Silent(TWritelnInGuiAppRule.Create, GuiProgram(cOut, '  Aus(''x'');'));
+  TRuleAssert.Silent(TWritelnInGuiAppRule.Create, GuiProgram('', '  if not AttachConsole(DWORD(-1)) then'#10 +
+    '    AllocConsole;'#10'  Writeln(''x'');'));
+  // Der Ausstieg steht hinter der Ausgabe bzw. prüft etwas anderes: weiter gemeldet.
+  TRuleAssert.Reports(TWritelnInGuiAppRule.Create, GuiProgram('procedure Aus(const S: string);'#10'begin'#10 +
+    '  Writeln(S);'#10'  if not IsConsole then'#10'    Exit;'#10'end;'#10, '  Aus(''x'');'));
+  TRuleAssert.Reports(TWritelnInGuiAppRule.Create, GuiProgram('procedure Aus(const S: string);'#10'begin'#10 +
+    '  if S = '''' then'#10'    Exit;'#10'  Writeln(S);'#10'end;'#10, '  Aus(''x'');'));
 end;
 
 procedure TRtlTypePatternRulesTests.WritelnInGuiAppOptions;

@@ -35,6 +35,10 @@ type
     /// ASettings.LineBreak trennt die Textzeilen, ASettings.MaxLineLength bricht lange Zeilen um (0 = nicht).
     class function ToLiteral(const APlainText, AIndent: string; AIndentFirst, AMultiline: Boolean;
       const ASettings: TStringLiteralSettings; const ALineEnd: string): string; static;
+    /// <summary>Ist das String-Token ATokenText ein mehrzeiliger String (Delphi 12)? Er beginnt mit drei
+    /// Hochkommas und reicht über mehrere Zeilen; '''). Text' ist ein einzeiliges Literal, das mit einem
+    /// verdoppelten Hochkomma beginnt.</summary>
+    class function IsMultilineToken(const ATokenText: string): Boolean; static;
     /// <summary>Text eines Literal-Ausdrucks; False, wenn er etwas anderes als Literale,
     /// Zeichenkonstanten, sLineBreak und + enthält.</summary>
     class function PlainText(const AExpression: string; out AText: string): Boolean; static;
@@ -324,6 +328,11 @@ begin
     ((AToken.Kind = TPascalTokenKind.Identifier) and SameText(AToken.Text, 'sLineBreak'));
 end;
 
+class function TStringLiterals.IsMultilineToken(const ATokenText: string): Boolean;
+begin
+  Result := StartsStr('''''''', ATokenText) and ((Pos(#10, ATokenText) > 0) or (Pos(#13, ATokenText) > 0));
+end;
+
 class function TStringLiterals.PlainText(const AExpression: string; out AText: string): Boolean;
 var
   mToken: TPascalToken;
@@ -336,7 +345,7 @@ begin
       TPascalTokenKind.StringLiteral:
         begin
           mHasString := True;
-          if StartsStr('''''''', mToken.Text) then
+          if IsMultilineToken(mToken.Text) then
           begin
             AText := AText + MultilineText(mToken.Text);
           end

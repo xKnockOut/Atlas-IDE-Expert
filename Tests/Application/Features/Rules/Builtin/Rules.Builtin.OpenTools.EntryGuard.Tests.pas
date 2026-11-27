@@ -293,6 +293,10 @@ begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.PackageFindings(TOtaEntryWithoutGuardRule.Create,
     StringReplace(cMenu, '  (BorlandIDEServices as INTAServices).MainMenu.Items.Add(mItem);'#10, '', []), 'P', '',
     'U.pas'))));
+  // Ein Laufzeit-Package baut das Hauptmenü seiner Anwendung: Das ist nicht das der IDE.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.PackageFindings(TOtaEntryWithoutGuardRule.Create,
+    StringReplace(cMenu, '  (BorlandIDEServices as INTAServices).MainMenu.Items.Add(mItem);'#10,
+    '  FMenu.Items.Add(mItem);'#10'  Bauen(FMainMenu as TMainMenu);'#10, []), 'P', '', 'U.pas'))));
 end;
 
 procedure TOtaEntryWithoutGuardRuleTests.GuardFixWrapsBody;

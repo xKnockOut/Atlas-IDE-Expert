@@ -26,6 +26,8 @@ type
     [Test]
     procedure GuardVariants;
     [Test]
+    procedure QuietStatementsBesideGuard;
+    [Test]
     procedure CatchAllSilentInExecuteGuard;
     [Test]
     procedure NestedThreadClassWithIndex;
@@ -202,6 +204,21 @@ begin
   TRuleAssert.Silent(TThreadExecuteWithoutExceptRule.Create, 'unit U;'#10'interface'#10'type'#10 +
     '  TCommand = class'#10'    procedure Execute;'#10'  end;'#10'implementation'#10'procedure TCommand.Execute;'#10 +
     'begin'#10'  Work;'#10'end;'#10'end.');
+end;
+
+procedure TThreadExecuteRuleTests.QuietStatementsBesideGuard;
+begin
+  // Objekt vor seinem try … finally, Zuweisungen ohne Aufruf und ein früher Ausstieg neben dem Schutz.
+  TRuleAssert.Silent(TThreadExecuteWithoutExceptRule.Create, WorkerExecute('  if FDiscard then'#10'    Exit;'#10 +
+    '  Inf := TInferrer.Create(FOptions);'#10'  try'#10'    Inf.OnProgress := DoProgress;'#10 +
+    '    Inf.Interval := 256 * 1024;'#10'    try'#10'      Work(Inf);'#10'    except'#10 +
+    '      on E: Exception do'#10'        Log(E.Message);'#10'    end;'#10'  finally'#10'    Inf.Free;'#10 +
+    '  end;'#10'  FCount := 0;'#10));
+  // Ein Aufruf neben dem Schutz kann auslösen: gemeldet, auch im Wert einer Zuweisung oder in der Bedingung.
+  TRuleAssert.Reports(TThreadExecuteWithoutExceptRule.Create, WorkerExecute('  FCount := Prepare(1);'#10 +
+    '  try'#10'    Work;'#10'  except'#10'    Log;'#10'  end;'#10), 1);
+  TRuleAssert.Reports(TThreadExecuteWithoutExceptRule.Create, WorkerExecute('  if not Ready(1) then'#10 +
+    '    Exit;'#10'  try'#10'    Work;'#10'  except'#10'    Log;'#10'  end;'#10), 1);
 end;
 
 procedure TThreadExecuteRuleTests.CatchAllSilentInExecuteGuard;

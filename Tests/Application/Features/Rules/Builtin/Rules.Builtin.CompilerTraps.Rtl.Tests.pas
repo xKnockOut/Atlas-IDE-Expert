@@ -24,6 +24,8 @@ type
     [Test]
     procedure WindowsOnlyRoutineInInactiveBranch;
     [Test]
+    procedure WindowsOnlyRoutineInFpcOnlyUnit;
+    [Test]
     procedure StreamWriteWithoutNativeInt;
     [Test]
     procedure StreamWriteSilentCases;
@@ -157,6 +159,25 @@ begin
   // Im aktiven Zweig bleibt der Befund.
   mContext.Text := cSource.Replace('{$IFDEF FPC}', '{$IFNDEF FPC}');
   mContext.InactiveRanges := TPascalPreprocessor.MainInactive(TPascalPreprocessor.Process(mContext.Text,
+    TPascalPreprocessor.EditorOptions(['MSWINDOWS', 'WIN32'])));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.ContextFindings(TWinapiUsesMissingRule.Create, mContext, ''))));
+end;
+
+procedure TCompilerTrapsRtlTests.WindowsOnlyRoutineInFpcOnlyUnit;
+const
+  cSource = 'unit U;'#10'interface'#10'implementation'#10'uses'#10'  {$IFDEF FPC}BaseUnix, Unix,{$ENDIF} SysUtils;'#10 +
+    'procedure Lauf;'#10'begin'#10'  GetTickCount64;'#10'end;'#10'end.';
+var
+  mContext: TRuleContext;
+begin
+  // BaseUnix und Unix gibt es nur in Free Pascal: Delphi übersetzt die Unit nie (Lazarus-Package).
+  TRuleAssert.Silent(TWinapiUsesMissingRule.Create, cSource.Replace('{$IFDEF FPC}', '').Replace('{$ENDIF}', ''));
+  // Im inaktiven Zweig sieht Delphi die FPC-Units nicht und übersetzt die Unit doch.
+  mContext := Default(TRuleContext);
+  mContext.RelativePath := 'U.pas';
+  mContext.UnitName := 'U';
+  mContext.Text := cSource;
+  mContext.InactiveRanges := TPascalPreprocessor.MainInactive(TPascalPreprocessor.Process(cSource,
     TPascalPreprocessor.EditorOptions(['MSWINDOWS', 'WIN32'])));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.ContextFindings(TWinapiUsesMissingRule.Create, mContext, ''))));
 end;

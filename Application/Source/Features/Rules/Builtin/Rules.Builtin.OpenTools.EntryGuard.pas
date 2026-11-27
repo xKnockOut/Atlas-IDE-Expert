@@ -96,10 +96,11 @@ const
   cBindings: array[0..1] of string = ('AddKeyBinding', 'AddMenuCommand');
   cMenuEvents: array[0..1] of string = ('OnClick', 'OnExecute');
   cMenuClasses: array[0..1] of string = ('TMenuItem', 'TAction');
-  /// <summary>Namen, über die eine Unit Menüeinträge in die IDE hängt (Hauptmenü, Editor- und Projektmenü).
-  /// </summary>
-  cIdeMenuHooks: array[0..6] of string = ('INTAServices', 'MainMenu', 'TMainMenu', 'AddActionMenu',
-    'GetEditorLocalMenu', 'EditorLocalMenu', 'IOTAProjectManagerMenu');
+  /// <summary>Namen, über die eine Unit Menüeinträge in die IDE hängt (Hauptmenü über INTAServices, Editor- und
+  /// Projektmenü). MainMenu und TMainMenu allein zählen nicht: Jede VCL-Anwendung hat ein Hauptmenü, auch ein
+  /// Laufzeit-Package, das es baut (BuildMainMenu(AMenu: TMainMenu)).</summary>
+  cIdeMenuHooks: array[0..4] of string = ('INTAServices', 'AddActionMenu', 'GetEditorLocalMenu', 'EditorLocalMenu',
+    'IOTAProjectManagerMenu');
   /// <summary>Wie tief die Regel Aufrufen von Routinen der Unit folgt.</summary>
   cMaxDepth = 4;
 

@@ -580,6 +580,9 @@ type
     function HasMethod(const AName: string): Boolean;
     procedure CheckLoop(ANode: TSyntaxNode);
     procedure Visit(ANode: TSyntaxNode);
+    /// <summary>Verlässt die Schleife ALoop sich selbst über Break oder Exit (while True do … if Quit then Break)?
+    /// Dann hat der Thread ein eigenes Ende, das Terminated nicht braucht.</summary>
+    class function HasOwnExit(ALoop: TSyntaxNode): Boolean; static;
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     procedure Run;
@@ -757,11 +760,43 @@ begin
 end;
 
 // Meldet die Schleife ANode, wenn sie Terminated nicht prüft und endlos oder eine Warteschleife ist.
+class function TThreadLoopWithoutTerminatedScan.HasOwnExit(ALoop: TSyntaxNode): Boolean;
+var
+  mNode, mParent: TSyntaxNode;
+  mBreak: Boolean;
+begin
+  for mNode in TSyntaxNode.PreOrder(ALoop) do
+  begin
+    if (mNode.Kind <> TSyntaxKind.Identifier) or not MatchText(mNode.Name, ['Break', 'Exit']) then
+    begin
+      Continue;
+    end;
+    // Break gilt nur für die innerste Schleife; anonyme Methoden laufen anderswo.
+    mBreak := SameText(mNode.Name, 'Break');
+    mParent := mNode.Parent;
+    while (mParent <> ALoop) and (mParent.Kind <> TSyntaxKind.AnonymousMethod) and not (mBreak and
+      (mParent.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement,
+      TSyntaxKind.ForInStatement])) do
+    begin
+      mParent := mParent.Parent;
+    end;
+    if mParent = ALoop then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 procedure TThreadLoopWithoutTerminatedScan.CheckLoop(ANode: TSyntaxNode);
 var
   mInfinite: Boolean;
   mKeyword: string;
 begin
+  if HasOwnExit(ANode) then
+  begin
+    Exit;
+  end;
   if ANode.Kind = TSyntaxKind.WhileStatement then
   begin
     mInfinite := IsConstant(ANode[0], 'True');

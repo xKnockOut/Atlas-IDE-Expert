@@ -290,6 +290,16 @@ begin
   end;
 end;
 
+/// <summary>Steht vor dem Typ bei ABefore "Name:" einer Deklaration (Name: string = 'x')? Mit := steht der Typ nur
+/// in der Inline-Variablen (var Pwd: string := 'x'); sonst ist "Marke:" die Marke eines case-Zweigs
+/// (xbToken: AValue := 'collapse') und das Ziel der Name vor :=.</summary>
+function TypedTarget(const ATokens: TArray<TPascalToken>; ABefore: Integer; AAssign: Boolean): Boolean;
+begin
+  Result := (ABefore >= 2) and ATokens[ABefore - 1].IsSymbol(':') and
+    (ATokens[ABefore - 2].Kind = TPascalTokenKind.Identifier) and
+    (not AAssign or ((ABefore >= 3) and ATokens[ABefore - 3].IsKeyword('var')));
+end;
+
 /// <summary>Name, dem das Literal bei AIndex zugewiesen wird (X := 'a', Konstante X = 'a', Values['X'] := 'a')
 /// oder mit dem ein Kennwort verglichen wird; '' bei Ausdrücken und Argumenten.</summary>
 function TargetName(const ATokens: TArray<TPascalToken>; AIndex: Integer): string;
@@ -322,8 +332,7 @@ begin
   begin
     Exit;
   end;
-  if (mBefore >= 2) and ATokens[mBefore - 1].IsSymbol(':') and
-    (ATokens[mBefore - 2].Kind = TPascalTokenKind.Identifier) then
+  if TypedTarget(ATokens, mBefore, mAssign) then
   begin
     Result := AssignedName(ATokens, ATokens[mBefore - 2].Text, mBefore - 2, mAssign);
   end

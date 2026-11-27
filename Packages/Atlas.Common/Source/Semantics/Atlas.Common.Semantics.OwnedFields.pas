@@ -13,8 +13,8 @@
 //     Records mit Create (TStopwatch.Create), Komponenten mit einem Owner
 //     ungleich nil (TComponent-Nachfahren laut Datei, Index und einer Liste
 //     häufiger VCL-Komponenten; Typen mit unbekannten Vorfahren mit Self,
-//     AOwner, Owner, Application oder einem Komponentenfeld der Klasse als
-//     erstem Argument) und Objekte, die die Klasse einem
+//     AOwner, Owner, Application, einem Komponentenfeld der Klasse oder einem
+//     Parameter vom Komponententyp als erstem Argument) und Objekte, die die Klasse einem
 //     Interface-Feld zuweist (FLog := FLogImpl) oder einem Interface-Feld eines
 //     Record-Felds (FSystem.Registry := FRegistry, #1519): die Referenzzählung
 //     gibt sie frei (#918). TObjectList und TObjectDictionary sind normale Felder.
@@ -94,6 +94,7 @@ uses
   System.RegularExpressions,
   System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Common.Semantics.OwnedFields.Types,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Names;
@@ -349,6 +350,9 @@ type
     function FreedRef(ANode: TSyntaxNode): Integer;
     function FieldIndex(const AName: string): Integer;
     function FieldRef(ANode: TSyntaxNode): Integer;
+    /// <summary>Ist ANode ein Parameter der laufenden Methode (FCurrent), dessen Typ eine Komponente ist
+    /// (TVclTaskbar.Create(AForm: TCustomForm) mit FBar := TTaskbar.Create(AForm))?</summary>
+    function ComponentParameter(ANode: TSyntaxNode): Boolean;
     /// <summary>ANode ist FFeld oder Self.FFeld mit einem Interface-Typ, oder FRecord.Feld mit einem Interface-Typ
     /// in einem Record-Feld (FSystem.Registry: IUpdateRegistry).</summary>
     function IsInterfaceField(ANode: TSyntaxNode): Boolean;
@@ -438,6 +442,51 @@ end;
 function TClassAnalyzer.FieldRef(ANode: TSyntaxNode): Integer;
 begin
   Result := FieldIndex(SelfMemberName(ANode));
+end;
+
+function TClassAnalyzer.ComponentParameter(ANode: TSyntaxNode): Boolean;
+var
+  mDecl, mHeader, mParams, mType: TSyntaxNode;
+  mIndex: Integer;
+  mName: string;
+begin
+  Result := False;
+  if (ANode.Kind <> TSyntaxKind.Identifier) or (FCurrent = '') then
+  begin
+    Exit;
+  end;
+  for mDecl in FMethods do
+  begin
+    mHeader := nil;
+    if SameText(mDecl.Name, FCurrent) then
+    begin
+      mHeader := mDecl.FindChild(TSyntaxKind.RoutineHeader);
+    end;
+    mParams := nil;
+    if mHeader <> nil then
+    begin
+      mParams := mHeader.FindChild(TSyntaxKind.Parameters);
+    end;
+    if mParams = nil then
+    begin
+      Continue;
+    end;
+    for mIndex := 0 to mParams.ChildCount - 1 do
+    begin
+      if mParams[mIndex].Kind <> TSyntaxKind.Parameter then
+      begin
+        Continue;
+      end;
+      for mName in mParams[mIndex].Name.Split([',']) do
+      begin
+        mType := TRoutineSignatures.ParameterType(mParams[mIndex]);
+        if SameText(Trim(mName), ANode.Name) and (mType <> nil) and (mType.Kind = TSyntaxKind.TypeReference) then
+        begin
+          Exit(FTypes.IsComponent(mType.Name));
+        end;
+      end;
+    end;
+  end;
 end;
 
 function TClassAnalyzer.IsInterfaceField(ANode: TSyntaxNode): Boolean;
@@ -884,11 +933,12 @@ begin
     ATypeName := '';
   end
   // Owner ungleich nil: die Komponente gibt ihr Owner frei. Owner ist auch ein Komponentenfeld der Klasse
-  // (Host := TForm.Create…; Box := TFoo.Create(Host)).
+  // (Host := TForm.Create…; Box := TFoo.Create(Host)) oder ein Parameter vom Komponententyp (AForm: TCustomForm).
   else if (mArgument <> nil) and not IsNilLiteral(mArgument) then
   begin
     AOwned := FTypes.OwnedByArgument(ATypeName, mArgument) or
-      ((FieldRef(mArgument) >= 0) and FTypes.IsComponent(FFields[FieldRef(mArgument)].TypeName));
+      ((FieldRef(mArgument) >= 0) and FTypes.IsComponent(FFields[FieldRef(mArgument)].TypeName)) or
+      (not FTypes.ComponentKnown(ATypeName) and ComponentParameter(mArgument));
   end;
 end;
 

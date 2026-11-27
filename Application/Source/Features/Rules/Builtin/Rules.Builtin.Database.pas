@@ -1562,7 +1562,7 @@ var
   mIndex, mPlain: Integer;
 begin
   Result := -1;
-  if (Length(ARaw) < 2) or (ARaw[1] <> '''') or (ARaw[Length(ARaw)] <> '''') or StartsStr('''''''', ARaw) then
+  if (Length(ARaw) < 2) or (ARaw[1] <> '''') or (ARaw[Length(ARaw)] <> '''') or TStringLiterals.IsMultilineToken(ARaw) then
   begin
     Exit;
   end;

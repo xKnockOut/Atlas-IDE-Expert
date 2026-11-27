@@ -135,6 +135,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.CallSites,
+  Atlas.Common.Pascal.StringLiterals,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.XmlDoc,
@@ -545,7 +546,7 @@ end;
 /// <summary>Zeichen in einem String-Literal ('it''s' = 4); -1 bei mehrzeiligen.</summary>
 function LiteralLength(const AText: string): Integer;
 begin
-  if StartsStr('''''''', AText) then
+  if TStringLiterals.IsMultilineToken(AText) then
   begin
     Exit(-1);
   end;

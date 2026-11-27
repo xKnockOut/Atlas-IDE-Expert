@@ -158,8 +158,14 @@ begin
     '{$IFDEF FPC}'#10'{$MODE DELPHI}'#10'{$IFDEF CPU64}'#10'{$ASMMODE INTEL}'#10'{$ENDIF}'#10'{$ENDIF}'#10 +
     '{$IFNDEF FPC}'#10'{$ELSE}'#10'{$MODESWITCH ADVANCEDRECORDS}'#10'{$ENDIF}'#10 +
     '{$IF Defined(FPC_FULLVERSION)}'#10'{$WARN 5024 OFF}'#10'{$WARN UNKNOWN_FPC OFF}'#10'{$ENDIF}'#10, ''));
-  // Außerhalb eines FPC-Zweigs meldet {$MODE}.
+  // Außerhalb eines FPC-Zweigs meldet {$MODE} in einer Unit: Sie kann in einem Delphi-Projekt stehen.
   Assert.AreEqual('Unbekannte Direktive {$MODE} (wie E1030).', OnlyMessage(Dienst('{$MODE DELPHI}'#10, '')));
+  // Ein Programm mit {$MODE} außerhalb eines Zweigs ist eines für Free Pascal (fpc Repro.dpr); steht
+  // {$MODE} nur in einem Zweig, meldet sie weiter.
+  TRuleAssert.Silent(TConditionalDirectiveUnbalancedRule.Create, 'program Repro;'#10'{$MODE DELPHIUNICODE}'#10 +
+    '{$INLINE ON}'#10'begin'#10'end.');
+  Assert.AreEqual('Unbekannte Direktive {$FOOBAR} (wie E1030).', OnlyMessage('program Repro;'#10 +
+    '{$IFNDEF DEBUG}'#10'{$MODE DELPHIUNICODE}'#10'{$ENDIF}'#10'{$FOOBAR}'#10'begin'#10'end.'));
 end;
 
 procedure TDirectiveRulesTests.UnbalancedStrayDirectives;

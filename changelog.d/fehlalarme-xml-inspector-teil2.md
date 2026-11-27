@@ -1,0 +1,12 @@
+### Behoben
+- `field-not-freed`: Ein Feld, das mit einem Komponenten-Parameter der Methode als Owner erzeugt wird (`TFoo.Create(AOwner)`), gehört diesem Owner und wird nicht mehr gemeldet.
+- `security-hardcoded-credential`: In einem `case`-Zweig (`xbToken: AValue := ...`) gilt die zugewiesene Variable als Ziel, nicht die Marke des Zweigs.
+- `blocking-call-in-main-thread`: `WaitFor` bleibt still, wenn der Thread nachweislich fertig ist (`if not X.Finished then Exit` davor oder innerhalb von `if X.Finished then`).
+- `writeln-in-gui-app`: Still in Routinen, die ohne Konsole vorher aussteigen (`if not IsConsole then Exit`), und in Programmen, die mit `AllocConsole`/`AttachConsole` selbst eine Konsole öffnen.
+- `thread-loop-without-terminated`: Eine Schleife mit eigenem Ausstieg (`Break` dieser Schleife, `Exit`) wird nicht mehr gemeldet.
+- `winapi-uses-missing`: Still in Quelltext, der Units nur von Free Pascal einbindet (`BaseUnix`, `Unix`, `cthreads` usw.).
+- `conditional-directive-unbalanced`: Ein Programm mit `{$MODE …}` außerhalb jedes bedingten Zweigs ist Quelltext für Free Pascal; seine FPC-Direktiven gelten nicht mehr als unbekannt.
+- `text-concat-without-space`: Mehrzeilige Literale (`'''`), Zeichencodes (`#13`), verdoppelte Anführungszeichen und technische Zahl-Buchstaben-Werte (SVG-Pfade, `Win64`) ergeben keine Naht mehr.
+- `thread-execute-without-except`: Ruhige Anweisungen neben dem Schutz (Zuweisung ohne Aufruf, `if … then Exit`) heben die Ausnahme für einen geschützten `Execute` nicht mehr auf.
+- `queue-without-remove`: Ein Destruktor, der `inherited` aufruft, reicht: `TThread.Destroy` ruft selbst `RemoveQueuedEvents(Self)`. Gemeldet wird nur noch ein Destruktor ohne `inherited`.
+- `ota-entry-without-guard`: `MainMenu`/`TMainMenu` eines eigenen Formulars gelten nicht mehr als IDE-Menü.
