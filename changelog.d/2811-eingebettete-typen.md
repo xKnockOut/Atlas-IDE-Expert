@@ -1,0 +1,2 @@
+### Behoben
+- `unresolved-identifier` meldet keine Mitglieder mehr als fehlend, wenn ein Parameter oder eine lokale Variable einen eingebetteten Typ der eigenen Klasse hat (`TAussen.TPanel` neben `Vcl.ExtCtrls.TPanel`) oder ein Feld im interface-Teil steht und das uses des implementation-Teils einen gleichnamigen Typ kennt (`TBitmap` aus `Winapi.Windows`) (#2811). Die Namensauflösung nimmt für den Typ einer Deklaration die uses ihres eigenen Abschnitts; das gilt auch für Hover, Definition und Vervollständigung.
