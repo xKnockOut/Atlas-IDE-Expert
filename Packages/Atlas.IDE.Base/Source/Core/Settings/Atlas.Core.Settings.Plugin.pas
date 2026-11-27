@@ -417,6 +417,7 @@ type
       write FBuild.AssistantsLinkMentionKey;
     property AssistantsEditHoldModified: Boolean read FBuild.AssistantsEditHoldModified
       write FBuild.AssistantsEditHoldModified;
+    property AssistantsEditMarks: Boolean read FBuild.AssistantsEditMarks write FBuild.AssistantsEditMarks;
     property AssistantsQuestionsInIde: Boolean read FBuild.AssistantsQuestionsInIde
       write FBuild.AssistantsQuestionsInIde;
     property AssistantsLog: Boolean read FBuild.AssistantsLog write FBuild.AssistantsLog;

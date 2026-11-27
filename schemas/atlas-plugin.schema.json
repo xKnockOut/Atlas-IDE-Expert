@@ -1720,6 +1720,20 @@
       "x-captionEn": "Hold changes to unsaved files",
       "x-issue": "#2605"
     },
+    "AssistantsEditMarks": {
+      "type": "boolean",
+      "default": true,
+      "description": "Zeilen, die ein KI-Assistent über den Eingang geändert hat, in der Rinne in der Farbe seiner Sitzung markieren (#2616); der Tooltip nennt Assistent und Uhrzeit. Die Marken verschwinden, sobald die Datei gespeichert ist (das eigene Speichern des Eingangs zählt nicht), und mit dem Modul. Aus = keine Marken.",
+      "x-key": "assistants.editMarks",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.edit",
+      "x-control": "Kontrollkästchen",
+      "x-drawing": true,
+      "x-caption": "Geänderte Zeilen am Rand markieren",
+      "x-captionEn": "Mark changed lines in the gutter",
+      "x-issue": "#2616"
+    },
     "AssistantsQuestionsInIde": {
       "type": "boolean",
       "default": true,

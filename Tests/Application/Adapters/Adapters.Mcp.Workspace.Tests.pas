@@ -138,9 +138,13 @@ begin
   try
     mIdentity := Default(TIndexProcessInfo);
     mIdentity.Client := 'probe-client';
+    mIdentity.Session := '3f2a';
     mGroup.ProcessIdentity := mIdentity;
     mWorkspace := TMcpWorkspaceAdapter.ForGroup(mGroup);
     Assert.AreEqual('probe-client', mWorkspace.Client);
+    // Herkunft der Aufträge an die IDE (#2616).
+    Assert.AreEqual('probe-client', mWorkspace.Client);
+    Assert.AreEqual('3f2a', mWorkspace.Session);
     Assert.IsNotNull(mWorkspace.Index, 'Index der Gruppe');
     Assert.IsNotNull(mWorkspace.Queries, 'Code-Abfragen der Gruppe');
     Assert.IsFalse(mWorkspace.EnsureUnit('Gibtsnicht'));

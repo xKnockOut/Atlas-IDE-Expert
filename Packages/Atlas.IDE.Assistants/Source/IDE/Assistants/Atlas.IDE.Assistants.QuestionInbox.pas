@@ -67,6 +67,7 @@ uses
   Winapi.Windows,
   System.IOUtils,
   Atlas.Text.Files,
+  Atlas.Text.AssistantOrigin,
   Atlas.Plugin.Status.Contract,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Notifications.Center,
@@ -210,7 +211,8 @@ begin
   end;
   FQueue.Add(mQuestion);
   TAtlasNotificationCenter.Default.Notify(TAtlasIdeHeldEdits.cSource, TAtlasNotificationSeverity.Info,
-    TAtlasQuestionDialog.CaptionFor(mQuestion.Client), mQuestion.Question);
+    TAtlasQuestionDialog.CaptionFor(TAtlasAssistantsStrings.Display(
+      TAtlasAssistantOrigin.Make(mQuestion.Client, mQuestion.Session))), mQuestion.Question);
   Present;
 end;
 
@@ -232,7 +234,8 @@ begin
   else
     mDetail := TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.LogDeclined, [AQuestion.Question]);
   end;
-  FLog.Add(TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Question, '', AQuestion.Client, mDetail));
+  FLog.Add(TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Question, '',
+    TAtlasAssistantOrigin.Make(AQuestion.Client, AQuestion.Session), mDetail));
 end;
 
 procedure TAtlasIdeQuestionInbox.EnsureDialog;

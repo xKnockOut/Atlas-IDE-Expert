@@ -9,7 +9,9 @@
 // - „KI: n Änderungen warten“ im Statusfeld; ein Klick zeigt den Hinweis für die älteste wieder.
 // Speichern und übernehmen wendet die Änderung als einen Rückgängig-Schritt an (auf den aktuellen Stand übertragen,
 // solange sich die Bereiche nicht überschneiden) und speichert; danach kommt die nächste Änderung an derselben Datei.
-// Überschneiden sie sich, bleibt nur der Vergleich. Die Aktionen liegen nur im Hinweis und im Statusfeld, die dem
+// Überschneiden sie sich, bleibt nur der Vergleich. Hinweis und Protokoll nennen den Assistenten (Client und Sitzung,
+// #2616); eine übernommene Änderung geht an OnEdited (Randmarken).
+// Die Aktionen liegen nur im Hinweis und im Statusfeld, die dem
 // Modul gehören, nicht in der Zentrale: Nach dem Abmelden erreicht so nichts mehr das Modul (ADR 0017, Regel 3).
 
 interface
@@ -21,6 +23,7 @@ uses
   Atlas.Core.Assistants.EditInbox,
   Atlas.Core.Assistants.HeldEdits,
   Atlas.Core.Assistants.Log,
+  Atlas.Core.Assistants.EditMarks,
   Atlas.UI.Notifications.Notice;
 
 type
@@ -39,6 +42,7 @@ type
     FToast: TAtlasNoticeWindow;
     FToastId: Integer;
     FOnMessage: TProc<string>;
+    FOnEdited: TAtlasEditedProc;
     procedure Offer(const AEdit: TAtlasHeldEdit; ANotify: Boolean);
     procedure ShowToast(const AEdit: TAtlasHeldEdit);
     procedure ToastAction(AIndex: Integer);
@@ -66,6 +70,8 @@ type
     class function StatusText(ACount: Integer): string; static;
     property Edits: TAtlasHeldEdits read FEdits;
     property Toast: TAtlasNoticeWindow read FToast;
+    /// <summary>Nach „Speichern und übernehmen“ (#2616, Randmarken); nil = ohne.</summary>
+    property OnEdited: TAtlasEditedProc read FOnEdited write FOnEdited;
   end;
 
 implementation
@@ -85,15 +91,22 @@ uses
   Atlas.IDE.Assistants.LogEntries,
   Atlas.Vcl.Popup.Window,
   Atlas.UI.Undo.DiffView,
+  Atlas.Text.AssistantOrigin,
   Atlas.UI.Assistants.Strings;
 
-/// <summary>„ (Name)“ des KI-Assistenten, '' wenn unbekannt.</summary>
-function ClientPart(const AClient: string): string;
+/// <summary>Assistent der Änderung (Client und Sitzung).</summary>
+function OriginOf(const AEdit: TAtlasHeldEdit): TAtlasAssistantOrigin;
 begin
-  Result := '';
-  if AClient <> '' then
+  Result := TAtlasAssistantOrigin.Make(AEdit.Client, AEdit.Session);
+end;
+
+/// <summary>„ (Name · Sitzung)“ des KI-Assistenten, '' wenn unbekannt.</summary>
+function ClientPart(const AEdit: TAtlasHeldEdit): string;
+begin
+  Result := TAtlasAssistantsStrings.Display(OriginOf(AEdit));
+  if Result <> '' then
   begin
-    Result := ' (' + AClient + ')';
+    Result := ' (' + Result + ')';
   end;
 end;
 
@@ -108,7 +121,7 @@ var
 begin
   mChange := AEdit.Change;
   Result := TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.HeldText, [ExtractFileName(AEdit.FileName),
-    ClientPart(AEdit.Client), mChange.FirstLine, mChange.LastLine]);
+    ClientPart(AEdit), mChange.FirstLine, mChange.LastLine]);
 end;
 
 { TAtlasIdeHeldEdits }
@@ -136,8 +149,8 @@ function TAtlasIdeHeldEdits.Hold(const ARequest: TAtlasEditRequest): Integer;
 var
   mEdit: TAtlasHeldEdit;
 begin
-  Result := FEdits.Add(ARequest.FileName, ARequest.Expected, ARequest.Text, ARequest.Client, Now);
-  TAtlasIdeLogEntries.AddEdit(FLog, TAtlasAssistantsLogKind.Held, ARequest.FileName, ARequest.Client,
+  Result := FEdits.Add(ARequest.FileName, ARequest.Expected, ARequest.Text, ARequest.Client, ARequest.Session, Now);
+  TAtlasIdeLogEntries.AddEdit(FLog, TAtlasAssistantsLogKind.Held, ARequest.FileName, ARequest.Origin,
     ARequest.Expected, ARequest.Text);
   RefreshStatus;
   // Mehrere Änderungen an derselben Datei kommen nacheinander: Angeboten wird die älteste.
@@ -241,7 +254,7 @@ begin
   if not mBuffer.Open then
   begin
     FEdits.Remove(AId);
-    TAtlasIdeLogEntries.AddPlain(FLog, TAtlasAssistantsLogKind.Discarded, mEdit.FileName, mEdit.Client, '');
+    TAtlasIdeLogEntries.AddPlain(FLog, TAtlasAssistantsLogKind.Discarded, mEdit.FileName, OriginOf(mEdit), '');
     FOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.HeldNotOpen, [ExtractFileName(mEdit.FileName)]));
     Next(mEdit);
     Exit;
@@ -263,8 +276,12 @@ begin
   end;
   FFiles.Save(mEdit.FileName);
   FEdits.Remove(AId);
-  TAtlasIdeLogEntries.AddEdit(FLog, TAtlasAssistantsLogKind.Edited, mEdit.FileName, mEdit.Client, mBuffer.Text,
+  TAtlasIdeLogEntries.AddEdit(FLog, TAtlasAssistantsLogKind.Edited, mEdit.FileName, OriginOf(mEdit), mBuffer.Text,
     mNewText);
+  if Assigned(FOnEdited) then
+  begin
+    FOnEdited(mEdit.FileName, OriginOf(mEdit), mBuffer.Text, mNewText, True);
+  end;
   FOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.HeldApplied, [ExtractFileName(mEdit.FileName)]));
   Next(mEdit);
   Result := True;
@@ -299,7 +316,7 @@ begin
     Exit;
   end;
   FEdits.Remove(AId);
-  TAtlasIdeLogEntries.AddEdit(FLog, TAtlasAssistantsLogKind.Discarded, mEdit.FileName, mEdit.Client,
+  TAtlasIdeLogEntries.AddEdit(FLog, TAtlasAssistantsLogKind.Discarded, mEdit.FileName, OriginOf(mEdit),
     mEdit.Expected, mEdit.Text);
   FOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.HeldDiscarded, [ExtractFileName(mEdit.FileName)]));
   Next(mEdit);

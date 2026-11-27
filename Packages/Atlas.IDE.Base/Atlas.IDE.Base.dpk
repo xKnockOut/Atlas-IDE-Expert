@@ -86,6 +86,7 @@ contains
   Atlas.Text.McpStatistics in '..\Atlas.Text\Source\McpStatistics\Atlas.Text.McpStatistics.pas',
   Atlas.Text.TestRunFile in '..\Atlas.Text\Source\TestResults\Atlas.Text.TestRunFile.pas',
   Atlas.Text.IdeContext in '..\Atlas.Text\Source\IdeContext\Atlas.Text.IdeContext.pas',
+  Atlas.Text.AssistantOrigin in '..\Atlas.Text\Source\AssistantOrigin\Atlas.Text.AssistantOrigin.pas',
   Atlas.Text.Xml in '..\Atlas.Text\Source\Xml\Atlas.Text.Xml.pas',
   Atlas.Text.Coverage in '..\Atlas.Text\Source\Coverage\Atlas.Text.Coverage.pas',
   Atlas.Text.MapFile in '..\Atlas.Text\Source\MapFile\Atlas.Text.MapFile.pas',

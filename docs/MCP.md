@@ -55,6 +55,11 @@ ergibt einen Werkzeugfehler mit Begründung. Geschrieben wird nur im Arbeitsordn
   Benutzer“ und schreibt die übrigen Dateien; über die Entscheidung erfährt der Assistent nichts mehr. Überschneidet
   sich die Änderung mit den Änderungen des Menschen, öffnet „Speichern und übernehmen“ den Vergleich statt zu
   überschreiben. Ist die Einstellung aus, wird wie bisher abgelehnt.
+- Jeder Auftrag an die IDE (Änderung, Build, Frage, Debuggen) trägt den Assistenten (#2616): `client` ist der Name
+  aus `initialize` (`clientInfo.name`), `session` eine kurze Kennung des MCP-Prozesses (4 Zeichen, aus Prozessnummer
+  und Startzeit). So unterscheidet die IDE zwei Prozesse desselben Clients. Ältere Server ohne die Felder zeigt die
+  IDE als „unbekannter Assistent“. Lehnt die IDE einen Build ab, weil sie gerade baut, nennt `build_project` den
+  Assistenten, für den sie baut.
 - Jeder schreibende Aufruf steht mit Werkzeug, Parametern und geänderten Dateien im Log
   (`--log`).
 - Befunde nach der Änderung (#2603): Mit `dryRun: false` prüfen `apply_code_action`, `fix_findings`,

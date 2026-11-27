@@ -6,13 +6,15 @@
 // #528). Austausch über Dateien wie bei den schreibenden Werkzeugen (#397):
 //   %LOCALAPPDATA%\Atlas\ide-builds\<pid>\<id>.json
 //   {"project": Pfad der .dproj, "mode": "make"|"build"|"check",
-//    "configuration": "", "platform": ""}          ('' = wie in der IDE)
+//    "configuration": "", "platform": "", "client": Name, "session": Kennung}
+//   ('' = wie in der IDE; "client" und "session" nennen den Assistenten, #2616)
 // Das Plugin übernimmt den Auftrag durch Umbenennen in <id>.taken und
 // antwortet mit <id>.result.json
 //   {"ok": true, "build": {project, kind, configuration, platform, success,
 //    durationMs, finishedAt, messages[]}}  bzw. {"ok": false, "reason": "…"}
 // "build" hat das Format von TMcpBuildTools.ToFileText. Nimmt das Plugin den
-// Auftrag nicht innerhalb von TakeMs an, zieht der MCP-Server ihn zurück (Austausch in Mcp.IdeInbox).
+// Auftrag nicht innerhalb von TakeMs an, zieht der MCP-Server ihn zurück (Austausch in Mcp.IdeInbox). Baut die IDE
+// gerade für einen anderen Auftrag (<id>.taken ohne Antwort), nennt die Ablehnung dessen Assistenten (#2616).
 // Welche IDE welche Projekte offen hat, steht unter "projects" und
 // "activeProject" in editor-dirty-<pid>.json (TAtlasDirtyExport im Plugin).
 // Gegenstück im Plugin: Atlas.Core.Assistants.BuildInbox und Atlas.IDE.Assistants.BuildInbox.
@@ -26,6 +28,7 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.Text.AssistantOrigin,
   Mcp.Confirm,
   Mcp.IdeInbox;
 
@@ -44,6 +47,8 @@ type
     /// <summary>'' = aktive Konfiguration bzw. Plattform der IDE.</summary>
     Configuration: string;
     Platform: string;
+    /// <summary>Assistent, für den gebaut wird (#2616).</summary>
+    Origin: TAtlasAssistantOrigin;
   end;
 
   TMcpIdeBuildOutcome = (Done, NotTaken, Refused, TimedOut);
@@ -91,6 +96,9 @@ type
     class function MayOpen(APolicy: TMcpOpenProjects; const AProjectFile: string; const AChoose: TMcpChooseFunc;
       out AReason: string): Boolean; static;
     class function RequestText(const ARequest: TMcpIdeBuildRequest): string; static;
+    /// <summary>Assistent des Builds, den das Plugin in AInbox gerade bearbeitet (übernommener Auftrag ohne Antwort,
+    /// #2616); False ohne einen solchen Auftrag oder ohne Herkunft darin.</summary>
+    class function RunningFor(const AInbox: string; out AOrigin: TAtlasAssistantOrigin): Boolean; static;
     /// <summary>Liest die Antwort des Plugins; ABuildText = Objekt "build" als JSON-Text.</summary>
     class function ParseAnswer(const AText: string; out AOk: Boolean; out ABuildText, AReason: string): Boolean;
       static;
@@ -111,6 +119,7 @@ uses
   System.Generics.Collections,
   System.IOUtils,
   System.JSON,
+  Atlas.Text.Files,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Localization.Texts;
 
@@ -118,7 +127,7 @@ type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
   TIdeBuildsText = (NoRADStudioIDEWith, NoRunningIDEWithThe, NoRunningIDEWithThe2, TheIDEDeliveredNoResult,
     TheIDEDidNotAccept, TheIDEAcceptedTheBuild, AnswerOfTheIDENot, OpenQuestion, OpenYes, OpenNo, OpenNever,
-    OpenDeclined, OpenNotAsked);
+    OpenDeclined, OpenNotAsked, BuildingFor, UnknownAssistant);
 
 const
   cTexts: array[TIdeBuildsText] of TAtlasText = (
@@ -151,7 +160,10 @@ const
     (De: 'Das Projekt %s ist in keiner laufenden IDE offen, und niemand konnte gefragt werden, ob es geöffnet ' +
       'werden darf. Projekt in der IDE öffnen oder mcp.openProjects auf "always" setzen.';
      En: 'The project %s is not open in any running IDE, and nobody could be asked whether it may be opened. Open ' +
-      'the project in the IDE or set mcp.openProjects to "always".'));
+      'the project in the IDE or set mcp.openProjects to "always".'),
+    (De: 'Die IDE baut gerade für %s; später erneut aufrufen.';
+     En: 'The IDE is building for %s right now; call again later.'),
+    (De: 'unbekannter Assistent'; En: 'unknown assistant'));
 
 { TMcpIdeBuilds }
 
@@ -403,9 +415,59 @@ begin
     mJson.AddPair('mode', LowerCase(ARequest.Mode));
     mJson.AddPair('configuration', ARequest.Configuration);
     mJson.AddPair('platform', ARequest.Platform);
+    ARequest.Origin.AddTo(mJson);
     Result := mJson.ToJSON;
   finally
     mJson.Free;
+  end;
+end;
+
+class function TMcpIdeBuilds.RunningFor(const AInbox: string; out AOrigin: TAtlasAssistantOrigin): Boolean;
+var
+  mTaken: string;
+  mValue: TJSONValue;
+begin
+  AOrigin := Default(TAtlasAssistantOrigin);
+  Result := False;
+  if not TDirectory.Exists(AInbox) then
+  begin
+    Exit;
+  end;
+  for mTaken in TDirectory.GetFiles(AInbox, '*.taken') do
+  begin
+    if FileExists(ChangeFileExt(mTaken, '.result.json')) then
+    begin
+      Continue;
+    end;
+    mValue := TJSONObject.ParseJSONValue(TTextFiles.ReadQuietly(mTaken));
+    try
+      if mValue is TJSONObject then
+      begin
+        AOrigin := TAtlasAssistantOrigin.Read(TJSONObject(mValue));
+      end;
+    finally
+      mValue.Free;
+    end;
+    if AOrigin.IsKnown then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Grund, wenn das Plugin den Auftrag nicht angenommen hat: Baut es gerade für einen Assistenten, dessen
+/// Name und Sitzung (#2616), sonst allgemein.</summary>
+function NotTakenReason(const AInbox: string): string;
+var
+  mOrigin: TAtlasAssistantOrigin;
+begin
+  if TMcpIdeBuilds.RunningFor(AInbox, mOrigin) then
+  begin
+    Result := cTexts[TIdeBuildsText.BuildingFor].Fmt([mOrigin.Caption(cTexts[TIdeBuildsText.UnknownAssistant].Text)]);
+  end
+  else
+  begin
+    Result := cTexts[TIdeBuildsText.TheIDEDidNotAccept].Text;
   end;
 end;
 
@@ -462,7 +524,7 @@ begin
   case TMcpIdeInbox.Exchange(AInbox, RequestText(ARequest), AWaiting, mText) of
     TMcpIdeExchangeOutcome.NotTaken:
       begin
-        AReason := cTexts[TIdeBuildsText.TheIDEDidNotAccept].Text;
+        AReason := NotTakenReason(AInbox);
         Exit(TMcpIdeBuildOutcome.NotTaken);
       end;
     TMcpIdeExchangeOutcome.TimedOut:

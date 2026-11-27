@@ -156,6 +156,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mApplied)), 'einmal angewendet');
   Assert.AreEqual('neu', mApplied[0].Files[0].Edits[0].NewText);
   Assert.AreEqual(1, Integer(Length(mFiles.Saved)), 'danach gespeichert');
+  Assert.IsTrue(mOutcome.Saved, 'gespeichert gemeldet (Randmarken übergehen das eigene Speichern)');
   Assert.AreEqual('U.pas', mFiles.Saved[0]);
 end;
 
@@ -175,6 +176,7 @@ begin
     end);
   Assert.IsTrue(mOutcome.Applied, 'angewendet');
   Assert.AreEqual(0, Integer(Length(mFiles.Saved)), 'ungespeicherte Änderungen des Benutzers nicht mitspeichern');
+  Assert.IsFalse(mOutcome.Saved);
 end;
 
 procedure TAtlasEditInboxPlanTests.RunLeavesClosedFileToTheServer;

@@ -32,6 +32,7 @@ type
     function AllFiles: TArray<string>;
     function Ready(out AReason: string): Boolean;
     function Client: string;
+    function Session: string;
     function Index: ISymbolIndex;
     function EnsureUnit(const AUnitName: string): Boolean;
     function UnitLoader: TEnsureUnitFunc;
@@ -100,6 +101,11 @@ end;
 function TMcpWorkspaceAdapter.Client: string;
 begin
   Result := FGroup.ProcessIdentity.Client;
+end;
+
+function TMcpWorkspaceAdapter.Session: string;
+begin
+  Result := FGroup.ProcessIdentity.Session;
 end;
 
 function TMcpWorkspaceAdapter.Index: ISymbolIndex;

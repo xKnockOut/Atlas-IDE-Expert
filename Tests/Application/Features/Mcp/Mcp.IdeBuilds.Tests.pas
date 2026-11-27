@@ -45,6 +45,9 @@ type
     procedure WithdrawsWhenNobodyTakesTheRequest;
     [Test]
     procedure TimesOutWhenTakenButNeverAnswered;
+    /// <summary>#2616: Läuft ein Build eines anderen Assistenten, nennt die Ablehnung ihn.</summary>
+    [Test]
+    procedure RefusalNamesAssistantOfRunningBuild;
   end;
 
 implementation
@@ -58,6 +61,7 @@ uses
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Compiler.IdeBuild,
   Mcp.BuildTools,
+  Atlas.Text.AssistantOrigin,
   Mcp.IdeInbox,
   Mcp.IdeBuilds,
   Mcp.Confirm,
@@ -297,6 +301,7 @@ var
 begin
   mWanted := Request('C:\P\App.dproj', 'Build');
   mWanted.Configuration := 'Release';
+  mWanted.Origin := TAtlasAssistantOrigin.Make('Assistent A', '3f2a');
   Assert.AreEqual<TMcpIdeBuildOutcome>(TMcpIdeBuildOutcome.Done, TMcpIdeBuilds.Send(FInbox, mWanted,
     procedure
     begin
@@ -309,6 +314,9 @@ begin
     Assert.AreEqual('build', mJson.GetValue<string>('mode'), 'klein geschrieben');
     Assert.AreEqual('Release', mJson.GetValue<string>('configuration'));
     Assert.AreEqual('', mJson.GetValue<string>('platform'));
+    // Herkunft (#2616).
+    Assert.AreEqual('Assistent A', mJson.GetValue<string>('client'));
+    Assert.AreEqual('3f2a', mJson.GetValue<string>('session'));
   finally
     mJson.Free;
   end;
@@ -364,6 +372,31 @@ begin
   Assert.IsNotEmpty(mReason);
   Assert.IsTrue(TMcpIdeBuilds.ModeValid('Check'));
   Assert.IsFalse(TMcpIdeBuilds.ModeValid('clean'));
+end;
+
+procedure TMcpIdeBuildsTests.RefusalNamesAssistantOfRunningBuild;
+var
+  mBuildText, mReason: string;
+  mOrigin: TAtlasAssistantOrigin;
+begin
+  // Kein übernommener Auftrag: allgemeiner Grund.
+  Assert.IsFalse(TMcpIdeBuilds.RunningFor(FInbox, mOrigin));
+  // Das Plugin baut gerade für Assistent B (übernommen, noch ohne Antwort).
+  ForceDirectories(FInbox);
+  TFile.WriteAllText(TPath.Combine(FInbox, 'laufend.taken'),
+    '{"project":"C:\\P\\App.dproj","mode":"make","client":"Assistent B","session":"a91b"}', TEncoding.UTF8);
+  Assert.IsTrue(TMcpIdeBuilds.RunningFor(FInbox, mOrigin));
+  Assert.AreEqual('Assistent B', mOrigin.Client);
+  Assert.AreEqual<TMcpIdeBuildOutcome>(TMcpIdeBuildOutcome.NotTaken,
+    TMcpIdeBuilds.Send(FInbox, Request('C:\P\App.dproj', 'make'),
+    procedure
+    begin
+      Inc(Now_, 100);
+    end, Clock, mBuildText, mReason));
+  Assert.IsTrue(mReason.Contains('Assistent B · a91b'), mReason);
+  // Beantwortet: läuft nicht mehr.
+  TFile.WriteAllText(TPath.Combine(FInbox, 'laufend.result.json'), '{"ok":true}', TEncoding.UTF8);
+  Assert.IsFalse(TMcpIdeBuilds.RunningFor(FInbox, mOrigin));
 end;
 
 initialization

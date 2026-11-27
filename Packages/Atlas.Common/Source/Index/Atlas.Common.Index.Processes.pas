@@ -34,6 +34,9 @@ type
     Kind: string;
     /// <summary>Name des Clients aus initialize (z. B. "Atlas IDE Expert"); '' = unbekannt.</summary>
     Client: string;
+    /// <summary>Kurze Kennung des Prozesses (#2616, SessionOf): unterscheidet zwei Prozesse desselben Clients; ''
+    /// = unbekannt (ältere Server).</summary>
+    Session: string;
     /// <summary>Arbeitsbereich (Projektname), zu dem die Anmeldung gehört.</summary>
     Workspace: string;
     State: string;
@@ -43,6 +46,9 @@ type
     /// <summary>Letzte Ereignisse, älteste zuerst, höchstens TIndexProcessEntry.cMaxEvents (Adapter).</summary>
     Events: TArray<TIndexProcessEvent>;
     function ToJson: TJSONObject;
+    /// <summary>Kurze Kennung aus Prozessnummer und Startzeit (#2616): vier Kleinbuchstaben-Hexziffern, gleich für
+    /// gleiche Werte.</summary>
+    class function SessionOf(APid: Cardinal; AStarted: TDateTime): string; static;
     /// <summary>False bei ungültigem Inhalt (z. B. mitten im Schreiben gelesen).</summary>
     class function FromJson(const AText: string; out AInfo: TIndexProcessInfo): Boolean; static;
   end;
@@ -71,6 +77,10 @@ begin
   Result.AddPair('pid', TJSONNumber.Create(Pid));
   Result.AddPair('kind', Kind);
   Result.AddPair('client', Client);
+  if Session <> '' then
+  begin
+    Result.AddPair('session', Session);
+  end;
   Result.AddPair('workspace', Workspace);
   Result.AddPair('state', State);
   Result.AddPair('writer', TJSONBool.Create(Writer));
@@ -85,6 +95,26 @@ begin
   end;
   Result.AddPair('events', mItems);
 end;
+
+// FNV-1a rechnet modulo 2^32: die Überlaufprüfung ist nur hier aus, danach wie vorher.
+{$IFOPT Q+}{$DEFINE ATLAS_HASH_UEBERLAUF}{$Q-}{$ENDIF}
+{$IFOPT R+}{$DEFINE ATLAS_HASH_BEREICH}{$R-}{$ENDIF}
+class function TIndexProcessInfo.SessionOf(APid: Cardinal; AStarted: TDateTime): string;
+const
+  cMask = $FFFF;
+var
+  mHash: UInt32;
+  mMs: Int64;
+begin
+  mMs := Trunc(AStarted * MSecsPerDay);
+  mHash := 2166136261;
+  mHash := (mHash xor UInt32(APid)) * 16777619;
+  mHash := (mHash xor UInt32(mMs and $FFFFFFFF)) * 16777619;
+  mHash := (mHash xor UInt32((mMs shr 32) and $FFFFFFFF)) * 16777619;
+  Result := LowerCase(IntToHex(Integer((mHash xor (mHash shr 16)) and cMask), 4));
+end;
+{$IFDEF ATLAS_HASH_BEREICH}{$R+}{$UNDEF ATLAS_HASH_BEREICH}{$ENDIF}
+{$IFDEF ATLAS_HASH_UEBERLAUF}{$Q+}{$UNDEF ATLAS_HASH_UEBERLAUF}{$ENDIF}
 
 /// <summary>Ereignisse mit Text aus "events".</summary>
 function ReadEvents(AItems: TJSONArray): TArray<TIndexProcessEvent>;
@@ -127,6 +157,7 @@ begin
     AInfo.Pid := Cardinal(mPid);
     AInfo.Kind := mItem.GetValue<string>('kind', '');
     AInfo.Client := mItem.GetValue<string>('client', '');
+    AInfo.Session := mItem.GetValue<string>('session', '');
     AInfo.Workspace := mItem.GetValue<string>('workspace', '');
     AInfo.State := mItem.GetValue<string>('state', '');
     AInfo.Writer := (mItem.GetValue('writer') is TJSONBool) and TJSONBool(mItem.GetValue('writer')).AsBoolean;

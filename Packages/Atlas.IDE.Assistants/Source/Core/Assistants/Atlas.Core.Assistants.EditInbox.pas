@@ -4,9 +4,11 @@
 // Der MCP-Server schreibt eine Datei, die in der IDE offen ist, nicht selbst,
 // sondern legt einen Auftrag in den Eingang des Plugins:
 //   %LOCALAPPDATA%\Atlas\ide-edits\<pid>\<id>.json
-//   {"file": Pfad, "expected": bisheriger Text, "text": neuer Text, "hold": true, "client": Name}
+//   {"file": Pfad, "expected": bisheriger Text, "text": neuer Text, "hold": true, "client": Name,
+//    "session": Kennung}
 // "hold" (optional, #2605): Ist die Datei ungespeichert geändert, die Änderung zurückhalten statt ablehnen;
-// "client" (optional): clientInfo.name des MCP-Clients für Hinweis und Protokoll.
+// "client" und "session" (optional, #2616): Name des MCP-Clients und Kennung seines Prozesses für Hinweis,
+// Protokoll und Randmarken (TAtlasAssistantOrigin); fehlen sie, kommt der Auftrag vom unbekannten Assistenten.
 // Das Plugin übernimmt ihn durch Umbenennen in <id>.taken (wer das Umbenennen
 // gewinnt, hat ihn; der MCP-Server löscht nach seinem Zeitlimit sonst die
 // .json und schreibt selbst), ändert den Puffer und antwortet mit
@@ -19,7 +21,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Text.AssistantOrigin;
 
 type
   TAtlasEditRequest = record
@@ -29,8 +32,11 @@ type
     Text: string;
     /// <summary>Ungespeichert geänderte Datei: zurückhalten statt ablehnen (#2605).</summary>
     Hold: Boolean;
-    /// <summary>clientInfo.name des MCP-Clients; '' unbekannt.</summary>
+    /// <summary>clientInfo.name des MCP-Clients (bereinigt); '' unbekannt.</summary>
     Client: string;
+    /// <summary>Kennung des MCP-Prozesses (#2616); '' unbekannt.</summary>
+    Session: string;
+    function Origin: TAtlasAssistantOrigin;
   end;
 
   TAtlasEditInbox = class
@@ -56,6 +62,13 @@ uses
   System.Generics.Collections,
   Atlas.Core.Assistants.Inbox;
 
+{ TAtlasEditRequest }
+
+function TAtlasEditRequest.Origin: TAtlasAssistantOrigin;
+begin
+  Result := TAtlasAssistantOrigin.Make(Client, Session);
+end;
+
 { TAtlasEditInbox }
 
 class function TAtlasEditInbox.Folder(const ABase: string; APid: Cardinal): string;
@@ -67,6 +80,7 @@ class function TAtlasEditInbox.Take(const AFileName: string; out ARequest: TAtla
 var
   mText: string;
   mJson: TJSONValue;
+  mOrigin: TAtlasAssistantOrigin;
 begin
   ARequest := Default(TAtlasEditRequest);
   if not TAtlasFileInbox.Claim(AFileName, ARequest.Id, mText) then
@@ -81,7 +95,9 @@ begin
     if Result then
     begin
       ARequest.Hold := TJSONObject(mJson).GetValue<Boolean>('hold', False);
-      ARequest.Client := TJSONObject(mJson).GetValue<string>('client', '');
+      mOrigin := TAtlasAssistantOrigin.Read(TJSONObject(mJson));
+      ARequest.Client := mOrigin.Client;
+      ARequest.Session := mOrigin.Session;
     end;
   finally
     mJson.Free;

@@ -461,7 +461,7 @@ begin
     FFiles.Save(AEntry.FileName);
   end;
   FLog.MarkReverted(AEntry.Id);
-  TAtlasIdeLogEntries.AddEdit(FLog, TAtlasAssistantsLogKind.Reverted, AEntry.FileName, AEntry.Client,
+  TAtlasIdeLogEntries.AddEdit(FLog, TAtlasAssistantsLogKind.Reverted, AEntry.FileName, AEntry.Origin,
     mBuffer.Text, mNewText);
   if Assigned(FOnMessage) then
   begin

@@ -63,6 +63,7 @@ type
     function AllFiles: TArray<string>;
     function Ready(out AReason: string): Boolean;
     function Client: string;
+    function Session: string;
     function Index: ISymbolIndex;
     function EnsureUnit(const AUnitName: string): Boolean;
     function UnitLoader: TEnsureUnitFunc;
@@ -119,6 +120,11 @@ begin
 end;
 
 function TFakeWorkspace.Client: string;
+begin
+  Result := '';
+end;
+
+function TFakeWorkspace.Session: string;
 begin
   Result := '';
 end;

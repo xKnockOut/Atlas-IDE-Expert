@@ -125,7 +125,8 @@ var
   mGuard: TMcpPathGuard;
 begin
   mGuard := AContext.Guard;
-  Result := TMcpIde.Create(AContext.Adapters.Process).DebugInIde(AContext.Root, ATool, AContext.Workspace.Client, AProject, AArguments,
+  Result := TMcpIde.ForWorkspace(AContext.Adapters.Process, AContext.Workspace).DebugInIde(AContext.Root, ATool,
+    AProject, AArguments,
     function(AFile: string): string
     begin
       Result := mGuard.Resolve(AFile);

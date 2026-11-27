@@ -54,6 +54,11 @@ results in a tool error with a reason. Writing happens only in the working folde
   waiting changes. The tool reports the file as “waiting for the user” and writes the other files; the assistant
   does not learn about the decision. If the change overlaps the human's changes, “Save and apply” opens the
   comparison instead of overwriting. With the setting off, the change is refused as before.
+- Every job sent to the IDE (change, build, question, debugging) carries the assistant (#2616): `client` is the name
+  from `initialize` (`clientInfo.name`), `session` a short id of the MCP process (4 characters, from process id and
+  start time). This way the IDE tells two processes of the same client apart. The IDE shows older servers without
+  these fields as “unknown assistant”. If the IDE refuses a build because it is building already, `build_project`
+  names the assistant it is building for.
 - Every writing call is logged with tool, parameters and changed files
   (`--log`).
 - Findings after the change (#2603): with `dryRun: false`, `apply_code_action`, `fix_findings`, `format_code`,

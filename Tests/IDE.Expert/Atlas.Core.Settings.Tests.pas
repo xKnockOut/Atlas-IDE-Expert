@@ -1407,11 +1407,13 @@ var
 begin
   mSettings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(mSettings.AssistantsEditHoldModified);
+  Assert.IsTrue(mSettings.AssistantsEditMarks);
   Assert.IsTrue(mSettings.AssistantsQuestionsInIde);
   Assert.IsTrue(mSettings.AssistantsLog);
   Assert.AreEqual(500, mSettings.AssistantsLogMax);
   mStore := TMemoryStore.Create;
   mSettings.AssistantsEditHoldModified := False;
+  mSettings.AssistantsEditMarks := False;
   mSettings.AssistantsQuestionsInIde := False;
   mSettings.AssistantsLog := False;
   mSettings.AssistantsLogMax := 1;
@@ -1419,6 +1421,7 @@ begin
   mLoaded := Default(TAtlasPluginSettings);
   mLoaded.Load(mStore);
   Assert.IsFalse(mLoaded.AssistantsEditHoldModified);
+  Assert.IsFalse(mLoaded.AssistantsEditMarks);
   Assert.IsFalse(mLoaded.AssistantsQuestionsInIde);
   Assert.IsFalse(mLoaded.AssistantsLog);
   Assert.AreEqual(TAtlasPluginSettings.cMinAssistantsLogMax, mLoaded.AssistantsLogMax);

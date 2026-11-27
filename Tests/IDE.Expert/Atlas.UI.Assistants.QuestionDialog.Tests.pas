@@ -53,6 +53,8 @@ type
     procedure BlockTextsSayWhy;
     [Test]
     procedure FrameShowsEntriesWithoutWindow;
+    [Test]
+    procedure FilterShowsOneAssistant;
   end;
 
 implementation
@@ -62,7 +64,14 @@ uses
   Atlas.Core.Assistants.Log,
   Atlas.UI.Assistants.Strings,
   Atlas.UI.Assistants.LogFrame,
-  Atlas.Core.Assistants.Questions;
+  Atlas.Core.Assistants.Questions,
+  Atlas.Text.AssistantOrigin;
+
+/// <summary>Assistent ohne Sitzung bzw. unbekannt mit ''.</summary>
+function Who(const AClient: string): TAtlasAssistantOrigin;
+begin
+  Result := TAtlasAssistantOrigin.Make(AClient, '');
+end;
 
 function Sample(const AId: string; const AOptions: TArray<string>; AAllowText: Boolean): TAtlasQuestion;
 begin
@@ -182,7 +191,7 @@ end;
 
 function EditEntry: TAtlasAssistantsLogEntry;
 begin
-  Result := TAtlasAssistantsLog.EditEntry(TAtlasAssistantsLogKind.Edited, 'C:\P\Atlas.UI.Tracker.Strings.pas', '',
+  Result := TAtlasAssistantsLog.EditEntry(TAtlasAssistantsLogKind.Edited, 'C:\P\Atlas.UI.Tracker.Strings.pas', Who(''),
     'a'#10'b'#10'c'#10'd'#10'e'#10, 'a'#10'b'#10'C'#10'D'#10'X'#10'd'#10'e'#10);
   Result.Time := EncodeTime(10, 41, 12, 0);
   Result.Method := 'TStrings.Load';
@@ -193,12 +202,13 @@ var
   mCells: TArray<string>;
 begin
   mCells := TAtlasAssistantsLogTexts.Cells(EditEntry);
-  Assert.AreEqual(4, Integer(Length(mCells)));
+  Assert.AreEqual(5, Integer(Length(mCells)));
   Assert.AreEqual('10:41:12', mCells[0]);
   Assert.AreEqual(TAtlasAssistantsLogTexts.KindCaption(TAtlasAssistantsLogKind.Edited), mCells[1]);
+  Assert.AreEqual('', mCells[2], 'älterer Server: kein Assistent');
   Assert.AreEqual('Atlas.UI.Tracker.Strings.pas · ' + TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.LogLines,
-    [3, 5]) + ' · TStrings.Load', mCells[2]);
-  Assert.AreEqual(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.LogPlusMinus, [3, 1]), mCells[3]);
+    [3, 5]) + ' · TStrings.Load', mCells[3]);
+  Assert.AreEqual(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.LogPlusMinus, [3, 1]), mCells[4]);
 end;
 
 procedure TAtlasAssistantsLogFrameTests.CellsOfABuildAndAQuestion;
@@ -206,15 +216,17 @@ var
   mEntry: TAtlasAssistantsLogEntry;
   mCells: TArray<string>;
 begin
-  mEntry := TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Build, 'C:\P\Atlas.IDE.Tracker.dproj', '',
-    'check: 0 Fehler, 2 Warnungen');
+  mEntry := TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Build, 'C:\P\Atlas.IDE.Tracker.dproj',
+    TAtlasAssistantOrigin.Make('Assistent A', '3f2a'), 'check: 0 Fehler, 2 Warnungen');
   mCells := TAtlasAssistantsLogTexts.Cells(mEntry);
-  Assert.AreEqual('Atlas.IDE.Tracker.dproj', mCells[2]);
-  Assert.AreEqual('check: 0 Fehler, 2 Warnungen', mCells[3]);
-  mEntry := TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Question, '', 'Assistent A', 'Welche? → B');
+  Assert.AreEqual('Assistent A · 3f2a', mCells[2]);
+  Assert.AreEqual('Atlas.IDE.Tracker.dproj', mCells[3]);
+  Assert.AreEqual('check: 0 Fehler, 2 Warnungen', mCells[4]);
+  mEntry := TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Question, '', Who('Assistent A'), 'Welche? → B');
   mCells := TAtlasAssistantsLogTexts.Cells(mEntry);
   Assert.AreEqual('Assistent A', mCells[2]);
-  Assert.AreEqual('Welche? → B', mCells[3]);
+  Assert.AreEqual('', mCells[3]);
+  Assert.AreEqual('Welche? → B', mCells[4]);
 end;
 
 procedure TAtlasAssistantsLogFrameTests.HeaderCountsTheSession;
@@ -259,6 +271,49 @@ begin
     Assert.AreEqual(TAtlasAssistantsLogTexts.BlockText(TAtlasLogRevertBlock.ChangedSince), mFrame.Note.Caption);
     mFrame.SetEntries(nil, Default(TAtlasAssistantsLogCounts), 0);
     Assert.IsFalse(mFrame.Buttons[TAtlasLogButton.Clear].Enabled);
+  finally
+    mFrame.Free;
+  end;
+end;
+
+/// <summary>Erster Eintrag; Default ohne.</summary>
+function First(const AEntries: TArray<TAtlasAssistantsLogEntry>): TAtlasAssistantsLogEntry;
+begin
+  Result := Default(TAtlasAssistantsLogEntry);
+  if AEntries <> nil then
+  begin
+    Result := AEntries[0];
+  end;
+end;
+
+procedure TAtlasAssistantsLogFrameTests.FilterShowsOneAssistant;
+var
+  mFrame: TAtlasAssistantsLogFrame;
+  mA, mB: TAtlasAssistantOrigin;
+  mEntries: TArray<TAtlasAssistantsLogEntry>;
+begin
+  mA := TAtlasAssistantOrigin.Make('Assistent A', '3f2a');
+  mB := TAtlasAssistantOrigin.Make('Assistent A', '77c0');
+  mEntries := TArray<TAtlasAssistantsLogEntry>.Create(
+    TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Build, 'A.dproj', mA, 'ok'),
+    TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Build, 'B.dproj', mB, 'ok'),
+    TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Refused, 'C.pas', mA, 'nein'));
+  mFrame := TAtlasAssistantsLogFrame.Create(nil);
+  try
+    mFrame.SetEntries(mEntries, Default(TAtlasAssistantsLogCounts), EncodeTime(10, 38, 0, 0));
+    Assert.AreEqual(3, Integer(Length(mFrame.AssistantBox.Shown)));
+    // Zwei Sitzungen desselben Clients sind zwei Assistenten.
+    mFrame.AssistantBox.ShowAssistant(mB, True);
+    Assert.AreEqual(1, Integer(Length(mFrame.AssistantBox.Shown)));
+    Assert.AreEqual('B.dproj', First(mFrame.AssistantBox.Shown).FileName);
+    mFrame.AssistantBox.ShowAssistant(mA, True);
+    Assert.AreEqual(2, Integer(Length(mFrame.AssistantBox.Shown)));
+    // Neue Einträge folgen dem Filter; ohne Einträge des Assistenten wieder alle.
+    mFrame.SetEntries(Copy(mEntries, 1, 1), Default(TAtlasAssistantsLogCounts), EncodeTime(10, 38, 0, 0));
+    Assert.AreEqual(1, Integer(Length(mFrame.AssistantBox.Shown)));
+    Assert.AreEqual('B.dproj', First(mFrame.AssistantBox.Shown).FileName);
+    mFrame.AssistantBox.ShowAssistant(mA, False);
+    Assert.AreEqual(1, Integer(Length(mFrame.AssistantBox.Shown)));
   finally
     mFrame.Free;
   end;

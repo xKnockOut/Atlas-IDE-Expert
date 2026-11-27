@@ -27,11 +27,12 @@ uses
   Mcp.IdeQuestions,
   Mcp.IdeBuilds,
   Mcp.Confirm,
-  Mcp.Contract.Workspace;
+  Mcp.Contract.Workspace,
+  Atlas.Text.AssistantOrigin;
 
 function ToolAskUser(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
-  Result := TMcpIde.Create(AContext.Adapters.Process).AskInIde(AContext.Root, AContext.Workspace.Client, AArguments);
+  Result := TMcpIde.ForWorkspace(AContext.Adapters.Process, AContext.Workspace).AskInIde(AContext.Root, AArguments);
 end;
 
 // Jede Frage-Funktion in eigener Routine: Fingen sich anonyme Methoden derselben Routine gegenseitig ein, hielte
@@ -66,7 +67,7 @@ begin
   mServer := AContext.Server;
   mWorkspace := AContext.Workspace;
   mClient := ClientAsk(mServer);
-  mIde := IdeAsk(TMcpIde.Create(AContext.Adapters.Process), AContext.Root);
+  mIde := IdeAsk(TMcpIde.ForWorkspace(AContext.Adapters.Process, mWorkspace), AContext.Root);
   Result :=
     function(const AText: string; const AOptions: TArray<string>): Integer
     var
@@ -82,7 +83,7 @@ begin
         mViaClient := mClient;
       end;
       Result := TMcpConfirm.Choose(mViaClient, mIde,
-        TMcpConfirm.Question(AText, AOptions, mWorkspace.Client));
+        TMcpConfirm.Question(AText, AOptions, TAtlasAssistantOrigin.Make(mWorkspace.Client, mWorkspace.Session)));
     end;
 end;
 

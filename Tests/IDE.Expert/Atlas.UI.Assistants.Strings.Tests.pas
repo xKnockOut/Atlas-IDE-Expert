@@ -16,6 +16,8 @@ type
     procedure EveryTextExistsInBothLanguages;
     [Test]
     procedure FollowsLanguageOfBase;
+    [Test]
+    procedure NamesTheAssistant;
   end;
 
 implementation
@@ -23,6 +25,7 @@ implementation
 uses
   Atlas.Plugin.Localization.Strings,
   Atlas.Plugin.Localization.Strings.Tests,
+  Atlas.Text.AssistantOrigin,
   Atlas.UI.Assistants.Strings;
 
 { TAtlasAssistantsStringsTests }
@@ -72,6 +75,25 @@ begin
     TAtlasStrings.Language := mSaved;
   end;
   Assert.IsTrue(mDiffers > 0, 'kein Text folgt der Sprache von Base');
+end;
+
+procedure TAtlasAssistantsStringsTests.NamesTheAssistant;
+var
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    Assert.AreEqual('Assistent A · 3f2a', TAtlasAssistantsStrings.Assistant(TAtlasAssistantOrigin.Make('Assistent A',
+      '3f2a')));
+    // Älterer Server: Meldungen sagen „unbekannter Assistent“, Spalte und Statusfeld bleiben leer.
+    Assert.AreEqual('unknown assistant', TAtlasAssistantsStrings.Assistant(Default(TAtlasAssistantOrigin)));
+    Assert.AreEqual('', TAtlasAssistantsStrings.Display(Default(TAtlasAssistantOrigin)));
+    Assert.AreEqual('unknown assistant · b001', TAtlasAssistantsStrings.Display(TAtlasAssistantOrigin.Make('',
+      'b001')));
+  finally
+    TAtlasStrings.Language := mSaved;
+  end;
 end;
 
 initialization

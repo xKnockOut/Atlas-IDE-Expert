@@ -267,18 +267,6 @@ begin
   TServerStatusFile.Write(ARoot, mEntry, AStatus, ANow);
 end;
 
-/// <summary>Inhalt der Datei; '' wenn sie fehlt oder gerade ersetzt wird.</summary>
-function ReadText(const AFileName: string): string;
-begin
-  try
-    Result := TFile.ReadAllText(AFileName, TEncoding.UTF8);
-  except
-    // lsp-ignore: catch-all-without-raise -- Statusdatei nach Kräften; nur Anzeige
-    on Exception do
-      Result := '';
-  end;
-end;
-
 /// <summary>Liest eine Statusdatei; False bei unlesbarem oder unvollständigem Inhalt.</summary>
 function ReadEntry(const AFileName: string; out AEntry: TServerStatusEntry): Boolean;
 var
@@ -287,7 +275,7 @@ var
 begin
   Result := False;
   AEntry := Default(TServerStatusEntry);
-  mText := ReadText(AFileName);
+  mText := TTextFiles.ReadQuietly(AFileName);
   if mText = '' then
   begin
     Exit;

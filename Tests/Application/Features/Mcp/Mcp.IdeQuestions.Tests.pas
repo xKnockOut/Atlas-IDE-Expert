@@ -38,6 +38,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.JSON,
+  Atlas.Text.AssistantOrigin,
   Mcp.IdeQuestions;
 
 function Arguments(const AJson: string): TJSONObject;
@@ -51,7 +52,8 @@ var
 begin
   mArguments := Arguments(AJson);
   try
-    Result := TMcpIdeQuestions.FromArguments(mArguments, 'Client', AQuestion, AReason);
+    Result := TMcpIdeQuestions.FromArguments(mArguments, TAtlasAssistantOrigin.Make('Client', '3f2a'), AQuestion,
+      AReason);
   finally
     mArguments.Free;
   end;
@@ -66,7 +68,7 @@ var
 begin
   Assert.IsFalse(Ask('{"question":"  "}', mQuestion, mReason));
   Assert.IsNotEmpty(mReason);
-  Assert.IsFalse(TMcpIdeQuestions.FromArguments(nil, '', mQuestion, mReason));
+  Assert.IsFalse(TMcpIdeQuestions.FromArguments(nil, Default(TAtlasAssistantOrigin), mQuestion, mReason));
 end;
 
 procedure TMcpIdeQuestionsTests.TooManyOptionsAreRefused;
@@ -88,7 +90,7 @@ var
 begin
   Assert.IsTrue(Ask('{"question":"Wie soll die Klasse heißen?"}', mQuestion, mReason), mReason);
   Assert.IsTrue(mQuestion.AllowText);
-  Assert.AreEqual('Client', mQuestion.Client);
+  Assert.AreEqual('Client', mQuestion.Origin.Client);
 end;
 
 procedure TMcpIdeQuestionsTests.TimeoutIsClamped;
@@ -118,6 +120,7 @@ begin
     Assert.IsTrue(mJson.GetValue<Boolean>('allowText'));
     Assert.AreEqual(60, mJson.GetValue<Integer>('timeoutSeconds'));
     Assert.AreEqual('Client', mJson.GetValue<string>('client'));
+    Assert.AreEqual('3f2a', mJson.GetValue<string>('session'));
   finally
     mJson.Free;
   end;

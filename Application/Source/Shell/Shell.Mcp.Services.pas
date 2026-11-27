@@ -78,6 +78,7 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Architecture.UsesGraph,
   Platform.Server,
+  Atlas.Text.AssistantOrigin,
   Mcp.Tools.Ide,
   Mcp.Tools.Architecture,
   Atlas.Common.Compiler.Contract,
@@ -354,12 +355,23 @@ begin
     end;
 end;
 
+/// <summary>Herkunft der Änderungen an die IDE (#2616): Client und Sitzung von AGroup beim Aufruf (den Namen trägt
+/// initialize erst nach).</summary>
+function OriginOf(AGroup: TCoreWorkspaceGroup): TMcpIdeOriginFunc;
+begin
+  Result :=
+    function: TAtlasAssistantOrigin
+    begin
+      Result := TAtlasAssistantOrigin.Make(AGroup.ProcessIdentity.Client, AGroup.ProcessIdentity.Session);
+    end;
+end;
+
 function NewEditTools(const AIndex: ISymbolIndex; AGroup: TCoreWorkspaceGroup; ACode: TMcpCodeTools;
   const ALogger: ILogger): TMcpEditTools;
 var
   mIde: TMcpIde;
 begin
-  mIde := TMcpIde.Create(TMcpProcessAdapter.New);
+  mIde := TMcpIde.Create(TMcpProcessAdapter.New, OriginOf(AGroup));
   Result := TMcpEditTools.Create(AIndex, ReadSourceText, WriteTextOf(mIde), AllFilesOf(AGroup),
     AGroup.UnitLoader());
   Result.DirtyFiles := DirtyFilesOf(mIde);
@@ -391,6 +403,9 @@ begin
   mIdentity.Pid := TServerPlatform.CurrentProcessId;
   mIdentity.Kind := TIndexProcessInfo.cKindMcp;
   mIdentity.Client := 'MCP-Client';
+  // Sitzung (#2616): unterscheidet zwei MCP-Prozesse desselben Clients in den Aufträgen an die IDE.
+  mIdentity.Started := Now;
+  mIdentity.Session := TIndexProcessInfo.SessionOf(mIdentity.Pid, mIdentity.Started);
   Result.Group.ProcessIdentity := mIdentity;
   Result.Group.Refactorings := TShellCheckRefactorings.Create;
   Result.McpWorkspace := TMcpWorkspaceAdapter.ForGroup(Result.Group);
