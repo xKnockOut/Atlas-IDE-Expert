@@ -433,7 +433,6 @@ begin
   end;
   FInfo.Doc := TXmlDoc.Parse(TXmlDoc.CommentAbove(FLines, mStart.Line));
   FInfo.Documentation := FInfo.Doc.ToMarkdown;
-  FInfo.Deprecation := THoverValues.Deprecation(FTarget.Range.OneLineIn(FLines));
   FInfo.FileName := FTarget.FileName;
   FInfo.Line := FTarget.SelectionRange.StartPos.Line;
   FInfo.Character := FTarget.SelectionRange.StartPos.Character;
@@ -506,6 +505,7 @@ begin
     FInfo.WinApi := TWinApiDocs.HoverText(ASymbol.Name);
   end;
   FInfo.Value := ValueOf(ASymbol);
+  FInfo.Deprecation := THoverValues.Deprecation(ASymbol.Directives, ASymbol.DeprecatedText);
   if (ASymbol.Kind = TIndexSymbolKind.Field) and (ASymbol.Container <> '') then
   begin
     FInfo.FormValues := TFormInfo.FieldMarkdown(FormText(FTarget.FileName, FFileName, FTreeText, FSource.ReadText,
