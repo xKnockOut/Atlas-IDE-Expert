@@ -109,6 +109,7 @@
         <DCCReference Include="Source\McpStatistics\Atlas.Text.McpStatistics.pas"/>
         <DCCReference Include="Source\TestResults\Atlas.Text.TestRunFile.pas"/>
         <DCCReference Include="Source\IdeContext\Atlas.Text.IdeContext.pas"/>
+        <DCCReference Include="Source\AssistantOrigin\Atlas.Text.AssistantOrigin.pas"/>
         <DCCReference Include="Source\Xml\Atlas.Text.Xml.pas"/>
         <DCCReference Include="Source\Coverage\Atlas.Text.Coverage.pas"/>
         <DCCReference Include="Source\MapFile\Atlas.Text.MapFile.pas"/>

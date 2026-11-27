@@ -39,6 +39,7 @@ Atlas.Text.TestResults.Tests
 Atlas.Text.McpStatistics.Tests
 Atlas.Text.TestRunFile.Tests
 Atlas.Text.IdeContext.Tests
+Atlas.Text.AssistantOrigin.Tests
 Atlas.Text.Xml.Tests
 Atlas.Text.Coverage.Tests
 Atlas.Text.UpdateRun.Tests
@@ -362,6 +363,7 @@ Atlas.Common.Metrics.DuplicateBodies.Tests
 Atlas.Common.Metrics.DuplicateBaseline.Tests
 Rules.Builtin.DuplicateBodies.Tests
 Atlas.Common.Monitor.Servers.Tests
+Atlas.Common.Monitor.Assistants.Tests
 Atlas.Text.Profile.Tests
 Atlas.Text.ProfileReport.Tests
 Atlas.Common.Profiling.Sampling.Tests
@@ -586,6 +588,8 @@ Atlas.Core.Assistants.Queue.Tests
 Atlas.Core.Assistants.HeldEdits.Tests
 Atlas.Core.Assistants.Questions.Tests
 Atlas.Core.Assistants.Log.Tests
+Atlas.Core.Assistants.Sessions.Tests
+Atlas.Core.Assistants.EditMarks.Tests
 Atlas.Core.Assistants.Instructions.Tests
 Atlas.Core.AiProviders.Anthropic.Tests
 Atlas.Core.AiProviders.OpenAiCompatible.Tests

@@ -34,6 +34,9 @@ type
     function Ready(out AReason: string): Boolean;
     /// <summary>Name des Programms, das den Server gestartet hat (Anmeldung am Index-Cache); '' ohne.</summary>
     function Client: string;
+    /// <summary>Sitzung dieses Prozesses (#2616): mit Client die Herkunft der Aufträge an die IDE; '' ohne.
+    /// </summary>
+    function Session: string;
     /// <summary>Symbolindex aller Projekte der Gruppe.</summary>
     function Index: ISymbolIndex;
     /// <summary>Lädt AUnitName über die Suchpfade des ersten Projekts nach, das sie findet.</summary>

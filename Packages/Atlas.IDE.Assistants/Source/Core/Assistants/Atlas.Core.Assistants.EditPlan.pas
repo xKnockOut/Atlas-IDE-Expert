@@ -56,6 +56,9 @@ type
     /// <summary>Zurückgehalten, bis der Mensch in der IDE entscheidet (#2605); der MCP-Server schreibt nicht.
     /// </summary>
     Held: Boolean;
+    /// <summary>Nach dem Anwenden gespeichert (der Puffer war vorher gespeichert); die Randmarken (#2616) übergehen
+    /// dieses eigene Speichern.</summary>
+    Saved: Boolean;
   end;
 
   TAtlasEditInboxPlan = class
@@ -185,6 +188,7 @@ begin
   if mDecision.SaveAfter then
   begin
     AFiles.Save(AFileName);
+    Result.Saved := True;
   end;
   Result.Applied := True;
 end;

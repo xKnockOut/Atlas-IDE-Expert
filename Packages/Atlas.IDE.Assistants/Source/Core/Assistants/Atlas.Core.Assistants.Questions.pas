@@ -36,6 +36,8 @@ type
     TimeoutSeconds: Integer;
     /// <summary>clientInfo.name des MCP-Clients; '' unbekannt.</summary>
     Client: string;
+    /// <summary>Kennung des MCP-Prozesses (#2616); '' unbekannt.</summary>
+    Session: string;
     /// <summary>Ab hier wartet der MCP-Server nicht mehr (Tickzähler in ms).</summary>
     DeadlineMs: UInt64;
     /// <summary>Mit „Später“ zurückgestellt.</summary>
@@ -93,7 +95,8 @@ implementation
 uses
   System.JSON,
   System.Math,
-  System.IOUtils;
+  System.IOUtils,
+  Atlas.Text.AssistantOrigin;
 
 { TAtlasQuestionInbox }
 
@@ -153,7 +156,8 @@ begin
     AQuestion.AllowText := mObject.GetValue<Boolean>('allowText', False) or (AQuestion.Options = nil);
     AQuestion.TimeoutSeconds := EnsureRange(mObject.GetValue<Integer>('timeoutSeconds', cDefaultTimeoutSeconds),
       cMinTimeoutSeconds, cMaxTimeoutSeconds);
-    AQuestion.Client := mObject.GetValue<string>('client', '');
+    AQuestion.Client := TAtlasAssistantOrigin.Read(mObject).Client;
+    AQuestion.Session := TAtlasAssistantOrigin.Read(mObject).Session;
     AQuestion.DeadlineMs := ANowMs + UInt64(AQuestion.TimeoutSeconds) * 1000;
     Result := True;
   finally

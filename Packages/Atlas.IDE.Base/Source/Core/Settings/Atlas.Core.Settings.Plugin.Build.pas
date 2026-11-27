@@ -129,6 +129,9 @@ type
     /// <summary>assistants.editHoldModified (#2605): Änderungen von KI-Assistenten an ungespeichert geänderten
     /// Dateien zurückhalten, bis der Benutzer entscheidet; aus = ablehnen wie bisher.</summary>
     AssistantsEditHoldModified: Boolean;
+    /// <summary>assistants.editMarks (#2616): von KI-Assistenten geänderte Zeilen in der Rinne markieren, bis die
+    /// Datei gespeichert ist.</summary>
+    AssistantsEditMarks: Boolean;
     /// <summary>assistants.questionsInIde (#2620): Rückfragen von KI-Assistenten (ask_user) als Fenster in der IDE;
     /// aus = das Werkzeug sagt, der Assistent soll im Client fragen.</summary>
     AssistantsQuestionsInIde: Boolean;
@@ -408,6 +411,7 @@ begin
   Result.AssistantsLinkDiffPreview := True;
   Result.AssistantsLinkMentionKey := cDefaultAssistantsLinkMentionKey;
   Result.AssistantsEditHoldModified := True;
+  Result.AssistantsEditMarks := True;
   Result.AssistantsQuestionsInIde := True;
   Result.AssistantsLog := True;
   Result.AssistantsLogMax := cDefaultAssistantsLogMax;
@@ -510,6 +514,7 @@ begin
   AIo.Flag('AssistantsLinkDiffPreview', AssistantsLinkDiffPreview);
   AIo.Number('AssistantsLinkMentionKey', AssistantsLinkMentionKey);
   AIo.Flag('AssistantsEditHoldModified', AssistantsEditHoldModified);
+  AIo.Flag('AssistantsEditMarks', AssistantsEditMarks);
   AIo.Flag('AssistantsQuestionsInIde', AssistantsQuestionsInIde);
   AIo.Flag('AssistantsLog', AssistantsLog);
   AIo.Number('AssistantsLogMax', AssistantsLogMax);

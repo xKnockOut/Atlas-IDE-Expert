@@ -40,6 +40,7 @@ uses
   System.JSON,
   Atlas.Common.JsonRpc.Outgoing,
   Mcp.IdeQuestions,
+  Atlas.Text.AssistantOrigin,
   Mcp.Confirm;
 
 type
@@ -98,7 +99,8 @@ end;
 
 function YesNo: TMcpIdeQuestion;
 begin
-  Result := TMcpConfirm.Question('Weiter?', TArray<string>.Create('Ja', 'Nein'), 'Client');
+  Result := TMcpConfirm.Question('Weiter?', TArray<string>.Create('Ja', 'Nein'),
+    TAtlasAssistantOrigin.Make('Client', '3f2a'));
 end;
 
 function Parse(const AJson: string; out AAnswer: string): TMcpQuestionOutcome;
@@ -229,7 +231,8 @@ var
 begin
   mQuestion := YesNo;
   Assert.IsFalse(mQuestion.AllowText);
-  Assert.AreEqual('Client', mQuestion.Client);
+  Assert.AreEqual('Client', mQuestion.Origin.Client);
+  Assert.AreEqual('3f2a', mQuestion.Origin.Session);
   Assert.AreEqual(TMcpIdeQuestions.cDefaultTimeoutSeconds, mQuestion.TimeoutSeconds);
   Assert.AreEqual(2, Integer(Length(mQuestion.Options)));
 end;

@@ -487,6 +487,7 @@
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.FileSwap.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.Apply.pas"/>
         <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Servers.pas"/>
+        <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Assistants.pas"/>
         <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Settings.pas"/>
         <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Texts.pas"/>
         <DCCReference Include="Source\Monitor\Atlas.Common.Monitor.Commands.pas"/>

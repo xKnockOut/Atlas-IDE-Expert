@@ -13,7 +13,8 @@
 // Ist die Datei ungespeichert geändert, bittet der MCP-Server um Zurückhalten und ist
 // assistants.editHoldModified an (#2605), wartet die Änderung in TAtlasIdeHeldEdits
 // auf den Menschen; die Antwort lautet „held“. Jeder Auftrag landet im KI-Protokoll
-// (#2049): angewendet, zurückgehalten oder abgelehnt.
+// (#2049): angewendet, zurückgehalten oder abgelehnt, mit dem Assistenten (Client und Sitzung, #2616); die Meldung
+// nennt ihn („KI (Assistent A · 3f2a): Run.pas geändert“), OnEdited meldet die Änderung für die Randmarken.
 
 interface
 
@@ -24,6 +25,7 @@ uses
   Atlas.Core.Assistants.Activity,
   Atlas.Core.Assistants.InboxPace,
   Atlas.Core.Assistants.Log,
+  Atlas.Core.Assistants.EditMarks,
   Atlas.IDE.Assistants.FolderSignal,
   Atlas.IDE.Assistants.HeldEdits;
 
@@ -43,6 +45,8 @@ type
     FActivity: TAtlasAssistantsActivity;
     FLog: TAtlasAssistantsLog;
     FHeld: TAtlasIdeHeldEdits;
+    FOnEdited: TAtlasEditedProc;
+    procedure SetOnEdited(const AValue: TAtlasEditedProc);
     procedure Tick(Sender: TObject);
     procedure Process(const ARequestFile: string);
     procedure Clean;
@@ -56,6 +60,9 @@ type
     property Folder: string read FFolder;
     /// <summary>Zurückgehaltene Änderungen (#2605); leben mit dem Eingang.</summary>
     property Held: TAtlasIdeHeldEdits read FHeld;
+    /// <summary>Angewendete Änderung (auch eine zurückgehaltene nach „Speichern und übernehmen“) für die Randmarken
+    /// (#2616); nil = ohne.</summary>
+    property OnEdited: TAtlasEditedProc read FOnEdited write SetOnEdited;
   end;
 
 implementation
@@ -115,6 +122,12 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasIdeEditInbox.SetOnEdited(const AValue: TAtlasEditedProc);
+begin
+  FOnEdited := AValue;
+  FHeld.OnEdited := AValue;
+end;
+
 procedure TAtlasIdeEditInbox.Tick(Sender: TObject);
 var
   mRequestFile: string;
@@ -163,7 +176,7 @@ begin
   begin
     TAtlasEditInbox.Answer(FFolder, mRequest, False, False,
       TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.RefusedPaused), False);
-    TAtlasIdeLogEntries.AddPlain(FLog, TAtlasAssistantsLogKind.Refused, mRequest.FileName, mRequest.Client,
+    TAtlasIdeLogEntries.AddPlain(FLog, TAtlasAssistantsLogKind.Refused, mRequest.FileName, mRequest.Origin,
       TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.RefusedPaused));
     Exit;
   end;
@@ -182,18 +195,22 @@ begin
     // Schreibt der MCP-Server selbst (Datei nicht offen), ist nichts abgelehnt.
     if not mOutcome.ServerWrites then
     begin
-      TAtlasIdeLogEntries.AddPlain(FLog, TAtlasAssistantsLogKind.Refused, mRequest.FileName, mRequest.Client,
+      TAtlasIdeLogEntries.AddPlain(FLog, TAtlasAssistantsLogKind.Refused, mRequest.FileName, mRequest.Origin,
         mOutcome.Reason);
     end;
     Exit;
   end;
-  TAtlasIdeLogEntries.AddEdit(FLog, TAtlasAssistantsLogKind.Edited, mRequest.FileName, mRequest.Client,
+  TAtlasIdeLogEntries.AddEdit(FLog, TAtlasAssistantsLogKind.Edited, mRequest.FileName, mRequest.Origin,
     mRequest.Expected, mRequest.Text);
-  FActivity.EditApplied(mRequest.FileName, mRequest.Client, GetTickCount64);
+  FActivity.EditApplied(mRequest.FileName, TAtlasAssistantsStrings.Display(mRequest.Origin), GetTickCount64);
+  if Assigned(FOnEdited) then
+  begin
+    FOnEdited(mRequest.FileName, mRequest.Origin, mRequest.Expected, mRequest.Text, mOutcome.Saved);
+  end;
   if Assigned(FOnMessage) then
   begin
     FOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.McpEditApplied,
-      [ExtractFileName(mRequest.FileName)]));
+      [TAtlasAssistantsStrings.Assistant(mRequest.Origin), ExtractFileName(mRequest.FileName)]));
   end;
 end;
 

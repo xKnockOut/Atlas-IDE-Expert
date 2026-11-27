@@ -13,13 +13,16 @@
 // Zurückhalten (#2605): Mit Hold bittet der MCP-Server darum, eine Änderung an einer ungespeichert geänderten Datei
 // nicht abzulehnen, sondern in der IDE warten zu lassen, bis der Benutzer entscheidet. Das Plugin antwortet dann
 // sofort mit "held"; der MCP-Server schreibt die Datei in diesem Fall nie selbst.
+// Herkunft (#2616): Jeder Auftrag trägt "client" und "session" (TAtlasAssistantOrigin), damit die IDE mehrere
+// KI-Assistenten unterscheidet.
 
 interface
 
 {$SCOPEDENUMS ON}
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Text.AssistantOrigin;
 
 type
   TMcpIdeEditOutcome = (Applied, WriteYourself, Failed, Held);
@@ -31,6 +34,8 @@ type
     Text: string;
     /// <summary>Bei ungespeicherten Änderungen im Editor zurückhalten statt ablehnen (#2605).</summary>
     Hold: Boolean;
+    /// <summary>Assistent, von dem die Änderung kommt (#2616); Default = unbekannt.</summary>
+    Origin: TAtlasAssistantOrigin;
     class function Make(const AFileName, AExpected, AText: string): TMcpIdeEdit; static;
   end;
 
@@ -130,6 +135,7 @@ begin
   Result.Expected := AExpected;
   Result.Text := AText;
   Result.Hold := False;
+  Result.Origin := Default(TAtlasAssistantOrigin);
 end;
 
 function RequestText(const AEdit: TMcpIdeEdit): string;
@@ -145,6 +151,7 @@ begin
     begin
       mJson.AddPair('hold', TJSONBool.Create(True));
     end;
+    AEdit.Origin.AddTo(mJson);
     Result := mJson.ToJSON;
   finally
     mJson.Free;

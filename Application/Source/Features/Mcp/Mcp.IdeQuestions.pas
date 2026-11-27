@@ -16,7 +16,8 @@ interface
 
 uses
   System.SysUtils,
-  System.JSON;
+  System.JSON,
+  Atlas.Text.AssistantOrigin;
 
 type
   TMcpQuestionOutcome = (Answered, Declined, TimedOut, NoIde, NotTaken, Unreadable);
@@ -26,7 +27,8 @@ type
     Options: TArray<string>;
     AllowText: Boolean;
     TimeoutSeconds: Integer;
-    Client: string;
+    /// <summary>Wer fragt (#2616).</summary>
+    Origin: TAtlasAssistantOrigin;
   end;
 
   TMcpIdeQuestions = class
@@ -44,7 +46,7 @@ type
     /// <summary>Eingang des IDE-Prozesses APid unter ABase (%LOCALAPPDATA%\Atlas).</summary>
     class function InboxOf(const ABase: string; APid: Cardinal): string; static;
     /// <summary>Argumente des Werkzeugs prüfen; False mit Grund in AReason.</summary>
-    class function FromArguments(const AArguments: TJSONObject; const AClient: string;
+    class function FromArguments(const AArguments: TJSONObject; const AOrigin: TAtlasAssistantOrigin;
       out AQuestion: TMcpIdeQuestion; out AReason: string): Boolean; static;
     class function RequestText(const AQuestion: TMcpIdeQuestion): string; static;
     /// <summary>So lange wartet der MCP-Server nach der Übernahme auf die Antwort.</summary>
@@ -115,14 +117,14 @@ begin
   Result := TPath.Combine(TPath.Combine(ABase, 'ide-questions'), IntToStr(APid));
 end;
 
-class function TMcpIdeQuestions.FromArguments(const AArguments: TJSONObject; const AClient: string;
+class function TMcpIdeQuestions.FromArguments(const AArguments: TJSONObject; const AOrigin: TAtlasAssistantOrigin;
   out AQuestion: TMcpIdeQuestion; out AReason: string): Boolean;
 var
   mValue: TJSONValue;
   mText: string;
 begin
   AQuestion := Default(TMcpIdeQuestion);
-  AQuestion.Client := AClient;
+  AQuestion.Origin := AOrigin;
   AQuestion.TimeoutSeconds := cDefaultTimeoutSeconds;
   AReason := '';
   if AArguments <> nil then
@@ -175,10 +177,7 @@ begin
     mJson.AddPair('options', mOptions);
     mJson.AddPair('allowText', TJSONBool.Create(AQuestion.AllowText));
     mJson.AddPair('timeoutSeconds', TJSONNumber.Create(AQuestion.TimeoutSeconds));
-    if AQuestion.Client <> '' then
-    begin
-      mJson.AddPair('client', AQuestion.Client);
-    end;
+    AQuestion.Origin.AddTo(mJson);
     Result := mJson.ToJSON;
   finally
     mJson.Free;

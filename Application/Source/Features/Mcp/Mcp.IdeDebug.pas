@@ -28,6 +28,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
+  Atlas.Text.AssistantOrigin,
   Mcp.IdeInbox;
 
 type
@@ -37,13 +38,14 @@ type
   /// Pfaden außerhalb.</summary>
   TMcpIdeDebugResolve = TFunc<string, string>;
 
-  /// <summary>Ein Aufruf: Werkzeug, clientInfo.name und das Projekt, das der Aufrufer für debug_start gewählt hat.
-  /// </summary>
+  /// <summary>Ein Aufruf: Werkzeug, Assistent (clientInfo.name und Sitzung, #2616) und das Projekt, das der Aufrufer
+  /// für debug_start gewählt hat.</summary>
   TMcpIdeDebugCall = record
     Tool: string;
-    Client: string;
+    Origin: TAtlasAssistantOrigin;
     Project: string;
-    class function Make(const ATool, AClient, AProject: string): TMcpIdeDebugCall; static;
+    class function Make(const ATool: string; const AOrigin: TAtlasAssistantOrigin;
+      const AProject: string): TMcpIdeDebugCall; static;
   end;
 
   TMcpIdeDebug = class
@@ -152,10 +154,11 @@ end;
 
 { TMcpIdeDebugCall }
 
-class function TMcpIdeDebugCall.Make(const ATool, AClient, AProject: string): TMcpIdeDebugCall;
+class function TMcpIdeDebugCall.Make(const ATool: string; const AOrigin: TAtlasAssistantOrigin;
+  const AProject: string): TMcpIdeDebugCall;
 begin
   Result.Tool := ATool;
-  Result.Client := AClient;
+  Result.Origin := AOrigin;
   Result.Project := AProject;
 end;
 
@@ -378,7 +381,12 @@ begin
   mRequest := TJSONObject.Create;
   try
     mRequest.AddPair('command', ACall.Tool);
-    mRequest.AddPair('client', ACall.Client);
+    // "client" immer (ältere Plugins lesen ihn so), "session" soweit bekannt.
+    mRequest.AddPair('client', ACall.Origin.Client);
+    if ACall.Origin.Session <> '' then
+    begin
+      mRequest.AddPair('session', ACall.Origin.Session);
+    end;
     Result := AddArguments(ACall.Tool, ACall.Project, mRequest, AArguments, AResolve, AReason);
     if Result then
     begin

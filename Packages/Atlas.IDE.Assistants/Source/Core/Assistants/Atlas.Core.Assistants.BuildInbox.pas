@@ -6,7 +6,8 @@
 // MCP-Server legt den Auftrag in den Eingang des Plugins:
 //   %LOCALAPPDATA%\Atlas\ide-builds\<pid>\<id>.json
 //   {"project": Pfad der .dproj, "mode": "make"|"build"|"check",
-//    "configuration": "", "platform": ""}          ('' = wie in der IDE)
+//    "configuration": "", "platform": "",          ('' = wie in der IDE)
+//    "client": Name des MCP-Clients, "session": Sitzung des MCP-Prozesses}  (#2616, fehlen bei älteren Servern)
 // Das Plugin übernimmt ihn durch Umbenennen in <id>.taken (wer das Umbenennen
 // gewinnt, hat ihn; sonst zieht der MCP-Server ihn nach seiner Frist zurück)
 // und antwortet mit <id>.result.json:
@@ -27,6 +28,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Core.Build.Events,
+  Atlas.Text.AssistantOrigin,
   Atlas.Plugin.Build.Contract.Requests;
 
 type
@@ -53,7 +55,13 @@ type
     /// <summary>Übernimmt den Auftrag AFileName und liest ihn. False, wenn ihn schon jemand hat (AReason = '') oder
     /// er unlesbar ist (dann ist er mit Grund beantwortet).</summary>
     class function Take(const AFileName: string; const ATexts: TAtlasBuildInboxTexts;
-      out ARequest: TAtlasBuildRequest; out AReason: string): Boolean; static;
+      out ARequest: TAtlasBuildRequest; out AReason: string): Boolean; overload; static;
+    /// <summary>Wie oben, dazu der Assistent des Auftrags (#2616; leer bei älteren Servern).</summary>
+    class function Take(const AFileName: string; const ATexts: TAtlasBuildInboxTexts;
+      out ARequest: TAtlasBuildRequest; out AOrigin: TAtlasAssistantOrigin; out AReason: string): Boolean; overload;
+      static;
+    /// <summary>Assistent (client, session) aus dem Text eines Auftrags; leer, wenn unlesbar.</summary>
+    class function OriginOf(const AText: string): TAtlasAssistantOrigin; static;
     /// <summary>Objekt "build" der Antwort; der Aufrufer gibt es frei.</summary>
     class function BuildJson(const AReport: TAtlasBuildReport): TJSONObject; static;
     /// <summary>{"ok": true, "build": …}.</summary>
@@ -134,12 +142,37 @@ begin
   Result := True;
 end;
 
+class function TAtlasBuildInbox.OriginOf(const AText: string): TAtlasAssistantOrigin;
+var
+  mValue: TJSONValue;
+begin
+  Result := Default(TAtlasAssistantOrigin);
+  mValue := TJSONObject.ParseJSONValue(AText);
+  try
+    if mValue is TJSONObject then
+    begin
+      Result := TAtlasAssistantOrigin.Read(TJSONObject(mValue));
+    end;
+  finally
+    mValue.Free;
+  end;
+end;
+
 class function TAtlasBuildInbox.Take(const AFileName: string; const ATexts: TAtlasBuildInboxTexts;
   out ARequest: TAtlasBuildRequest; out AReason: string): Boolean;
+var
+  mOrigin: TAtlasAssistantOrigin;
+begin
+  Result := Take(AFileName, ATexts, ARequest, mOrigin, AReason);
+end;
+
+class function TAtlasBuildInbox.Take(const AFileName: string; const ATexts: TAtlasBuildInboxTexts;
+  out ARequest: TAtlasBuildRequest; out AOrigin: TAtlasAssistantOrigin; out AReason: string): Boolean;
 var
   mText, mId: string;
 begin
   ARequest := Default(TAtlasBuildRequest);
+  AOrigin := Default(TAtlasAssistantOrigin);
   AReason := '';
   if not TAtlasFileInbox.Claim(AFileName, mId, mText) then
   begin
@@ -147,6 +180,7 @@ begin
   end;
   Result := ParseRequest(mText, ATexts, ARequest, AReason);
   ARequest.Id := mId;
+  AOrigin := OriginOf(mText);
   if not Result then
   begin
     TAtlasFileInbox.Answer(ExtractFilePath(AFileName), mId, RefusalText(AReason));

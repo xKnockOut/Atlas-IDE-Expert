@@ -95,6 +95,7 @@
         <DCCReference Include="Text\Atlas.Text.McpStatistics.TestSupport.pas"/>
         <DCCReference Include="Text\Atlas.Text.TestRunFile.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.IdeContext.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.AssistantOrigin.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Xml.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Coverage.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.MapFile.Tests.pas"/>
@@ -1842,6 +1843,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Forms.PropertyValues.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.EditInbox.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.EditInbox.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.EditMarks.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.EditMarks.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.Inbox.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.Inbox.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.InboxPace.pas"/>
@@ -1869,6 +1872,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.Questions.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.Log.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.Log.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.Sessions.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.Sessions.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.Instructions.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.Instructions.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\AiProviders\Atlas.Core.AiProviders.Contract.pas"/>
@@ -3951,6 +3956,7 @@
         <DCCReference Include="Windows\Updates\Atlas.Windows.Updates.Adapters.Trust.Tests.pas"/>
         <DCCReference Include="Common\Updates\Atlas.Common.Updates.Apply.Tests.pas"/>
         <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Servers.Tests.pas"/>
+        <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Assistants.Tests.pas"/>
         <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Settings.Tests.pas"/>
         <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Texts.Tests.pas"/>
         <DCCReference Include="Common\Monitor\Atlas.Common.Monitor.Commands.Tests.pas"/>

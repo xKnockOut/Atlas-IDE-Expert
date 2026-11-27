@@ -101,6 +101,7 @@
         <DCCReference Include="Atlas.IDE.Base.dcp"/>
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.BuildInbox.pas"/>
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.EditInbox.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.EditMarks.pas"/>
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.Inbox.pas"/>
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.InboxPace.pas"/>
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.ContextState.pas"/>
@@ -115,6 +116,7 @@
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.HeldEdits.pas"/>
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.Questions.pas"/>
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.Log.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.Sessions.pas"/>
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.Instructions.pas"/>
         <DCCReference Include="Source\Core\AiProviders\Atlas.Core.AiProviders.Contract.pas"/>
         <DCCReference Include="Source\Core\AiProviders\Atlas.Core.AiProviders.Anthropic.pas"/>
@@ -146,6 +148,7 @@
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.BuildInbox.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.ContextExport.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.EditInbox.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.EditMarks.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.LogEntries.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.HeldEdits.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.QuestionInbox.pas"/>
@@ -170,6 +173,7 @@
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.AiText.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.Module.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.Debug.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.Marks.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

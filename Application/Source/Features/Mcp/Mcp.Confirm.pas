@@ -21,6 +21,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.JsonRpc.Outgoing,
+  Atlas.Text.AssistantOrigin,
   Mcp.IdeQuestions;
 
 type
@@ -56,7 +57,7 @@ type
       out AAnswer: string): TMcpQuestionOutcome; static;
     /// <summary>Frage mit AText und AOptions, Bedenkzeit wie ask_user, ohne freie Antwort.</summary>
     class function Question(const AText: string; const AOptions: TArray<string>;
-      const AClient: string): TMcpIdeQuestion; static;
+      const AOrigin: TAtlasAssistantOrigin): TMcpIdeQuestion; static;
   end;
 
 implementation
@@ -67,14 +68,14 @@ uses
 { TMcpConfirm }
 
 class function TMcpConfirm.Question(const AText: string; const AOptions: TArray<string>;
-  const AClient: string): TMcpIdeQuestion;
+  const AOrigin: TAtlasAssistantOrigin): TMcpIdeQuestion;
 begin
   Result := Default(TMcpIdeQuestion);
   Result.Question := AText;
   Result.Options := AOptions;
   Result.AllowText := False;
   Result.TimeoutSeconds := TMcpIdeQuestions.cDefaultTimeoutSeconds;
-  Result.Client := AClient;
+  Result.Origin := AOrigin;
 end;
 
 class function TMcpConfirm.IndexOfAnswer(const AOptions: TArray<string>; const AAnswer: string): Integer;
