@@ -6,13 +6,15 @@
 // atlas.server.moveUses und Entfernen nur ungenutzter Einträge über
 // atlas.server.removeUses; Kosten einer interface-Änderung über
 // atlas.interfaceCost und nur im implementation gebrauchte interface-Einträge
-// (#554).
+// (#554); je Projekt ein Graph und interfaceCost ohne Warten auf den Aufbau
+// (#3075).
 
 interface
 
 uses
   DUnitX.TestFramework,
   System.Generics.Collections,
+  System.JSON,
   Atlas.Common.Index.Contract,
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Lsp.UnitRelations;
@@ -26,6 +28,9 @@ type
     FGraph: TUsesGraphService;
     FRelations: TLspUnitRelations;
     FOptionsAsked: Integer;
+    /// <summary>A und B liegen in Projekt P1, C und D in P2 (eigene Wurzel).</summary>
+    FTwoProjects: Boolean;
+    function Relations(const AName: string): TJSONValue;
   public
     [Setup]
     procedure Setup;
@@ -49,13 +54,16 @@ type
     procedure CostCommandAnswersRecompileCount;
     [Test]
     procedure UseUnitInfoListsInUsesAndCycles;
+    [Test]
+    procedure ProjectsKeepTheirGraphs;
+    [Test]
+    procedure CostDoesNotWaitForTheGraph;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.ChangeSignature,
@@ -116,7 +124,8 @@ begin
   Add('B', ['A'], nil);
   Add('C', nil, nil);
   Add('D', nil, ['A']);
-  FGraph := TUsesGraphService.Create(FIndex, TUsesGraphOptions.Default);
+  FGraph := TUsesGraphService.Create(FIndex, TUsesGraphOptions.Default, TUsesGraphService.cProjectCapacity);
+  FTwoProjects := False;
   mTexts := FTexts;
   mSelf_ := Self;
   FOptionsAsked := 0;
@@ -149,6 +158,14 @@ begin
     begin
       Inc(mSelf_.FOptionsAsked);
       Result := TUsesGraphOptions.Default;
+      if mSelf_.FTwoProjects then
+      begin
+        Result.Root := 'P1';
+        if SameText(AFileName, FileOf('C')) or SameText(AFileName, FileOf('D')) then
+        begin
+          Result.Root := 'P2';
+        end;
+      end;
     end);
 end;
 
@@ -179,7 +196,7 @@ begin
       Assert.AreEqual(1, mAnswer.GetValue<Integer>('depth'), 'Vorgabe: direkt');
       Assert.AreEqual(FIndex.Generation, mAnswer.GetValue<Int64>('generation'));
       Assert.IsTrue(FOptionsAsked > 0, 'Optionen je Datei');
-      Assert.IsTrue(FGraph.Options.IncludeLibrary, 'Bibliotheks-Units immer im Graphen');
+      Assert.AreEqual(1, Integer(Length(FGraph.CachedRoots)), 'ein Graph für die Optionen der Datei');
       mUses_ := mAnswer.GetValue<TJSONArray>('uses');
       Assert.AreEqual(2, mUses_.Count);
       Assert.IsTrue(mUses_.Items[0].GetValue<Boolean>('cycle'), 'A ↔ B');
@@ -373,17 +390,20 @@ var
   mArgs: TJSONArray;
   mAnswer: TJSONValue;
 begin
+  // Erst den Graphen bereitstellen: interfaceCost wartet nicht auf ihn (CostDoesNotWaitForTheGraph).
+  Relations('A').Free;
   mArgs := TJsonBuild.Strings([FileOf('A')]);
   try
     mAnswer := FRelations.Cost(mArgs);
     try
+      Assert.AreEqual('current', mAnswer.GetValue<string>('graph'));
       Assert.IsTrue(mAnswer.GetValue<Boolean>('found'));
       Assert.AreEqual('A', mAnswer.GetValue<string>('unit'));
       Assert.AreEqual(2, mAnswer.GetValue<Integer>('recompileCount'), 'B und D');
       Assert.AreEqual('B', mAnswer.GetValue<TJSONArray>('units').Items[0].Value);
       Assert.AreEqual('D', mAnswer.GetValue<TJSONArray>('units').Items[1].Value);
       Assert.AreEqual(FIndex.Generation, mAnswer.GetValue<Int64>('generation'));
-      Assert.IsTrue(FGraph.Options.IncludeLibrary, 'derselbe Graph wie atlas/unitRelations');
+      Assert.AreEqual(1, FGraph.Rebuilds, 'derselbe Graph wie atlas/unitRelations');
     finally
       mAnswer.Free;
     end;
@@ -409,6 +429,64 @@ begin
       begin
         FRelations.Cost(mArgs).Free;
       end, EJsonRpcError);
+  finally
+    mArgs.Free;
+  end;
+end;
+
+function TLspUnitRelationsTests.Relations(const AName: string): TJSONValue;
+var
+  mParams: TJSONObject;
+begin
+  mParams := TJSONObject.Create;
+  try
+    mParams.AddPair('uri', FileOf(AName));
+    Result := FRelations.Request(mParams);
+  finally
+    mParams.Free;
+  end;
+end;
+
+procedure TLspUnitRelationsTests.ProjectsKeepTheirGraphs;
+begin
+  FTwoProjects := True;
+  // Reiterwechsel zwischen Units zweier Projekte: je Projekt einmal aufgebaut, danach nur gelesen.
+  Relations('A').Free;
+  Relations('C').Free;
+  Relations('A').Free;
+  Relations('D').Free;
+  Relations('B').Free;
+  Assert.AreEqual(2, FGraph.Rebuilds, 'ein Aufbau je Projekt');
+  Assert.AreEqual(2, Integer(Length(FGraph.CachedRoots)));
+  Assert.AreEqual('P1,P2', string.Join(',', FGraph.CachedRoots), 'zuletzt benutzt zuerst');
+  Assert.AreEqual(0, FGraph.Updates, 'Index unverändert');
+end;
+
+procedure TLspUnitRelationsTests.CostDoesNotWaitForTheGraph;
+var
+  mArgs: TJSONArray;
+  mAnswer: TJSONValue;
+begin
+  mArgs := TJsonBuild.Strings([FileOf('A')]);
+  try
+    mAnswer := FRelations.Cost(mArgs);
+    try
+      Assert.IsTrue(mAnswer.GetValue<Boolean>('pending'), 'Graph fehlt noch');
+      Assert.AreEqual('pending', mAnswer.GetValue<string>('graph'));
+      Assert.IsFalse(mAnswer.GetValue<Boolean>('found'));
+      Assert.IsNull(mAnswer.FindValue('recompileCount'));
+    finally
+      mAnswer.Free;
+    end;
+    FGraph.WaitIdle;
+    Assert.AreEqual(1, FGraph.Rebuilds, 'im Hintergrund aufgebaut');
+    mAnswer := FRelations.Cost(mArgs);
+    try
+      Assert.IsNull(mAnswer.FindValue('pending'));
+      Assert.AreEqual(2, mAnswer.GetValue<Integer>('recompileCount'), 'B und D');
+    finally
+      mAnswer.Free;
+    end;
   finally
     mArgs.Free;
   end;
