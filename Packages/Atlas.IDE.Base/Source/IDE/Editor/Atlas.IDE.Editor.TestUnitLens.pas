@@ -8,7 +8,9 @@
 //   erscheint. Der Befehl läuft im Hintergrund (TAtlasLensPoll.AskAsync), der
 //   Hauptthread wartet nicht auf den Server.
 // - Zeichnen: hinter dem Ende der Zeile „unit …;“ (plsEndPaint) eine Marke
-//   mit dem Text der Lens; ihr Rechteck wird gemerkt.
+//   mit dem Text der Lens; ihr Rechteck wird gemerkt. Den Platz hinter dem
+//   Zeilenende teilt sie über TAtlasLineEndSlot mit Fehlertext, Metrik-Lens
+//   und „n von m Methoden getestet“, die in derselben Zeile stehen können.
 // - Klick: Linksklick in die Marke wechselt wie der Befehl „Zur Testunit
 //   wechseln“ (nach dem Mausereignis, über die Warteschlange).
 // Abschaltbar über die Einstellung „Code Lens Testunit“, je Datei über
@@ -274,7 +276,7 @@ const
   cPillFill = 0.12;
 var
   mText, mLine: string;
-  mCell: TRect;
+  mSlot: TAtlasLineEndSlot;
   mBack: TAtlasColor;
 begin
   // Unter dem mitlaufenden Kopf nicht: Er deckt die Zeile ab, und wer nach ihm zeichnet, läge darüber.
@@ -301,11 +303,12 @@ begin
     begin
       Exit;
     end;
-    mCell := TAtlasLensPill.CellAfter(Context, mLine);
-    mBack := TAtlasIdeStyle.SampleBack(Context.Canvas, mCell.Left, Rect.Top + 1);
-    FLensRect := TAtlasLensPill.Paint(Context.Canvas, Rect, mCell.Left, mText,
+    mSlot := TAtlasLineEndSlot.Take(Self, Context, Rect, mLine);
+    mBack := TAtlasIdeStyle.SampleBack(Context.Canvas, mSlot.Left, Rect.Top + 1);
+    FLensRect := TAtlasLensPill.Paint(Context.Canvas, Rect, mSlot.Left, mText,
       TAtlasLensPillStyle.Create(TAtlasColors.ForBackground(mBack).Accent, mBack, cPillBorder, cPillFill,
       [fsUnderline]));
+    mSlot.Done(FLensRect.Right);
     FLensTopRow := Context.EditView.TopRow;
     TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.CodeLensTestUnit, Context.FileName,
       FLine, ''), FLensRect, FLensTopRow, Rect.Height);

@@ -77,8 +77,6 @@ type
   /// <summary>Zeichnen der Marken hinter dem Zeilenende (Test-Lens und „getestet von“, #1778).</summary>
   TAtlasIdeLensPill = class
   private const
-    /// <summary>Abstand der Marke vom Zeilenende in Zeichen.</summary>
-    cGapColumns = 3;
     /// <summary>Anteil der Farbe des Stands an Schrift, Rahmen und Fläche der Marke.</summary>
     cTextMix = 0.85;
     cPenMix = 0.35;
@@ -93,8 +91,6 @@ type
       ALeft: Integer): TRect; static;
     /// <summary>Hintergrundfarbe des Editors an (AX, AY).</summary>
     class function BackgroundAt(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor; static;
-    /// <summary>Linker Rand der Marke hinter dem Text der Zeile ALine (Pixel des Editors).</summary>
-    class function LeftOf(const AContext: INTACodeEditorPaintContext; const ALine: string): Integer; static;
     /// <summary>APaint mit gesichertem Stift, Pinsel und Schrift der Leinwand; Ausnahmen meldet die Sicherung
     /// (Zeichnen darf die IDE nie stören).</summary>
     class procedure Guarded(ACanvas: TCanvas; const APaint: TProc); static;
@@ -195,10 +191,9 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Style.Palette,
-  Atlas.Text.Columns,
   Atlas.UI.Tests.Strings,
   Atlas.Core.Editor.Elements,
-  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.IDE.Editor.Lens,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
@@ -420,10 +415,13 @@ begin
   TAtlasIdeLensPill.Guarded(Context.Canvas,
     procedure
     var
-      mLeft: Integer;
+      mSlot: TAtlasLineEndSlot;
     begin
-      mLeft := TAtlasIdeLensPill.LeftOf(mContext, mLine);
-      PaintMarks(mIndex, mRow, mContext, mLeft, TAtlasIdeLensPill.BackgroundAt(mContext.Canvas, mLeft, mRow.Top + 1));
+      // Hinter Fehlertext und anderen Marken dieser Zeile, nicht darüber.
+      mSlot := TAtlasLineEndSlot.Take(Self, mContext, mRow, mLine);
+      PaintMarks(mIndex, mRow, mContext, mSlot.Left,
+        TAtlasIdeLensPill.BackgroundAt(mContext.Canvas, mSlot.Left, mRow.Top + 1));
+      mSlot.Done(TAtlasTestLens.RightOf(FItems[mIndex].Rects, mSlot.Left));
     end);
 end;
 
@@ -571,15 +569,6 @@ end;
 class function TAtlasIdeLensPill.BackgroundAt(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor;
 begin
   Result := TAtlasIdeStyle.SampleBack(ACanvas, AX, AY);
-end;
-
-class function TAtlasIdeLensPill.LeftOf(const AContext: INTACodeEditorPaintContext; const ALine: string): Integer;
-var
-  mColumn: Integer;
-begin
-  mColumn := Length(TrimRight(TTextColumns.DisplayLine(ALine, TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer)))) +
-    1;
-  Result := AContext.EditorState.GetCharacterPosPx(mColumn + cGapColumns, AContext.EditorLineNum).Left;
 end;
 
 class procedure TAtlasIdeLensPill.Guarded(ACanvas: TCanvas; const APaint: TProc);

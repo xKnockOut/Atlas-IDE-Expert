@@ -145,6 +145,7 @@ uses
   Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
+  Atlas.IDE.Editor.Lens,
   Atlas.IDE.Tests.Lens;
 
 const
@@ -574,8 +575,13 @@ begin
   mLine := ALine;
   TAtlasIdeLensPill.Guarded(AContext.Canvas,
     procedure
+    var
+      mSlot: TAtlasLineEndSlot;
     begin
-      PaintMark(mIndex, mRow, mContext, TAtlasIdeLensPill.LeftOf(mContext, mLine));
+      // Hinter Fehlertext und anderen Marken dieser Zeile, nicht darüber.
+      mSlot := TAtlasLineEndSlot.Take(Self, mContext, mRow, mLine);
+      PaintMark(mIndex, mRow, mContext, mSlot.Left);
+      mSlot.Done(FPainted[mIndex].Rect.Right);
     end);
 end;
 

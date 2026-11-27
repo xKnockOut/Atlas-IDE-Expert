@@ -25,6 +25,8 @@ type
     [Test]
     procedure HitFindsButtonUnderPoint;
     [Test]
+    procedure RightOfTakesRightmostButton;
+    [Test]
     procedure PillSizeAndRect;
   end;
 
@@ -162,6 +164,19 @@ begin
   Assert.IsTrue(TAtlasTestLens.Hit(mRects, TPoint.Create(25, 5), mButton));
   Assert.AreEqual<TAtlasTestLensButton>(TAtlasTestLensButton.Compare, mButton);
   Assert.IsFalse(TAtlasTestLens.Hit(mRects, TPoint.Create(15, 5), mButton), 'zwischen den Knöpfen');
+end;
+
+procedure TAtlasTestLensTests.RightOfTakesRightmostButton;
+var
+  mRects: TAtlasTestLensRects;
+begin
+  mRects := Default(TAtlasTestLensRects);
+  Assert.AreEqual(40, TAtlasTestLens.RightOf(mRects, 40), 'ohne Marke der linke Rand');
+  mRects[TAtlasTestLensButton.Run] := TRect.Create(40, 0, 90, 10);
+  Assert.AreEqual(90, TAtlasTestLens.RightOf(mRects, 40));
+  // Knöpfe rechts daneben zählen mit, auch wenn einer dazwischen fehlt.
+  mRects[TAtlasTestLensButton.Compare] := TRect.Create(130, 0, 170, 10);
+  Assert.AreEqual(170, TAtlasTestLens.RightOf(mRects, 40));
 end;
 
 procedure TAtlasTestLensTests.PillSizeAndRect;

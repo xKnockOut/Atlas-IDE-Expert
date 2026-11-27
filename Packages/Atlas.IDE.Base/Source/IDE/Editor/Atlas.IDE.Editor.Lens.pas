@@ -11,6 +11,12 @@
 //   (im Diagnose-Fenster testUnit und metrics mit zusammen über 50 s).
 //   Während eine Antwort aussteht, fragt der Abruf nicht erneut.
 // - TAtlasLensPill: Marke hinter dem Ende einer Zeile (plsEndPaint).
+// - TAtlasLineEndSlot: Platz einer Marke hinter dem Zeilenende. Die IDE ruft
+//   die Zeichner einer Zeile nacheinander auf; jede Marke, jeder Fehlertext
+//   und jeder Inlay-Hint dort reiht sich über TAtlasLineTail hinter das, was
+//   vor ihm in dieser Zeile steht, statt über ihm zu liegen. Wer hinter dem
+//   Zeilenende zeichnet, holt seine linke Kante nur hier (Check-WindowHosts,
+//   line-end-tail).
 // Nur im Hauptthread.
 
 interface
@@ -90,13 +96,31 @@ type
       TAtlasLensPillStyle; static;
   end;
 
+  /// <summary>Platz hinter dem Ende einer gezeichneten Zeile, geteilt mit den anderen Zeichnern dieser Zeile.
+  /// </summary>
+  TAtlasLineEndSlot = record
+  private
+    FOwner: Pointer;
+    FKey: string;
+  public
+    /// <summary>Linke Kante (Pixel des Editors): drei Zeichen hinter dem Text, mindestens hinter dem, was andere
+    /// Zeichner in dieser Zeile schon gesetzt haben.</summary>
+    Left: Integer;
+    /// <summary>Platz für AOwner in der Zeile ARect von AContext; ALine ist der Text, dessen Ende zählt.</summary>
+    class function Take(AOwner: TObject; const AContext: INTACodeEditorPaintContext; const ARect: TRect;
+      const ALine: string): TAtlasLineEndSlot; static;
+    /// <summary>Gezeichnet bis ARight; der nächste Zeichner der Zeile beginnt dahinter.</summary>
+    procedure Done(ARight: Integer);
+  end;
+
   TAtlasLensPill = record
+  private
+    /// <summary>Zelle drei Zeichen hinter dem Ende von ALine (Text der Zeile in AContext).</summary>
+    class function CellAfter(const AContext: INTACodeEditorPaintContext; const ALine: string): TRect; static;
   public
     /// <summary>Nach dem Zeichnen eine Zeile von AFileName mit Zeilenstand und Puffer?</summary>
     class function Ready(AStage: TPaintLineStage; ABeforeEvent: Boolean; const AContext: INTACodeEditorPaintContext;
       const AFileName: string): Boolean; static;
-    /// <summary>Zelle drei Zeichen hinter dem Ende von ALine (Text der Zeile in AContext).</summary>
-    class function CellAfter(const AContext: INTACodeEditorPaintContext; const ALine: string): TRect; static;
     /// <summary>Zeichnet AText als Marke ab AX in der Zeile ARect; Ergebnis: Rechteck der Marke.</summary>
     class function Paint(ACanvas: TCanvas; const ARect: TRect; AX: Integer; const AText: string;
       const AStyle: TAtlasLensPillStyle): TRect; static;
@@ -110,6 +134,7 @@ uses
   Winapi.Windows,
   Atlas.Plugin.Lsp.Client,
   Atlas.Text.Columns,
+  Atlas.Core.Editor.LineTail,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.ToolsApi.Editor.CodeView;
@@ -254,6 +279,21 @@ begin
   Result.Border := ABorder;
   Result.Fill := AFill;
   Result.FontStyle := AFontStyle;
+end;
+
+{ TAtlasLineEndSlot }
+
+class function TAtlasLineEndSlot.Take(AOwner: TObject; const AContext: INTACodeEditorPaintContext;
+  const ARect: TRect; const ALine: string): TAtlasLineEndSlot;
+begin
+  Result.FOwner := AOwner;
+  Result.FKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
+  Result.Left := TAtlasLineTail.Start(AOwner, Result.FKey, TAtlasLensPill.CellAfter(AContext, ALine).Left);
+end;
+
+procedure TAtlasLineEndSlot.Done(ARight: Integer);
+begin
+  TAtlasLineTail.Finish(FOwner, FKey, ARight);
 end;
 
 { TAtlasLensPill }
