@@ -108,10 +108,11 @@ begin
     Entry(1, TServerStatusEntry.cKindLsp, ''), Entry(2, TServerStatusEntry.cKindMcp, McpText('A')),
     Entry(3, TServerStatusEntry.cKindCli, ''), Entry(4, TServerStatusEntry.cKindMcp, '')));
   Assert.AreEqual(2, Integer(Length(mSessions)));
-  Assert.AreEqual(Int64(2), Int64(mSessions[0].Pid), 'früher begonnen zuerst');
-  Assert.IsTrue(mSessions[0].HasStatistics);
-  Assert.AreEqual(Int64(4), Int64(mSessions[1].Pid));
-  Assert.IsFalse(mSessions[1].HasStatistics);
+  // Ohne Statistik kein Beginn: Die Sitzung steht vorn.
+  Assert.AreEqual(Int64(4), Int64(mSessions[0].Pid));
+  Assert.IsFalse(mSessions[0].HasStatistics);
+  Assert.AreEqual(Int64(2), Int64(mSessions[1].Pid));
+  Assert.IsTrue(mSessions[1].HasStatistics);
 end;
 
 procedure TMonitorAssistantsTests.ColumnsMatchTitles;
