@@ -80,6 +80,13 @@
       Anlegen ein): „Element … hat kein übergeordnetes Fenster“, und die
       Sicherung schaltet die Funktion ab. In CreateWnd des Frames bzw. des
       Parents ist dessen Fenster da.
+    - Wer hinter dem Ende einer Zeile zeichnet (Spalte aus der Länge des
+      Zeilentexts ohne Leerraum am Ende, an GetCharacterPosPx), reiht sich
+      über TAtlasLineTail ein: TAtlasLineEndSlot (Atlas.IDE.Editor.Lens),
+      TAtlasDebugLineEnd oder TAtlasLineTail direkt (line-end-tail). Die IDE
+      ruft die Zeichner einer Zeile nacheinander auf; wer seine Kante selbst
+      rechnet, zeichnet über Fehlertext, Inlay-Hints und andere Marken
+      (Testunit-Lens über dem Fehlertext der unit-Zeile).
     - Der Frame eines andockbaren Fensters (Ergebnis von GetFrameClass) hat
       eine DFM: {$R *.dfm} in seiner Unit und die .dfm daneben. Die IDE legt
       ihn über TCustomFrame.Create an, das ohne Ressource EResNotFound
@@ -275,6 +282,17 @@ foreach ($file in $files) {
         }
     }
 
+    # Platz hinter dem Zeilenende nur über TAtlasLineTail (line-end-tail): Spalte aus dem Zeilentext ohne Leerraum am
+    # Ende, an GetCharacterPosPx, ohne Einreihen hinter die anderen Zeichner der Zeile.
+    $mLineEnd = [regex]::Match($text, '(?i)\bLength\s*\(\s*(TrimRight\s*\(|TTextColumns\s*\.\s*DisplayLine\s*\(\s*TrimRight\s*\()')
+    if ($mLineEnd.Success -and $text -match '(?i)\bGetCharacterPosPx\s*\(' -and
+        $text -notmatch '(?i)\b(TAtlasLineTail|TAtlasLineEndSlot|TAtlasDebugLineEnd)\s*\.\s*(Start|Take)\b') {
+        $mLine = Get-LineNumber $text $mLineEnd.Index
+        if (-not $exempt.Contains($mLine)) {
+            $violations += "${relative}:${mLine}: Kante hinter dem Zeilenende selbst gerechnet; TAtlasLineEndSlot.Take/Done (Atlas.IDE.Editor.Lens) verwenden, sonst liegt die Zeichnung über Fehlertext und anderen Marken der Zeile"
+        }
+    }
+
     # Virtuelle Liste nur in CreateWnd: SetStyle braucht das Fenster des Parents (virtual-listbox-style).
     foreach ($match in [regex]::Matches($text, '(?i)\bStyle\s*:=\s*lbVirtual(OwnerDraw)?\b')) {
         $mLine = Get-LineNumber $text $match.Index
@@ -372,5 +390,5 @@ if ($violations.Count -gt 0) {
     exit 1
 }
 
-Write-Host 'Atlas-Fenster laufen über TAtlasIdeDockWindow, Editorleisten über TAtlasEditorBarHost, Neuzeichnen über TAtlasIdeEditorRefresh, Dialoge über TAtlasDialog (Baseline eingehalten), Systemfarben über den Stil, Frames der Dockfenster mit DFM.' -ForegroundColor Green
+Write-Host 'Atlas-Fenster laufen über TAtlasIdeDockWindow, Editorleisten über TAtlasEditorBarHost, Neuzeichnen über TAtlasIdeEditorRefresh, Zeilenende über TAtlasLineTail, Dialoge über TAtlasDialog (Baseline eingehalten), Systemfarben über den Stil, Frames der Dockfenster mit DFM.' -ForegroundColor Green
 exit 0
