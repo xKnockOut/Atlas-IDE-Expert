@@ -133,8 +133,8 @@ type
     /// Diagnoselog).</summary>
     function Rebuilds: Integer;
     function Updates: Integer;
-    /// <summary>Optionssätze mit Graph im Zwischenspeicher.</summary>
-    function Cached: Integer;
+    /// <summary>Wurzeln der Optionssätze mit Graph im Zwischenspeicher, zuletzt benutzter zuerst.</summary>
+    function CachedRoots: TArray<string>;
     /// <summary>Fehler des letzten gescheiterten Hintergrundlaufs ("Klasse: Meldung"), '' ohne.</summary>
     function WorkerError: string;
     /// <summary>Wartet, bis der Hintergrund nichts mehr zu tun hat (Tests).</summary>
@@ -579,11 +579,17 @@ begin
   end;
 end;
 
-function TUsesGraphService.Cached: Integer;
+function TUsesGraphService.CachedRoots: TArray<string>;
+var
+  mIndex: Integer;
 begin
   System.TMonitor.Enter(FLock);
   try
-    Result := FEntries.Count;
+    SetLength(Result, FEntries.Count);
+    for mIndex := 0 to FEntries.Count - 1 do
+    begin
+      Result[mIndex] := FEntries[mIndex].Options.Root;
+    end;
   finally
     System.TMonitor.Exit(FLock);
   end;

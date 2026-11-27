@@ -150,7 +150,7 @@ begin
     EdgesWith(mService, Rooted('P2'));
     EdgesWith(mService, Rooted('P1'));
     EdgesWith(mService, Rooted('P3'));
-    Assert.AreEqual(2, mService.Cached);
+    Assert.AreEqual(2, Integer(Length(mService.CachedRoots)));
     Assert.AreEqual('current', EdgesWith(mService, Rooted('P1')).KindName, 'zuletzt benutzt bleibt');
     Assert.AreEqual('rebuilt', EdgesWith(mService, Rooted('P2')).KindName, 'ältester weicht');
   finally
