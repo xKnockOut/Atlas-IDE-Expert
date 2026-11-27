@@ -12,6 +12,9 @@
 // Moduls; Kopf und Einsprungpunkt („Program entry point at …“) liefern
 // Vorzugsbasis, Länge des Codes und Einsprungpunkt für den Vergleich mit der
 // EXE (Atlas.Text.PeImage).
+// Aus einer Datei liest CreateFromFile zeilenweise: Eine Map kann 60 MB groß sein, und als ganzer Text,
+// bereinigt und in Zeilen zerlegt belegte sie ein Vielfaches davon. In der 32-Bit-IDE fehlte dieser
+// Adressraum danach dem Compiler (interne Fehler F2084).
 // In Atlas.Text, weil Server (Atlas.Windows.Diagnostics.StackTrace) und
 // IDE-Plugin (Atlas.IDE.Diagnostics.StackCapture) dieselbe Auflösung nutzen.
 
@@ -19,6 +22,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Classes,
   System.Generics.Collections;
 
 type
@@ -59,7 +63,11 @@ type
     FHeaderDone: Boolean;
     FCurrentUnit: string;
     FCurrentFile: string;
+    procedure Init;
     procedure Parse(const AText: string);
+    procedure ParseLine(const ALine: string);
+    procedure FinishParse;
+    procedure ParseStream(AStream: TStream);
     /// <summary>True, wenn ALine einen Abschnitt beginnt (und FSection umstellt).</summary>
     function StartsSection(const ALine: string): Boolean;
     procedure StartLineSection(const ALine: string);
@@ -71,6 +79,9 @@ type
     function GetSymbolCount: Integer;
   public
     constructor Create(const AText: string);
+    /// <summary>Liest die Map-Datei AFileName zeilenweise, ohne sie ganz in den Speicher zu laden; Ausnahme,
+    /// wenn sie sich nicht öffnen lässt.</summary>
+    constructor CreateFromFile(const AFileName: string);
     destructor Destroy; override;
     /// <summary>Offset relativ zur Modulbasis wie in "Modul+$Offset"; nicht gefunden außerhalb des Codes.</summary>
     function Resolve(AModuleOffset: UInt64): TMapLocation;
@@ -208,10 +219,31 @@ end;
 constructor TMapFile.Create(const AText: string);
 begin
   inherited Create;
+  Init;
+  Parse(AText);
+end;
+
+constructor TMapFile.CreateFromFile(const AFileName: string);
+var
+  mStream: TFileStream;
+begin
+  inherited Create;
+  Init;
+  mStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
+  try
+    ParseStream(mStream);
+  finally
+    mStream.Free;
+  end;
+end;
+
+procedure TMapFile.Init;
+begin
   FSymbols := TList<TSymbol>.Create;
   FLines := TList<TLineEntry>.Create;
   FCodeStart := cDefaultCodeOffset;
-  Parse(AText);
+  FSection := TSection.Header;
+  FHeaderDone := False;
 end;
 
 destructor TMapFile.Destroy;
@@ -228,29 +260,100 @@ end;
 
 procedure TMapFile.Parse(const AText: string);
 var
+  mStart: Integer;
+  mIndex: Integer;
+begin
+  mStart := 1;
+  for mIndex := 1 to Length(AText) do
+  begin
+    if AText[mIndex] = #10 then
+    begin
+      ParseLine(Copy(AText, mStart, mIndex - mStart));
+      mStart := mIndex + 1;
+    end;
+  end;
+  ParseLine(Copy(AText, mStart, MaxInt));
+  FinishParse;
+end;
+
+/// <summary>Zeile aus der Datei: UTF-8, sonst die ANSI-Codepage (Pfade mit Umlauten).</summary>
+function DecodeLine(const ABytes: TBytes; ACount: Integer): string;
+begin
+  Result := TEncoding.UTF8.GetString(ABytes, 0, ACount);
+  if Pos(#$FFFD, Result) > 0 then
+  begin
+    Result := TEncoding.ANSI.GetString(ABytes, 0, ACount);
+  end;
+end;
+
+procedure TMapFile.ParseStream(AStream: TStream);
+const
+  cChunk = 64 * 1024;
+  // Anfangslänge einer Zeile; längere verdoppeln den Puffer.
+  cLineStart = 256;
+var
+  mBuffer: TBytes;
+  mLine: TBytes;
+  mLineLength: Integer;
+  mRead: Integer;
+  mIndex: Integer;
+begin
+  SetLength(mBuffer, cChunk);
+  SetLength(mLine, cLineStart);
+  mLineLength := 0;
+  repeat
+    mRead := AStream.Read(mBuffer[0], cChunk);
+    for mIndex := 0 to mRead - 1 do
+    begin
+      if mBuffer[mIndex] = 10 then
+      begin
+        ParseLine(DecodeLine(mLine, mLineLength));
+        mLineLength := 0;
+      end
+      else
+      begin
+        if mLineLength = Length(mLine) then
+        begin
+          SetLength(mLine, 2 * Length(mLine));
+        end;
+        mLine[mLineLength] := mBuffer[mIndex];
+        Inc(mLineLength);
+      end;
+    end;
+  until mRead < cChunk;
+  ParseLine(DecodeLine(mLine, mLineLength));
+  FinishParse;
+end;
+
+procedure TMapFile.ParseLine(const ALine: string);
+var
   mLine: string;
   mParts: TArray<string>;
 begin
-  FSection := TSection.Header;
-  FHeaderDone := False;
-  for mLine in StringReplace(AText, #13, '', [rfReplaceAll]).Split([#10]) do
+  mLine := ALine;
+  if (mLine <> '') and (mLine[Length(mLine)] = #13) then
   begin
-    if (Trim(mLine) = '') or StartsSection(mLine) then
-    begin
-      Continue;
-    end;
-    mParts := Words(mLine);
-    case FSection of
-      TSection.Header:
-        ReadHeader(mParts);
-      TSection.Publics:
-        ReadPublic(mParts);
-      TSection.Lines:
-        ReadLineNumbers(mParts);
-    else
-      // Segmente und übrige Abschnitte liest die Map-Datei nicht aus.
-    end;
+    SetLength(mLine, Length(mLine) - 1);
   end;
+  if (Trim(mLine) = '') or StartsSection(mLine) then
+  begin
+    Exit;
+  end;
+  mParts := Words(mLine);
+  case FSection of
+    TSection.Header:
+      ReadHeader(mParts);
+    TSection.Publics:
+      ReadPublic(mParts);
+    TSection.Lines:
+      ReadLineNumbers(mParts);
+  else
+    // Segmente und übrige Abschnitte liest die Map-Datei nicht aus.
+  end;
+end;
+
+procedure TMapFile.FinishParse;
+begin
   FCurrentUnit := '';
   FCurrentFile := '';
   if FEntryPoint > 0 then
@@ -258,6 +361,9 @@ begin
     FEntryPoint := FEntryPoint + FCodeStart;
   end;
   SortEntries;
+  // Die Listen bleiben so lange wie die Map; ohne Kürzen hielten sie bis zur doppelten Kapazität.
+  FSymbols.TrimExcess;
+  FLines.TrimExcess;
 end;
 
 function TMapFile.StartsSection(const ALine: string): Boolean;
