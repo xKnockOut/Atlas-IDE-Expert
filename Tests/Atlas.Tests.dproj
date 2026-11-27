@@ -3236,8 +3236,10 @@
         <DCCReference Include="..\Application\Source\Features\Mcp\Tools\Mcp.Tools.Ide.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.Services.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.Startup.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.Loading.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.ServerSetup.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.ServerSetup.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Mcp.Loading.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Features\Mcp\Tools\Mcp.Tools.pas"/>
         <DCCReference Include="..\Application\Source\Features\Mcp\Tools\Mcp.Tools.Navigation.pas"/>
         <DCCReference Include="..\Application\Source\Features\Mcp\Tools\Mcp.Tools.BuildTest.pas"/>

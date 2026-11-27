@@ -7,6 +7,7 @@
 interface
 
 uses
+  System.SysUtils,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Configuration.Contract,
   Mcp.Server,
@@ -15,16 +16,16 @@ uses
 
 /// <summary>Abgeschaltete Werkzeuge: mcp.disabledTools und die Werkzeuge abgeschalteter Funktionen (#227).</summary>
 function DisabledTools(const ASettings: TServerSettings): TArray<string>;
-/// <summary>Werkzeuge, Sicherheit (#99), Konventionen und das Nachladen vor jedem Werkzeugaufruf.</summary>
+/// <summary>Werkzeuge, Sicherheit (#99), Konventionen und das Nachladen vor jedem Werkzeugaufruf; davor
+/// AEnsureLoaded (#3099: wartet auf das Laden der Projektgruppe oder wirft EMcpToolError).</summary>
 procedure ConfigureServer(AServer: TMcpServer; const AServices: TMcpServices; ARestricted: Boolean;
-  const ALogger: ILogger);
+  const ALogger: ILogger; const AEnsureLoaded: TProc);
 /// <summary>Prompts und Ressourcenvorlagen (#1357), abschaltbar mit mcp.prompts.</summary>
 function NewPrompts(AServer: TMcpServer; const AServices: TMcpServices): TMcpPrompts;
 
 implementation
 
 uses
-  System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Providers.DiskFileSystem,
@@ -105,22 +106,29 @@ begin
     end;
 end;
 
-/// <summary>Vor jedem Werkzeugaufruf geänderte Projektdateien nachladen (#48).</summary>
-function BeforeToolCallOf(const AServices: TMcpServices; const ALogger: ILogger): TProc;
+/// <summary>Vor jedem Werkzeugaufruf auf das Laden der Gruppe warten (#3099) und geänderte Projektdateien
+/// nachladen (#48).</summary>
+function BeforeToolCallOf(const AServices: TMcpServices; const ALogger: ILogger; const AEnsureLoaded: TProc): TProc;
 var
   mServices: TMcpServices;
   mLogger: ILogger;
   mAllFiles: TFunc<TArray<string>>;
+  mEnsureLoaded: TProc;
 begin
   mServices := AServices;
   mLogger := ALogger;
   mAllFiles := AServices.AllFiles();
+  mEnsureLoaded := AEnsureLoaded;
   Result :=
     procedure
     var
       mChanges: TArray<TFileChange>;
     begin
-      mChanges := TMcpFreshness.Changes(mServices.Index, TDiskIndexFileSystem.Create, mAllFiles());
+      if Assigned(mEnsureLoaded) then
+      begin
+        mEnsureLoaded();
+      end;
+      mChanges :=TMcpFreshness.Changes(mServices.Index, TDiskIndexFileSystem.Create, mAllFiles());
       if Length(mChanges) > 0 then
       begin
         mLogger.Info(cTexts[TMcpServerSetupText.Reloaded].Fmt([Length(mChanges),
@@ -150,7 +158,7 @@ begin
 end;
 
 procedure ConfigureServer(AServer: TMcpServer; const AServices: TMcpServices; ARestricted: Boolean;
-  const ALogger: ILogger);
+  const ALogger: ILogger; const AEnsureLoaded: TProc);
 var
   mContext: TMcpToolContext;
 begin
@@ -162,7 +170,7 @@ begin
   AServer.OnDisabledTools := DisabledToolsOf(AServices.Workspace);
   AServer.OnAudit := ServerAuditOf(ALogger);
   TMcpConventions.Register(AServer, AServices.McpWorkspace, mContext.Adapters.Conventions);
-  AServer.OnBeforeToolCall := BeforeToolCallOf(AServices, ALogger);
+  AServer.OnBeforeToolCall := BeforeToolCallOf(AServices, ALogger, AEnsureLoaded);
 end;
 
 function PromptSettingsOf(AWorkspace: TCoreWorkspace): TFunc<TServerSettings>;
