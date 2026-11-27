@@ -21,6 +21,8 @@ type
     class procedure Warnings(const AOptions: TCommandLineOptions); static;
     /// <summary>Schreibt AText als UTF-8 ohne BOM nach AFileName.</summary>
     class procedure SaveUtf8(const AFileName, AText: string); static;
+    /// <summary>Hängt AText als UTF-8 ohne BOM an AFileName an (legt die Datei an, wenn es sie nicht gibt).</summary>
+    class procedure AppendUtf8(const AFileName, AText: string); static;
     /// <summary>--timings (#1356): Zeitprofil in die Datei (Markdown, mit .json als JSON) oder auf stderr.</summary>
     class procedure Timings(const AOptions: TCommandLineOptions; const ATimings: TCheckTimings); static;
     /// <summary>Text des Zeitprofils: JSON bei einer .json-Datei, sonst Markdown; ohne --log-names anonym.</summary>
@@ -109,6 +111,19 @@ begin
   mEncoding := TUTF8Encoding.Create(False);
   try
     TFile.WriteAllText(AFileName, AText, mEncoding);
+  finally
+    mEncoding.Free;
+  end;
+end;
+
+class procedure TLinterOutput.AppendUtf8(const AFileName, AText: string);
+var
+  mEncoding: TEncoding;
+begin
+  // Ohne BOM: GitHub hängt die Zusammenfassungen mehrerer Schritte aneinander.
+  mEncoding := TUTF8Encoding.Create(False);
+  try
+    TFile.AppendAllText(AFileName, AText, mEncoding);
   finally
     mEncoding.Free;
   end;

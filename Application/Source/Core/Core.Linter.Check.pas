@@ -16,6 +16,7 @@ uses
   Atlas.Common.Findings.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Findings.Output,
+  Atlas.Common.Findings.GitHub,
   Atlas.Common.Findings.Filter,
   Atlas.Common.Findings.Baseline,
   Atlas.Common.Findings.Scopes,
@@ -68,6 +69,8 @@ type
     procedure AddAbsentFiles;
     function WriteBaseline: Integer;
     function Render: string;
+    /// <summary>Mit --format github und GITHUB_STEP_SUMMARY die Zusammenfassung an diese Datei anhängen.</summary>
+    procedure WriteStepSummary;
     procedure FinishTimings(AElapsedMs: Int64);
   public
     constructor Create(const AOptions: TCommandLineOptions; const AConfigRoot: string; const AHost: TCoreLinterHost);
@@ -334,11 +337,32 @@ begin
   begin
     Result := FStats.Render(FOptions.CheckFormat);
   end
+  else if FOptions.CheckFormat = TFindingsFormat.GitHub then
+  begin
+    Result := TGitHubAnnotations.Render(FFiles, TLinterSettings.SourceRootOf(FOptions, FConfigRoot));
+  end
   else
   begin
     Result := TFindingsOutput.Render(FFiles, FOptions.CheckFormat, FRuleInfos,
       TLinterSettings.SourceRootOf(FOptions, FConfigRoot));
   end;
+end;
+
+procedure TLinterCheck.WriteStepSummary;
+var
+  mFileName: string;
+begin
+  // Zusammenfassung des Jobs (#1432): GitHub zeigt je Schritt nur wenige Anmerkungen je Art.
+  mFileName := GetEnvironmentVariable('GITHUB_STEP_SUMMARY');
+  if (FOptions.CheckFormat <> TFindingsFormat.GitHub) or (mFileName = '') or FOptions.Metrics or FOptions.Todos or
+    FOptions.SuppressionStats then
+  begin
+    Exit;
+  end;
+  TLinterOutput.AppendUtf8(mFileName, TGitHubAnnotations.Summary(FFiles,
+    TLinterSettings.SourceRootOf(FOptions, FConfigRoot), TGitHubAnnotations.LinkBase(
+    GetEnvironmentVariable('GITHUB_SERVER_URL'), GetEnvironmentVariable('GITHUB_REPOSITORY'),
+    GetEnvironmentVariable('GITHUB_SHA'))));
 end;
 
 procedure TLinterCheck.FinishTimings(AElapsedMs: Int64);
@@ -400,6 +424,7 @@ begin
   mOutput := Render;
   FinishTimings(mWatch.ElapsedMilliseconds);
   TLinterOutput.Write(FOptions, mOutput);
+  WriteStepSummary;
   Result := TFindingsOutput.cExitClean;
   if not (FOptions.SuppressionStats or FOptions.Metrics or FOptions.Todos) then
   begin

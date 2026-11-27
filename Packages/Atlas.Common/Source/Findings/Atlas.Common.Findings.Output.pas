@@ -44,9 +44,14 @@ type
     /// <summary>Für SARIF (#97): alle Treffer mit Fingerabdrücken und Zustand gegenüber der Baseline, samt der
     /// unveränderten und nicht mehr gefundenen. Leer = SARIF nimmt Findings ohne Fingerabdrücke.</summary>
     Marks: TArray<TBaselineMark>;
+    /// <summary>Datei mit Pfaden und Treffern, ohne Marks.</summary>
+    class function Create(const APath, AFullPath: string; const AFindings: TArray<TRuleFinding>): TCheckedFile;
+      static;
   end;
 
-  TFindingsFormat = (Text, Json, Sarif);
+  /// <summary>GitHub: Workflow-Befehle für Anmerkungen im Pull Request (#1432, Atlas.Common.Findings.GitHub; nur
+  /// für --check, die übrigen Berichte geben dann Text aus).</summary>
+  TFindingsFormat = (Text, Json, Sarif, GitHub);
 
   /// <summary>Ab welchem Schweregrad der Linter mit Exit-Code 1 endet (--fail-on).</summary>
   TFailOn = (Error, Warning, Never);
@@ -111,6 +116,17 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TCheckedFile }
+
+class function TCheckedFile.Create(const APath, AFullPath: string; const AFindings: TArray<TRuleFinding>):
+  TCheckedFile;
+begin
+  Result := Default(TCheckedFile);
+  Result.Path := APath;
+  Result.FullPath := AFullPath;
+  Result.Findings := AFindings;
+end;
+
 { TFindingsOutput }
 
 class function TFindingsOutput.TryParseFormat(const AText: string; out AFormat: TFindingsFormat): Boolean;
@@ -130,6 +146,10 @@ begin
   else if mValue = 'sarif' then
   begin
     AFormat := TFindingsFormat.Sarif;
+  end
+  else if mValue = 'github' then
+  begin
+    AFormat := TFindingsFormat.GitHub;
   end
   else
   begin

@@ -1,0 +1,31 @@
+# Beispiel (#1432): Befunde von Atlas als Anmerkungen direkt an den Zeilen im
+# Pull Request, ohne GitHub Code Scanning (SARIF braucht bei privaten Repos
+# GitHub Advanced Security und security-events: write). Jede Zeile
+# ::error/::warning/::notice der Ausgabe wird zur Anmerkung; GitHub zeigt je
+# Schritt aber nur wenige je Art. Die vollständige Übersicht steht deshalb in
+# der Zusammenfassung des Jobs ($GITHUB_STEP_SUMMARY, die Atlas selbst schreibt).
+# Anpassen: Projektdatei und Ort von AtlasServer.exe (siehe Release, #83).
+name: Atlas-Befunde
+
+on:
+  pull_request:
+
+jobs:
+  atlas:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # --changed-lines braucht die Merge-Base mit dem Zielbranch.
+          fetch-depth: 0
+      - name: AtlasServer laden
+        shell: pwsh
+        run: gh release download --repo xKnockOut/Atlas-IDE-Expert --pattern AtlasServer.exe
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Prüfen
+        shell: pwsh
+        # Nur Befunde in geänderten Zeilen; Exit-Code 1 ab einem Fehler (--fail-on warning auch bei Warnungen).
+        run: |
+          .\AtlasServer.exe --check App.dproj --format github --source-root . `
+            --changed origin/${{ github.base_ref }} --changed-lines --fail-on error

@@ -67,7 +67,7 @@ Back to the [README](../../../README.md)
 |---|---|
 | `--no-index` | check without the symbol index (faster, but rules that need other units stay silent) |
 | `--index-cache <folder>` | folder for the index cache instead of `%LOCALAPPDATA%\Atlas`, e.g. a cache folder kept between CI runs |
-| `--format <kind>` | `text` (default, like compiler messages), `json`, `sarif` (SARIF 2.1.0 for GitHub code scanning) |
+| `--format <kind>` | `text` (default, like compiler messages), `json`, `sarif` (SARIF 2.1.0 for GitHub code scanning), `github` (annotations as workflow commands `::error`/`::warning`/`::notice` directly in the pull request, without code scanning; with `GITHUB_STEP_SUMMARY` also a job summary, #1432) |
 | `--output <file>` | result into a file instead of stdout |
 | `--rules <a,b>` | only these rules, e.g. `syntax` |
 | `--units <a,b>` | only these units: name or glob pattern for paths |

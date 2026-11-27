@@ -181,6 +181,7 @@
         <DCCReference Include="Source\Findings\Atlas.Common.Findings.BulkFix.pas"/>
         <DCCReference Include="Source\Findings\Atlas.Common.Findings.Filter.pas"/>
         <DCCReference Include="Source\Findings\Atlas.Common.Findings.Output.pas"/>
+        <DCCReference Include="Source\Findings\Atlas.Common.Findings.GitHub.pas"/>
         <DCCReference Include="Source\Formatting\Atlas.Common.Formatting.Outcome.pas"/>
         <DCCReference Include="Source\Formatting\Atlas.Common.Formatting.Output.pas"/>
         <DCCReference Include="Source\Findings\Atlas.Common.Findings.Baseline.pas"/>

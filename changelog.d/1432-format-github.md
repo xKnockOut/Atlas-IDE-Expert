@@ -1,0 +1,2 @@
+### Neu
+- `--check --format github` (#1432): Befunde als GitHub-Workflow-Befehle (`::error`, `::warning`, `::notice` mit Datei, Zeile, Spalte und Regel als Titel), die GitHub als Anmerkungen direkt an den Zeilen im Pull Request zeigt, ohne Code Scanning. Ist `GITHUB_STEP_SUMMARY` gesetzt, hängt Atlas eine Zusammenfassung an: Anzahl je Regel und Schweregrad und die ersten 100 Befunde mit Link auf die Zeile. Baseline, `--changed-lines`, `--fail-on` und Exit-Code wie bei den übrigen Formaten; Beispiel in `docs/Beispiele/github-action-annotations.yml`.

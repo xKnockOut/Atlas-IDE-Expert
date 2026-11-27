@@ -11,7 +11,7 @@
 //
 // Linter-Modus ohne Editor (#95):
 //   --check <Ziel>        .dproj, Ordner oder einzelne Datei prüfen
-//   --format <Art>        text (Standard), json, sarif
+//   --format <Art>        text (Standard), json, sarif, github (Workflow-Befehle, #1432)
 //   --output <Datei>      Ergebnis in Datei statt auf stdout
 //   --rules <a,b>         nur diese Regeln
 //   --units <a,b>         nur diese Units (Name oder Glob-Muster für Pfade)

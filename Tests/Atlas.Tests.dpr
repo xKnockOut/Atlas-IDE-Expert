@@ -611,6 +611,7 @@ uses
   Atlas.Common.Findings.Contract.Tests in 'Common\Findings\Atlas.Common.Findings.Contract.Tests.pas',
   Rules.Contract.Tests in 'Application\Features\Rules\Rules.Contract.Tests.pas',
   Atlas.Common.Findings.Output.Tests in 'Common\Findings\Atlas.Common.Findings.Output.Tests.pas',
+  Atlas.Common.Findings.GitHub.Tests in 'Common\Findings\Atlas.Common.Findings.GitHub.Tests.pas',
   Atlas.Common.Findings.Filter.Tests in 'Common\Findings\Atlas.Common.Findings.Filter.Tests.pas',
   Rules.Checker.Tests in 'Application\Features\Rules\Rules.Checker.Tests.pas',
   Rules.Prompt.Tests in 'Application\Features\Rules\Rules.Prompt.Tests.pas',

@@ -143,6 +143,7 @@ contains
   Atlas.Common.Findings.BulkFix in 'Source\Findings\Atlas.Common.Findings.BulkFix.pas',
   Atlas.Common.Findings.Filter in 'Source\Findings\Atlas.Common.Findings.Filter.pas',
   Atlas.Common.Findings.Output in 'Source\Findings\Atlas.Common.Findings.Output.pas',
+  Atlas.Common.Findings.GitHub in 'Source\Findings\Atlas.Common.Findings.GitHub.pas',
   Atlas.Common.Formatting.Outcome in 'Source\Formatting\Atlas.Common.Formatting.Outcome.pas',
   Atlas.Common.Formatting.Output in 'Source\Formatting\Atlas.Common.Formatting.Output.pas',
   Atlas.Common.Findings.Baseline in 'Source\Findings\Atlas.Common.Findings.Baseline.pas',

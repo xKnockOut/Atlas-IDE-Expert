@@ -46,7 +46,7 @@ Ein Prüflauf über die Atlas-Quellen selbst (1.917 Units, Linux-Bau) brauchte 9
 |---|---|
 | `--no-index` | ohne Symbolindex prüfen (schneller, aber Regeln, die andere Units brauchen, schweigen) |
 | `--index-cache <Ordner>` | Ordner für den Index-Cache statt `%LOCALAPPDATA%\Atlas`, z. B. ein Cache-Ordner, der zwischen CI-Läufen erhalten bleibt |
-| `--format <Art>` | `text` (Standard, wie Compilermeldungen), `json`, `sarif` (SARIF 2.1.0 für GitHub Code Scanning) |
+| `--format <Art>` | `text` (Standard, wie Compilermeldungen), `json`, `sarif` (SARIF 2.1.0 für GitHub Code Scanning), `github` (Anmerkungen als Workflow-Befehle `::error`/`::warning`/`::notice` direkt im Pull Request, ohne Code Scanning; mit `GITHUB_STEP_SUMMARY` zusätzlich eine Zusammenfassung des Jobs, #1432) |
 | `--output <Datei>` | Ergebnis in eine Datei statt auf stdout |
 | `--rules <a,b>` | nur diese Regeln, z. B. `syntax` |
 | `--units <a,b>` | nur diese Units: Name oder Glob-Muster für Pfade |

@@ -77,10 +77,7 @@ end;
 function MakeFile(const APath: string; const AFindings: TArray<TRuleFinding>;
   const AFullPath: string): TCheckedFile; overload;
 begin
-  Result := Default(TCheckedFile);
-  Result.Path := APath;
-  Result.FullPath := AFullPath;
-  Result.Findings := AFindings;
+  Result := TCheckedFile.Create(APath, AFullPath, AFindings);
 end;
 
 function MakeFile(const APath: string; const AFindings: TArray<TRuleFinding>): TCheckedFile; overload;

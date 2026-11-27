@@ -635,6 +635,7 @@
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Contract.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Rules.Contract.Tests.pas"/>
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Output.Tests.pas"/>
+        <DCCReference Include="Common\Findings\Atlas.Common.Findings.GitHub.Tests.pas"/>
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Filter.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Rules.Checker.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Rules.Prompt.Tests.pas"/>
