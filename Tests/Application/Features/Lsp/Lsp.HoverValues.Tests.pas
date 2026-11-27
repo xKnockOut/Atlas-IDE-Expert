@@ -44,6 +44,11 @@ type
     /// <summary>Einzeilige, offene und Klassen-Deklarationen bleiben beim Text der ersten Zeile.</summary>
     [Test]
     procedure KeepsSingleLineDeclarations;
+    /// <summary>Beginnt die Stelle mitten in einer Klammer (Aufzählungswert NoChange in „(None, NoChange, …);“),
+    /// schließt die erste Zeile eine fremde Klammer: nichts zusammenziehen, statt bis zur nächsten Klammer weiter
+    /// unten zu lesen.</summary>
+    [Test]
+    procedure IgnoresClosingBracketOpenedBefore;
   end;
 
 implementation
@@ -256,6 +261,25 @@ begin
   Assert.IsTrue(mResult.EndsWith(', …);'), mResult);
   Assert.IsTrue(Length(mResult) <= 400, mResult);
   Assert.IsFalse(mResult.Contains('vWert100'), mResult);
+end;
+
+procedure TLspHoverValuesTests.IgnoresClosingBracketOpenedBefore;
+var
+  mLines: TArray<string>;
+  mResult: string;
+begin
+  // Wie Atlas.Core.Assistants.Log: dahinter ein Record und eine Klasse mit einer Klammer in einer späteren Zeile.
+  mLines := TArray<string>.Create(
+    '  TBlock = (None, NoChange, AlreadyReverted);',
+    '  TEintrag = record',
+    '    Id: Integer;',
+    '  end;',
+    '  TLog = class',
+    '    procedure SetEnabled(AValue: Boolean);',
+    '  end;');
+  Assert.IsFalse(THoverValues.SpannedDeclaration(mLines, 0, 18, mResult), mResult);
+  Assert.AreEqual('', mResult);
+  mLines := nil;
 end;
 
 procedure TLspHoverValuesTests.KeepsSingleLineDeclarations;
