@@ -912,6 +912,25 @@ begin
   end;
 end;
 
+/// <summary>Gilt ACondition immer, wenn es keine Konsole gibt? Ja bei "not IsConsole" allein oder als Teil eines
+/// "or"; "not IsConsole and X" gilt ohne Konsole nur zusammen mit X.</summary>
+function ExitsIfNoConsole(ACondition: TSyntaxNode): Boolean;
+var
+  mNode: TSyntaxNode;
+begin
+  mNode := ACondition;
+  while (mNode.Kind = TSyntaxKind.ParenExpr) and (mNode.ChildCount = 1) do
+  begin
+    mNode := mNode[0];
+  end;
+  if (mNode.Kind = TSyntaxKind.BinaryExpr) and SameText(mNode.Name, 'or') and (mNode.ChildCount = 2) then
+  begin
+    Exit(ExitsIfNoConsole(mNode[0]) or ExitsIfNoConsole(mNode[1]));
+  end;
+  Result := (mNode.Kind = TSyntaxKind.UnaryExpr) and SameText(mNode.Name, 'not') and (mNode.ChildCount = 1) and
+    (mNode[0].Kind = TSyntaxKind.Identifier) and SameText(mNode[0].Name, 'IsConsole');
+end;
+
 /// <summary>Verlässt ein früheres "if … IsConsole … then Exit" der Routine ARoutine vor ANode die Routine
 /// (if not IsConsole then Exit; WriteLn(S))?</summary>
 function ExitsWithoutConsole(ARoutine, ANode: TSyntaxNode): Boolean;
@@ -922,7 +941,7 @@ begin
   for mNode in TSyntaxNode.PreOrder(ARoutine) do
   begin
     if (mNode.Kind <> TSyntaxKind.IfStatement) or (mNode.ChildCount < 2) or
-      (mNode.EndOffset > ANode.StartOffset) or not MentionsIsConsole(mNode[0]) then
+      (mNode.EndOffset > ANode.StartOffset) or not ExitsIfNoConsole(mNode[0]) then
     begin
       Continue;
     end;
