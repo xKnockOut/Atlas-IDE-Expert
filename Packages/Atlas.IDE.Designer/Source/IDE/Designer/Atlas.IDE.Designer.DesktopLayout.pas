@@ -14,6 +14,14 @@
 //   englisch und wird über TAtlasDesktopLayouts.DisplayName zugeordnet.
 // - Debuggen: IOTADebuggerServices.ProcessCount; Projekt laden: zwischen
 //   ofnBeginProjectGroupOpen und ofnEndProjectGroupOpen.
+// - Build: Solange TAtlasIdeBuildIdleGate keine Ruhe meldet, erhebt der Takt
+//   nichts. Beim Erzeugen lässt die IDE Nachrichten über ihren
+//   Fortschrittsdialog laufen, der Takt käme sonst mitten im Build dran.
+// - Das Auswahlfeld (Layouts, aktives Layout) und die Registry werden nur
+//   gelesen, wenn TAtlasDesktopSwitch.Due eine Entscheidung verlangt, also
+//   einmal je Wechsel der Ansicht, nicht alle 100 ms. Jeder Eintrag kostet
+//   eine Fensternachricht an das Auswahlfeld; mitten im Erzeugen hing der
+//   Takt daran über eine Sekunde.
 // - Speichern: Die IDE speichert ein Layout nur über ihren Dialog
 //   (ViewSaveDesktopCommand); der Befehl öffnet ihn.
 // Nur im Hauptthread.
@@ -53,6 +61,7 @@ uses
   ToolsAPI,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.IDE.Build.IdleGate,
   Atlas.Core.Designer.DesktopSwitch,
   Atlas.UI.Designer.ViewStrings,
   Atlas.IDE.Foundation.DesignerView,
@@ -85,6 +94,8 @@ type
     FOnMessage: TProc<string>;
     FSwitch: TAtlasDesktopSwitch;
     FTimer: TTimer;
+    /// <summary>Ruhe vor und nach Builds: mitten im Build ruht der Takt.</summary>
+    FGate: TAtlasIdeBuildIdleGate;
     /// <summary>Offene Formular-Designer: ohne Designer ruht der Takt (vorher alle 100 ms, auch ohne
     /// Projekt).</summary>
     FOpen: TAtlasDesignerOpenWatch;
@@ -98,6 +109,11 @@ type
     procedure TimerTick(Sender: TObject);
     procedure OpenChanged;
     procedure Tick;
+    /// <summary>Was die IDE zeigt, ohne das Auswahlfeld: Ansicht, Zeit, Debuggen, Projektladen, Build.</summary>
+    function CheapState(const AOptions: TAtlasDesktopSwitchOptions): TAtlasDesktopState;
+    /// <summary>Layouts aus dem Auswahlfeld in AState eintragen; False ohne Auswahlfeld.</summary>
+    function ReadLayouts(const AOptions: TAtlasDesktopSwitchOptions; var AState: TAtlasDesktopState;
+      out ACombo: TCustomComboBox): Boolean;
     function DefaultLayout(ANow: UInt64): string;
     class procedure Load(ACombo: TCustomComboBox; const AAction: TAtlasDesktopAction); static;
   public
@@ -279,6 +295,7 @@ begin
   inherited Create;
   FOnMessage := AOnMessage;
   FSwitch := TAtlasDesktopSwitch.Create;
+  FGate := TAtlasIdeBuildIdleGate.Create(TAtlasFeature.DesignerBar);
   FNotifierIndex := -1;
   if Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
@@ -321,6 +338,7 @@ begin
     end;
     FNotifier := nil;
   end;
+  FGate.Free;
   FSwitch.Free;
   FOnMessage := nil;
   inherited Destroy;
@@ -331,6 +349,47 @@ begin
   TAtlasGuard.Run(TAtlasFeature.DesignerBar, Tick);
 end;
 
+function TRunner.CheapState(const AOptions: TAtlasDesktopSwitchOptions): TAtlasDesktopState;
+begin
+  Result := Default(TAtlasDesktopState);
+  if not AOptions.Enabled or (AOptions.DesignerLayout = '') then
+  begin
+    Exit;
+  end;
+  Result.Building := not FGate.Idle;
+  if Result.Building then
+  begin
+    Exit;
+  end;
+  Result.View := CurrentView;
+  Result.Ticks := GetTickCount64;
+  Result.Debugging := Debugging;
+  Result.ProjectLoading := FProjectLoading;
+end;
+
+function TRunner.ReadLayouts(const AOptions: TAtlasDesktopSwitchOptions; var AState: TAtlasDesktopState;
+  out ACombo: TCustomComboBox): Boolean;
+begin
+  ACombo := DesktopCombo;
+  Result := ACombo <> nil;
+  if not Result then
+  begin
+    if not FComboMissingLogged then
+    begin
+      FComboMissingLogged := True;
+      TAtlasGuard.Log('Designer layout: desktop combo box of the IDE not found');
+    end;
+    Exit;
+  end;
+  // Text ist in TCustomComboBox protected (E2362): über die Zugriffsklasse.
+  AState.CurrentLayout := TComboAccess(ACombo).Text;
+  AState.Layouts := ItemsOf(ACombo);
+  if AOptions.ReturnTo = TAtlasDesktopReturn.IdeDefault then
+  begin
+    AState.DefaultLayout := TAtlasDesktopLayouts.DisplayName(AState.Layouts, DefaultLayout(AState.Ticks));
+  end;
+end;
+
 procedure TRunner.Tick;
 var
   mOptions: TAtlasDesktopSwitchOptions;
@@ -339,33 +398,13 @@ var
   mAction: TAtlasDesktopAction;
 begin
   mOptions := CurrentOptions;
-  mState := Default(TAtlasDesktopState);
-  mCombo := nil;
-  if mOptions.Enabled and (mOptions.DesignerLayout <> '') then
+  mState := CheapState(mOptions);
+  // Das Auswahlfeld nur lesen, wenn jetzt entschieden wird (einmal je Wechsel der Ansicht).
+  if not FSwitch.Due(mOptions, mState) or not ReadLayouts(mOptions, mState, mCombo) then
   begin
-    mCombo := DesktopCombo;
-    if mCombo = nil then
-    begin
-      if not FComboMissingLogged then
-      begin
-        FComboMissingLogged := True;
-        TAtlasGuard.Log('Designer layout: desktop combo box of the IDE not found');
-      end;
-      Exit;
-    end;
-    mState.View := CurrentView;
-    mState.Ticks := GetTickCount64;
-    mState.Debugging := Debugging;
-    mState.ProjectLoading := FProjectLoading;
-    // Text ist in TCustomComboBox protected (E2362): über die Zugriffsklasse.
-    mState.CurrentLayout := TComboAccess(mCombo).Text;
-    mState.Layouts := ItemsOf(mCombo);
-    if mOptions.ReturnTo = TAtlasDesktopReturn.IdeDefault then
-    begin
-      mState.DefaultLayout := TAtlasDesktopLayouts.DisplayName(mState.Layouts, DefaultLayout(mState.Ticks));
-    end;
+    Exit;
   end;
-  mAction := FSwitch.Step(mOptions, mState);
+  mAction := FSwitch.Decide(mOptions, mState);
   if mAction.Kind = TAtlasDesktopActionKind.Load then
   begin
     Load(mCombo, mAction);
