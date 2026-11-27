@@ -261,6 +261,45 @@ begin
   AServer.Outgoing := mOutgoing;
 end;
 
+/// <summary>Letzte Nachrichten und Absturzfälle (#1355) am Dispatcher; der Aufrufer gibt die Absturzfälle frei.
+/// </summary>
+function AttachCrashCases(ADispatcher: TJsonRpcDispatcher; const AServices: TMcpServices; const ALogger: ILogger):
+  TCoreCrashCases;
+var
+  mRecent: IJsonRpcRecentMessages;
+begin
+  mRecent := TJsonRpcRecentMessages.Create;
+  ADispatcher.Recent := mRecent;
+  Result := NewCrashCases(ALogger, mRecent, AServices.Root);
+  ADispatcher.OnRequestFailed := RequestFailedOf(Result, AServices.Workspace);
+end;
+
+/// <summary>Statusdatei (#1901): Ordner des Servers, laufende Werkzeuge, server.statusFile aus den Einstellungen.
+/// </summary>
+procedure DescribeActivity(ADispatcher: TJsonRpcDispatcher; const AServices: TMcpServices);
+begin
+  TServerActivity.Shared.Describe(TServerStatusEntry.cKindMcp, '', AServices.Root);
+  TServerActivity.Shared.Enabled := AServices.Workspace.Configuration.Settings.ServerStatusFile;
+  ADispatcher.Observer := TServerActivityObserver.Create(TServerActivity.Shared, nil);
+end;
+
+/// <summary>Hinweis an den Client und Aufrufstatistik; die Statistik vor den Werkzeugen, damit AddTool jedes bekannt
+/// macht.</summary>
+procedure PrepareServer(AServer: TMcpServer; const AServices: TMcpServices; AStatistics: TMcpStatistics);
+begin
+  AServer.Instructions := cTexts[TMcpHostText.Instructions].Fmt([AServices.Root]);
+  AServer.Statistics := AStatistics;
+end;
+
+/// <summary>Laden der Gruppe, mit index.projectGroup auch der übrigen Projekte; im Hintergrund (#3099), damit
+/// initialize nicht auf die Projekte wartet.</summary>
+function NewLoading(const AServices: TMcpServices; const AGlobalSettings: string; const ALogger: ILogger):
+  TMcpLoading;
+begin
+  Result := TMcpLoading.Create(GroupLoadOf(AServices.Group, AGlobalSettings), GroupClientOf(AServices.Group),
+    ALogger);
+end;
+
 class function TMcpShell.Run(const AOptions: TCommandLineOptions): Integer;
 var
   mLogger: ILogger;
@@ -271,7 +310,6 @@ var
   mPrompts: TMcpPrompts;
   mDispatcher: TJsonRpcDispatcher;
   mConnection: TJsonRpcConnection;
-  mRecent: IJsonRpcRecentMessages;
   mCrashCases: TCoreCrashCases;
   mStatistics: TMcpStatistics;
   mLoading: TMcpLoading;
@@ -293,22 +331,11 @@ begin
     mDispatcher := TJsonRpcDispatcher.Create;
     mConnection := TJsonRpcConnection.Create(mTransport, mDispatcher);
     ConnectOutgoing(mTransport, mConnection, mServer);
-    mRecent := TJsonRpcRecentMessages.Create;
-    mDispatcher.Recent := mRecent;
-    mCrashCases := NewCrashCases(mLogger, mRecent, mServices.Root);
-    mDispatcher.OnRequestFailed := RequestFailedOf(mCrashCases, mServices.Workspace);
-    // Statusdatei (#1901): Ordner des Servers, laufende Werkzeuge, server.statusFile aus den Einstellungen.
-    TServerActivity.Shared.Describe(TServerStatusEntry.cKindMcp, '', mServices.Root);
-    TServerActivity.Shared.Enabled := mServices.Workspace.Configuration.Settings.ServerStatusFile;
-    mDispatcher.Observer := TServerActivityObserver.Create(TServerActivity.Shared, nil);
+    mCrashCases := AttachCrashCases(mDispatcher, mServices, mLogger);
+    DescribeActivity(mDispatcher, mServices);
     mStatistics := StartStatistics(mServices);
-    mServer.Instructions := cTexts[TMcpHostText.Instructions].Fmt([mServices.Root]);
-    // Vor den Werkzeugen, damit AddTool jedes bekannt macht.
-    mServer.Statistics := mStatistics;
-    // Mit index.projectGroup auch die übrigen Projekte der Gruppe; im Hintergrund (#3099), damit initialize nicht
-    // auf die Projekte wartet.
-    mLoading := TMcpLoading.Create(GroupLoadOf(mServices.Group, mGlobalSettings), GroupClientOf(mServices.Group),
-      mLogger);
+    PrepareServer(mServer, mServices, mStatistics);
+    mLoading := NewLoading(mServices, mGlobalSettings, mLogger);
     ConfigureServer(mServer, mServices, AOptions.Restricted, mLogger, EnsureLoadedOf(mLoading));
     mServer.OnClientInfo := ClientInfoOf(mLoading, mCrashCases, mStatistics);
     mPrompts := NewPrompts(mServer, mServices);
