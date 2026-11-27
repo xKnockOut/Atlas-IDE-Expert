@@ -67,11 +67,11 @@
         </DelphiCompile>
         <DCCReference Include="Source\Core\Core.Bootstrap.pas"/>
         <DCCReference Include="Source\Shell\Shell.Monitor.pas"/>
-        <DCCReference Include="Source\Features\Monitor\Monitor.MainForm.pas"/>
-        <DCCReference Include="Source\Features\Monitor\Monitor.CheckOptions.pas"/>
-        <DCCReference Include="Source\Features\Monitor\Monitor.CheckPage.pas"/>
-        <DCCReference Include="Source\Features\Monitor\Monitor.ReportPage.pas"/>
-        <DCCReference Include="Source\Features\Monitor\Monitor.AssistantsPage.pas"/>
+        <DCCReference Include="Source\Features\Monitor\Monitor.Hosting.MainForm.pas"/>
+        <DCCReference Include="Source\Features\Monitor\Monitor.Hosting.CheckOptions.pas"/>
+        <DCCReference Include="Source\Features\Monitor\Monitor.Hosting.CheckPage.pas"/>
+        <DCCReference Include="Source\Features\Monitor\Monitor.Hosting.ReportPage.pas"/>
+        <DCCReference Include="Source\Features\Monitor\Monitor.Hosting.AssistantsPage.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

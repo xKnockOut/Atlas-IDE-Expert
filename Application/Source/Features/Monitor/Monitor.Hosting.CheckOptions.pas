@@ -1,4 +1,4 @@
-﻿unit Monitor.CheckOptions;
+﻿unit Monitor.Hosting.CheckOptions;
 
 // Hosted-Feature Monitor: Spalte „Optionen“ des Reiters „Prüfen“ mit Befehl, Schwere, Regeln,
 // Profil, Auswahl der Dateien, Baseline und den Werten einzelner Befehle (Sammelkorrektur, Abfrage, Architektur-

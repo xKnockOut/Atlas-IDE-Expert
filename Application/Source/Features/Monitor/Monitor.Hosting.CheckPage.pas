@@ -1,7 +1,7 @@
-﻿unit Monitor.CheckPage;
+﻿unit Monitor.Hosting.CheckPage;
 
 // Hosted-Feature Monitor: Reiter „Prüfen“ für Läufe von AtlasServer ohne IDE über mehrere Ziele.
-// Oben die Zielliste (an/aus, Art, Stand je Ziel), links die Optionen (Monitor.CheckOptions), rechts das
+// Oben die Zielliste (an/aus, Art, Stand je Ziel), links die Optionen (Monitor.Hosting.CheckOptions), rechts das
 // Ergebnis: Befundliste mit Filter (Doppelklick öffnet die Stelle im Editor bzw. im zugeordneten Programm) oder der
 // Text des Befehls; HTML-Seiten zeigt der Reiter „Bericht“. Je Ziel startet ein unsichtbarer Kindprozess
 // (TMonitorChildProcess), einer nach dem anderen; Abbrechen beendet ihn, beim Schließen läuft keiner weiter. Den
@@ -23,8 +23,8 @@ uses
   Atlas.Common.Monitor.Targets,
   Atlas.Common.Monitor.Runs,
   Atlas.Windows.Monitor.ChildProcess,
-  Monitor.CheckOptions,
-  Monitor.ReportPage;
+  Monitor.Hosting.CheckOptions,
+  Monitor.Hosting.ReportPage;
 
 type
   TMonitorConfirm = reference to function(const AText: string): Boolean;
