@@ -233,9 +233,11 @@ Where the numbers are:
 | `get_server_status` | Section of the session (Markdown) or key `mcp` (JSON) |
 | `%LOCALAPPDATA%\Atlas\Status\server-<pid>.json` | Section `mcp` of the MCP process's status file, renewed every 5 s (for AtlasMonitor and the "Atlas server" window) |
 | `%LOCALAPPDATA%\Atlas\Status\mcp-stats.jsonl` | History: on exit one line per tool (also without calls) and per called resource or prompt with time, client, project folder and numbers, without arguments; lines older than 30 days are dropped on the next append |
+| AtlasMonitor, tab "AI assistants" | All running MCP processes: on top per session client, process, start, project, calls and errors, below one table of all tools, resources and prompts with the same columns as `delphi://stats` and the last failed call; conspicuous error rates in red, on the right the details of the selected row with arguments and message in plain text. Renewed every 2 s |
+| IDE window "Atlas server", tab "AI assistants" | The same table in the IDE (switchable with `server.statusWindow`), renewed every 5 s while the window is visible; at the bottom the full last failed call of the selected row. Only the status files are read, the IDE server need not run for it |
 | Diagnostic package of the server | `server/mcp-<n>.json` per MCP process at the same folder; anonymous without paths, names and arguments |
 
-Nothing of this goes to the network. What the assistant does outside Atlas (its own file search) is not visible to the server. With `"mcp": {"statistics": false}` in `atlas.json` nothing is counted and nothing is written; the setting applies from the next start of the MCP process.
+Nothing of this goes to the network. What the assistant does outside Atlas (its own file search) is not visible to the server. With `"mcp": {"statistics": false}` in `atlas.json` nothing is counted and nothing is written; the setting applies from the next start of the MCP process. The tabs "AI assistants" then list such a process only as "does not count calls".
 
 ## Developing and testing tools
 

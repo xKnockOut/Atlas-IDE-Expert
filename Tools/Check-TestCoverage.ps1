@@ -89,6 +89,7 @@ $Exempt = @{
     'Monitor.MainForm'                            = 'VCL-Fenster und Symbol im Infobereich; Regeln und Texte testet Atlas.Common.Monitor.*'
     'Monitor.CheckOptions'                        = 'VCL-Spalte Optionen des Reiters Prüfen; Befehle und Stand testet Atlas.Common.Monitor.*'
     'Monitor.CheckPage'                           = 'VCL-Reiter Prüfen; Aufrufe, Läufe und Ergebnisse testet Atlas.Common.Monitor.*'
+    'Monitor.AssistantsPage'                      = 'VCL-Reiter KI-Assistenten; Sitzungen, Zeilen und Texte testet Atlas.Common.Monitor.Assistants'
     'Monitor.ReportPage'                          = 'VCL-Reiter Bericht mit eingebettetem Browser (WebView2), ohne eigene Logik'
     'Atlas.Windows.Monitor.System'                      = 'Prozesse, Registry (Autostart) und ShellExecute des Systems'
     'Atlas.Windows.Monitor.ChildProcess'                = 'Kindprozess mit CreateProcess und Job-Objekt des Systems'

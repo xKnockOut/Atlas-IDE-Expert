@@ -71,6 +71,7 @@
         <DCCReference Include="Source\Features\Monitor\Monitor.CheckOptions.pas"/>
         <DCCReference Include="Source\Features\Monitor\Monitor.CheckPage.pas"/>
         <DCCReference Include="Source\Features\Monitor\Monitor.ReportPage.pas"/>
+        <DCCReference Include="Source\Features\Monitor\Monitor.AssistantsPage.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
