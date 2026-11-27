@@ -101,6 +101,14 @@ type
     /// (Fehlalarm in Alcinoe und DMVCFramework).</summary>
     [Test]
     procedure KnowsEscapedNames;
+    /// <summary>#2811: Ein Parameter vom Typ TPanel meint den eingebetteten TAussen.TPanel der Methodenklasse, nicht
+    /// den gleichnamigen Typ aus uses.</summary>
+    [Test]
+    procedure ParameterUsesNestedTypeOfMethodClass;
+    /// <summary>#2811: Ein Feld im interface-Teil wird mit dem uses des interface-Teils aufgelöst, auch wenn ein
+    /// Methodenrumpf fragt und das implementation-uses einen gleichnamigen Typ hat.</summary>
+    [Test]
+    procedure FieldTypeUsesUsesOfItsSection;
   end;
 
 implementation
@@ -922,6 +930,84 @@ begin
     'begin'#10'  Nimm('#10'    function(AWert: Integer): Integer'#10'    var'#10'      mInnen: Integer;'#10 +
     '    begin'#10'      mInnen := AWert + mAussen + FZahl;'#10'      Melde(mInnen);'#10 +
     '      Result := ResultsOfProject;'#10'    end);'#10'end;'#10'end.'));
+end;
+
+procedure TUnresolvedNamesTests.ParameterUsesNestedTypeOfMethodClass;
+begin
+  // Wie Atlas.IDE.Editor.GutterColumn: TAtlasIdeGutterColumn.TPanel neben Vcl.ExtCtrls.TPanel.
+  FIndex.AddUnit(TIndexExtractor.ExtractText(
+    'unit Fremd;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TPanel = record'#10 +
+    '    Caption: string;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'end.', 'C:\Lib\Fremd.pas', nil));
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'uses Fremd;'#10 +
+    'type'#10 +
+    '  TSpalte = class'#10 +
+    '  public type'#10 +
+    '    TPanel = record'#10 +
+    '      Title: string;'#10 +
+    '    end;'#10 +
+    '  public'#10 +
+    '    procedure Fill(var APanel: TPanel);'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TSpalte.Fill(var APanel: TPanel);'#10 +
+    'var'#10 +
+    '  mPanel: TPanel;'#10 +
+    'begin'#10 +
+    '  APanel.Title := ''Titel'';'#10 +
+    '  mPanel.Title := APanel.Title;'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.FieldTypeUsesUsesOfItsSection;
+begin
+  // Wie Atlas.UI.Editor.MinimapLayers: FBitmap: TBitmap im interface-Teil mit Vcl.Graphics, Winapi.Windows (TBitmap =
+  // tagBITMAP) nur im implementation-uses.
+  FIndex.AddUnit(TIndexExtractor.ExtractText(
+    'unit Grafik;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TBild = record'#10 +
+    '    Width: Integer;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'end.', 'C:\Lib\Grafik.pas', nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(
+    'unit Fenster;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TBild = record'#10 +
+    '    bmType: Integer;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'end.', 'C:\Lib\Fenster.pas', nil));
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'uses Grafik;'#10 +
+    'type'#10 +
+    '  TAnsicht = class'#10 +
+    '  private'#10 +
+    '    FBild: TBild;'#10 +
+    '  public'#10 +
+    '    procedure Zeige;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'uses Fenster;'#10 +
+    'procedure TAnsicht.Zeige;'#10 +
+    'begin'#10 +
+    '  FBild.Width := 1;'#10 +
+    'end;'#10 +
+    'end.'));
 end;
 
 initialization

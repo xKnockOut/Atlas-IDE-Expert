@@ -8,6 +8,7 @@ interface
 
 uses
   System.Generics.Collections,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.Contract;
@@ -90,6 +91,9 @@ type
     property Current: TUnitIndex read FCurrent;
     property Offset: Integer read FOffset write FOffset;
     property InImplementation: Boolean read FInImplementation;
+    /// <summary>Liegt APos (im aktuellen Baum) außerhalb des interface-Teils, sieht dort also auch das uses des
+    /// implementation-Teils (#2811)? Ohne Baum wie InImplementation.</summary>
+    function InImplementationAt(const APos: TTextPosition): Boolean;
     /// <summary>Schachtelung beim Ableiten von Typen aus Ausdrücken; MoveTo setzt sie zurück.</summary>
     property InferDepth: Integer read FInferDepth write FInferDepth;
     /// <summary>Steigt, wenn die baumbezogenen Zwischenspeicher (Helfer, Vorfahren) nicht mehr gelten.</summary>
@@ -193,6 +197,25 @@ begin
   mSection := ATree.Root.FindChild(TSyntaxKind.InterfaceSection);
   // Programme haben keinen interface-Teil: alles ist "implementation".
   FInImplementation := (mSection = nil) or not TResolverNodes.Contains(mSection, AOffset);
+end;
+
+/// <summary>Liegt A vor B (Zeile, dann Spalte)?</summary>
+function PositionBefore(const A, B: TTextPosition): Boolean;
+begin
+  Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character < B.Character));
+end;
+
+function TResolverPlace.InImplementationAt(const APos: TTextPosition): Boolean;
+var
+  mSection: TSyntaxNode;
+begin
+  if (FTree = nil) or (FTree.Root = nil) then
+  begin
+    Exit(FInImplementation);
+  end;
+  mSection := FTree.Root.FindChild(TSyntaxKind.InterfaceSection);
+  // Wie MoveTo: Programme haben keinen interface-Teil.
+  Result := (mSection = nil) or PositionBefore(APos, mSection.StartPos) or PositionBefore(mSection.EndPos, APos);
 end;
 
 procedure TResolverPlace.MoveToUnit(const AUnit: TUnitIndex);

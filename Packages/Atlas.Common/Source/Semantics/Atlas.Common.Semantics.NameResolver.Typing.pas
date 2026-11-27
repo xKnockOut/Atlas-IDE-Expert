@@ -86,6 +86,10 @@ type
     /// <summary>Im Typ AOuter selbst deklarierter Typ AName, ohne Sichtbarkeitsprüfung (Pfad im
     /// Methodenkopf).</summary>
     function NestedType(const AOuter: TResolvedSymbol; const AName: string; out AResult: TResolvedSymbol): Boolean;
+    /// <summary>Eingebetteter Typ ATypeName der Methodenklasse oder einer ihrer äußeren Klassen für einen Parameter
+    /// bzw. eine lokale Variable ALocal (#2811); False außerhalb von Methoden.</summary>
+    function LocalNestedType(const ALocal: TResolvedSymbol; const ATypeName: string;
+      out AType: TResolvedSymbol): Boolean;
     /// <summary>Im Typ, zu dem AMember gehört, oder einem ihn umgebenden Typ deklarierter Typ ATypeName. Solche
     /// verschachtelten Typen verdecken gleichnamige Typen der Unit-Ebene und aus dem uses (Feld vom Typ
     /// TKarte.TBytes8 neben Typen.TBytes8). False bei Typtext mit Präfix, Typargumenten oder Zeiger.</summary>
@@ -216,8 +220,10 @@ begin
   Result := FUnits.UnitOf(AResolved, mFromUnit);
   if Result then
   begin
+    // Die uses des Abschnitts der Deklaration, nicht der Anfrage (#2811): Ein Feld FBitmap: TBitmap im
+    // interface-Teil sieht Winapi.Windows aus dem implementation-uses nicht, auch wenn ein Methodenrumpf fragt.
     mWithImplementation := (AResolved.Kind = TResolvedKind.Local) or
-      (FPlace.IsCurrentFile(mFromUnit.FileName) and FPlace.InImplementation);
+      (FPlace.IsCurrentFile(mFromUnit.FileName) and FPlace.InImplementationAt(AResolved.Range.StartPos));
     mText := TResolverText.Substitute(TResolverText.FullType(AResolved.TypeName, AResolved.TypeArgs),
       AResolved.Bindings);
     Result := ResolveDeclared(AResolved, mText, mFromUnit, mWithImplementation, AType);
@@ -230,7 +236,7 @@ begin
   // Lokaler type-Abschnitt (procedure P; type TArt = (...); var A: TArt): Wie bei dcc verdeckt der lokale Typ einen
   // gleichnamigen Typ der Unit.
   Result := ((FLocals <> nil) and FLocals.LocalType(AResolved, AText, AType)) or
-    MemberNestedType(AResolved, AText, AType) or
+    MemberNestedType(AResolved, AText, AType) or LocalNestedType(AResolved, AText, AType) or
     FLookup.ResolveTypeText(AText, AFromUnit, AWithImplementation, AType);
 end;
 
@@ -640,6 +646,47 @@ begin
       end;
     end;
     mContainer := Copy(mContainer, 1, LastDelimiter('.', mContainer) - 1);
+  end;
+end;
+
+function TResolverTyping.LocalNestedType(const ALocal: TResolvedSymbol; const ATypeName: string;
+  out AType: TResolvedSymbol): Boolean;
+var
+  mClass: TResolvedSymbol;
+  mOwnerUnit: TUnitIndex;
+  mContainer: string;
+  mPosition: Integer;
+  mSymbol: TIndexSymbol;
+begin
+  Result := False;
+  if (ALocal.Kind <> TResolvedKind.Local) or (ATypeName = '') or (LastDelimiter('.<>^[ ', ATypeName) > 0) then
+  begin
+    Exit;
+  end;
+  // Parameter und lokale Variablen einer Methode (#2811): procedure TAussen.Fill(var APanel: TPanel) meint den
+  // eingebetteten TAussen.TPanel vor einem gleichnamigen Typ aus uses, wie bei dcc. Von der Methodenklasse nach
+  // außen (TAussen.TInnen, dann TAussen).
+  for mClass in MethodClasses do
+  begin
+    if mClass.Builtin or not FUnits.UnitOf(mClass, mOwnerUnit) then
+    begin
+      Continue;
+    end;
+    mContainer := mClass.QualifiedName;
+    while mContainer <> '' do
+    begin
+      for mPosition in mOwnerUnit.SymbolsNamed(ATypeName) do
+      begin
+        mSymbol := mOwnerUnit.Symbols[mPosition];
+        if (mSymbol.Kind in cTypeKinds) and SameText(mSymbol.Container, mContainer) then
+        begin
+          AType := TResolvedSymbol.FromIndex(mOwnerUnit, mSymbol);
+          AType.Bindings := mClass.Bindings;
+          Exit(True);
+        end;
+      end;
+      mContainer := Copy(mContainer, 1, LastDelimiter('.', mContainer) - 1);
+    end;
   end;
 end;
 
