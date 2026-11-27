@@ -29,7 +29,10 @@
 //   alle CostRefreshMs, solange die Marke im interface steht (so folgen
 //   geänderte uses); die Abschnitte liest TAtlasSectionScanner aus dem
 //   Editortext, nur wenn er sich geändert hat. Im implementation-Teil, bei
-//   0 Units und außerhalb von Units kein Feld.
+//   0 Units und außerhalb von Units kein Feld. Baut der Server den
+//   Uses-Graphen des Projekts noch auf (#3075), steht „wird berechnet …“ (ein
+//   bekannter Wert derselben Datei bleibt stehen), und nach CostPendingMs
+//   kommt die nächste Frage.
 // - Abschaltbar mit architecture.enabled (derselbe Uses-Graph); aus schließt
 //   das Fenster und nimmt das Feld weg.
 // Den Server erreicht der Dienst über ARun (Install). Nur im Hauptthread.
@@ -235,6 +238,12 @@ begin
     SetText('', '');
     Exit;
   end;
+  if FCost.Pending then
+  begin
+    SetText(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.InterfaceCostPending),
+      TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.InterfaceCostPendingHint));
+    Exit;
+  end;
   if FCost.RecompileCount = 1 then
   begin
     mText := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.InterfaceCostStatusOne);
@@ -283,7 +292,15 @@ begin
       FAsked := TAtlasTicks.Now;
       if (AAnswer <> nil) and TAtlasInterfaceCostModel.Parse(AAnswer.ToJSON, mCost) then
       begin
-        FCost := mCost;
+        if mCost.Pending then
+        begin
+          // Graph im Aufbau (#3075): bald wieder fragen; ein bekannter Wert dieser Datei bleibt so lange stehen.
+          FAsked := TAtlasUnitRelationsPlan.CostAskedWhilePending(TAtlasTicks.Now);
+        end;
+        if not (mCost.Pending and FKnown) then
+        begin
+          FCost := mCost;
+        end;
         FKnown := True;
       end;
       Show;

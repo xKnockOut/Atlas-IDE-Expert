@@ -2,14 +2,17 @@
 
 // Kosten einer Änderung im interface-Teil (#554), Kern ohne VCL und OTA:
 // - Parse liest die Antwort von atlas.interfaceCost ({"found", "unit",
-//   "file", "recompileCount", "units", "generation"}).
+//   "file", "recompileCount", "units", "generation"}). {"pending": true}
+//   heißt: Der Server baut den Uses-Graphen für das Projekt noch auf
+//   (#3075); Parse liefert dann True mit Pending.
 // - InInterfacePart sagt, ob die Einfügemarke im interface-Teil einer Unit
 //   steht (vom Schlüsselwort interface bis vor implementation, die
 //   interface-uses eingeschlossen). Programme, Packages, Bibliotheken und
 //   Include-Dateien haben keinen. Die Abschnitte liest
 //   TAtlasSectionScanner (#1101) direkt aus dem Editortext.
 // - Visible: Feld in der Statusleiste nur mit build.showInterfaceCost, im
-//   interface-Teil und wenn mindestens eine Unit neu übersetzt wird.
+//   interface-Teil und wenn mindestens eine Unit neu übersetzt wird oder der
+//   Wert noch berechnet wird.
 // - UnitList nennt die ersten Units („A, B, C“) und wie viele es außerdem
 //   sind; die Wörter dazu setzt der Aufrufer (Atlas.Plugin.Localization.Strings).
 
@@ -31,6 +34,8 @@ type
     /// <summary>Die ersten davon nach Name.</summary>
     Units: TArray<string>;
     Generation: Int64;
+    /// <summary>Der Server rechnet noch (Uses-Graph im Aufbau, #3075); die übrigen Felder sind leer.</summary>
+    Pending: Boolean;
   end;
 
   TAtlasInterfaceCostModel = class
@@ -81,6 +86,11 @@ begin
       Exit;
     end;
     mRoot := TJSONObject(mValue);
+    if (mRoot.GetValue('pending') is TJSONBool) and TJSONBool(mRoot.GetValue('pending')).AsBoolean then
+    begin
+      ACost.Pending := True;
+      Exit(True);
+    end;
     if not (mRoot.GetValue('recompileCount') is TJSONNumber) then
     begin
       Exit;
@@ -125,7 +135,7 @@ end;
 class function TAtlasInterfaceCostModel.Visible(AEnabled, AInInterface: Boolean;
   const ACost: TAtlasInterfaceCost): Boolean;
 begin
-  Result := AEnabled and AInInterface and ACost.Found and (ACost.RecompileCount > 0);
+  Result := AEnabled and AInInterface and (ACost.Pending or (ACost.Found and (ACost.RecompileCount > 0)));
 end;
 
 class function TAtlasInterfaceCostModel.UnitList(const ACost: TAtlasInterfaceCost; out AMore: Integer): string;

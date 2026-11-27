@@ -153,7 +153,9 @@ procedure TShellOverviews.CreateUnitViews;
 begin
   // Unit-Beziehungen (#593): Wurzel und Namensräume wie die Architektur; die uses-Analyse der Code-Aktionen
   // entsteht in der Komposition erst später, daher über UsesContextFor.
-  FUnitRelationsGraph := TUsesGraphService.Create(FServices.Index, TUsesGraphOptions.Default);
+  // Je Projekt der Gruppe ein eigener Graph (#3075): Reiterwechsel gleichen nur ab.
+  FUnitRelationsGraph := TUsesGraphService.Create(FServices.Index, TUsesGraphOptions.Default,
+    TUsesGraphService.cProjectCapacity);
   FUnitRelations := TLspUnitRelations.Create(FUnitRelationsGraph, ReadText, FServices.DefinesOf,
     FServices.UsesContextFor, FServices.UnitRelationsOptionsFor);
   // Weg zwischen Symbolen (#1117): eigener Uses-Graph samt Bibliotheks-Units, Fundstellen wie oben.

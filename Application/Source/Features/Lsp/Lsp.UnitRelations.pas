@@ -26,8 +26,14 @@
 // Befehl atlas.interfaceCost (#554): Argumente [uri] liefert die Kosten einer
 //   Änderung im interface-Teil für die Statusleiste: {"found", "unit",
 //   "file", "recompileCount", "units" (die ersten CostUnits Namen),
-//   "generation"}. Ohne Text, Fundstellen und Bäume, also billig genug, um
-//   beim Tippen nachzufragen.
+//   "generation", "graph"}. Ohne Text, Fundstellen und Bäume, also billig
+//   genug, um beim Tippen nachzufragen. Wartet nie auf den Aufbau des
+//   Graphen (#3075): Fehlt er für das Projekt der Datei oder rechnet gerade
+//   ein anderer, antwortet der Befehl sofort {"pending": true} und der Graph
+//   entsteht im Hintergrund; das Plugin fragt kurz darauf noch einmal.
+//   "graph" (und im Diagnoselog usesGraph=) sagt, wie der Graph vorgefunden
+//   wurde: current, updated, rebuilt, stale (älterer Stand, Abgleich läuft)
+//   oder pending.
 // Befehl atlas.useUnitInfo (#786, „Unit verwenden“, Alt+F11): Argumente
 //   [uri] liefert {"found", "unit", "file", "inUses" (die Einträge beider
 //   uses-Listen, wie geschrieben, nach den aktiven Defines), "cycles" (je
@@ -35,7 +41,9 @@
 //   Rückweg nur über interface-uses führt, "interfacePath"), "generation"}.
 //
 // Der Graph enthält Bibliotheks-Units (soweit im Index), damit „Verwendet“
-// sie mit Datei zeigt; Namensräume kommen je Datei aus OptionsFor.
+// sie mit Datei zeigt; Namensräume und Wurzel kommen je Datei aus OptionsFor.
+// Je Optionssatz hält der Dienst einen eigenen Graphen (#3075), ein Wechsel
+// zwischen Projekten der Gruppe baut ihn also nicht jedes Mal neu auf.
 
 interface
 
@@ -73,7 +81,7 @@ type
     function TextOf(const AFileName: string): string;
     function DefinesOf(const AFileName: string): TArray<string>;
     procedure EntriesOf(const AFileName, AText: string; out AUnused, AOnlyImplementation: TArray<string>);
-    procedure EnsureOptions(const AFileName: string);
+    function OptionsOf(const AFileName: string): TUsesGraphOptions;
     function FileOf(const AArguments: TJSONArray; AIndex: Integer): string;
   public
     /// <summary>AGraph gehört dem Aufrufer; AUsesContextFor wie bei den Code-Aktionen (für Unused).</summary>
@@ -89,7 +97,7 @@ type
     function Move(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Befehl atlas.server.removeUses [uri, Unit].</summary>
     function Remove(const AArguments: TJSONArray): TJSONValue;
-    /// <summary>Befehl atlas.interfaceCost [uri] (#554).</summary>
+    /// <summary>Befehl atlas.interfaceCost [uri] (#554); wartet nicht auf den Graphen (#3075).</summary>
     function Cost(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Befehl atlas.useUnitInfo [uri] (#786).</summary>
     function UseUnitInfo(const AArguments: TJSONArray): TJSONValue;
@@ -115,7 +123,8 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Names,
-  Atlas.Common.Semantics.Contract;
+  Atlas.Common.Semantics.Contract,
+  Atlas.Common.Diagnostics.RequestScope;
 
 {$SCOPEDENUMS ON}
 
@@ -144,11 +153,9 @@ const
 
 {$SCOPEDENUMS OFF}
 
-function SameOptions(const A, B: TUsesGraphOptions): Boolean;
+procedure NoteRead(const ARead: TUsesGraphRead);
 begin
-  Result := (A.IncludeLibrary = B.IncludeLibrary) and SameText(A.Root, B.Root) and
-    SameText(string.Join(#1, A.Exclude), string.Join(#1, B.Exclude)) and
-    SameText(string.Join(#1, A.Namespaces), string.Join(#1, B.Namespaces));
+  TRequestDiagnostics.Note('usesGraph', ARead.KindName);
 end;
 
 { TLspUnitRelations }
@@ -219,21 +226,15 @@ begin
   end;
 end;
 
-procedure TLspUnitRelations.EnsureOptions(const AFileName: string);
-var
-  mOptions: TUsesGraphOptions;
+function TLspUnitRelations.OptionsOf(const AFileName: string): TUsesGraphOptions;
 begin
-  if not Assigned(FOptionsFor) then
+  Result := FGraph.Options;
+  if Assigned(FOptionsFor) then
   begin
-    Exit;
+    Result := FOptionsFor(AFileName);
   end;
-  mOptions := FOptionsFor(AFileName);
   // Bibliotheks-Units immer: „Verwendet“ zeigt sie mit Datei, soweit der Index sie kennt.
-  mOptions.IncludeLibrary := True;
-  if not SameOptions(mOptions, FGraph.Options) then
-  begin
-    FGraph.SetOptions(mOptions);
-  end;
+  Result.IncludeLibrary := True;
 end;
 
 function TLspUnitRelations.FileOf(const AArguments: TJSONArray; AIndex: Integer): string;
@@ -262,6 +263,7 @@ var
   mNumber: Double;
   mUnused, mOnlyImplementation: TArray<string>;
   mRelations: TUnitRelations;
+  mRead: TUsesGraphRead;
 begin
   if not (AParams is TJSONObject) then
   begin
@@ -288,9 +290,8 @@ begin
   end;
   mText := TextOf(mFileName);
   EntriesOf(mFileName, mText, mUnused, mOnlyImplementation);
-  EnsureOptions(mFileName);
   mAnswer := nil;
-  FGraph.Read(
+  mRead := FGraph.ReadWith(OptionsOf(mFileName),
     procedure(const AGraph: TUsesGraph)
     var
       Builder: TUnitRelationsBuilder;
@@ -303,7 +304,8 @@ begin
       end;
       mAnswer := TUnitRelationsBuilder.ToJson(mRelations);
     end);
-  mAnswer.AddPair('generation', TJSONNumber.Create(FGraph.Generation));
+  NoteRead(mRead);
+  mAnswer.AddPair('generation', TJSONNumber.Create(mRead.Generation));
   mAnswer.AddPair('depth', TJSONNumber.Create(mDepth));
   Result := mAnswer;
 end;
@@ -430,16 +432,25 @@ function TLspUnitRelations.Cost(const AArguments: TJSONArray): TJSONValue;
 var
   mFileName: string;
   mAnswer: TJSONObject;
+  mRead: TUsesGraphRead;
 begin
   mFileName := FileOf(AArguments, 0);
-  EnsureOptions(mFileName);
   mAnswer := nil;
-  FGraph.Read(
+  // Beim Tippen gefragt: nie auf den Aufbau warten (#3075), der lief sonst in das Zeitlimit.
+  mRead := FGraph.TryRead(OptionsOf(mFileName),
     procedure(const AGraph: TUsesGraph)
     begin
       mAnswer := TUnitRelationsBuilder.CostToJson(TUnitRelationsBuilder.InterfaceCost(AGraph, mFileName, cCostUnits));
     end);
-  mAnswer.AddPair('generation', TJSONNumber.Create(FGraph.Generation));
+  NoteRead(mRead);
+  if mAnswer = nil then
+  begin
+    mAnswer := TJSONObject.Create;
+    mAnswer.AddPair('found', TJSONBool.Create(False));
+    mAnswer.AddPair('pending', TJSONBool.Create(True));
+  end;
+  mAnswer.AddPair('graph', mRead.KindName);
+  mAnswer.AddPair('generation', TJSONNumber.Create(mRead.Generation));
   Result := mAnswer;
 end;
 
@@ -449,11 +460,11 @@ var
   mAnswer: TJSONObject;
   mList: TJSONArray;
   mReference: TUsesReference;
+  mRead: TUsesGraphRead;
 begin
   mFileName := FileOf(AArguments, 0);
-  EnsureOptions(mFileName);
   mAnswer := nil;
-  FGraph.Read(
+  mRead := FGraph.ReadWith(OptionsOf(mFileName),
     procedure(const AGraph: TUsesGraph)
     begin
       mAnswer := TUnitRelationsBuilder.UseInfoToJson(TUnitRelationsBuilder.UseCandidates(AGraph, mFileName));
@@ -465,7 +476,8 @@ begin
     mList.Add(mReference.Name);
   end;
   mAnswer.AddPair('inUses', mList);
-  mAnswer.AddPair('generation', TJSONNumber.Create(FGraph.Generation));
+  NoteRead(mRead);
+  mAnswer.AddPair('generation', TJSONNumber.Create(mRead.Generation));
   Result := mAnswer;
 end;
 
