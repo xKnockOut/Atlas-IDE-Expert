@@ -70,7 +70,8 @@ uses
   Rules.Builtin.Testing.Attributes,
   Rules.Builtin.Testing.LeakMonitor,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

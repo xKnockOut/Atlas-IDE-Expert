@@ -59,7 +59,8 @@ uses
   Atlas.Common.Semantics.Ancestry,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

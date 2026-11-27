@@ -51,7 +51,8 @@ uses
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Semantics.NameResolver,
   Rules.Contract,
-  Rules.Derived;
+  Rules.Derived,
+  Rules.Trees;
 
 const
   cSource =

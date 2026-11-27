@@ -45,7 +45,8 @@ uses
   Rules.Engine,
   Rules.Builtin.Visibility,
   Rules.Builtin.PublicMembers,
-  Rules.Builtin.DeadCode;
+  Rules.Builtin.DeadCode,
+  Rules.Trees;
 
 const
   cDeadCodeIds: array[0..3] of string = (cUnusedPrivateMemberRuleId, cUnusedPublicMemberRuleId,

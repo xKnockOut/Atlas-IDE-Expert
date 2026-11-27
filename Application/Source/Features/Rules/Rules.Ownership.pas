@@ -95,7 +95,8 @@ uses
   Atlas.Common.Pascal.SyntaxNodes,
   Atlas.Common.Pascal.ObjectUses,
   Atlas.Common.Pascal.ParamOwnership,
-  Atlas.Common.Semantics.CallOwnership;
+  Atlas.Common.Semantics.CallOwnership,
+  Rules.Trees;
 
 const
   /// <summary>Listen, die ihre Elemente besitzen können (TObjectList ohne False usw.).</summary>

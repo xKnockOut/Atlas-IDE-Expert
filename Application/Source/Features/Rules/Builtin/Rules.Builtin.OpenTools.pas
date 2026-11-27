@@ -59,7 +59,8 @@ uses
   Rules.Builtin.OpenTools.EntryGuard,
   Rules.Builtin.OpenTools.Register,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

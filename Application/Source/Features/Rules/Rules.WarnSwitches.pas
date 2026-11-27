@@ -63,7 +63,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Pascal.ConditionalBranches;
+  Atlas.Common.Pascal.ConditionalBranches,
+  Rules.Trees;
 
 const
   cWarningsName = 'WARNINGS';

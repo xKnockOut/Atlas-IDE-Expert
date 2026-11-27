@@ -32,7 +32,8 @@ type
 implementation
 
 uses
-  Rules.Derived;
+  Rules.Derived,
+  Rules.Trees;
 
 constructor TRuleCallOwnership.Create(const AContext: TRuleContext);
 begin

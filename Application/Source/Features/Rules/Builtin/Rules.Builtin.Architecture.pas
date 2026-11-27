@@ -256,7 +256,8 @@ uses
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Localization.Texts,
   Rules.Builtin.FeatureCycles,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

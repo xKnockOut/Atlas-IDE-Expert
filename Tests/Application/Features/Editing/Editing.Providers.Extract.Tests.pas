@@ -37,7 +37,6 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Pascal.TreeHandles,
   Editing.Contract.Extract,
   Atlas.Tests.TextEdits,
   Editing.Composition;
@@ -130,7 +129,7 @@ var
 begin
   mTree := TSyntaxTreeCache.Parse(cRoutine);
   try
-    Assert.IsTrue(TEditingComposition.ExtractFixes.ExtractCondition(cRoutine, TSyntaxTreeHandles.Wrap(mTree),
+    Assert.IsTrue(TEditingComposition.ExtractFixes.ExtractCondition(cRoutine, TSyntaxTree.HandleOf(mTree),
       TTextRange.Create(5, 5, 5, 24), TFormatStyle.Default, mAction));
   finally
     mTree.Free;
@@ -148,7 +147,7 @@ var
 begin
   mTree := TSyntaxTreeCache.Parse(cRoutine);
   try
-    mExtraction := TEditingComposition.ExtractFixes.ConstantExtraction(cRoutine, TSyntaxTreeHandles.Wrap(mTree),
+    mExtraction := TEditingComposition.ExtractFixes.ConstantExtraction(cRoutine, TSyntaxTree.HandleOf(mTree),
       Default(TPascalNamePrefixes));
     Assert.IsTrue(mExtraction.Run(TTextRange.Create(6, 12, 6, 14), mAction));
     Assert.IsTrue(Pos('= 42;', TTestEdits.Apply(cRoutine, mAction.Edits)) > 0);

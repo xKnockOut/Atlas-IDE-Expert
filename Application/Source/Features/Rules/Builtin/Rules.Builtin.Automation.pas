@@ -54,7 +54,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

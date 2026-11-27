@@ -35,7 +35,8 @@ uses
   Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

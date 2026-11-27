@@ -59,7 +59,8 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.AsmStatements,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.SyntaxNodes;
+  Atlas.Common.Pascal.SyntaxNodes,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

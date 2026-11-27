@@ -98,7 +98,8 @@ uses
   Rules.Builtin.TypeChecks.VarArguments,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

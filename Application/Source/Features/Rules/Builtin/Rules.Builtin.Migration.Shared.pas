@@ -73,7 +73,8 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Pascal.LanguageFeatures;
+  Atlas.Common.Pascal.LanguageFeatures,
+  Rules.Trees;
 
 { TMigrationScope }
 

@@ -73,7 +73,8 @@ uses
   Rules.Builtin.Statements.Datasets,
   Rules.Builtin.Statements.Properties,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

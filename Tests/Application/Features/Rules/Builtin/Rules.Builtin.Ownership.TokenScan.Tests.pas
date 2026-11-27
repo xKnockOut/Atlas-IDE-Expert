@@ -27,7 +27,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Rules.Contract,
-  Rules.Builtin.Ownership.TokenScan;
+  Rules.Builtin.Ownership.TokenScan,
+  Rules.Trees;
 
 type
   /// <summary>Macht die geschützten Helfer für die Tests zugänglich.</summary>

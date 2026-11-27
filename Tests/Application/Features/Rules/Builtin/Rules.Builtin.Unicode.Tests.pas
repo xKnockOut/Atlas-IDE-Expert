@@ -112,6 +112,7 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Rules.Contract,
+  Rules.Trees,
   Rules.Registry,
   Rules.Builtin.Unicode,
   Rules.Engine,

@@ -37,7 +37,8 @@ uses
   Rules.Builtin.Declarations.Shared,
   Rules.Builtin.Constants.Types,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

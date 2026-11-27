@@ -28,7 +28,6 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Pascal.TreeHandles,
   Editing.Contract.MethodOrder,
   Editing.Composition,
   Atlas.Tests.TextEdits;
@@ -67,7 +66,7 @@ var
 begin
   mTree := TSyntaxTreeCache.Parse(AText);
   try
-    Result := TEditingComposition.MethodOrder.Review(AText, TSyntaxTreeHandles.Wrap(mTree), ARequest);
+    Result := TEditingComposition.MethodOrder.Review(AText, TSyntaxTree.HandleOf(mTree), ARequest);
   finally
     mTree.Free;
   end;

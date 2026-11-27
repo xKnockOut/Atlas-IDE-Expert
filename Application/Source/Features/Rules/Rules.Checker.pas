@@ -137,7 +137,8 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.LanguageFeatures,
   Rules.Engine,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

@@ -148,7 +148,8 @@ uses
   System.RegularExpressions,
   Atlas.Common.Configuration.Contract,
   Rules.Derived,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Rules.Trees;
 
 { TComponentModel }
 

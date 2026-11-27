@@ -27,6 +27,7 @@ uses
   System.SysUtils,
   System.Classes,
   Rules.Contract,
+  Rules.Trees,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Rules.Builtin.Declarations.Includes;

@@ -101,7 +101,7 @@ function SourceResolution(const AUses: TUsesContext; ASource: TCommandSource; co
 begin
   if Assigned(AUses.ResolveTree) then
   begin
-    Result := AUses.ResolveTree(ASource.Tree, nil);
+    Result := AUses.ResolveTree(TSyntaxTree.HandleOf(ASource.Tree), nil);
   end
   else
   begin

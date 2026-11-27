@@ -33,7 +33,6 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Pascal.TreeHandles,
   Editing.Contract.ClassCompletion,
   Editing.Composition,
   Atlas.Tests.TextEdits,
@@ -72,7 +71,7 @@ type
 class function TScanFixture.Open: TScanFixture;
 begin
   Result.Tree := TSyntaxTreeCache.Parse(cSource);
-  Result.Scan := TEditingComposition.ClassCompletion.Scan(cSource, TSyntaxTreeHandles.Wrap(Result.Tree),
+  Result.Scan := TEditingComposition.ClassCompletion.Scan(cSource, TSyntaxTree.HandleOf(Result.Tree),
     TIndexExtractor.Extract(Result.Tree, ''), TClassCompletionSettings.Default, TFormatStyle.Default);
 end;
 

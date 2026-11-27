@@ -57,7 +57,8 @@ uses
   Atlas.Common.Configuration.RuleOptions,
   Rules.TypedScope,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.SyntaxNodes;
+  Atlas.Common.Pascal.SyntaxNodes,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

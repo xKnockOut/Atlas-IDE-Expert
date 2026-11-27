@@ -309,6 +309,7 @@
         <DCCReference Include="Source\Features\Rules\Rules.Contract.Api.pas"/>
         <DCCReference Include="Source\Features\Rules\Rules.Conventions.pas"/>
         <DCCReference Include="Source\Features\Rules\Rules.Derived.pas"/>
+        <DCCReference Include="Source\Features\Rules\Rules.Trees.pas"/>
         <DCCReference Include="Source\Features\Rules\Rules.Engine.pas"/>
         <DCCReference Include="Source\Features\Rules\Rules.GoldenCorpus.pas"/>
         <DCCReference Include="Source\Features\Rules\Rules.InstructionFiles.pas"/>

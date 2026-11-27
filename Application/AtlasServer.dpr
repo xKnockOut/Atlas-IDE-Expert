@@ -263,6 +263,7 @@ uses
   Rules.Contract.Api in 'Source\Features\Rules\Rules.Contract.Api.pas',
   Rules.Conventions in 'Source\Features\Rules\Rules.Conventions.pas',
   Rules.Derived in 'Source\Features\Rules\Rules.Derived.pas',
+  Rules.Trees in 'Source\Features\Rules\Rules.Trees.pas',
   Rules.Engine in 'Source\Features\Rules\Rules.Engine.pas',
   Rules.GoldenCorpus in 'Source\Features\Rules\Rules.GoldenCorpus.pas',
   Rules.InstructionFiles in 'Source\Features\Rules\Rules.InstructionFiles.pas',

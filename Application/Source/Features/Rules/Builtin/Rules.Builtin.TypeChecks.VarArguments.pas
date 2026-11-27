@@ -43,7 +43,8 @@ uses
   Atlas.Text.Lines,
   Rules.Builtin.TypeChecks.Types,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

@@ -36,7 +36,8 @@ uses
   Rules.Builtin.Style.Tokens,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Arrays,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

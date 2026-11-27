@@ -98,7 +98,8 @@ uses
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes,
   Atlas.Common.Findings.Contract,
-  Rules.Builtin.Texts.Shared;
+  Rules.Builtin.Texts.Shared,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

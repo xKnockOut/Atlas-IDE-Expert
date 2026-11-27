@@ -44,7 +44,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Projects.Contract.Group;
+  Atlas.Common.Projects.Contract.Group,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

@@ -67,6 +67,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Rules.Contract,
+  Rules.Trees,
   Rules.Engine,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,

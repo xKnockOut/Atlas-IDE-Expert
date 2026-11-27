@@ -59,6 +59,7 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Rules.Contract,
+  Rules.Trees,
   Rules.Builtin.RtlPatterns,
   Rules.Engine,
   Atlas.Common.Documents.TextChanges,

@@ -98,7 +98,8 @@ uses
   Atlas.Common.Pascal.ParamOwnership,
   Rules.CallOwnership,
   Atlas.Text.Names,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

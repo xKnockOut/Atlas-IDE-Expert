@@ -77,7 +77,8 @@ uses
   Atlas.Common.Pascal.PureRoutines,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

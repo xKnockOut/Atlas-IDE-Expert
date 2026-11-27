@@ -59,7 +59,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Rules.Trees;
 
 const
   // Dynamische Arrays der RTL, auch wenn ihre Unit nicht im Index steht.

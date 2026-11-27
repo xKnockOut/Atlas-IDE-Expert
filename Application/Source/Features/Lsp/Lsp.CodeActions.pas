@@ -99,7 +99,6 @@ uses
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json,
   Atlas.Common.CodeActions.Json,
-  Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Semantics.Contract;
 
 {$SCOPEDENUMS ON}
@@ -388,7 +387,7 @@ begin
   Result := Default(TCodeActionSite);
   Result.Uri := FUri;
   Result.Text := FText;
-  Result.Tree := TSyntaxTreeHandles.Wrap(FTree);
+  Result.Tree := TSyntaxTree.HandleOf(FTree);
   Result.Range := FRange;
   // Ohne Prüfregeln ohne Index.
   Result.Index := Index;

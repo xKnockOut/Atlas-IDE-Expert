@@ -44,7 +44,8 @@ uses
   Atlas.Common.Semantics.Ancestry,
   Rules.Builtin.Ownership.LocalObjects,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

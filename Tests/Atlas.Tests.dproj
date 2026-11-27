@@ -539,7 +539,6 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.SyntaxChecks.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TreeCache.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.MethodText.Tests.pas"/>
-        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TreeHandles.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ActiveBranches.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.VariantRecords.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.HelperAncestors.Tests.pas"/>
@@ -611,6 +610,7 @@
         <DCCReference Include="Support\Atlas.Tests.SlashHost.pas"/>
         <DCCReference Include="Application\Features\Rules\Rules.Engine.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Rules.Derived.Tests.pas"/>
+        <DCCReference Include="Application\Features\Rules\Rules.Trees.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Rules.TypedScope.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Rules.ManagedTypes.Tests.pas"/>
         <DCCReference Include="Application\Features\Rules\Rules.GoldenCorpus.Tests.pas"/>
@@ -2858,6 +2858,7 @@
         <DCCReference Include="..\Application\Source\Features\Rules\Rules.Contract.Api.pas"/>
         <DCCReference Include="..\Application\Source\Features\Rules\Rules.Conventions.pas"/>
         <DCCReference Include="..\Application\Source\Features\Rules\Rules.Derived.pas"/>
+        <DCCReference Include="..\Application\Source\Features\Rules\Rules.Trees.pas"/>
         <DCCReference Include="..\Application\Source\Features\Rules\Rules.Engine.pas"/>
         <DCCReference Include="..\Application\Source\Features\Rules\Rules.GoldenCorpus.pas"/>
         <DCCReference Include="..\Application\Source\Features\Rules\Rules.InstructionFiles.pas"/>

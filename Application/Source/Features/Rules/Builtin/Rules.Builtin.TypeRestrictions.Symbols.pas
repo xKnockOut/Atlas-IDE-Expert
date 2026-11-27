@@ -94,7 +94,8 @@ uses
   System.StrUtils,
   Atlas.Common.Index.Contract,
   Rules.Derived,
-  Atlas.Common.Pascal.SyntaxNodes;
+  Atlas.Common.Pascal.SyntaxNodes,
+  Rules.Trees;
 
 /// <summary>Namen, die ein Knoten deklariert ("A,B" ergibt beide); leer bei Knoten ohne Deklaration.</summary>
 function DeclaredNames(ANode: TSyntaxNode): TArray<string>;

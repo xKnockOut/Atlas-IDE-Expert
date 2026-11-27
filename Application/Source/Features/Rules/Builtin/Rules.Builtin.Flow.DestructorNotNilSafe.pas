@@ -34,7 +34,8 @@ uses
   Rules.Builtin.Flow.DestructorNotNilSafe.Constructors,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Documents.Contract;
+  Atlas.Common.Documents.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

@@ -64,7 +64,8 @@ uses
   Rules.Builtin.Performance.ManagedParams,
   Rules.Builtin.Performance.SetLengthInLoop,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

@@ -32,6 +32,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Rules.Contract,
+  Rules.Trees,
   Rules.Builtin,
   Rules.Derived,
   Rules.Engine,

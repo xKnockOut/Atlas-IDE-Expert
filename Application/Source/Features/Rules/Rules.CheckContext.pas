@@ -85,7 +85,8 @@ implementation
 
 uses
   System.SysUtils,
-  Rules.Engine;
+  Rules.Engine,
+  Rules.Trees;
 
 { TRuleCheckContext }
 

@@ -95,6 +95,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Documents.TextChanges,
   Rules.Contract,
+  Rules.Trees,
   Rules.Engine,
   Atlas.Common.Architecture.Adapters.GroupFiles,
   Rules.Builtin.Collections,

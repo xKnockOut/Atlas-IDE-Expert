@@ -80,7 +80,8 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.TokenCursor,
   Rules.Derived,
-  Atlas.Common.Semantics.ExpressionTypes.Contract;
+  Atlas.Common.Semantics.ExpressionTypes.Contract,
+  Rules.Trees;
 
 { TTypedScope }
 

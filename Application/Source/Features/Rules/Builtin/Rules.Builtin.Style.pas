@@ -105,7 +105,6 @@ uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Checks.Contract.Refactorings,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Pascal.TreeHandles,
   Atlas.Text.Lines,
   Atlas.Common.Configuration.RuleOptions,
   Rules.Builtin.Style.Tokens,
@@ -115,7 +114,8 @@ uses
   Rules.Builtin.Style.MethodOrder,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 
@@ -1570,7 +1570,7 @@ begin
   begin
     // Name nach der Namensregel (cNewConstant), sonst meldet naming-prefix die Korrektur gleich wieder.
     FExtractor := FContext.Refactorings.Extract.ConstantExtraction(FContext.Text,
-      TSyntaxTreeHandles.Wrap(FContext.Tree), FContext.NewNames);
+      TSyntaxTree.HandleOf(FContext.Tree), FContext.NewNames);
   end;
   if (FExtractor <> nil) and FExtractor.Run(TTextRange.Create(mNode.StartPos, mNode.EndPos), mAction) then
   begin

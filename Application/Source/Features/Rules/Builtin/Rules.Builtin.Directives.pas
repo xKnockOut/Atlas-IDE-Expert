@@ -116,7 +116,8 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Projects.Contract.UnitLookup;
+  Atlas.Common.Projects.Contract.UnitLookup,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

@@ -114,6 +114,7 @@ uses
   Atlas.Common.Semantics.UnresolvedNames,
   Atlas.Common.Configuration.Contract,
   Rules.Contract,
+  Rules.Trees,
   Rules.Registry,
   Rules.Engine,
   Rules.Builtin.Unresolved,

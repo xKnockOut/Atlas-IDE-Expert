@@ -60,6 +60,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Findings.Contract,
   Rules.Contract,
+  Rules.Trees,
   Rules.Engine,
   Rules.Checker,
   Rules.Catalog,

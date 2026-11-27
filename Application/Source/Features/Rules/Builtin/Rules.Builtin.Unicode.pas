@@ -102,7 +102,8 @@ uses
   Atlas.Common.Dfm.FormModel,
   Rules.Derived,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

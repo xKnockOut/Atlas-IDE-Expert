@@ -105,7 +105,8 @@ implementation
 
 uses
   Atlas.Common.Documents.TextDocument,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.Extractor,
+  Rules.Trees;
 
 const
   cKeyUnitIndex = 'rules.unitIndex';

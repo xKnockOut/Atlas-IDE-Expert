@@ -65,6 +65,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Rules.Contract,
+  Rules.Trees,
   Rules.Engine,
   Rules.Builtin.FreeFields,
   Rules.Builtin.Ownership,

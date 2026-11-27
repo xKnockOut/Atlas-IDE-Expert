@@ -31,7 +31,8 @@ uses
   Rules.ManagedTypes,
   Atlas.Common.Semantics.OrdinalConstants,
   Rules.Builtin.Declarations.Shared,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

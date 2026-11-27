@@ -77,7 +77,8 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
-  Rules.Derived;
+  Rules.Derived,
+  Rules.Trees;
 
 function SourceText(const AText: string; ANode: TSyntaxNode): string;
 begin

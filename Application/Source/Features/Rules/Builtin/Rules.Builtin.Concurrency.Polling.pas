@@ -32,7 +32,8 @@ uses
   Rules.Builtin.Concurrency.Syntax,
   Rules.Builtin.Concurrency.MainThread,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.SyntaxNodes;
+  Atlas.Common.Pascal.SyntaxNodes,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

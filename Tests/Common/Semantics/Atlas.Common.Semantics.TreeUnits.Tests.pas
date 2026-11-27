@@ -55,6 +55,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Rules.Contract,
+  Rules.Trees,
   Rules.Engine,
   Atlas.Common.Semantics.Contract,
   Atlas.Common.Semantics.NameResolver,
@@ -151,7 +152,7 @@ var
   mResolver: TNameResolver;
 begin
   FUnits := AContext.TreeUnits;
-  FHeld := (FUnits <> nil) and FUnits.Holds(AContext.Tree);
+  FHeld := (FUnits <> nil) and FUnits.Holds(AContext.TreeHandle);
   mResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     FTypes := QueryAll(mResolver, AContext.Tree);
@@ -257,11 +258,11 @@ begin
   mTree := TPascalParser.Parse(cSource);
   try
     mUnits := TTreeUnits.Create(mTree);
-    Assert.IsTrue(mUnits.Holds(mTree));
+    Assert.IsTrue(mUnits.Holds(TSyntaxTree.HandleOf(mTree)));
     Assert.IsFalse(mUnits.Holds(nil));
     mUnits.Extracted(cFileName);
     mUnits.Clear;
-    Assert.IsFalse(mUnits.Holds(mTree));
+    Assert.IsFalse(mUnits.Holds(TSyntaxTree.HandleOf(mTree)));
     Assert.WillRaise(
       procedure
       begin
@@ -413,7 +414,7 @@ begin
     Assert.IsTrue(mSecond.Held);
     Assert.AreSame(mSecond.Units, mFirst.Units, 'beide Regeln teilen eine Auswertung');
     Assert.AreEqual(mFirst.Types, mSecond.Types);
-    Assert.IsFalse(mFirst.Units.Holds(mTree), 'nach dem Lauf gehört sie zu keinem Baum mehr');
+    Assert.IsFalse(mFirst.Units.Holds(TSyntaxTree.HandleOf(mTree)), 'nach dem Lauf gehört sie zu keinem Baum mehr');
     Assert.IsNull(mContext.TreeUnits, 'der Kontext des Aufrufers bleibt unverändert');
   finally
     mTree.Free;
@@ -443,7 +444,7 @@ begin
     TRuleEngine.Run([mRuleRef], TServerSettings.Default, mContext);
     TRuleEngine.Run([mRuleRef], TServerSettings.Default, mContext);
     Assert.AreSame(mUnits, mRule.Units);
-    Assert.IsTrue(mUnits.Holds(mTree), 'die Auswertung des Aufrufers löst nur er selbst');
+    Assert.IsTrue(mUnits.Holds(TSyntaxTree.HandleOf(mTree)), 'die Auswertung des Aufrufers löst nur er selbst');
     Assert.AreEqual(1, mObject.Extractions, 'zwei Läufe mit derselben Auswertung');
     mUnits.Clear;
   finally

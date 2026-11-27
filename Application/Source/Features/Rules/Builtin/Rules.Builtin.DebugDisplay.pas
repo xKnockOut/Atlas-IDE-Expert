@@ -41,7 +41,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.TypeMembers,
   Rules.Derived,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

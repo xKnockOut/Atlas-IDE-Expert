@@ -29,7 +29,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Semantics.Contract,
   Editing.Contract.CodeActions,
   Editing.Composition;
@@ -77,7 +76,7 @@ begin
   Result := Default(TCodeActionSite);
   Result.Uri := 'file:///C:/P/Haupt.pas';
   Result.Text := AText;
-  Result.Tree := TSyntaxTreeHandles.Wrap(ATree);
+  Result.Tree := TSyntaxTree.HandleOf(ATree);
   Result.Range := TTextRange.Create(TTextPosition.Create(ALine, 0), TTextPosition.Create(ALine, 0));
   Result.Style := TFormatStyle.Default;
   Result.Refactoring := TRefactoringSettings.Default;

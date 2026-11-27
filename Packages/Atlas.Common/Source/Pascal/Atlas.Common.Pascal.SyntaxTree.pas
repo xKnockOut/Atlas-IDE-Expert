@@ -183,6 +183,8 @@ type
     FDeepest: TSyntaxNode;
     /// <summary>Abgeleitete Daten anderer Schichten (Derived); unter System.TMonitor(Self).</summary>
     FDerived: IInterface;
+    /// <summary>Handle des Baums für Verträge (Handle); im Konstruktor angelegt, im Destruktor gelöst.</summary>
+    FHandle: IPascalSyntaxTree;
     procedure Measure;
   public
     constructor Create(ARoot: TSyntaxNode; const ATokens: TArray<TPascalToken>;
@@ -213,6 +215,13 @@ type
     /// Aufruf legt sie mit AFactory an, alle weiteren teilen sie; sie leben so lange wie der Baum. Threadsicher.
     /// Vorher extrahierte jeder Anbieter einer Code-Aktion die ganze Unit neu.</summary>
     function Derived(const AFactory: TFunc<IInterface>): IInterface;
+    /// <summary>Handle für ATree, über das der Baum durch Verträge geht (IPascalSyntaxTree im Pascal-Contract);
+    /// nil ohne Baum. Jeder Baum hat genau einen Handle: Zwei Handles sind gleich, wenn ihre Bäume gleich sind.
+    /// </summary>
+    class function HandleOf(ATree: TSyntaxTree): IPascalSyntaxTree; static;
+    /// <summary>Baum hinter AHandle; nil ohne Handle, bei einem fremden Handle oder wenn der Baum schon
+    /// freigegeben ist.</summary>
+    class function FromHandle(const AHandle: IPascalSyntaxTree): TSyntaxTree; static;
     property Root: TSyntaxNode read FRoot;
     /// <summary>Alle Token einschließlich Kommentaren und Direktiven.</summary>
     property Tokens: TArray<TPascalToken> read FTokens;
@@ -231,6 +240,43 @@ implementation
 uses
   System.TypInfo,
   Atlas.Common.Pascal.TokenCursor;
+
+type
+  /// <summary>Zugriff auf den Baum hinter einem Handle, nur innerhalb dieser Unit.</summary>
+  ISyntaxTreeAccess = interface
+    ['{07CFAA6A-5DAD-43B4-B8DD-FDD4294C914C}']
+    function Tree: TSyntaxTree;
+    /// <summary>Löst den Handle vom Baum, der gerade freigegeben wird.</summary>
+    procedure Detach;
+  end;
+
+  /// <summary>Handle eines Baums. Besitzt den Baum nicht; nach dessen Freigabe liefert Tree nil.</summary>
+  TSyntaxTreeHandle = class(TInterfacedObject, IPascalSyntaxTree, ISyntaxTreeAccess)
+  private
+    FTree: TSyntaxTree;
+  public
+    constructor Create(ATree: TSyntaxTree);
+    function Tree: TSyntaxTree;
+    procedure Detach;
+  end;
+
+{ TSyntaxTreeHandle }
+
+constructor TSyntaxTreeHandle.Create(ATree: TSyntaxTree);
+begin
+  inherited Create;
+  FTree := ATree;
+end;
+
+function TSyntaxTreeHandle.Tree: TSyntaxTree;
+begin
+  Result := FTree;
+end;
+
+procedure TSyntaxTreeHandle.Detach;
+begin
+  FTree := nil;
+end;
 
 function SyntaxKindName(AKind: TSyntaxKind): string;
 begin
@@ -602,10 +648,19 @@ begin
   FRoot := ARoot;
   FTokens := ATokens;
   FDiagnostics := ADiagnostics;
+  FHandle := TSyntaxTreeHandle.Create(Self);
 end;
 
 destructor TSyntaxTree.Destroy;
+var
+  mAccess: ISyntaxTreeAccess;
 begin
+  if Supports(FHandle, ISyntaxTreeAccess, mAccess) then
+  begin
+    mAccess.Detach;
+  end;
+  mAccess := nil;
+  FHandle := nil;
   FDerived := nil;
   FRoot.Free;
   inherited;
@@ -774,6 +829,26 @@ begin
       end;
     end;
   until not mDeeper;
+end;
+
+class function TSyntaxTree.HandleOf(ATree: TSyntaxTree): IPascalSyntaxTree;
+begin
+  Result := nil;
+  if ATree <> nil then
+  begin
+    Result := ATree.FHandle;
+  end;
+end;
+
+class function TSyntaxTree.FromHandle(const AHandle: IPascalSyntaxTree): TSyntaxTree;
+var
+  mAccess: ISyntaxTreeAccess;
+begin
+  Result := nil;
+  if Supports(AHandle, ISyntaxTreeAccess, mAccess) then
+  begin
+    Result := mAccess.Tree;
+  end;
 end;
 
 function TSyntaxTree.Derived(const AFactory: TFunc<IInterface>): IInterface;

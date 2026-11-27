@@ -37,7 +37,8 @@ uses
   Rules.Contract,
   Atlas.Common.Semantics.NameResolver,
   Rules.TypedScope,
-  Atlas.Common.Pascal.SyntaxNodes;
+  Atlas.Common.Pascal.SyntaxNodes,
+  Rules.Trees;
 
 const
   cSource = 'unit Werte;'#10'interface'#10'implementation'#10'procedure Pruefen;'#10'var'#10 +

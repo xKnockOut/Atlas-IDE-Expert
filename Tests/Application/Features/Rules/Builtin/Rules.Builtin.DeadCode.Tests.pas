@@ -92,6 +92,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Rules.Contract,
+  Rules.Trees,
   Rules.Engine,
   Atlas.Common.Architecture.Adapters.GroupFiles,
   Atlas.Common.Documents.TextChanges,

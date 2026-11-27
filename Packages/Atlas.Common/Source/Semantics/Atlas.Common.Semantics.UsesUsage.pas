@@ -669,13 +669,16 @@ begin
   mFileName := AFileName;
   mInfo := AInfo;
   Result :=
-    function(ATree: TSyntaxTree; const AInactive: TArray<TTextRange>): TUsesResolution
+    function(const ATree: IPascalSyntaxTree; const AInactive: TArray<TTextRange>): TUsesResolution
+    var
+      mTree: TSyntaxTree;
     begin
       Result := Default(TUsesResolution);
+      mTree := TSyntaxTree.FromHandle(ATree);
       // Bei Syntaxfehlern fehlen Bezeichner: dann nur der Namensvergleich.
-      if (ATree <> nil) and (Length(ATree.Diagnostics) = 0) then
+      if (mTree <> nil) and (Length(mTree.Diagnostics) = 0) then
       begin
-        Result := TUsesUsage.Resolve(mSource, ATree, mFileName, AInactive, mInfo);
+        Result := TUsesUsage.Resolve(mSource, mTree, mFileName, AInactive, mInfo);
       end;
     end;
 end;
@@ -693,7 +696,7 @@ begin
     begin
       mTree := TSyntaxTreeCache.Parse(AText);
       try
-        Result := mResolveTree(mTree, AInactive);
+        Result := mResolveTree(TSyntaxTree.HandleOf(mTree), AInactive);
       finally
         mTree.Free;
       end;

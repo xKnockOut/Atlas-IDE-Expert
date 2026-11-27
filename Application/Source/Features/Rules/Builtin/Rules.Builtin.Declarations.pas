@@ -166,14 +166,14 @@ uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.ClassActions.Contract,
   Atlas.Common.Checks.Contract.Refactorings,
-  Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.MethodText,
   Rules.Derived,
   Rules.Builtin.Declarations.Shared,
   Rules.Builtin.Declarations.Includes,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 
@@ -324,7 +324,7 @@ begin
   Result := TCompletionScanHolder.Create;
   if AContext.Refactorings.Completion <> nil then
   begin
-    Result.Scan := AContext.Refactorings.Completion.Scan(AContext.Text, TSyntaxTreeHandles.Wrap(AContext.Tree), AUnit,
+    Result.Scan := AContext.Refactorings.Completion.Scan(AContext.Text, TSyntaxTree.HandleOf(AContext.Tree), AUnit,
       AContext.ClassCompletion, AContext.Formatting);
   end;
 end;

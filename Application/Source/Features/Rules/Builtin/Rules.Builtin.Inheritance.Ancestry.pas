@@ -57,7 +57,8 @@ uses
   Atlas.Common.Localization.Texts,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

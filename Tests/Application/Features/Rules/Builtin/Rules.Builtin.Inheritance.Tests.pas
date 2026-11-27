@@ -146,6 +146,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Rules.Contract,
+  Rules.Trees,
   Rules.Engine,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
