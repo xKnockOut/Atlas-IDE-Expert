@@ -14,7 +14,7 @@
     2. Lädt den Quelltext-ZIP des Releases und schreibt atlas-version.json mit
        Paket und Quelltext, je mit SHA-256 (New-VersionFile.ps1), und signiert
        sie mit dem eigenen Schlüssel für Updates (Sign-VersionFile.ps1).
-    3. Lädt Paket, AtlasServer.exe/.map, atlas-version.json und
+    3. Lädt Paket, AtlasServer.exe/.map mit AtlasServer.exe.sha256 (#1431), atlas-version.json und
        atlas-version.json.sig in das Release (ersetzt vorhandene).
     4. Ersetzt atlas-version-beta.json samt Signatur im Vorab-Kanal
        „update-channel“, wenn der Kanal auf diese Version zeigt (sonst gibt es
@@ -96,6 +96,14 @@ try {
         if (Test-Path -LiteralPath $Path) {
             $Upload += $Path
         }
+    }
+    # Prüfsumme für die Action setup-atlas (#1431): "<sha256>  AtlasServer.exe" wie sha256sum.
+    $Server = Join-Path $Bin 'AtlasServer.exe'
+    if (Test-Path -LiteralPath $Server) {
+        $Sum = Join-Path $Work 'AtlasServer.exe.sha256'
+        $Hash = (Get-FileHash -LiteralPath $Server -Algorithm SHA256).Hash.ToLowerInvariant()
+        [IO.File]::WriteAllText($Sum, "$Hash  AtlasServer.exe`n", [Text.UTF8Encoding]::new($false))
+        $Upload += $Sum
     }
     if ($PSCmdlet.ShouldProcess("Release $Tag", "Hochladen: $(($Upload | ForEach-Object { Split-Path -Leaf $_ }) -join ', ')")) {
         Invoke-Gh release upload $Tag -R $Repository --clobber @Upload

@@ -81,6 +81,16 @@ With diagnostics and navigation as a plugin: [Editors/ClaudeCode/README.en.md](.
 AtlasServer.exe --check App.dproj --format sarif --output findings.sarif --locale en
 ```
 
+In GitHub Actions the `setup-atlas` action downloads the matching `AtlasServer.exe` from the release, checks its checksum (`AtlasServer.exe.sha256`, from 2.3.0 on) and puts it on the `PATH` (Windows runners only, #1431):
+
+```yaml
+- id: atlas
+  uses: xKnockOut/Atlas-IDE-Expert/.github/actions/setup-atlas@v2.3.0
+  with:
+    version: latest      # or a tag such as v2.3.0; cache: true (default) keeps the EXE and index caches
+- run: AtlasServer.exe --check App.dproj --format github --index-cache "${{ steps.atlas.outputs.index-cache }}"
+```
+
 More options are listed in the [README](../../README.md).
 
 ## Next
