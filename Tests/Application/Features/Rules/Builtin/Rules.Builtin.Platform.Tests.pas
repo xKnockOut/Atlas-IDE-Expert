@@ -316,8 +316,8 @@ begin
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
   Assert.AreEqual('In TStopwatch umwandeln', mFindings[0].Fixes[0].Title);
   mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
-  Assert.AreEqual('unit Werkzeug;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils,'#10 +
-    '  System.Diagnostics;'#10'procedure Pruefen;'#10'var'#10'  Uhr: TStopwatch;'#10'begin'#10 +
+  Assert.AreEqual('unit Werkzeug;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils, System.Diagnostics;'#10 +
+    'procedure Pruefen;'#10'var'#10'  Uhr: TStopwatch;'#10'begin'#10 +
     '  Uhr := TStopwatch.StartNew;'#10'  Importieren;'#10'  Log(Uhr.ElapsedMilliseconds.ToString + '' ms'');'#10 +
     'end;'#10'end.', mFixed);
   TRuleAssert.Silent(TNowForElapsedTimeRule.Create, mFixed);

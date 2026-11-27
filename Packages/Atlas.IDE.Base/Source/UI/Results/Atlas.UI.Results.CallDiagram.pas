@@ -61,7 +61,7 @@ type
     FHintBox: Integer;
     FDrag: TDrag;
     FHandlers: THandlers;
-    procedure Loaded(ATicket, ANode: Integer; const AChildren: TArray<TAtlasHierarchyItem>);
+    procedure ChildrenLoaded(ATicket, ANode: Integer; const AChildren: TArray<TAtlasHierarchyItem>);
     function BoxRect(ABox: Integer): TRect;
     function GetProjectOnly: Boolean;
     procedure SetIsProjectFile(const AValue: TFunc<string, Boolean>);
@@ -611,7 +611,7 @@ begin
   end;
 end;
 
-procedure TAtlasCallDiagramView.Loaded(ATicket, ANode: Integer; const AChildren: TArray<TAtlasHierarchyItem>);
+procedure TAtlasCallDiagramView.ChildrenLoaded(ATicket, ANode: Integer; const AChildren: TArray<TAtlasHierarchyItem>);
 begin
   if not FDiagram.FinishLoad(ATicket, ANode, AChildren) then
   begin
@@ -654,7 +654,7 @@ begin
   FHandlers.OnLoad(FDiagram.Direction, FDiagram[ANode].Item,
     procedure(const AChildren: TArray<TAtlasHierarchyItem>)
     begin
-      Loaded(mTicket, ANode, AChildren);
+      ChildrenLoaded(mTicket, ANode, AChildren); // nicht Loaded: verdeckt TWinControl.Loaded (W1010)
     end);
 end;
 

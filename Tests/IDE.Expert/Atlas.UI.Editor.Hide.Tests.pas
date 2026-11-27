@@ -64,6 +64,7 @@ uses
   Atlas.UI.Bookmarks.SettingsSection,
   Atlas.UI.Debug.SettingsSection,
   Atlas.UI.Rules.SettingsSection,
+  Atlas.UI.Assistants.SettingsSection,
   Atlas.Plugin.Registration.Contract;
 
 type
@@ -282,7 +283,9 @@ begin
   // Zeilen der Module (#1456): Code Lens an Testmethoden, Notizen und Lesezeichen; dazu Threads im Quelltext
   // (Debugger, #852), „Wer gibt das frei?“ (Prüfregeln, #1877) und Mutationslauf (Tests, #1460).
   mModules := ProvideSections([TAtlasTestsEditorSection, TAtlasBookmarksEditorSection, TAtlasAnalysisEditorSection,
-    TAtlasDebugSettingsSection, TAtlasRulesEditorSection, TAtlasTestsCompilerSection]);
+    TAtlasDebugSettingsSection, TAtlasRulesEditorSection, TAtlasTestsCompilerSection,
+    // Änderungsmarken der KI-Assistenten (#2616).
+    TAtlasAssistantsSettingsSection]);
   mHost := TForm.CreateNew(nil);
   try
     mPage := TAtlasSettingsPage.Create(mHost);

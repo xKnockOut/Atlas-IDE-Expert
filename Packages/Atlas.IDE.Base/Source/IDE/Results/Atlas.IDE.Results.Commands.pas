@@ -101,6 +101,7 @@ implementation
 
 uses
   System.Types,
+  Vcl.Forms, // Application als Besitzer der Palette (E2003)
   Atlas.Plugin.Diagnostics.Guard,
   ToolsAPI,
   Atlas.Plugin.Lsp.Client,

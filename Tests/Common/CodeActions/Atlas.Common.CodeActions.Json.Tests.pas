@@ -23,6 +23,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections, // Inline TJSONArray.GetValue (H2443)
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,

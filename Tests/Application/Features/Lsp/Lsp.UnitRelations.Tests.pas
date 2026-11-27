@@ -270,7 +270,7 @@ begin
   try
     mAnswer := FRelations.Move(mArgs);
     try
-      Assert.AreEqual('unit A;'#10'interface'#10#10'implementation'#10'uses'#10'  C,'#10'  B;'#10'end.',
+      Assert.AreEqual('unit A;'#10'interface'#10#10'implementation'#10'uses'#10'  C, B;'#10'end.',
         Applied(mText, mAnswer));
     finally
       mAnswer.Free;
@@ -282,7 +282,7 @@ begin
   try
     mAnswer := FRelations.Move(mArgs);
     try
-      Assert.AreEqual('unit A;'#10'interface'#10'uses'#10'  B,'#10'  C;'#10'implementation'#10#10'end.',
+      Assert.AreEqual('unit A;'#10'interface'#10'uses'#10'  B, C;'#10'implementation'#10#10'end.',
         Applied(mText, mAnswer), 'Schreibweise aus dem Quelltext');
     finally
       mAnswer.Free;

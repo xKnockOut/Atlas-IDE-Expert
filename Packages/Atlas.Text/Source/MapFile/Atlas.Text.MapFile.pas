@@ -77,11 +77,14 @@ type
     procedure ReadLineNumbers(const AParts: TArray<string>);
     procedure SortEntries;
     function GetSymbolCount: Integer;
+    /// <summary>Leere Map für CreateFromFile, ohne Text zu parsen.</summary>
+    constructor CreateEmpty;
   public
     constructor Create(const AText: string);
     /// <summary>Liest die Map-Datei AFileName zeilenweise, ohne sie ganz in den Speicher zu laden; Ausnahme,
-    /// wenn sie sich nicht öffnen lässt.</summary>
-    constructor CreateFromFile(const AFileName: string);
+    /// wenn sie sich nicht öffnen lässt. Klassenfunktion statt Konstruktor: Zwei Konstruktoren mit gleicher
+    /// Parameterliste (string) meldet Delphi als W1029.</summary>
+    class function CreateFromFile(const AFileName: string): TMapFile; static;
     destructor Destroy; override;
     /// <summary>Offset relativ zur Modulbasis wie in "Modul+$Offset"; nicht gefunden außerhalb des Codes.</summary>
     function Resolve(AModuleOffset: UInt64): TMapLocation;
@@ -222,6 +225,12 @@ end;
 
 { TMapFile }
 
+constructor TMapFile.CreateEmpty;
+begin
+  inherited Create;
+  Init;
+end;
+
 constructor TMapFile.Create(const AText: string);
 begin
   inherited Create;
@@ -229,15 +238,19 @@ begin
   Parse(AText);
 end;
 
-constructor TMapFile.CreateFromFile(const AFileName: string);
+class function TMapFile.CreateFromFile(const AFileName: string): TMapFile;
 var
   mStream: TFileStream;
 begin
-  inherited Create;
-  Init;
   mStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
   try
-    ParseStream(mStream);
+    Result := TMapFile.CreateEmpty;
+    try
+      Result.ParseStream(mStream);
+    except
+      Result.Free;
+      raise;
+    end;
   finally
     mStream.Free;
   end;
@@ -285,7 +298,15 @@ end;
 /// <summary>Zeile aus der Datei: UTF-8, sonst die ANSI-Codepage (Pfade mit Umlauten).</summary>
 function DecodeLine(const ABytes: TBytes; ACount: Integer): string;
 begin
-  Result := TEncoding.UTF8.GetString(ABytes, 0, ACount);
+  // Delphis TEncoding.UTF8 wirft bei ungültigen Folgen EEncodingError, FPC ersetzt sie durch U+FFFD.
+  try
+    Result := TEncoding.UTF8.GetString(ABytes, 0, ACount);
+  except
+    on EEncodingError do
+    begin
+      Result := #$FFFD;
+    end;
+  end;
   if Pos(#$FFFD, Result) > 0 then
   begin
     Result := TEncoding.ANSI.GetString(ABytes, 0, ACount);

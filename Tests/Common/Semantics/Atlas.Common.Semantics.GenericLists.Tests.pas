@@ -245,7 +245,7 @@ begin
   AssertContains(mOutcome.Text, '    FPositionen: TList<TPosition>;'#10);
   AssertContains(mOutcome.Text, '  FPositionen := TList<TPosition>.Create;'#10);
   AssertContains(mOutcome.Text, '  Pos := FPositionen[I];'#10);
-  AssertContains(mOutcome.Text, 'uses'#10'  Classes,'#10'  System.Generics.Collections;');
+  AssertContains(mOutcome.Text, 'uses'#10'  Classes, System.Generics.Collections;');
   Assert.AreEqual('In TList<TPosition> umwandeln', mOutcome.Plan.Title);
   Assert.AreEqual('TPosition', mOutcome.Plan.ItemType);
   // Ein Undo-Schritt: alles in einer Korrektur derselben Datei.
@@ -324,7 +324,7 @@ begin
   Assert.IsTrue(mOutcome.Converted, mOutcome.Reason);
   AssertContains(mOutcome.Text, '  Liste: TList<TPosition>;'#10'  Eintrag: TPosition;'#10);
   AssertContains(mOutcome.Text, '    Eintrag.Free;'#10);
-  AssertContains(mOutcome.Text, 'uses'#10'  Classes,'#10'  System.Generics.Collections;');
+  AssertContains(mOutcome.Text, 'uses'#10'  Classes, System.Generics.Collections;');
 end;
 
 procedure TGenericListsTests.InlineLoopVariable;
@@ -350,7 +350,7 @@ begin
   mOutcome := Convert(TLegacyListKind.PointerList, mSource, 'Liste');
   Assert.IsTrue(mOutcome.Converted, mOutcome.Reason);
   AssertContains(mOutcome.Text, '  var Liste := TList<TPosition>.Create;'#10'  Liste[0].Free;'#10);
-  AssertContains(mOutcome.Text, 'uses'#10'  Classes,'#10'  System.Generics.Collections;');
+  AssertContains(mOutcome.Text, 'uses'#10'  Classes, System.Generics.Collections;');
 end;
 
 procedure TGenericListsTests.SplitsDeclarationWithSeveralNames;

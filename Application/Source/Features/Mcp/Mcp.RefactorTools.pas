@@ -64,6 +64,7 @@ implementation
 
 uses
   System.StrUtils,
+  System.Generics.Collections, // Inline TJSONArray.GetValue (H2443)
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.Positions,

@@ -22,7 +22,7 @@ implementation
 
 uses
   Atlas.Core.Problems.BulkFix,
-  Atlas.UI.Problems.BulkFix,
+  Atlas.UI.Rules.BulkFix, // Unit heißt seit dem Modul Rules so (F2613)
   Atlas.Tests.DialogSmoke;
 
 { TAtlasRulesDialogSmokeTests }

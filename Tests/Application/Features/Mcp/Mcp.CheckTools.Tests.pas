@@ -32,6 +32,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Semantics.References, // TReferenceReadText (E2003)
   Atlas.Common.Todos.Contract,
   Mcp.Server,
   Mcp.Contract,

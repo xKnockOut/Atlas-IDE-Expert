@@ -71,6 +71,7 @@ implementation
 uses
   System.Classes,
   System.Diagnostics,
+  System.Generics.Collections, // Inline TJSONArray.GetValue (H2443)
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json;
 

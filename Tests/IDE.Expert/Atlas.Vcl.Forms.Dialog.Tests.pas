@@ -240,8 +240,8 @@ begin
     Assert.AreSame(mDialog, mList.Parent, 'Parent');
     Assert.AreEqual(mDialog.ScaleValue(120), mList.Height);
     Assert.IsTrue(mList.Top > mRow.Top, Format('Top %d/%d', [mRow.Top, mList.Top]));
-    Assert.AreEqual(mRow.Margins.Left, mList.Margins.Left, 'Rand wie die Zeilen');
-    Assert.AreEqual(0, mList.Margins.Top);
+    Assert.AreEqual(Integer(mRow.Margins.Left), Integer(mList.Margins.Left), 'Rand wie die Zeilen'); // TMarginSize (E2532)
+    Assert.AreEqual(0, Integer(mList.Margins.Top));
   finally
     mDialog.Free;
   end;

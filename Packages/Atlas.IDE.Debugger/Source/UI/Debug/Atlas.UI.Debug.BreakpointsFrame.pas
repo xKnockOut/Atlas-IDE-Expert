@@ -414,6 +414,10 @@ begin
   Result.OnClick := AClick;
 end;
 
+type
+  /// <summary>Zugriff auf das protected TControl.Font (E2362).</summary>
+  TControlAccess = class(TControl);
+
 /// <summary>Knöpfe und Chips in ABar so breit wie ihr Text in der Schrift von AFrame.</summary>
 /// <remarks>Erst mit Fenster (CreateWnd): Vorher hat der Frame noch nicht die Schrift seines Fensters. Ein
 /// DPI-Wechsel skaliert die Breiten danach mit.</remarks>
@@ -427,12 +431,12 @@ begin
     mControl := ABar.Controls[mIndex];
     if mControl is TButton then
     begin
-      mControl.Width := TAtlasDialog.TextWidth(AFrame.Font, TButton(mControl).Caption) +
+      mControl.Width := TAtlasDialog.TextWidth(TControlAccess(AFrame).Font, TButton(mControl).Caption) +
         ScaleLogical(AFrame, cButtonPadding);
     end
     else if mControl is TCheckBox then
     begin
-      mControl.Width := TAtlasDialog.TextWidth(AFrame.Font, TCheckBox(mControl).Caption) +
+      mControl.Width := TAtlasDialog.TextWidth(TControlAccess(AFrame).Font, TCheckBox(mControl).Caption) +
         ScaleLogical(AFrame, cCheckBoxGlyph);
     end;
   end;

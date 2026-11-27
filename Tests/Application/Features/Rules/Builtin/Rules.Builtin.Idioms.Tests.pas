@@ -304,7 +304,7 @@ begin
   mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(ChainUnit('  case IndexStr(Befehl, [''neu'', ''oeffnen'', ''speichern'', ''beenden'']) of'#10 +
     '    0: Neu;'#10'    1: Oeffnen;'#10'    2: Speichern;'#10'    3: Beenden;'#10'  end;').Replace(
-    '  System.SysUtils;', '  System.SysUtils,'#10'  System.StrUtils;'), mFixed);
+    '  System.SysUtils;', '  System.SysUtils, System.StrUtils;'), mFixed);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStringIfChainRule.Create, mFixed, cChainOn))));
 end;
 
@@ -324,7 +324,7 @@ begin
   Assert.AreEqual(ChainUnit('  case IndexText(Befehl, [''neu'', ''new'', ''oeffnen'', ''ende'']) of'#10 +
     '    0, 1: Neu;'#10'    2:'#10'      begin'#10'        Laden;'#10'        Zeigen;'#10'      end;'#10 +
     '    3: Beenden;'#10 +
-    '  else'#10'    Fehler(Befehl);'#10'  end;').Replace('  System.SysUtils;', '  System.SysUtils,'#10'  System.StrUtils;'),
+    '  else'#10'    Fehler(Befehl);'#10'  end;').Replace('  System.SysUtils;', '  System.SysUtils, System.StrUtils;'),
     mFixed);
   // Feld eines Objekts als String; die Kette beginnt erst im else-Zweig.
   mSource := ChainUnit('  if Bereit then'#10'    Starten'#10'  else if Edit1.Text = ''a'' then A'#10 +

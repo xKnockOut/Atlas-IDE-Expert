@@ -699,7 +699,7 @@ begin
   mFound := CycleFinding(Run(mData, FileOf('C')));
   Assert.AreEqual('In implementation-uses verschieben'#10, FixTitles(mFound));
   mFixed := TTextChanges.Apply(mData.Text(FileOf('C')), mFound.Fixes[0].Edits);
-  Assert.AreEqual('unit C;'#10'interface'#10#10'implementation'#10'uses'#10'  B,'#10'  A;'#10'end.', mFixed);
+  Assert.AreEqual('unit C;'#10'interface'#10#10'implementation'#10'uses'#10'  B, A;'#10'end.', mFixed);
   // Die Korrektur beseitigt die Meldung.
   mData.Put(FileOf('C'), mFixed);
   Assert.AreEqual('', Messages(Run(mData, FileOf('C')), cUsesCycleRuleId));

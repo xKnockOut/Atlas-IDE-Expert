@@ -310,7 +310,7 @@ begin
   mFromText := TUsesUsage.ResolveFunc(mSource, 'Bericht.pas', mInfo)(mText, nil);
   mTree := TSyntaxTreeCache.Parse(mText);
   try
-    mFromTree := TUsesUsage.ResolveTreeFunc(mSource, 'Bericht.pas', mInfo)(mTree, nil);
+    mFromTree := TUsesUsage.ResolveTreeFunc(mSource, 'Bericht.pas', mInfo)(TSyntaxTree.HandleOf(mTree), nil); // Vertrag nimmt IPascalSyntaxTree (E2010)
   finally
     mTree.Free;
   end;

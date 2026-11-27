@@ -29,6 +29,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Classes, // Inline TCollection.GetCount (H2443)
   Atlas.Core.Debug.DataSetTable,
   Atlas.UI.Debug.DataSetTable,
   Atlas.Tests.DialogSmoke;

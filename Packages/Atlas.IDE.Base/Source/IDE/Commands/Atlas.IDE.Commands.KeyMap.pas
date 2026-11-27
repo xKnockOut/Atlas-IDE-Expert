@@ -121,6 +121,7 @@ uses
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Commands.Strings,
   Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Settings.Plugin, // TAtlasPluginSettings in AddCommandKeys (E2003)
   Atlas.IDE.Foundation.Keys,
   Atlas.Core.Commands.Usage,
   Atlas.IDE.Commands.Usage,

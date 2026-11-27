@@ -39,6 +39,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections, // Inline TJSONArray.GetValue (H2443)
   Atlas.Common.JsonRpc.Messages,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Documents.Uris,

@@ -952,7 +952,7 @@ begin
   Assert.IsTrue(ContainsStr(mText, '  Subject := TKunde.Create;'), mText);
   Assert.IsTrue(ContainsStr(mText, '    Actual := Subject.Berechne(A);'), mText);
   Assert.IsTrue(ContainsStr(mText, '    Assert.AreEqual(0, Actual);'), mText);
-  Assert.IsTrue(ContainsStr(mText, '  DUnitX.TestFramework,'#13#10'  Kunden;'), mText);
+  Assert.IsTrue(ContainsStr(mText, '  DUnitX.TestFramework, Kunden;'), mText);
   Assert.IsTrue(Pos('procedure TKundeTests.TestBerechne2;', mText) < Pos('initialization', mText), mText);
 end;
 

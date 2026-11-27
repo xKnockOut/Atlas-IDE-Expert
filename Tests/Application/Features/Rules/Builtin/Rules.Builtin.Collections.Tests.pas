@@ -410,7 +410,7 @@ begin
   Assert.IsTrue(mFound[0].Fixes[0].Safe);
   Assert.AreEqual(0, Integer(Length(mFound[0].Fixes[0].OtherFiles)));
   mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
-  AssertContains(mFixed, '  System.Classes,'#10'  System.Generics.Collections;'#10);
+  AssertContains(mFixed, '  System.Classes, System.Generics.Collections;'#10);
   AssertContains(mFixed, '    FPositionen: TList<TPosition>;'#10);
   AssertContains(mFixed, '  FPositionen := TList<TPosition>.Create;'#10);
   AssertContains(mFixed, '  Pos := FPositionen[I];'#10'  Pos := FPositionen.First;'#10);
@@ -455,7 +455,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFix.OtherFiles)));
   Assert.AreEqual(cLagerFile, mFix.OtherFiles[0].FileName);
   AssertContains(TTextChanges.Apply(mFiles[0].Text, mFix.OtherFiles[0].Edits),
-    '  System.Classes,'#10'  System.Generics.Collections;'#10);
+    '  System.Classes, System.Generics.Collections;'#10);
   AssertContains(TTextChanges.Apply(mFiles[0].Text, mFix.OtherFiles[0].Edits),
     '    Regale: TList<TRegal>;'#10);
   AssertContains(TTextChanges.Apply(mFiles[0].Text, mFix.OtherFiles[0].Edits),

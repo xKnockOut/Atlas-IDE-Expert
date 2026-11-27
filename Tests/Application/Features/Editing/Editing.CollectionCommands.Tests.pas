@@ -138,7 +138,7 @@ begin
   Assert.Contains(mText, '    destructor Destroy; override;');
   Assert.Contains(mText, '  FKunden := TObjectList<TKunde>.Create;');
   Assert.Contains(mText, '  FKunden.Free;'#10'  inherited;');
-  Assert.Contains(mText, 'System.Classes,'#10'  System.Generics.Collections;');
+  Assert.Contains(mText, 'System.Classes, System.Generics.Collections;');
   Assert.IsFalse(mText.Contains('/list'), mText);
   Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
@@ -186,7 +186,7 @@ var
 begin
   mText := InClass('/dict! FCache: string, Integer');
   Assert.Contains(mText, 'FCache := TDictionary<string, Integer>.Create(TIStringComparer.Ordinal);');
-  Assert.Contains(mText, 'System.Generics.Collections,'#10'  System.Generics.Defaults;');
+  Assert.Contains(mText, 'System.Generics.Collections, System.Generics.Defaults;');
   Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
@@ -204,11 +204,11 @@ begin
   Assert.Contains(mText, '  Kunden.Sort(TComparer<TKunde>.Construct('#10 +
     '    function(const L, R: TKunde): Integer'#10'    begin'#10'      Result := CompareText(L.Name, R.Name);'#10 +
     '    end));'#10'  Writeln(1);');
-  Assert.Contains(mText, 'System.Generics.Collections,'#10'  System.Generics.Defaults;');
+  Assert.Contains(mText, 'System.Generics.Collections, System.Generics.Defaults;');
   Assert.IsTrue(TTestSource.Parses(mText), mText);
   mText := InRoutine('/sort Kunden -Umsatz');
   Assert.Contains(mText, 'Result := CompareValue(R.Umsatz, L.Umsatz);');
-  Assert.Contains(mText, 'System.Generics.Defaults,'#10'  System.Math;');
+  Assert.Contains(mText, 'System.Generics.Defaults, System.Math;');
 end;
 
 procedure TCollectionCommandsTests.SortUnknownMemberFails;

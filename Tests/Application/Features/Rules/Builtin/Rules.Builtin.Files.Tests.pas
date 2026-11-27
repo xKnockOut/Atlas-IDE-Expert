@@ -150,8 +150,8 @@ begin
     'end;'#10'end.');
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes[0].Edits)));
-  Assert.AreEqual(',' + sLineBreak + '  System.IOUtils', StringReplace(mFindings[0].Fixes[0].Edits[1].NewText, #10,
-    sLineBreak, []));
+  // AddUnit setzt die Unit hinter den letzten Eintrag in dessen Zeile.
+  Assert.AreEqual(', System.IOUtils', mFindings[0].Fixes[0].Edits[1].NewText);
 end;
 
 procedure TFileRulesTests.PathConcatSilentCases;

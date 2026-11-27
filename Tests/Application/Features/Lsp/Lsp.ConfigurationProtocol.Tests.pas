@@ -27,6 +27,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections, // Inline TJSONArray.GetValue (H2443)
   System.JSON,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Configuration.Contract,

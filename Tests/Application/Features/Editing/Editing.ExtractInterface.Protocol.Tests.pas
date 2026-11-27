@@ -306,11 +306,11 @@ begin
   mAnswer := Run(FIndex, cUnitKunden, Request('ICustomer', 'Ziel', [0, 1]), Context(FIndex));
   try
     mText := After(mAnswer, cZielFile);
-    Assert.IsTrue(mText.Contains('uses'#10'  System.Classes,'#10'  Basis;'), mText);
+    Assert.IsTrue(mText.Contains('uses'#10'  System.Classes, Basis;'), mText);
     Assert.IsTrue(mText.Contains('type'#10'  ICustomer = interface'#10), mText);
     Assert.IsTrue(mText.Contains('  end;'#10#10'implementation'), mText);
     mText := After(mAnswer, cKundenFile);
-    Assert.IsTrue(mText.Contains('  Basis,'#10'  Ziel;'), mText);
+    Assert.IsTrue(mText.Contains('  Basis, Ziel;'), mText);
     Assert.IsFalse(mText.Contains('= interface'), mText);
     Assert.AreEqual(TDocumentUris.FromPath(cZielFile), mAnswer.GetValue('file').Value);
   finally
@@ -335,7 +335,7 @@ begin
     Assert.IsTrue(After(mAnswer, cProgramFile).Contains('KundenIntf in ''KundenIntf.pas'''), After(mAnswer, cProgramFile));
     Assert.IsTrue(After(mAnswer, cProjectFile).Contains('<DCCReference Include="KundenIntf.pas"/>'),
       After(mAnswer, cProjectFile));
-    Assert.IsTrue(After(mAnswer, cKundenFile).Contains('  KundenIntf;'), After(mAnswer, cKundenFile));
+    Assert.IsTrue(After(mAnswer, cKundenFile).Contains(', KundenIntf;'), After(mAnswer, cKundenFile));
   finally
     mAnswer.Free;
   end;
