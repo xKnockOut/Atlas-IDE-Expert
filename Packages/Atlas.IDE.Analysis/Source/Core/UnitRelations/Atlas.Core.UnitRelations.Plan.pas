@@ -36,6 +36,8 @@ type
     cAfterChangeMs = 500;
     /// <summary>Kosten nachfragen, solange die Einfügemarke im interface steht (#554).</summary>
     cCostRefreshMs = 5000;
+    /// <summary>Rechnet der Server noch (Uses-Graph im Aufbau, #3075), so bald wieder nachfragen.</summary>
+    cCostPendingMs = 1000;
   public
     /// <summary>Zeigt das Fenster Beziehungen für AFileName (.pas, .dpr, .dpk)?</summary>
     class function IsPascalFile(const AFileName: string): Boolean; static;
@@ -50,6 +52,9 @@ type
     /// <summary>Zeitpunkt der letzten Frage nach einer Änderung aus dem Fenster: so, dass der nächste Takt nach
     /// cAfterChangeMs fragt.</summary>
     class function AskedAfterChange(ANowMs: UInt64): UInt64; static;
+    /// <summary>Zeitpunkt der letzten Kostenfrage nach einer Antwort „rechnet noch“: so, dass CostDue nach
+    /// cCostPendingMs wieder fragt.</summary>
+    class function CostAskedWhilePending(ANowMs: UInt64): UInt64; static;
     /// <summary>Kosten jetzt nachfragen? Marke im interface, keine Antwort unterwegs, Wartezeit um, Code vorn.
     /// </summary>
     class function CostDue(AInInterface, APending: Boolean; ASinceMs: UInt64; AInFront: Boolean): Boolean; static;
@@ -108,6 +113,11 @@ end;
 class function TAtlasUnitRelationsPlan.AskedAfterChange(ANowMs: UInt64): UInt64;
 begin
   Result := ANowMs - (cRefreshMs - cAfterChangeMs);
+end;
+
+class function TAtlasUnitRelationsPlan.CostAskedWhilePending(ANowMs: UInt64): UInt64;
+begin
+  Result := ANowMs - (cCostRefreshMs - cCostPendingMs);
 end;
 
 class function TAtlasUnitRelationsPlan.CostDue(AInInterface, APending: Boolean; ASinceMs: UInt64;

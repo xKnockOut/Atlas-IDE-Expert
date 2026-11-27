@@ -45,6 +45,7 @@ Atlas.Common.Architecture.Snapshot.Tests
 Atlas.Common.Architecture.UnitRelations.Tests
 Atlas.Common.Architecture.UsesGraph.Tests
 Atlas.Common.Architecture.UsesLocator.Tests
+Atlas.Common.Architecture.UsesService.Tests
 Atlas.Common.Configuration.Features.Tests
 Atlas.Common.Configuration.Internals.Forbidden.Tests
 Atlas.Common.Configuration.Internals.Reader.Tests
@@ -629,6 +630,7 @@ Atlas.Core.Bookmarks.Plan.Tests
 Atlas.Core.VersionControl.LineChangesPlan.Tests
 Atlas.Core.VersionControl.Plan.Tests
 Atlas.Core.UnitRelations.Plan.Tests
+Atlas.Core.UnitRelations.InterfaceCost.Tests
 Atlas.Core.Debug.VariablesFlow.Tests
 Atlas.Core.Debug.LaunchProcesses.Tests
 Atlas.Core.Debug.StepFilterEdit.Tests
