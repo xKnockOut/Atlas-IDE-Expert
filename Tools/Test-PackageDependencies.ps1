@@ -307,6 +307,12 @@ try {
             "interface`r`n`r`nuses`r`n  Atlas.Core.Projects.Internals.Probe;`r`n`r`nimplementation`r`n`r`nend.`r`n")
     }
 
+    Test-Fails 'Genehmigte Ausnahme deckt nichts mehr ab' 'deckt keinen uses-Eintrag mehr ab' {
+        $Json = [IO.File]::ReadAllText((Join-Path $CopyRoot 'atlas.json'))
+        Set-CopyText 'atlas.json' ($Json.Replace('"Atlas.IDE.Tracker.Composition -> Atlas.Core.*.Providers.*"',
+            '"Atlas.IDE.Tracker.Composition -> Atlas.Core.*.Providers.*", "Atlas.IDE.Tracker.Composition -> Atlas.Core.Probe.Providers.*"'))
+    }
+
     Test-Fails 'Umgestelltes Package trägt noch Schichtnamen' 'trägt einen Schichtnamen; Atlas.IDE.Help steht nicht mehr in "layerPackages"' {
         Set-LayerPackages @(Get-LayerPackages | Where-Object { $_ -ne 'Atlas.IDE.Help' })
     }

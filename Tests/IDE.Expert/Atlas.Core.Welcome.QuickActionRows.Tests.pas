@@ -7,7 +7,6 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Welcome.QuickActionRows;
 
 type
@@ -36,7 +35,8 @@ type
 implementation
 
 uses
-  System.Types;
+  System.Types,
+  Atlas.Core.Welcome.QuickActions;
 
 function Button(AAction: TAtlasQuickAction): TAtlasQuickActionButton;
 begin

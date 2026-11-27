@@ -160,60 +160,72 @@ end;
 
 procedure TAtlasNextStatementTests.TargetInSameBlockAllowed;
 begin
-  Assert.IsTrue(FCheck.Check(7, 20) = TAtlasNextStatementVerdict.Allowed, 'vorwärts');
-  Assert.IsTrue(FCheck.Check(20, 7) = TAtlasNextStatementVerdict.Allowed, 'zurück');
-  Assert.IsTrue(FCheck.Check(9, 10) = TAtlasNextStatementVerdict.Allowed, 'im selben try-Teil');
-  Assert.IsTrue(FCheck.Check(7, 15) = TAtlasNextStatementVerdict.Allowed, 'Rumpf der Schleife');
-  Assert.IsTrue(FCheck.Check(7, 16) = TAtlasNextStatementVerdict.Allowed, 'Aufruf mit anonymer Methode');
+  Assert.AreEqual<TAtlasNextStatementVerdict>(TAtlasNextStatementVerdict.Allowed, FCheck.Check(7, 20), 'vorwärts');
+  Assert.AreEqual<TAtlasNextStatementVerdict>(TAtlasNextStatementVerdict.Allowed, FCheck.Check(20, 7), 'zurück');
+  Assert.AreEqual<TAtlasNextStatementVerdict>(TAtlasNextStatementVerdict.Allowed,
+    FCheck.Check(9, 10), 'im selben try-Teil');
+  Assert.AreEqual<TAtlasNextStatementVerdict>(TAtlasNextStatementVerdict.Allowed,
+    FCheck.Check(7, 15), 'Rumpf der Schleife');
+  Assert.AreEqual<TAtlasNextStatementVerdict>(TAtlasNextStatementVerdict.Allowed,
+    FCheck.Check(7, 16), 'Aufruf mit anonymer Methode');
 end;
 
 procedure TAtlasNextStatementTests.SameLineRefused;
 begin
-  Assert.IsTrue(FCheck.Check(7, 7) = TAtlasNextStatementVerdict.SameLine);
+  Assert.AreEqual<TAtlasNextStatementVerdict>(TAtlasNextStatementVerdict.SameLine, FCheck.Check(7, 7));
 end;
 
 procedure TAtlasNextStatementTests.OtherRoutineRefused;
 begin
-  Assert.IsTrue(FCheck.Check(7, 25) = TAtlasNextStatementVerdict.OutsideRoutine, 'andere Routine');
-  Assert.IsTrue(FCheck.Check(7, 22) = TAtlasNextStatementVerdict.OutsideRoutine, 'zwischen Routinen');
+  Assert.AreEqual<TAtlasNextStatementVerdict>(TAtlasNextStatementVerdict.OutsideRoutine,
+    FCheck.Check(7, 25), 'andere Routine');
+  Assert.AreEqual<TAtlasNextStatementVerdict>(TAtlasNextStatementVerdict.OutsideRoutine,
+    FCheck.Check(7, 22), 'zwischen Routinen');
 end;
 
 procedure TAtlasNextStatementTests.LineWithoutCodeRefused;
 begin
-  Assert.IsTrue(FCheck.Check(7, 8) = TAtlasNextStatementVerdict.NoCode, 'try');
-  Assert.IsTrue(FCheck.Check(7, 4) = TAtlasNextStatementVerdict.NoCode, 'var-Abschnitt');
+  Assert.AreEqual<TAtlasNextStatementVerdict>(TAtlasNextStatementVerdict.NoCode, FCheck.Check(7, 8), 'try');
+  Assert.AreEqual<TAtlasNextStatementVerdict>(TAtlasNextStatementVerdict.NoCode, FCheck.Check(7, 4), 'var-Abschnitt');
 end;
 
 procedure TAtlasNextStatementTests.TryPartsAreSeparate;
 begin
-  Assert.IsTrue(FCheck.Check(7, 9) = TAtlasNextStatementVerdict.OtherBlock, 'in den try-Teil');
-  Assert.IsTrue(FCheck.Check(9, 7) = TAtlasNextStatementVerdict.OtherBlock, 'aus dem try-Teil');
-  Assert.IsTrue(FCheck.Check(10, 12) = TAtlasNextStatementVerdict.OtherBlock, 'in den finally-Teil');
+  Assert.AreEqual<TAtlasNextStatementVerdict>(TAtlasNextStatementVerdict.OtherBlock,
+    FCheck.Check(7, 9), 'in den try-Teil');
+  Assert.AreEqual<TAtlasNextStatementVerdict>(TAtlasNextStatementVerdict.OtherBlock,
+    FCheck.Check(9, 7), 'aus dem try-Teil');
+  Assert.AreEqual<TAtlasNextStatementVerdict>(TAtlasNextStatementVerdict.OtherBlock,
+    FCheck.Check(10, 12), 'in den finally-Teil');
 end;
 
 procedure TAtlasNextStatementTests.CountedForHeadRefused;
 begin
-  Assert.IsTrue(FCheck.Check(7, 14) = TAtlasNextStatementVerdict.ForHead);
+  Assert.AreEqual<TAtlasNextStatementVerdict>(TAtlasNextStatementVerdict.ForHead, FCheck.Check(7, 14));
 end;
 
 procedure TAtlasNextStatementTests.AnonymousMethodIsSeparate;
 begin
-  Assert.IsTrue(FCheck.Check(7, 18) = TAtlasNextStatementVerdict.OtherBlock, 'hinein');
-  Assert.IsTrue(FCheck.Check(18, 20) = TAtlasNextStatementVerdict.OtherBlock, 'heraus');
-  Assert.IsTrue(FCheck.Check(7, 19) = TAtlasNextStatementVerdict.OtherBlock, 'end der anonymen Methode');
+  Assert.AreEqual<TAtlasNextStatementVerdict>(TAtlasNextStatementVerdict.OtherBlock, FCheck.Check(7, 18), 'hinein');
+  Assert.AreEqual<TAtlasNextStatementVerdict>(TAtlasNextStatementVerdict.OtherBlock, FCheck.Check(18, 20), 'heraus');
+  Assert.AreEqual<TAtlasNextStatementVerdict>(TAtlasNextStatementVerdict.OtherBlock,
+    FCheck.Check(7, 19), 'end der anonymen Methode');
 end;
 
 procedure TAtlasNextStatementTests.EffectNamesLines;
 var
   mFirst, mLast: Integer;
 begin
-  Assert.IsTrue(TAtlasNextStatement.Effect(20, 7, mFirst, mLast) = TAtlasNextStatementEffect.Rerun);
+  Assert.AreEqual<TAtlasNextStatementEffect>(TAtlasNextStatementEffect.Rerun,
+    TAtlasNextStatement.Effect(20, 7, mFirst, mLast));
   Assert.AreEqual(7, mFirst);
   Assert.AreEqual(19, mLast);
-  Assert.IsTrue(TAtlasNextStatement.Effect(7, 20, mFirst, mLast) = TAtlasNextStatementEffect.Skip);
+  Assert.AreEqual<TAtlasNextStatementEffect>(TAtlasNextStatementEffect.Skip,
+    TAtlasNextStatement.Effect(7, 20, mFirst, mLast));
   Assert.AreEqual(7, mFirst);
   Assert.AreEqual(19, mLast);
-  Assert.IsTrue(TAtlasNextStatement.Effect(7, 7, mFirst, mLast) = TAtlasNextStatementEffect.None);
+  Assert.AreEqual<TAtlasNextStatementEffect>(TAtlasNextStatementEffect.None,
+    TAtlasNextStatement.Effect(7, 7, mFirst, mLast));
   Assert.AreEqual(-1, mFirst);
 end;
 

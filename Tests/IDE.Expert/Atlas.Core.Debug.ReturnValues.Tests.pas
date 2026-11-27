@@ -7,7 +7,6 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Debug.StepInto,
   Atlas.Core.Debug.ReturnValues;
 
 type
@@ -48,7 +47,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Debug.StepInto;
 
 const
   cPreise =

@@ -58,9 +58,10 @@ var
   mHeap: TFakeHeap;
   mTrack: TCheckMemoryTrack;
 begin
+  mTrack := nil;
   mHeap := TFakeHeap.Create;
-  mTrack := TCheckMemoryTrack.Create(MeasureOf(mHeap));
   try
+    mTrack := TCheckMemoryTrack.Create(MeasureOf(mHeap));
     Assert.AreEqual<Int64>(-1, mTrack.ReadyBytes);
     Assert.AreEqual<Int64>(-1, mTrack.GroupBytes);
     Assert.AreEqual<Int64>(-1, mTrack.PeakBytes);
@@ -76,9 +77,10 @@ var
   mHeap: TFakeHeap;
   mTrack: TCheckMemoryTrack;
 begin
+  mTrack := nil;
   mHeap := TFakeHeap.Create;
-  mTrack := TCheckMemoryTrack.Create(MeasureOf(mHeap));
   try
+    mTrack := TCheckMemoryTrack.Create(MeasureOf(mHeap));
     mHeap.Bytes := 100;
     mTrack.IndexFinished(True);
     mHeap.Bytes := 300;
@@ -105,9 +107,10 @@ var
   mHeap: TFakeHeap;
   mTrack: TCheckMemoryTrack;
 begin
+  mTrack := nil;
   mHeap := TFakeHeap.Create;
-  mTrack := TCheckMemoryTrack.Create(MeasureOf(mHeap));
   try
+    mTrack := TCheckMemoryTrack.Create(MeasureOf(mHeap));
     mHeap.Bytes := 400;
     mTrack.IndexFinished(False);
     mHeap.Bytes := 200;
@@ -131,9 +134,10 @@ var
   mTrack: TCheckMemoryTrack;
   mWatch: TStopwatch;
 begin
+  mTrack := nil;
   mHeap := TFakeHeap.Create;
-  mTrack := TCheckMemoryTrack.Create(MeasureOf(mHeap));
   try
+    mTrack := TCheckMemoryTrack.Create(MeasureOf(mHeap));
     mHeap.Bytes := 900;
     mTrack.StartSampling;
     mWatch := TStopwatch.StartNew;

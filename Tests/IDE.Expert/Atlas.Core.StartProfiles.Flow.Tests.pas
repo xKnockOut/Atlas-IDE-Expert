@@ -142,7 +142,7 @@ begin
   mFlow := NewFlow;
   try
     mResult := mFlow.Activate(cProject, 'demo');
-    Assert.IsTrue(mResult.Outcome = TAtlasStartProfileOutcome.Applied);
+    Assert.AreEqual<TAtlasStartProfileOutcome>(TAtlasStartProfileOutcome.Applied, mResult.Outcome);
     Assert.IsTrue(mResult.Succeeded);
     Assert.AreEqual('Demo', mResult.Name, 'Name wie im Profil');
     Assert.AreEqual('-demo', mResult.Options.Parameters);
@@ -165,12 +165,13 @@ begin
   try
     mFlow.Activate(cProject, 'Demo');
     mResult := mFlow.Activate(cProject, '  ');
-    Assert.IsTrue(mResult.Outcome = TAtlasStartProfileOutcome.Restored);
+    Assert.AreEqual<TAtlasStartProfileOutcome>(TAtlasStartProfileOutcome.Restored, mResult.Outcome);
     Assert.AreEqual('-vorher', FOptions.Parameters, 'zurückgesetzt');
     Assert.AreEqual('', mFlow.ActiveName(cProject));
     FWrites := 0;
     mResult := mFlow.Activate(cProject, '');
-    Assert.IsTrue(mResult.Outcome = TAtlasStartProfileOutcome.Restored, 'ohne gemerkte bleiben die jetzigen');
+    Assert.AreEqual<TAtlasStartProfileOutcome>(TAtlasStartProfileOutcome.Restored,
+      mResult.Outcome, 'ohne gemerkte bleiben die jetzigen');
     Assert.AreEqual(0, FWrites, 'nichts geschrieben');
   finally
     mFlow.Free;
@@ -185,7 +186,7 @@ begin
   mFlow := NewFlow;
   try
     mResult := mFlow.Activate(cProject, 'Fehlt');
-    Assert.IsTrue(mResult.Outcome = TAtlasStartProfileOutcome.Unknown);
+    Assert.AreEqual<TAtlasStartProfileOutcome>(TAtlasStartProfileOutcome.Unknown, mResult.Outcome);
     Assert.IsFalse(mResult.Succeeded);
     Assert.AreEqual('Fehlt', mResult.Name);
     Assert.AreEqual(0, FWrites);
@@ -202,8 +203,10 @@ begin
   FOpen := False;
   mFlow := NewFlow;
   try
-    Assert.IsTrue(mFlow.Activate(cProject, 'Demo').Outcome = TAtlasStartProfileOutcome.NotOpen);
-    Assert.IsTrue(mFlow.SaveCurrent(cProject, 'Neu').Outcome = TAtlasStartProfileOutcome.NotOpen);
+    Assert.AreEqual<TAtlasStartProfileOutcome>(TAtlasStartProfileOutcome.NotOpen,
+      mFlow.Activate(cProject, 'Demo').Outcome);
+    Assert.AreEqual<TAtlasStartProfileOutcome>(TAtlasStartProfileOutcome.NotOpen,
+      mFlow.SaveCurrent(cProject, 'Neu').Outcome);
     Assert.AreEqual(0, FWrites);
   finally
     mFlow.Free;
@@ -219,7 +222,7 @@ begin
   mFlow := NewFlow;
   try
     mResult := mFlow.Activate(cProject, 'Demo');
-    Assert.IsTrue(mResult.Outcome = TAtlasStartProfileOutcome.WriteFailed);
+    Assert.AreEqual<TAtlasStartProfileOutcome>(TAtlasStartProfileOutcome.WriteFailed, mResult.Outcome);
     Assert.AreEqual('gesperrt', mResult.Reason);
     Assert.AreEqual('', mFlow.ActiveName(cProject), 'nichts gemerkt');
     Assert.IsFalse(FileExists(TAtlasStartProfiles.FileFor(FFolder, cProject)));
@@ -235,19 +238,21 @@ var
 begin
   mFlow := NewFlow;
   try
-    Assert.IsTrue(mFlow.Reapply(cProject).Outcome = TAtlasStartProfileOutcome.Done, 'ohne aktives nichts');
+    Assert.AreEqual<TAtlasStartProfileOutcome>(TAtlasStartProfileOutcome.Done,
+      mFlow.Reapply(cProject).Outcome, 'ohne aktives nichts');
     Assert.AreEqual(0, FWrites);
     mFlow.Activate(cProject, 'Demo');
     FOptions := Default(TAtlasStartOptions);
     mResult := mFlow.Reapply(cProject);
-    Assert.IsTrue(mResult.Outcome = TAtlasStartProfileOutcome.Done);
+    Assert.AreEqual<TAtlasStartProfileOutcome>(TAtlasStartProfileOutcome.Done, mResult.Outcome);
     Assert.AreEqual('-demo', FOptions.Parameters, 'erneut gesetzt');
     FFailWrite := True;
     mResult := mFlow.Reapply(cProject);
-    Assert.IsTrue(mResult.Outcome = TAtlasStartProfileOutcome.WriteFailed);
+    Assert.AreEqual<TAtlasStartProfileOutcome>(TAtlasStartProfileOutcome.WriteFailed, mResult.Outcome);
     Assert.AreEqual('gesperrt', mResult.Reason);
     FTeamText := '{"version": 1}';
-    Assert.IsTrue(mFlow.Reapply(cProject).Outcome = TAtlasStartProfileOutcome.Done, 'Profil fehlt: nichts');
+    Assert.AreEqual<TAtlasStartProfileOutcome>(TAtlasStartProfileOutcome.Done,
+      mFlow.Reapply(cProject).Outcome, 'Profil fehlt: nichts');
   finally
     mFlow.Free;
   end;
@@ -261,9 +266,10 @@ var
 begin
   mFlow := NewFlow;
   try
-    Assert.IsTrue(mFlow.SaveCurrent(cProject, '   ').Outcome = TAtlasStartProfileOutcome.InvalidName);
+    Assert.AreEqual<TAtlasStartProfileOutcome>(TAtlasStartProfileOutcome.InvalidName,
+      mFlow.SaveCurrent(cProject, '   ').Outcome);
     mResult := mFlow.SaveCurrent(cProject, ' Lokal ');
-    Assert.IsTrue(mResult.Outcome = TAtlasStartProfileOutcome.Saved);
+    Assert.AreEqual<TAtlasStartProfileOutcome>(TAtlasStartProfileOutcome.Saved, mResult.Outcome);
     Assert.AreEqual('Lokal', mResult.Name);
     mEntries := mFlow.Profiles(cProject);
     Assert.AreEqual(2, Integer(Length(mEntries)), 'gemeinsam und persönlich');
@@ -283,15 +289,15 @@ var
 begin
   mFlow := NewFlow;
   try
-    Assert.IsTrue(mFlow.Status('').Kind = TAtlasStartProfileStatusKind.Hidden);
-    Assert.IsTrue(mFlow.Status(cProject).Kind = TAtlasStartProfileStatusKind.NoneActive);
+    Assert.AreEqual<TAtlasStartProfileStatusKind>(TAtlasStartProfileStatusKind.Hidden, mFlow.Status('').Kind);
+    Assert.AreEqual<TAtlasStartProfileStatusKind>(TAtlasStartProfileStatusKind.NoneActive, mFlow.Status(cProject).Kind);
     mFlow.Activate(cProject, 'Demo');
     mStatus := mFlow.Status(cProject);
-    Assert.IsTrue(mStatus.Kind = TAtlasStartProfileStatusKind.Active);
+    Assert.AreEqual<TAtlasStartProfileStatusKind>(TAtlasStartProfileStatusKind.Active, mStatus.Kind);
     Assert.AreEqual('Demo', mStatus.Entry.Profile.Name);
     FTeamText := '{"version": 1}';
     mStatus := mFlow.Status(cProject);
-    Assert.IsTrue(mStatus.Kind = TAtlasStartProfileStatusKind.Missing);
+    Assert.AreEqual<TAtlasStartProfileStatusKind>(TAtlasStartProfileStatusKind.Missing, mStatus.Kind);
     Assert.AreEqual('Demo', mStatus.Active);
   finally
     mFlow.Free;

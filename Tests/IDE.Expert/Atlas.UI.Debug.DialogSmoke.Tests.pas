@@ -123,7 +123,7 @@ procedure TAtlasDebuggerDialogSmokeTests.Logpoint;
 var
   mDialog: TAtlasLogpointDialog;
 begin
-  mDialog := TAtlasLogpointDialog.CreateFor(nil, 'Unit1.pas:12', True);
+  mDialog := TAtlasLogpointDialog.CreateFor(nil, 'Unit1.pas:12', True, True);
   try
     Assert.IsTrue(TAtlasDialogSmoke.Realize(mDialog) > 1);
   finally

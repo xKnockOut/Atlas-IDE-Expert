@@ -102,7 +102,8 @@
     im interface keine Klassen außer Ausnahmen. Genehmigte
     Ausnahmen stehen als "allow" der Regeln architecture-role-import und
     architecture-contract-content in atlas.json (eine Liste für Skript und
-    Linter). Die Matrix muss TArchitectureMatrix in
+    Linter). Eine Ausnahme, die keinen Verstoß mehr abdeckt, ist selbst ein
+    Verstoß: Sie wird gestrichen, sobald ein Umbau ihren Anlass beseitigt. Die Matrix muss TArchitectureMatrix in
     Rules.Builtin.Architecture entsprechen; beide prüfen die
     Fallliste Tests/Data/Architecture/role-imports.json (-SelfTest).
 
@@ -1072,12 +1073,21 @@ foreach ($name in $RoleScheme.LayerPackages | Where-Object { $RoleScheme.DomainP
 $ContractFrameworks = '^(?i)(Vcl|FMX|Winapi|System\.Win|ToolsAPI|DesignIntf|DesignEditors|PaletteAPI)(\.|$)'
 $ContractFrameworkAllow = @(@{ Unit = 'Atlas.UI.Settings.Contract'; Uses = 'Vcl.Controls' })
 
+# Genehmigte Ausnahmen, die einen Verstoß abgedeckt haben. Was am Ende fehlt, deckt nichts mehr ab und wird gemeldet:
+# Eine Ausnahme, deren Anlass ein Umbau beseitigt hat, gäbe sonst still einen späteren Verstoß frei.
+$UsedRoleImportAllow = [System.Collections.Generic.HashSet[string]]::new()
+$UsedContractContentAllow = [System.Collections.Generic.HashSet[string]]::new()
+
 function Test-RoleApproved([string] $Source, [string] $Target) {
+    $found = $false
     foreach ($entry in $RoleImportAllow) {
         $parts = $entry -split '->', 2
-        if ($parts.Count -eq 2 -and $Source -like $parts[0].Trim() -and $Target -like $parts[1].Trim()) { return $true }
+        if ($parts.Count -eq 2 -and $Source -like $parts[0].Trim() -and $Target -like $parts[1].Trim()) {
+            [void] $UsedRoleImportAllow.Add($entry)
+            $found = $true
+        }
     }
-    return $false
+    return $found
 }
 
 $violations = @($SchemeProblems)
@@ -1208,7 +1218,8 @@ foreach ($dir in @('Packages', 'Application')) {
             $target = Get-TargetRole $source $unit.Name $RoleScheme
             # Genehmigte Ausnahmen gelten nie für Internals: Ein Platzhalter wie Atlas.Core.* gibt sie nicht frei.
             $internals = $null -ne $target -and $target.Role -ne 'Host' -and $target.Roles -contains 'Internals'
-            if ((Test-RoleImport $source $target) -or ((Test-RoleApproved $ownUnit $unit.Name) -and -not $internals)) { continue }
+            if (Test-RoleImport $source $target) { continue }
+            if (-not $internals -and (Test-RoleApproved $ownUnit $unit.Name)) { continue }
             $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Rollenmatrix: $(Get-RoleDescription $source $target)"
         }
         if (-not (Test-ContractRole $source)) { continue }
@@ -1224,10 +1235,25 @@ foreach ($dir in @('Packages', 'Application')) {
             $typeName = $match.Groups[1].Value
             $ancestor = $match.Groups[2].Value
             if ($ancestor -ieq 'Exception' -or $ancestor -cmatch '^E[A-Z]' -or $ancestor -match '\.E[A-Z]\w*$') { continue }
-            if ($ContractContentAllow | Where-Object { "$ownUnit.$typeName" -like $_ }) { continue }
+            $approvedTypes = @($ContractContentAllow | Where-Object { "$ownUnit.$typeName" -like $_ })
+            if ($approvedTypes.Count -gt 0) {
+                foreach ($entry in $approvedTypes) { [void] $UsedContractContentAllow.Add($entry) }
+                continue
+            }
             $line = ($head.Substring(0, $match.Index + $match.Value.Length - $match.Value.TrimStart().Length) -split "`n").Count
             $violations += "${relative}:${line}: $typeName ist eine Klasse in einer Contract-Unit"
         }
+    }
+}
+
+foreach ($entry in $RoleImportAllow) {
+    if (-not $UsedRoleImportAllow.Contains($entry)) {
+        $violations += "atlas.json: rules.architecture-role-import.allow `"$entry`" deckt keinen uses-Eintrag mehr ab – Eintrag streichen (auch in docs/Architektur.md, Abschnitt Genehmigte Ausnahmen)"
+    }
+}
+foreach ($entry in $ContractContentAllow) {
+    if (-not $UsedContractContentAllow.Contains($entry)) {
+        $violations += "atlas.json: rules.architecture-contract-content.allow `"$entry`" deckt keine Klasse mehr ab – Eintrag streichen (auch in docs/Architektur.md, Abschnitt Genehmigte Ausnahmen)"
     }
 }
 
