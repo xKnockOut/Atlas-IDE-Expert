@@ -196,7 +196,7 @@ begin
       Assert.AreEqual(1, mAnswer.GetValue<Integer>('depth'), 'Vorgabe: direkt');
       Assert.AreEqual(FIndex.Generation, mAnswer.GetValue<Int64>('generation'));
       Assert.IsTrue(FOptionsAsked > 0, 'Optionen je Datei');
-      Assert.AreEqual(1, FGraph.Cached, 'ein Graph für die Optionen der Datei');
+      Assert.AreEqual(1, Integer(Length(FGraph.CachedRoots)), 'ein Graph für die Optionen der Datei');
       mUses_ := mAnswer.GetValue<TJSONArray>('uses');
       Assert.AreEqual(2, mUses_.Count);
       Assert.IsTrue(mUses_.Items[0].GetValue<Boolean>('cycle'), 'A ↔ B');
@@ -457,7 +457,8 @@ begin
   Relations('D').Free;
   Relations('B').Free;
   Assert.AreEqual(2, FGraph.Rebuilds, 'ein Aufbau je Projekt');
-  Assert.AreEqual(2, FGraph.Cached);
+  Assert.AreEqual(2, Integer(Length(FGraph.CachedRoots)));
+  Assert.AreEqual('P1,P2', string.Join(',', FGraph.CachedRoots), 'zuletzt benutzt zuerst');
   Assert.AreEqual(0, FGraph.Updates, 'Index unverändert');
 end;
 
