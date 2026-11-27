@@ -60,6 +60,10 @@ type
     procedure FixedBoundsSilentCases;
     [Test]
     procedure FixedBoundsSetBoundsAndEdges;
+    /// <summary>Top := 9000 vor Align := alBottom (Reihenfolge), Width einer TBitmap und eine lokale Variable Left
+    /// sind keine Pixelwerte eines Steuerelements.</summary>
+    [Test]
+    procedure FixedBoundsAlignGraphicsAndLocals;
     /// <summary>Alle sechs Regeln in einem Lauf teilen das Komponentenmodell.</summary>
     [Test]
     procedure AllComponentRulesShareModelInOneRun;
@@ -506,6 +510,28 @@ begin
     '  mEdit.Top := AddRow(30);'));
   // Ohne VCL keine Steuerelemente.
   TRuleAssert.Silent(TControlFixedBoundsRule.Create, BoundsUnit('System.Types', '  mEdit.Width := 240;'));
+end;
+
+procedure TComponentRulesTests.FixedBoundsAlignGraphicsAndLocals;
+const
+  cGraphicUnit = 'unit U;'#10'interface'#10'uses'#10'  Vcl.Forms, Vcl.Graphics;'#10'type'#10 +
+    '  TFoo = class(TForm)'#10'    procedure Build;'#10'  end;'#10'implementation'#10'var'#10 +
+    '  GMeasure: TBitmap = nil;'#10'procedure TFoo.Build;'#10'var'#10'  mBild: TBitmap;'#10'  Left, X: Integer;'#10 +
+    'begin'#10'  GMeasure := TBitmap.Create;'#10'  GMeasure.Width := 8;'#10'  mBild := TBitmap.Create;'#10 +
+    '  mBild.Height := 8;'#10'  Left := 12;'#10'  X := Left;'#10'end;'#10'end.';
+begin
+  TRuleAssert.Silent(TControlFixedBoundsRule.Create, BoundsUnit('Vcl.Forms, Vcl.StdCtrls, Vcl.Controls',
+    '  mEdit.Top := 9000;'#10'  mEdit.Align := alBottom;'#10'  mEdit.Left := 1000;'#10'  mEdit.Align := alRight;'));
+  TRuleAssert.Silent(TControlFixedBoundsRule.Create, BoundsUnit('Vcl.Forms, Vcl.StdCtrls, Vcl.Controls',
+    '  Align := alTop;'#10'  Top := 8000;'));
+  // Ohne Align bzw. mit alNone oder an einem anderen Objekt zählt Top weiter.
+  Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TControlFixedBoundsRule.Create,
+    BoundsUnit('Vcl.Forms, Vcl.StdCtrls, Vcl.Controls', '  mEdit.Top := 9000;'#10'  mEdit.Align := alNone;'#10 +
+    '  mEdit.Left := 900;'#10'  Align := alBottom;')))));
+  TRuleAssert.Silent(TControlFixedBoundsRule.Create, cGraphicUnit);
+  // Width der Form selbst bleibt ein Pixelwert.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TControlFixedBoundsRule.Create,
+    StringReplace(cGraphicUnit, '  X := Left;', '  X := Left;'#10'  Width := 300;', [])))));
 end;
 
 procedure TComponentRulesTests.FixedBoundsSetBoundsAndEdges;

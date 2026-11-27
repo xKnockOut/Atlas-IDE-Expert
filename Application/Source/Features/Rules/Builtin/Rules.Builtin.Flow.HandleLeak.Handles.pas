@@ -484,6 +484,15 @@ begin
     end) <> nil;
 end;
 
+/// <summary>Ist ANode -1 (Literal oder Vorzeichen vor 1)? INVALID_HANDLE_VALUE ist THandle(-1).</summary>
+function IsMinusOne(ANode: TSyntaxNode): Boolean;
+begin
+  Result := ((ANode.Kind = TSyntaxKind.Literal) and (ANode.Name = '-1')) or ((ANode.Kind = TSyntaxKind.UnaryExpr) and
+    (ANode.Name = '-') and (ANode.ChildCount = 1) and (ANode[0].Kind = TSyntaxKind.Literal) and (ANode[0].Name = '1'));
+end;
+
+/// <summary>Wert, den ein gescheitertes Öffnen liefert: 0, nil, INVALID_HANDLE_VALUE, THandle(0), THandle(-1).
+/// </summary>
 function IsFailureValue(ANode: TSyntaxNode): Boolean;
 begin
   if ANode.Kind = TSyntaxKind.Literal then
@@ -497,7 +506,7 @@ begin
   else
   begin
     Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 2) and
-      (ANode[1].Kind = TSyntaxKind.Literal) and (ANode[1].Name = '0');
+      (((ANode[1].Kind = TSyntaxKind.Literal) and (ANode[1].Name = '0')) or IsMinusOne(ANode[1]));
   end;
 end;
 

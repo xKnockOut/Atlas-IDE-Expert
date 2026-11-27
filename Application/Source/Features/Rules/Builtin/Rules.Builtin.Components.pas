@@ -108,6 +108,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Rules.Derived,
+  Rules.TypedScope,
+  Atlas.Common.Semantics.NameResolver,
   Rules.Builtin.Inheritance,
   Rules.Builtin.Components.Model,
   Rules.Builtin.Components.InheritedCalls,
@@ -840,6 +842,11 @@ const
   cSetBoundsChildren = 5;
   // Ab hier ist Top/Left eine Reihenfolge für Align (alTop/alBottom), kein Pixelwert.
   cAlignOrder = 10000;
+  // Grafiken mit Width und Height in Bildpunkten des Bilds, nicht des Bildschirms (Messbitmap, Musterpinsel).
+  cGraphicTypes: array[0..9] of string = ('TBitmap', 'TGraphic', 'TIcon', 'TMetafile', 'TPicture', 'TPngImage',
+    'TJPEGImage', 'TGIFImage', 'TWICImage', 'TBitmap32');
+  // Ausrichtungen, bei denen die VCL Lage und Größe nicht aus Top und Left nimmt.
+  cFreeAligns: array[0..1] of string = ('alNone', 'alCustom');
 
 { TControlFixedBoundsRule }
 
@@ -1012,6 +1019,88 @@ begin
     AValue + ')';
 end;
 
+/// <summary>Quelltext von ANode.</summary>
+function NodeText(const AContext: TRuleContext; ANode: TSyntaxNode): string;
+begin
+  Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+end;
+
+/// <summary>Objekt vor Top bzw. Left der Zuweisung (FBottom bei FBottom.Top := …), '' ohne Objekt (Self).</summary>
+function OwnerText(const AContext: TRuleContext; ATarget: TSyntaxNode): string;
+begin
+  Result := '';
+  if (ATarget.Kind = TSyntaxKind.MemberAccess) and (ATarget.ChildCount > 0) then
+  begin
+    Result := NodeText(AContext, ATarget.Children[0]);
+  end;
+end;
+
+/// <summary>Setzt die Routine um AAssign (Top oder Left) für dasselbe Objekt auch Align auf alTop, alBottom …?
+/// Dann legt Align Lage fest, Top := 9000 vor Align := alBottom bestimmt nur die Reihenfolge.</summary>
+function AlignedInRoutine(const AContext: TRuleContext; AAssign: TSyntaxNode): Boolean;
+var
+  mRoutine: TSyntaxNode;
+  mOwner: string;
+  mFound: Boolean;
+begin
+  Result := False;
+  if (AAssign.Kind <> TSyntaxKind.AssignStatement) or not MatchText(AAssign.Name, ['Top', 'Left']) then
+  begin
+    Exit;
+  end;
+  mRoutine := AAssign.Parent;
+  while (mRoutine <> nil) and (mRoutine.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
+    mRoutine := mRoutine.Parent;
+  end;
+  if mRoutine = nil then
+  begin
+    Exit;
+  end;
+  mOwner := OwnerText(AContext, AAssign.Children[0]);
+  mFound := False;
+  mRoutine.Walk(
+    function(AVisited: TSyntaxNode): Boolean
+    begin
+      Result := not mFound;
+      if Result and (AVisited.Kind = TSyntaxKind.AssignStatement) and (AVisited.ChildCount = 2) and
+        SameText(AVisited.Name, 'Align') and SameText(OwnerText(AContext, AVisited.Children[0]), mOwner) and
+        not MatchText(Trim(NodeText(AContext, AVisited.Children[1])), cFreeAligns) then
+      begin
+        mFound := True;
+      end;
+    end);
+  Result := mFound;
+end;
+
+/// <summary>Gehört die Zuweisung AAssign sicher keinem Steuerelement? Left ohne Objekt ist eine lokale Variable
+/// oder ein Feld gleichen Namens; Width einer Grafik (TBitmap …) zählt Bildpunkte des Bilds.</summary>
+function NotControlTarget(AScope: TTypedScope; const AContext: TRuleContext; AAssign: TSyntaxNode): Boolean;
+var
+  mTarget, mOwner: TSyntaxNode;
+  mSymbol: TResolvedSymbol;
+begin
+  Result := False;
+  if AAssign.Kind <> TSyntaxKind.AssignStatement then
+  begin
+    Exit;
+  end;
+  mTarget := AAssign.Children[0];
+  if mTarget.Kind = TSyntaxKind.Identifier then
+  begin
+    mSymbol := AScope.Resolver.Resolve(AContext.Tree, AScope.FileName, mTarget.StartPos);
+    Result := (mSymbol.Kind = TResolvedKind.Local) or ((mSymbol.Kind = TResolvedKind.Symbol) and
+      (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Constant]));
+  end
+  else if (mTarget.Kind = TSyntaxKind.MemberAccess) and (mTarget.ChildCount > 0) and
+    (mTarget.Children[0].Kind = TSyntaxKind.Identifier) then
+  begin
+    mOwner := mTarget.Children[0];
+    mSymbol := AScope.Resolver.Resolve(AContext.Tree, AScope.FileName, mOwner.StartPos);
+    Result := (mSymbol.Kind <> TResolvedKind.None) and MatchText(Trim(mSymbol.TypeName), cGraphicTypes);
+  end;
+end;
+
 /// <summary>Liegt ANode in Paint oder Resize einer Komponente? Dort meldet component-fixed-pixels.</summary>
 function InPaintMethod(AModel: TComponentModel; ANode: TSyntaxNode): Boolean;
 var
@@ -1050,14 +1139,32 @@ begin
   end;
 end;
 
+/// <summary>Meldet die festen Pixelwerte ALiterals einer Zuweisung AAssign mit Korrektur über ScaleValue.</summary>
+procedure ReportBounds(const AContext: TRuleContext; const AReport: IRuleReport; AAssign: TSyntaxNode;
+  ALiterals: TList<TSyntaxNode>);
+var
+  mLiteral: TSyntaxNode;
+  mEdits: TArray<TTextEdit>;
+begin
+  mEdits := nil;
+  for mLiteral in ALiterals do
+  begin
+    mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(mLiteral.StartPos, mLiteral.EndPos),
+      ScaleCallFor(AContext, AAssign.Children[0], mLiteral.Name))];
+  end;
+  AReport.Add(TTextRange.Create(ALiterals.First.StartPos, ALiterals.Last.EndPos),
+    cTexts[TComponentsText.FixedBounds].Fmt([AAssign.Name]), TRuleConfidence.Medium,
+    [TRuleFix.Create(cTexts[TComponentsText.ScaleWith].Text, mEdits)]);
+end;
+
 procedure TControlFixedBoundsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mModel: TComponentModel;
   mCache: IRuleDerivedCache;
   mAssigns, mLiterals: TList<TSyntaxNode>;
-  mAssign, mLiteral: TSyntaxNode;
+  mAssign: TSyntaxNode;
   mHelpers, mConstants: TArray<string>;
-  mEdits: TArray<TTextEdit>;
+  mScope: TTypedScope;
 begin
   if (AContext.Tree = nil) or not UsesVcl(AContext) then
   begin
@@ -1072,6 +1179,7 @@ begin
   mConstants := PixelConstants(AContext.Tree.Root);
   mAssigns := TList<TSyntaxNode>.Create;
   mLiterals := TList<TSyntaxNode>.Create;
+  mScope := TTypedScope.Create(AContext);
   try
     AContext.Tree.Root.Walk(
       function(AVisited: TSyntaxNode): Boolean
@@ -1084,7 +1192,8 @@ begin
       end);
     for mAssign in mAssigns do
     begin
-      if InPaintMethod(mModel, mAssign) then
+      if InPaintMethod(mModel, mAssign) or AlignedInRoutine(AContext, mAssign) or
+        NotControlTarget(mScope, AContext, mAssign) then
       begin
         Continue;
       end;
@@ -1094,17 +1203,10 @@ begin
       begin
         Continue;
       end;
-      mEdits := nil;
-      for mLiteral in mLiterals do
-      begin
-        mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(mLiteral.StartPos, mLiteral.EndPos),
-          ScaleCallFor(AContext, mAssign.Children[0], mLiteral.Name))];
-      end;
-      AReport.Add(TTextRange.Create(mLiterals.First.StartPos, mLiterals.Last.EndPos),
-        cTexts[TComponentsText.FixedBounds].Fmt([mAssign.Name]), TRuleConfidence.Medium,
-        [TRuleFix.Create(cTexts[TComponentsText.ScaleWith].Text, mEdits)]);
+      ReportBounds(AContext, AReport, mAssign, mLiterals);
     end;
   finally
+    mScope.Free;
     mLiterals.Free;
     mAssigns.Free;
   end;
