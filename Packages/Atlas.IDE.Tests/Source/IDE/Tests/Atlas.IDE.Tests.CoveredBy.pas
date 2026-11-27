@@ -564,18 +564,17 @@ procedure TAtlasIdeCoveredByLens.PaintAt(AIndex: Integer; const ARow: TRect;
   const AContext: INTACodeEditorPaintContext; const ALine: string);
 var
   mIndex: Integer;
-  mLine: string;
   mRow: TRect;
   mContext: INTACodeEditorPaintContext;
 begin
   mIndex := AIndex;
   mRow := ARow;
   mContext := AContext;
-  mLine := ALine;
-  TAtlasIdeLensPill.Guarded(AContext.Canvas,
-    procedure
+  TAtlasIdeLensPill.PaintAtLineEnd(Self, AContext, ARow, ALine,
+    function(ALeft: Integer): Integer
     begin
-      PaintMark(mIndex, mRow, mContext, TAtlasIdeLensPill.LeftOf(mContext, mLine));
+      PaintMark(mIndex, mRow, mContext, ALeft);
+      Result := FPainted[mIndex].Rect.Right;
     end);
 end;
 
