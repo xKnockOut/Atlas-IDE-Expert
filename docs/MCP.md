@@ -235,9 +235,11 @@ Wo die Zahlen stehen:
 | `get_server_status` | Abschnitt der Sitzung (Markdown) bzw. Schlüssel `mcp` (JSON) |
 | `%LOCALAPPDATA%\Atlas\Status\server-<pid>.json` | Abschnitt `mcp` der Statusdatei des MCP-Prozesses, alle 5 s neu (für AtlasMonitor und das Fenster „Atlas-Server“) |
 | `%LOCALAPPDATA%\Atlas\Status\mcp-stats.jsonl` | Verlauf: beim Beenden eine Zeile je Werkzeug (auch ohne Aufruf) und je aufgerufener Ressource bzw. aufgerufenem Prompt mit Zeitpunkt, Client, Projektordner und Zahlen, ohne Argumente; Zeilen älter als 30 Tage fallen beim nächsten Anhängen weg |
+| AtlasMonitor, Reiter „KI-Assistenten“ | Alle laufenden MCP-Prozesse: oben je Sitzung Client, Prozess, Beginn, Projekt, Aufrufe und Fehler, darunter eine Tabelle aller Werkzeuge, Ressourcen und Prompts mit denselben Spalten wie `delphi://stats` und dem letzten fehlgeschlagenen Aufruf; auffällige Fehlerquoten rot, rechts die Einzelheiten der gewählten Zeile mit Argumenten und Meldung im Klartext. Neu alle 2 s |
+| IDE-Fenster „Atlas-Server“, Reiter „KI-Assistenten“ | Dieselbe Tabelle in der IDE (abschaltbar mit `server.statusWindow`), neu alle 5 s, solange das Fenster zu sehen ist; unten der letzte fehlgeschlagene Aufruf der gewählten Zeile ganz. Gelesen werden nur die Statusdateien, der IDE-Server muss dafür nicht laufen |
 | Diagnosepaket des Servers | `server/mcp-<n>.json` je MCP-Prozess am selben Ordner; anonym ohne Pfade, Namen und Argumente |
 
-Nichts davon geht ins Netz. Was der Assistent außerhalb von Atlas tut (eigene Dateisuche), sieht der Server nicht. Mit `"mcp": {"statistics": false}` in `atlas.json` wird nichts gezählt und nichts geschrieben; die Einstellung gilt ab dem nächsten Start des MCP-Prozesses.
+Nichts davon geht ins Netz. Was der Assistent außerhalb von Atlas tut (eigene Dateisuche), sieht der Server nicht. Mit `"mcp": {"statistics": false}` in `atlas.json` wird nichts gezählt und nichts geschrieben; die Einstellung gilt ab dem nächsten Start des MCP-Prozesses. Die Reiter „KI-Assistenten“ nennen einen solchen Prozess dann nur mit „zählt keine Aufrufe“.
 
 ## Werkzeuge entwickeln und prüfen
 

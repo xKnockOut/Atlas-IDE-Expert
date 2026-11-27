@@ -2,7 +2,8 @@
 
 // Hosted-Feature Monitor: Fenster mit dem Reiter „Prüfen“ (Läufe ohne IDE über mehrere
 // Ziele, Monitor.CheckPage), dem Reiter „Server“ (alle laufenden Atlas-Server aus ihren Statusdateien,
-// Einzelheiten, Beenden mit Warnung bei laufendem Profil-Lauf, Protokoll öffnen) und Symbol im Infobereich mit
+// Einzelheiten, Beenden mit Warnung bei laufendem Profil-Lauf, Protokoll öffnen), dem Reiter „KI-Assistenten“
+// (Aufrufstatistik der MCP-Prozesse, Monitor.AssistantsPage, #2611) und Symbol im Infobereich mit
 // Zustandspunkt (ruht, arbeitet, hängt) und Kontextmenü. Die Liste kommt alle 2 s neu aus TServerStatusFile.List;
 // Regeln und Texte stehen in Atlas.Common.Monitor.*, Systemzugriffe in TMonitorSystem. Mit Symbol im Infobereich
 // schließt das Kreuz nur das Fenster (Knopf in der Taskleiste nur bei offenem oder minimiertem Fenster); „Beenden“
@@ -25,6 +26,7 @@ uses
   Atlas.Common.Diagnostics.StatusFile,
   Atlas.Common.Monitor.Servers,
   Atlas.Common.Monitor.Settings,
+  Monitor.AssistantsPage,
   Monitor.CheckPage;
 
 type
@@ -76,6 +78,7 @@ type
     FStatusRoot: string;
     FPages: TPageControl;
     FServerPage: TMonitorServerPage;
+    FAssistantPage: TMonitorAssistantPage;
     FCheckPage: TMonitorCheckPage;
     FTimer: TTimer;
     FTray: TTrayIcon;
@@ -480,6 +483,7 @@ begin
   FPages.Align := alClient;
   FPages.Parent := Self;
   FServerPage := TMonitorServerPage.Create(Self, FPages, FStatusRoot, ServerActionsOf(Self));
+  FAssistantPage := TMonitorAssistantPage.Create(Self, FPages);
   FCheckPage := TMonitorCheckPage.Create(Self, FPages, FSettings.Check, FStatusRoot, InformOf(Self), ConfirmOf(Self));
   BuildTray;
   // Die Einstellung gilt: ein fehlender oder veralteter Eintrag (Programm verschoben) wird nachgezogen.
@@ -530,6 +534,7 @@ begin
   if (FServerPage <> nil) and not FServerPage.Tab.TabVisible then
   begin
     FServerPage.Tab.TabVisible := True;
+    FAssistantPage.Tab.TabVisible := True;
     FCheckPage.Activate;
     FPages.ActivePage := FServerPage.Tab;
   end;
@@ -584,6 +589,7 @@ begin
   if Showing then
   begin
     FServerPage.Fill;
+    FAssistantPage.Fill(FServerPage.Entries);
   end;
 end;
 
@@ -747,6 +753,7 @@ begin
   Application.BringToFront;
   FServerPage.ReadEntries;
   FServerPage.Fill;
+  FAssistantPage.Fill(FServerPage.Entries);
   UpdateTray;
 end;
 
