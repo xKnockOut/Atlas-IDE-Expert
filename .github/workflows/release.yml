@@ -203,11 +203,17 @@ jobs:
         shell: pwsh
         env:
           ATLAS_UPDATE_SIGNING_KEY: ${{ secrets.ATLAS_UPDATE_SIGNING_KEY }}
-        # Eigener Schlüssel, kein Zertifikat nötig. Ohne Geheimnis bleibt die Versionsdatei unsigniert; AtlasUpdate
-        # warnt dann nur, solange TUpdateManifestSignature.cRequired False ist. Ohne Paket schreibt
-        # Publish-ReleasePackage.ps1 beide Dateien neu und signiert sie selbst.
+        # Eigener Schlüssel, kein Zertifikat nötig. Ohne Geheimnis bleibt die Versionsdatei einer Vorabversion
+        # unsigniert (AtlasUpdate warnt dann nur, solange TUpdateManifestSignature.cRequired False ist); eine stabile
+        # Version bricht ab (#3095): Sonst ginge sie ohne Herausgeberbindung an alle Installationen. Ohne Paket
+        # schreibt Publish-ReleasePackage.ps1 beide Dateien neu und signiert sie selbst.
         run: |
           if (-not $env:ATLAS_UPDATE_SIGNING_KEY) {
+            $prerelease = $env:VERSION.StartsWith('0.') -or $env:VERSION.Contains('-')
+            if (-not $prerelease) {
+              Write-Host '::error::ATLAS_UPDATE_SIGNING_KEY fehlt: stabile Versionen nur mit signierter Versionsdatei (docs/Release.md)'
+              exit 1
+            }
             Write-Host '::warning::ATLAS_UPDATE_SIGNING_KEY fehlt: Versionsdatei nicht signiert (docs/Release.md)'
             exit 0
           }
