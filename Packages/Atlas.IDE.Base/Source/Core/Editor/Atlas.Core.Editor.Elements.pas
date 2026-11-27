@@ -97,7 +97,9 @@ type
     /// <summary>Symbole des Mutationslaufs in der Rinne (#1460).</summary>
     MutationResults,
     /// <summary>uses-Einträge in Hinweisfarbe, die nur die implementation braucht (#2465).</summary>
-    MovableUses);
+    MovableUses,
+    /// <summary>Marke an Zeilen, die ein KI-Assistent geändert hat, bis zum Speichern (#2616).</summary>
+    AssistantEdits);
   TAtlasHideScope = (Here, InFile, Everywhere);
 {$SCOPEDENUMS OFF}
   TAtlasHideScopes = set of TAtlasHideScope;
@@ -214,7 +216,9 @@ const
     // tests.mutation.marks (TestsMutationMarks, nur die Anzeige); der Lauf selbst bleibt an tests.mutation.
     (Key: 'TestsMutationMarks'; Scopes: cFileScopes; Overlay: False; Gutter: True),
     // Wie ungenutzte uses-Einträge je Datei oder überall.
-    (Key: 'HighlightMovableUses'; Scopes: cFileScopes; Overlay: False; Gutter: False)
+    (Key: 'HighlightMovableUses'; Scopes: cFileScopes; Overlay: False; Gutter: False),
+    // Marken gelten bis zum Speichern der Datei: Ausblenden je Datei oder überall.
+    (Key: 'AssistantsEditMarks'; Scopes: cFileScopes; Overlay: False; Gutter: True)
   );
 
 function Make(AElement: TAtlasDrawnElement; const AKey: string; AScopes: TAtlasHideScopes;

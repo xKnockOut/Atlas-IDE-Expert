@@ -126,6 +126,12 @@ begin
     Assert.IsFalse(mSaved.AssistantsEditHoldModified);
     Assert.IsFalse(mSaved.AssistantsQuestionsInIde);
     Assert.IsFalse(mSaved.AssistantsLog);
+    // Randmarken geänderter Zeilen (#2616): standardmäßig an, abschaltbar.
+    Assert.AreSame(SheetOf(CheckOf(mPage, 'AssistantsEnabled')), SheetOf(CheckOf(mPage, 'AssistantsEditMarks')));
+    Assert.IsTrue(CheckOf(mPage, 'AssistantsEditMarks').Checked);
+    CheckOf(mPage, 'AssistantsEditMarks').Checked := False;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.AssistantsEditMarks);
   finally
     mPage.Free;
   end;

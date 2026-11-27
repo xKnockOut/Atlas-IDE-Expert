@@ -31,6 +31,8 @@ type
     procedure TakesAndAnswersOnce;
     [Test]
     procedure AnswersUnreadableRequest;
+    [Test]
+    procedure TakeReadsTheAssistant;
   end;
 
 implementation
@@ -43,6 +45,7 @@ uses
   System.JSON,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
+  Atlas.Text.AssistantOrigin,
   Atlas.Core.Assistants.BuildInbox,
   Atlas.Core.Assistants.Inbox;
 
@@ -218,6 +221,22 @@ begin
   finally
     mAnswer.Free;
   end;
+end;
+
+procedure TAtlasBuildInboxTests.TakeReadsTheAssistant;
+var
+  mRequest: TAtlasBuildRequest;
+  mOrigin: TAtlasAssistantOrigin;
+  mReason: string;
+begin
+  TFile.WriteAllText(TPath.Combine(FFolder, 'a.json'),
+    '{"project": "C:\\P\\A.dproj", "client": "Assistent A", "session": "3f2a"}', TEncoding.UTF8);
+  Assert.IsTrue(TAtlasBuildInbox.Take(TPath.Combine(FFolder, 'a.json'), Texts, mRequest, mOrigin, mReason), mReason);
+  Assert.AreEqual('Assistent A', mOrigin.Client);
+  Assert.AreEqual('3f2a', mOrigin.Session);
+  // Älterer Server ohne Felder: unbekannter Assistent.
+  Assert.IsFalse(TAtlasBuildInbox.OriginOf('{"project": "x"}').IsKnown);
+  Assert.IsFalse(TAtlasBuildInbox.OriginOf('kaputt').IsKnown);
 end;
 
 initialization

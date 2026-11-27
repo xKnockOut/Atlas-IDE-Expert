@@ -44,6 +44,10 @@
 //   assistants.registerInIde an und ein eigener Anbieter eingerichtet ist.
 // - Befehl „Anweisungen für KI-Assistenten aktualisieren“ samt Hinweis nach dem Speichern der atlas.json (#2615,
 //   Atlas.IDE.Assistants.Adapters.Instructions).
+// - Randmarken an Zeilen, die ein Assistent geändert hat (#2616, Schicht der Rinne und Hörer aufs Speichern,
+//   Atlas.IDE.Assistants.Composition.Marks), solange assistants.edit und assistants.editMarks an sind. Die
+//   Nummern der Assistenten dieser Sitzung (TAtlasAssistantSessions) teilen KI-Protokoll und Randmarken: gleiche
+//   Farbe je Sitzung.
 // Was KI-Assistenten gerade tun und ob sie pausiert sind
 // (TAtlasAssistantsActivity), gehört dem Modul und lebt von der Anmeldung bis
 // nach dem Abmelden: Die Pause bleibt so über das Neustarten einzelner Teile
@@ -76,6 +80,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.BuildInbox,
   Atlas.IDE.Assistants.EditInbox,
+  Atlas.IDE.Assistants.Composition.Marks,
   Atlas.IDE.Assistants.QuestionInbox,
   Atlas.IDE.Assistants.LogWindow,
   Atlas.IDE.Assistants.Composition.HostAdapters,
@@ -150,6 +155,7 @@ end;
 procedure StartEdits;
 begin
   GEditInbox := TAtlasIdeEditInbox.Create(TAtlasIdeHost.EditorFiles, GActivity, GLog, TAtlasIdeHost.Warnings());
+  GEditInbox.OnEdited := MarksEdited;
 end;
 
 procedure StopEdits;
@@ -450,6 +456,8 @@ begin
   GScope.Provide(IAtlasCommandSource, mInstructions);
   GScope.Provide(IAtlasMenuSource, mInstructions);
   GScope.Provide(IAtlasFollowsSaves, mInstructions);
+  // Nummern und Farben der Assistenten für Protokoll und Randmarken geänderter Zeilen (#2616).
+  StartMarks(GScope, GLog);
   Result := True;
 end;
 
@@ -465,6 +473,7 @@ begin
     end);
   // Erst nach dem Stoppen aller Teile: Eingänge und Anzeige halten Aktivität und Protokoll bis dahin.
   FreeAndNil(GActivity);
+  StopMarks(GLog);
   FreeAndNil(GLog);
 end;
 

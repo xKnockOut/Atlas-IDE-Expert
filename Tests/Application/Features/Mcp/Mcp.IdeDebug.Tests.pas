@@ -62,6 +62,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Mcp.IdeInbox,
+  Atlas.Text.AssistantOrigin,
   Mcp.IdeDebug,
   Mcp.IdeInbox.Tests;
 
@@ -111,7 +112,8 @@ begin
   ARequest := nil;
   mArguments := TJSONObject.ParseJSONValue(AArguments);
   try
-    Result := TMcpIdeDebug.RequestText(TMcpIdeDebugCall.Make(ATool, 'Agent', 'C:\P\App.dproj'),
+    Result := TMcpIdeDebug.RequestText(TMcpIdeDebugCall.Make(ATool, TAtlasAssistantOrigin.Make('Agent', '3f2a'),
+      'C:\P\App.dproj'),
       mArguments as TJSONObject, Resolve(), mText, AReason);
   finally
     mArguments.Free;
@@ -157,6 +159,8 @@ begin
   try
     Assert.AreEqual('debug_start', mRequest.GetValue<string>('command'));
     Assert.AreEqual('Agent', mRequest.GetValue<string>('client'));
+    // Sitzung des MCP-Prozesses (#2616).
+    Assert.AreEqual('3f2a', mRequest.GetValue<string>('session'));
     Assert.AreEqual('C:\P\App.dproj', mRequest.GetValue<string>('project'));
     Assert.AreEqual('U.TFix.Methode', mRequest.GetValue<string>('test'));
     Assert.AreEqual('Debug', mRequest.GetValue<string>('configuration'));

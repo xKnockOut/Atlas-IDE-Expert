@@ -29,6 +29,9 @@ type
     /// <summary>Zurückhalten (#2605): Auftrag mit "hold", Antwort "held".</summary>
     [Test]
     procedure ReportsHeldChange;
+    /// <summary>Herkunft (#2616): Auftrag mit und ohne "client"/"session".</summary>
+    [Test]
+    procedure RequestCarriesOriginOnlyWhenKnown;
     /// <summary>Nicht zu eng (Last), nicht zu weit (Antwortzeit).</summary>
     [Test]
     procedure PollIntervalStaysWithinBounds;
@@ -42,6 +45,7 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.JSON,
+  Atlas.Text.AssistantOrigin,
   Mcp.IdeEdits,
   Mcp.IdeInbox.Tests;
 
@@ -176,6 +180,45 @@ begin
   mJson := TJSONObject.ParseJSONValue(mSeen);
   try
     Assert.IsTrue(mJson.GetValue<Boolean>('hold', False), mSeen);
+  finally
+    mJson.Free;
+  end;
+end;
+
+/// <summary>Schickt AEdit; das Plugin antwortet „angewendet“. Liefert den Auftrag, wie das Plugin ihn las.</summary>
+function SentRequest(const AInbox: string; const AEdit: TMcpIdeEdit): string;
+var
+  mReason, mSeen: string;
+begin
+  mSeen := '';
+  TMcpIdeEdits.Send(AInbox, AEdit,
+    procedure
+    begin
+      Inc(Now_, 100);
+      Plugin(AInbox, '{"applied":true}', mSeen);
+    end, Clock, mReason);
+  Result := mSeen;
+end;
+
+procedure TMcpIdeEditsTests.RequestCarriesOriginOnlyWhenKnown;
+var
+  mEdit: TMcpIdeEdit;
+  mJson: TJSONValue;
+begin
+  mEdit := TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu');
+  mEdit.Origin := TAtlasAssistantOrigin.Make('Assistent A', '3f2a');
+  mJson := TJSONObject.ParseJSONValue(SentRequest(FInbox, mEdit));
+  try
+    Assert.AreEqual('Assistent A', mJson.GetValue<string>('client', ''));
+    Assert.AreEqual('3f2a', mJson.GetValue<string>('session', ''));
+  finally
+    mJson.Free;
+  end;
+  // Ohne Herkunft fehlen beide Felder; das Plugin nennt dann den unbekannten Assistenten.
+  mJson := TJSONObject.ParseJSONValue(SentRequest(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu')));
+  try
+    Assert.IsNull(TJSONObject(mJson).GetValue('client'));
+    Assert.IsNull(TJSONObject(mJson).GetValue('session'));
   finally
     mJson.Free;
   end;

@@ -52,6 +52,7 @@ Atlas.IDE.Assistants	Atlas.Core.Assistants.DebugGate	Core/Assistants/Atlas.Core.
 Atlas.IDE.Assistants	Atlas.Core.Assistants.DebugInbox	Core/Assistants/Atlas.Core.Assistants.DebugInbox.pas	Ordner `Core/Assistants`
 Atlas.IDE.Assistants	Atlas.Core.Assistants.EditChange	Core/Assistants/Atlas.Core.Assistants.EditChange.pas	Ordner `Core/Assistants`
 Atlas.IDE.Assistants	Atlas.Core.Assistants.EditInbox	Core/Assistants/Atlas.Core.Assistants.EditInbox.pas	Ordner `Core/Assistants`
+Atlas.IDE.Assistants	Atlas.Core.Assistants.EditMarks	Core/Assistants/Atlas.Core.Assistants.EditMarks.pas	Ordner `Core/Assistants`, Randmarken geänderter Zeilen ohne IDE, #2616
 Atlas.IDE.Assistants	Atlas.Core.Assistants.EditPlan	Core/Assistants/Atlas.Core.Assistants.EditPlan.pas	Ordner `Core/Assistants`
 Atlas.IDE.Assistants	Atlas.Core.Assistants.HeldEdits	Core/Assistants/Atlas.Core.Assistants.HeldEdits.pas	Ordner `Core/Assistants`
 Atlas.IDE.Assistants	Atlas.Core.Assistants.IdeProviders	Core/Assistants/Atlas.Core.Assistants.IdeProviders.pas	Ordner `Core/Assistants`, Anbieter der IDE und ihre Auswahl ohne ToolsAPI, #2744
@@ -65,8 +66,10 @@ Atlas.IDE.Assistants	Atlas.Core.Assistants.LinkState	Core/Assistants/Atlas.Core.
 Atlas.IDE.Assistants	Atlas.Core.Assistants.Log	Core/Assistants/Atlas.Core.Assistants.Log.pas	Ordner `Core/Assistants`
 Atlas.IDE.Assistants	Atlas.Core.Assistants.Questions	Core/Assistants/Atlas.Core.Assistants.Questions.pas	Ordner `Core/Assistants`
 Atlas.IDE.Assistants	Atlas.Core.Assistants.Queue	Core/Assistants/Atlas.Core.Assistants.Queue.pas	Ordner `Core/Assistants`
+Atlas.IDE.Assistants	Atlas.Core.Assistants.Sessions	Core/Assistants/Atlas.Core.Assistants.Sessions.pas	Ordner `Core/Assistants`, Nummern und Farben der Assistenten ohne IDE, #2616
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.AiGhost	IDE/Assistants/Atlas.IDE.Assistants.Adapters.AiGhost.pas	Ordner `IDE/Assistants`
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.AiText	IDE/Assistants/Atlas.IDE.Assistants.Adapters.AiText.pas	Ordner `IDE/Assistants`, Text vom KI-Anbieter für andere Module über den Vertrag, #2462
+Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.EditMarks	IDE/Assistants/Atlas.IDE.Assistants.Adapters.EditMarks.pas	Ordner `IDE/Assistants`; Randmarken geänderter Zeilen in der Rinne (#2616)
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.IdePlugin	IDE/Assistants/Atlas.IDE.Assistants.Adapters.IdePlugin.pas	Ordner `IDE/Assistants`, Anmeldung bei Smart CodeInsight über ToolsAPI.AI, #2745
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.IdeProviders	IDE/Assistants/Atlas.IDE.Assistants.Adapters.IdeProviders.pas	Ordner `IDE/Assistants`, Adapter über ToolsAPI.AI, #2744
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.Instructions	IDE/Assistants/Atlas.IDE.Assistants.Adapters.Instructions.pas	Ordner `IDE/Assistants`
@@ -81,6 +84,7 @@ Atlas.IDE.Assistants	Atlas.IDE.Assistants.BuildInbox	IDE/Assistants/Atlas.IDE.As
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Composition	IDE/Assistants/Atlas.IDE.Assistants.Composition.pas	Ordner `IDE/Assistants`
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Composition.Debug	IDE/Assistants/Atlas.IDE.Assistants.Composition.Debug.pas	Teil AssistantDebug: Eingang der MCP-Werkzeuge debug_* und Leiste „KI-Assistent debuggt“
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Composition.HostAdapters	IDE/Assistants/Atlas.IDE.Assistants.Composition.HostAdapters.pas	Ordner `IDE/Assistants`
+Atlas.IDE.Assistants	Atlas.IDE.Assistants.Composition.Marks	IDE/Assistants/Atlas.IDE.Assistants.Composition.Marks.pas	Nummern der Assistenten und Randmarken geänderter Zeilen (#2616)
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.ContextExport	IDE/Assistants/Atlas.IDE.Assistants.ContextExport.pas	Ordner `IDE/Assistants`
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.DailyCount	IDE/Assistants/Atlas.IDE.Assistants.DailyCount.pas	Ordner `IDE/Assistants`, gemeinsamer Tageszähler der KI-Anfragen
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.DebugBar	IDE/Assistants/Atlas.IDE.Assistants.DebugBar.pas	Ordner `IDE/Assistants`

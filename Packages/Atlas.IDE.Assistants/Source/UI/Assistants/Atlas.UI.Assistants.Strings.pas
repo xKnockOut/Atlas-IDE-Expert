@@ -6,6 +6,9 @@
 
 interface
 
+uses
+  Atlas.Text.AssistantOrigin;
+
 {$SCOPEDENUMS ON}
 
 type
@@ -65,13 +68,20 @@ type
     IdeProvidersButton, IdeOptionsButton, IdeProvidersNone, IdeProviderLine, IdeProviderActive, IdeProviderOff,
     FeatureChat, FeatureInstruction, FeatureModels, SettingsRegisterInIde, IdeRefused, TextExcluded,
     BridgeNotReady, BridgeNoModels, BridgeLimit, FrameProvider, FrameToday, FrameOpenAtlas, FrameHint,
-    IdeOptionsMissing);
+    IdeOptionsMissing,
+    // Mehrere Assistenten unterscheiden: Protokoll, Filter, Randmarken (#2616).
+    AssistantUnknown, LogColumnAssistant, LogFilterAll, LogFilterHint, MarkTipTitle, MarkTipText, MarkTipRemoved,
+    SettingsEditMarks);
 
   TAtlasAssistantsStrings = class
   public
     class function Text(AId: TAtlasAssistantsTextId): string; static;
     /// <summary>Text mit Platzhaltern wie Format.</summary>
     class function Fmt(AId: TAtlasAssistantsTextId; const AArgs: array of const): string; static;
+    /// <summary>Assistent für Meldungen: „Name · Sitzung“, ohne Angaben „unbekannter Assistent“ (#2616).</summary>
+    class function Assistant(const AOrigin: TAtlasAssistantOrigin): string; static;
+    /// <summary>Assistent für Anzeigen, die ohne Angaben nichts zeigen (Statusfeld, Spalte); '' unbekannt.</summary>
+    class function Display(const AOrigin: TAtlasAssistantOrigin): string; static;
   end;
 
 implementation
@@ -82,16 +92,16 @@ uses
 
 const
   cTexts: array[TAtlasLanguage, TAtlasAssistantsTextId] of string = (
-    ('Ein KI-Assistent baut %s in der IDE …',
-     'Build für den KI-Assistenten beendet: %s, %d Fehler',
-     'Build für den KI-Assistenten abgelehnt: %s (%s)',
+    ('KI-Assistent %s baut %s in der IDE …',
+     'Build für %s beendet: %s, %d Fehler',
+     'Build für %s abgelehnt: %s (%s)',
      'Auftrag nicht lesbar',
      'Auftrag ohne Projekt',
      'Unbekannte Art "%s"; erlaubt sind make, build und check',
      'Das Modul Build-Pipeline ist nicht geladen oder abgeschaltet',
      'KI-Assistenten dürfen in offene Dateien schreiben (über den Editorpuffer)',
      'Builds für KI-Assistenten (MCP) über diese IDE erlauben (build_project)',
-     'Atlas: MCP-Änderung in %s übernommen (Strg+Z macht sie rückgängig).',
+     'Atlas: KI (%s): %s geändert (Strg+Z macht es rückgängig).',
      'Änderung über MCP',
      'Unbekannter Debug-Auftrag "%s"',
      'Der Benutzer hat „Pause für KI“ gedrückt; Aufträge werden abgelehnt, bis er „Fortsetzen“ wählt.',
@@ -321,17 +331,25 @@ const
      'Heute %d von %d Anfragen',
      'In Atlas einrichten …',
      'Anbieter, Modell, Schlüssel und Tagesgrenze stehen auf der Seite Atlas › KI-Assistenten.',
-     'Die Optionen der IDE ließen sich nicht öffnen; Tools › Optionen › Smart CodeInsight von Hand wählen.'),
-    ('An AI assistant is building %s in the IDE …',
-     'Build for the AI assistant finished: %s, %d errors',
-     'Build for the AI assistant refused: %s (%s)',
+     'Die Optionen der IDE ließen sich nicht öffnen; Tools › Optionen › Smart CodeInsight von Hand wählen.',
+     'unbekannter Assistent',
+     'Assistent',
+     'Alle Assistenten',
+     'Nur Einträge dieses Assistenten zeigen',
+     'Von %s geändert',
+     'Um %s geändert; die Marke verschwindet, sobald die Datei gespeichert ist.',
+     'Um %s: %d Zeilen davor entfernt; die Marke verschwindet, sobald die Datei gespeichert ist.',
+     'Von KI-Assistenten geänderte Zeilen am Rand markieren, bis die Datei gespeichert ist'),
+    ('AI assistant %s is building %s in the IDE …',
+     'Build for %s finished: %s, %d errors',
+     'Build for %s refused: %s (%s)',
      'Request not readable',
      'Request without project',
      'Unknown mode "%s"; allowed are make, build and check',
      'The build pipeline module is not loaded or switched off',
      'AI assistants may write to open files (through the editor buffer)',
      'Allow builds for AI assistants (MCP) in this IDE (build_project)',
-     'Atlas: MCP change applied to %s (Ctrl+Z undoes it).',
+     'Atlas: AI (%s): %s changed (Ctrl+Z undoes it).',
      'Change through MCP',
      'Unknown debug request "%s"',
      'The user pressed "Pause for AI"; requests are refused until they choose "Resume".',
@@ -558,7 +576,15 @@ const
      'Today %d of %d requests',
      'Set up in Atlas …',
      'Provider, model, key and daily limit are on the page Atlas › AI assistants.',
-     'The IDE options could not be opened; choose Tools › Options › Smart CodeInsight by hand.'));
+     'The IDE options could not be opened; choose Tools › Options › Smart CodeInsight by hand.',
+     'unknown assistant',
+     'Assistant',
+     'All assistants',
+     'Show only the entries of this assistant',
+     'Changed by %s',
+     'Changed at %s; the mark disappears once the file is saved.',
+     'At %s: %d lines removed above; the mark disappears once the file is saved.',
+     'Mark lines changed by AI assistants in the gutter until the file is saved'));
 
 { TAtlasAssistantsStrings }
 
@@ -570,6 +596,16 @@ end;
 class function TAtlasAssistantsStrings.Fmt(AId: TAtlasAssistantsTextId; const AArgs: array of const): string;
 begin
   Result := Format(Text(AId), AArgs);
+end;
+
+class function TAtlasAssistantsStrings.Assistant(const AOrigin: TAtlasAssistantOrigin): string;
+begin
+  Result := AOrigin.Caption(Text(TAtlasAssistantsTextId.AssistantUnknown));
+end;
+
+class function TAtlasAssistantsStrings.Display(const AOrigin: TAtlasAssistantOrigin): string;
+begin
+  Result := AOrigin.Display(Text(TAtlasAssistantsTextId.AssistantUnknown));
 end;
 
 end.

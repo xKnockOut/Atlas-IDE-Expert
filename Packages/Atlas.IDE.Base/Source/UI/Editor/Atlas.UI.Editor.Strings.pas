@@ -89,7 +89,8 @@ type
     EnumTablesPreviewHint, EnumTableApply, EnumTableDone, EnumTablesWarning, EnumTablesSyncTitle, EnumTablesSyncFailed,
     EnumTablesSyncNothing, EnumTablesSyncApply, EnumTablesSyncDone, OverloadFailed, ExtractIntfFailed,
     ExtractIntfWarning, ExtractSuperFailed, MoveMemberFailed, InlineAccessorFailed, InlineAccessorWarning,
-    SafeDeleteFailed, SafeDeleteAskOverrides, SafeDeleteAskCascade, SafeDeleteWarning, SigWarning);
+    SafeDeleteFailed, SafeDeleteAskOverrides, SafeDeleteAskCascade, SafeDeleteWarning, SigWarning,
+    ElementAssistantEdits, ElementAssistantEditsPlural);
 
   TAtlasEditorStrings = class
   public
@@ -522,7 +523,9 @@ const
      '„%s“ wird in %d Nachfahren überschrieben:%s%s%sÜberschreibungen mitlöschen?',
      'Danach unbenutzt:%s%s%sMitlöschen?',
      'Hinweis: %s',
-     'Hinweis: %s'),
+     'Hinweis: %s',
+     'Marke einer KI-Änderung',
+     'Marken von KI-Änderungen'),
     ('Atlas: Rename',
      'New name for “%s”:',
      'Atlas: nothing to rename here.',
@@ -937,7 +940,9 @@ const
      '“%s” is overridden in %d descendants:%s%s%sDelete the overrides too?',
      'Unused afterwards:%s%s%sDelete these too?',
      'Note: %s',
-     'Note: %s'));
+     'Note: %s',
+     'AI change mark',
+     'AI change marks'));
 
 { TAtlasEditorStrings }
 

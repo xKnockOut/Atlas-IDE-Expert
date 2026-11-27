@@ -13,7 +13,8 @@
 // (der MCP-Server zieht sie nach seiner Frist zurück). Abschaltbar über die
 // Einstellung „Builds für KI-Assistenten“ (McpBuild); dann läuft der Eingang
 // nicht, und der MCP-Server meldet „nicht angenommen“.
-// Jeder Auftrag landet im KI-Protokoll (#2049): Ergebnis mit Fehlern und Warnungen oder der Grund der Ablehnung.
+// Jeder Auftrag landet im KI-Protokoll (#2049): Ergebnis mit Fehlern und Warnungen oder der Grund der Ablehnung,
+// mit dem Assistenten des Auftrags (Client und Sitzung, #2616); auch die Meldungen nennen ihn.
 
 interface
 
@@ -23,6 +24,7 @@ uses
   Atlas.Core.Build.Events,
   Atlas.Plugin.Build.Contract.Requests,
   Atlas.Core.Build.Messages,
+  Atlas.Text.AssistantOrigin,
   Atlas.Core.Assistants.Activity,
   Atlas.Core.Assistants.InboxPace,
   Atlas.Core.Assistants.Log,
@@ -45,7 +47,8 @@ type
     FActivity: TAtlasAssistantsActivity;
     FLog: TAtlasAssistantsLog;
     procedure Tick(Sender: TObject);
-    procedure Refuse(const ARequest: TAtlasBuildRequest; const AReason: string);
+    procedure Refuse(const ARequest: TAtlasBuildRequest; const AOrigin: TAtlasAssistantOrigin;
+      const AReason: string);
     procedure Process(const ARequestFile: string);
     procedure Clean;
   public
@@ -229,8 +232,9 @@ end;
 
 /// <summary>Antwort nach dem Build in AFolder und Meldung über AOnMessage; hält nur Werte und die Anzeige der
 /// Composition (AActivity, ALog), nicht den Briefkasten.</summary>
-function BuildDone(const AFolder: string; const ARequest: TAtlasBuildRequest; AActivity: TAtlasAssistantsActivity;
-  ALog: TAtlasAssistantsLog; const AOnMessage: TAtlasBuildInboxProc): TAtlasBuildDoneProc;
+function BuildDone(const AFolder: string; const ARequest: TAtlasBuildRequest; const AOrigin: TAtlasAssistantOrigin;
+  AActivity: TAtlasAssistantsActivity; ALog: TAtlasAssistantsLog; const AOnMessage: TAtlasBuildInboxProc):
+  TAtlasBuildDoneProc;
 begin
   Result :=
     procedure(const AReport: TAtlasBuildReport; const AError: string)
@@ -242,20 +246,22 @@ begin
           TAtlasFileInbox.Answer(AFolder, ARequest.Id, TAtlasBuildInbox.RefusalText(AError));
           if ALog <> nil then
           begin
-            ALog.Add(TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Refused, ARequest.Project, '', AError));
+            ALog.Add(TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Refused, ARequest.Project, AOrigin,
+              AError));
           end;
           Exit;
         end;
         TAtlasFileInbox.Answer(AFolder, ARequest.Id, TAtlasBuildInbox.SuccessText(AReport));
         if ALog <> nil then
         begin
-          ALog.Add(TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Build, ARequest.Project, '',
+          ALog.Add(TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Build, ARequest.Project, AOrigin,
             TAtlasIdeBuildInbox.ResultText(ARequest.Kind, AReport.Messages)));
         end;
         if Assigned(AOnMessage) then
         begin
           AOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.BuildFinished,
-            [ExtractFileName(ARequest.Project), ErrorCount(AReport.Messages)]));
+            [TAtlasAssistantsStrings.Assistant(AOrigin), ExtractFileName(ARequest.Project),
+            ErrorCount(AReport.Messages)]));
         end;
       except
         on E: Exception do
@@ -273,36 +279,38 @@ begin
     ErrorCount(AMessages), CountOf(AMessages, TAtlasCompilerSeverity.Warning)]);
 end;
 
-procedure TAtlasIdeBuildInbox.Refuse(const ARequest: TAtlasBuildRequest; const AReason: string);
+procedure TAtlasIdeBuildInbox.Refuse(const ARequest: TAtlasBuildRequest; const AOrigin: TAtlasAssistantOrigin;
+  const AReason: string);
 begin
   TAtlasFileInbox.Answer(FFolder, ARequest.Id, TAtlasBuildInbox.RefusalText(AReason));
   if FLog <> nil then
   begin
-    FLog.Add(TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Refused, ARequest.Project, '', AReason));
+    FLog.Add(TAtlasAssistantsLog.PlainEntry(TAtlasAssistantsLogKind.Refused, ARequest.Project, AOrigin, AReason));
   end;
   if Assigned(FOnMessage) then
   begin
     FOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.BuildRefused,
-      [ExtractFileName(ARequest.Project), AReason]));
+      [TAtlasAssistantsStrings.Assistant(AOrigin), ExtractFileName(ARequest.Project), AReason]));
   end;
 end;
 
 procedure TAtlasIdeBuildInbox.Process(const ARequestFile: string);
 var
   mRequest: TAtlasBuildRequest;
+  mOrigin: TAtlasAssistantOrigin;
   mReason, mFolder: string;
   mOnMessage: TAtlasBuildInboxProc;
   mRequests: IAtlasBuildRequests;
   mStarted: Boolean;
 begin
-  if not TAtlasBuildInbox.Take(ARequestFile, InboxTexts, mRequest, mReason) then
+  if not TAtlasBuildInbox.Take(ARequestFile, InboxTexts, mRequest, mOrigin, mReason) then
   begin
     Exit;
   end;
   // Pause für KI (#1906): ablehnen, bevor ein Projekt geöffnet wird.
   if FActivity.Paused then
   begin
-    Refuse(mRequest, TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.RefusedPaused));
+    Refuse(mRequest, mOrigin, TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.RefusedPaused));
     Exit;
   end;
   mRequests := FRequests();
@@ -313,7 +321,7 @@ begin
   if Assigned(mOnMessage) then
   begin
     mOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.BuildStarted,
-      [ExtractFileName(mRequest.Project)]));
+      [TAtlasAssistantsStrings.Assistant(mOrigin), ExtractFileName(mRequest.Project)]));
   end;
   // Die Antwort kommt nach dem Build (Meldungen des Lesers, #528); der Rückruf hält nur Werte, nicht Self.
   mStarted := False;
@@ -321,14 +329,14 @@ begin
   if mRequests <> nil then
   begin
     // Vor dem Start melden: Ein Build, der sofort scheitert, ruft BuildDone noch in Start.
-    FActivity.BuildStarted(mRequest.Project, '');
+    FActivity.BuildStarted(mRequest.Project, TAtlasAssistantsStrings.Display(mOrigin));
     mStarted := mRequests.Start(mRequest, TAtlasBuildInbox.cRequestedBy,
-      BuildDone(mFolder, mRequest, FActivity, FLog, mOnMessage), mReason);
+      BuildDone(mFolder, mRequest, mOrigin, FActivity, FLog, mOnMessage), mReason);
   end;
   if not mStarted then
   begin
     FActivity.BuildEnded;
-    Refuse(mRequest, mReason);
+    Refuse(mRequest, mOrigin, mReason);
   end;
 end;
 

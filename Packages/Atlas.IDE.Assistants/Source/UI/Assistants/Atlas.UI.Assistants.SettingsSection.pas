@@ -270,6 +270,7 @@ begin
   Switch('assistants.edit', T(TAtlasAssistantsTextId.SettingsEdit));
   // Änderungen an ungespeicherten Dateien zurückhalten statt ablehnen (#2605).
   Switch('assistants.editHoldModified', T(TAtlasAssistantsTextId.SettingsEditHold));
+  Switch('assistants.editMarks', T(TAtlasAssistantsTextId.SettingsEditMarks));
   Switch('compiler.mcpBuild', T(TAtlasAssistantsTextId.SettingsMcpBuild));
   // Debuggen durch KI-Assistenten (#1874): Rechte und Leiste.
   Switch('debug.mcp', T(TAtlasAssistantsTextId.SettingsDebugMcp));

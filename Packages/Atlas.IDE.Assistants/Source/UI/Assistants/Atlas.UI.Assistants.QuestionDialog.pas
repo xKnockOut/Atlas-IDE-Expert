@@ -80,6 +80,7 @@ implementation
 
 uses
   Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Text.AssistantOrigin,
   Atlas.UI.Assistants.Strings;
 
 const
@@ -193,7 +194,9 @@ end;
 procedure TAtlasQuestionDialog.ShowQuestion(const AQuestion: TAtlasQuestion; AWaiting: Integer);
 begin
   FQuestion := AQuestion;
-  Caption := CaptionFor(AQuestion.Client);
+  // Zwei Sitzungen desselben Clients unterscheidet die Sitzung (#2616).
+  Caption := CaptionFor(TAtlasAssistantsStrings.Display(TAtlasAssistantOrigin.Make(AQuestion.Client,
+    AQuestion.Session)));
   BuildBody(AWaiting);
   ChoiceChanged(nil);
 end;

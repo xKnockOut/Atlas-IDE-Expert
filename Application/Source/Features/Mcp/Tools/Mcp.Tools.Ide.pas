@@ -3,7 +3,8 @@
 // Host-Rolle Core: MCP-Modus (--mcp, #48), Verbindung zur laufenden IDE über die Dateien des Plugins:
 // ungespeicherte Dateien (editor-dirty-<pid>.json), Schreiben am Editor vorbei, Builds und Debuggen über das Plugin,
 // Zustand der IDE (ide-context-<pid>.json, #2050), Änderungen an ungespeicherten Dateien zurückhalten (#2605) und
-// Rückfragen an den Menschen in der IDE (ask_user, #2620).
+// Rückfragen an den Menschen in der IDE (ask_user, #2620). Jeder Auftrag an die IDE trägt die Herkunft (Client und
+// Sitzung, #2616), die der Aufrufer über Create mitgibt.
 
 interface
 
@@ -16,6 +17,8 @@ uses
   Atlas.Text.IdeContext,
   Mcp.IdeBuilds,
   Atlas.Common.Compiler.IdeBuild,
+  Atlas.Text.AssistantOrigin,
+  Mcp.Contract.Workspace,
   Mcp.Contract.Process;
 
 type
@@ -26,17 +29,28 @@ type
     MayOpen: TMcpMayOpenFunc;
   end;
 
+  /// <summary>Herkunft der Aufträge an die IDE beim Aufruf (#2616).</summary>
+  TMcpIdeOriginFunc = reference to function: TAtlasAssistantOrigin;
+
   /// <summary>Verbindung zur laufenden IDE über die Dateien des Plugins; ob eine IDE läuft und das Warten auf ihre
   /// Antwort fragt sie den Host über Process.</summary>
   TMcpIde = record
   private
     FProcess: IMcpProcessHost;
+    FOrigin: TMcpIdeOriginFunc;
+    function Origin: TAtlasAssistantOrigin;
     function IdeWithOpenFile(const AFileName: string): Cardinal;
     function RunningIdes: TArray<TMcpIdeEntry>;
     function DebugIde(const ARoot, ATool, AProject: string; const AOpen: TMcpIdeOpen;
       out AProjectFile: string): Cardinal;
   public
-    class function Create(const AProcess: IMcpProcessHost): TMcpIde; static;
+    /// <summary>Ohne Herkunft: Aufträge kommen vom unbekannten Assistenten.</summary>
+    class function Create(const AProcess: IMcpProcessHost): TMcpIde; overload; static;
+    /// <summary>Aufträge mit der Herkunft aus AOrigin.</summary>
+    class function Create(const AProcess: IMcpProcessHost; const AOrigin: TMcpIdeOriginFunc): TMcpIde; overload;
+      static;
+    /// <summary>Aufträge mit Client und Sitzung von AWorkspace (MCP-Werkzeuge).</summary>
+    class function ForWorkspace(const AProcess: IMcpProcessHost; const AWorkspace: IMcpWorkspace): TMcpIde; static;
     /// <summary>Im Editor der IDE ungespeichert geänderte Dateien: editor-dirty-&lt;pid&gt;.json je laufender
     /// IDE.</summary>
     function EditorDirtyFiles: TArray<string>;
@@ -57,7 +71,7 @@ type
     /// <summary>ask_user (#2620): stellt die Frage aus AArguments in der IDE mit dem aktiven Projekt unter ARoot (sonst
     /// der ersten mit Atlas) und wartet auf die Antwort. Liefert den Text für den Assistenten; EMcpToolError bei
     /// ungültigen Argumenten.</summary>
-    function AskInIde(const ARoot, AClient: string; const AArguments: TJSONObject): string;
+    function AskInIde(const ARoot: string; const AArguments: TJSONObject): string;
     /// <summary>Stellt AQuestion in der IDE mit dem aktiven Projekt unter ARoot (sonst der ersten mit Atlas) und wartet
     /// auf die Antwort (#2620, auch für Rückfragen der schreibenden Werkzeuge); AAnswer bei Answered.</summary>
     function AskQuestionInIde(const ARoot: string; const AQuestion: TMcpIdeQuestion;
@@ -72,7 +86,7 @@ type
     /// AProject (nicht offen: nach AOpen öffnen, #2895), die übrigen Werkzeuge gehen an die IDE des letzten
     /// debug_start (sonst an die mit dem aktiven Projekt unter ARoot). Liefert das Ergebnis des Plugins als JSON-Text;
     /// EMcpToolError mit dem Grund.</summary>
-    function DebugInIde(const ARoot, ATool, AClient, AProject: string; const AArguments: TJSONObject;
+    function DebugInIde(const ARoot, ATool, AProject: string; const AArguments: TJSONObject;
       const AResolve: TMcpIdeDebugResolve; const AOpen: TMcpIdeOpen): string;
   end;
 
@@ -141,6 +155,41 @@ class function TMcpIde.Create(const AProcess: IMcpProcessHost): TMcpIde;
 begin
   Result := Default(TMcpIde);
   Result.FProcess := AProcess;
+end;
+
+class function TMcpIde.Create(const AProcess: IMcpProcessHost; const AOrigin: TMcpIdeOriginFunc): TMcpIde;
+begin
+  Result := Create(AProcess);
+  Result.FOrigin := AOrigin;
+end;
+
+/// <summary>Herkunft aus AWorkspace beim Aufruf; in eigener Routine, damit die anonyme Methode nur AWorkspace
+/// einfängt.</summary>
+function WorkspaceOrigin(const AWorkspace: IMcpWorkspace): TMcpIdeOriginFunc;
+begin
+  Result :=
+    function: TAtlasAssistantOrigin
+    begin
+      Result := Default(TAtlasAssistantOrigin);
+      if AWorkspace <> nil then
+      begin
+        Result := TAtlasAssistantOrigin.Make(AWorkspace.Client, AWorkspace.Session);
+      end;
+    end;
+end;
+
+class function TMcpIde.ForWorkspace(const AProcess: IMcpProcessHost; const AWorkspace: IMcpWorkspace): TMcpIde;
+begin
+  Result := Create(AProcess, WorkspaceOrigin(AWorkspace));
+end;
+
+function TMcpIde.Origin: TAtlasAssistantOrigin;
+begin
+  Result := Default(TAtlasAssistantOrigin);
+  if Assigned(FOrigin) then
+  begin
+    Result := FOrigin();
+  end;
 end;
 
 /// <summary>Prozess der IDE, in der AFileName offen ist ("open" in editor-dirty-&lt;pid&gt;.json, #397); 0
@@ -287,13 +336,16 @@ var
   mFileFormat: TFileFormat;
   mExpected, mReason, mInbox: string;
   mPid: Cardinal;
+  mEdit: TMcpIdeEdit;
 begin
   mExpected := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
   mPid := IdeWithOpenFile(AFileName);
   if mPid <> 0 then
   begin
     mInbox := TMcpIdeEdits.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid);
-    case TMcpIdeEdits.Send(mInbox, TMcpIdeEdit.Make(AFileName, mExpected, AText),
+    mEdit := TMcpIdeEdit.Make(AFileName, mExpected, AText);
+    mEdit.Origin := Origin;
+    case TMcpIdeEdits.Send(mInbox, mEdit,
       FProcess.FolderWait(mInbox, TMcpIdeEdits.cPollMs, cAnswerSafetyMs),
       function: Int64
       begin
@@ -323,6 +375,7 @@ begin
   mInbox := TMcpIdeEdits.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid);
   mEdit := TMcpIdeEdit.Make(AFileName, AExpected, AText);
   mEdit.Hold := True;
+  mEdit.Origin := Origin;
   case TMcpIdeEdits.Send(mInbox, mEdit, FProcess.FolderWait(mInbox, TMcpIdeEdits.cPollMs, cAnswerSafetyMs),
     function: Int64
     begin
@@ -387,6 +440,7 @@ begin
   end;
   mRequest.Configuration := AConfiguration;
   mRequest.Platform := APlatform;
+  mRequest.Origin := Origin;
   mWanted := WantedProject(ARoot, AProject);
   if not TMcpIdeBuilds.PickOrOpen(RunningIdes, ARoot, mWanted, AOpen.Candidates, AOpen.MayOpen, mPid,
     mRequest.Project, mReason) then
@@ -436,13 +490,13 @@ begin
   end;
 end;
 
-function TMcpIde.AskInIde(const ARoot, AClient: string; const AArguments: TJSONObject): string;
+function TMcpIde.AskInIde(const ARoot: string; const AArguments: TJSONObject): string;
 var
   mQuestion: TMcpIdeQuestion;
   mReason, mAnswer: string;
   mOutcome: TMcpQuestionOutcome;
 begin
-  if not TMcpIdeQuestions.FromArguments(AArguments, AClient, mQuestion, mReason) then
+  if not TMcpIdeQuestions.FromArguments(AArguments, Origin, mQuestion, mReason) then
   begin
     raise EMcpToolError.Create(mReason);
   end;
@@ -481,7 +535,7 @@ begin
   end;
 end;
 
-function TMcpIde.DebugInIde(const ARoot, ATool, AClient, AProject: string; const AArguments: TJSONObject;
+function TMcpIde.DebugInIde(const ARoot, ATool, AProject: string; const AArguments: TJSONObject;
   const AResolve: TMcpIdeDebugResolve; const AOpen: TMcpIdeOpen): string;
 var
   mPid: Cardinal;
@@ -489,7 +543,7 @@ var
   mProjectFile, mRequest, mReason, mInbox: string;
 begin
   // Erst die Argumente prüfen: Fehler darin meldet das Werkzeug auch ohne laufende IDE.
-  if not TMcpIdeDebug.RequestText(TMcpIdeDebugCall.Make(ATool, AClient, ''), AArguments, AResolve, mRequest,
+  if not TMcpIdeDebug.RequestText(TMcpIdeDebugCall.Make(ATool, Origin, ''), AArguments, AResolve, mRequest,
     mReason) then
   begin
     raise EMcpToolError.Create(mReason);
@@ -501,7 +555,7 @@ begin
     mOpen := AOpen;
   end;
   mPid := DebugIde(ARoot, ATool, AProject, mOpen, mProjectFile);
-  if not TMcpIdeDebug.RequestText(TMcpIdeDebugCall.Make(ATool, AClient, mProjectFile), AArguments, AResolve,
+  if not TMcpIdeDebug.RequestText(TMcpIdeDebugCall.Make(ATool, Origin, mProjectFile), AArguments, AResolve,
     mRequest, mReason) then
   begin
     raise EMcpToolError.Create(mReason);

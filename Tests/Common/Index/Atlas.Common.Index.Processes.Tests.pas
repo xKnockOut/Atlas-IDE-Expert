@@ -18,6 +18,10 @@ type
     procedure JsonRoundTrip;
     [Test]
     procedure UnreadableTimesAreZero;
+    [Test]
+    procedure SessionTravelsAndOlderFilesHaveNone;
+    [Test]
+    procedure SessionIsShortAndDistinguishesProcesses;
   end;
 
 implementation
@@ -107,6 +111,42 @@ begin
   Assert.AreEqual(1, Integer(Length(mCopy.Events)));
   Assert.AreEqual(Double(0), Double(mCopy.Events[0].Time));
   Assert.AreEqual('bereit', mCopy.Events[0].Text);
+end;
+
+procedure TIndexProcessInfoTests.SessionTravelsAndOlderFilesHaveNone;
+var
+  mSource, mCopy: TIndexProcessInfo;
+  mValue: TJSONObject;
+  mJson: string;
+begin
+  mSource := Info(42, TIndexProcessInfo.cKindMcp);
+  mSource.Session := '3f2a';
+  mValue := mSource.ToJson;
+  try
+    mJson := mValue.ToJSON;
+  finally
+    mValue.Free;
+  end;
+  Assert.IsTrue(TIndexProcessInfo.FromJson(mJson, mCopy));
+  Assert.AreEqual('3f2a', mCopy.Session);
+  // Datei eines älteren Servers ohne "session".
+  Assert.IsTrue(TIndexProcessInfo.FromJson('{"pid":7,"kind":"MCP","client":"A"}', mCopy));
+  Assert.AreEqual('', mCopy.Session);
+end;
+
+procedure TIndexProcessInfoTests.SessionIsShortAndDistinguishesProcesses;
+var
+  mStarted: TDateTime;
+  mSession: string;
+begin
+  mStarted := EncodeDateTime(2026, 11, 27, 9, 41, 12, 345);
+  mSession := TIndexProcessInfo.SessionOf(4711, mStarted);
+  Assert.AreEqual(4, Length(mSession));
+  Assert.AreEqual(LowerCase(mSession), mSession);
+  // Gleiche Werte, gleiche Kennung; anderer Prozess oder andere Startzeit, andere Kennung.
+  Assert.AreEqual(mSession, TIndexProcessInfo.SessionOf(4711, mStarted));
+  Assert.AreNotEqual(mSession, TIndexProcessInfo.SessionOf(4712, mStarted));
+  Assert.AreNotEqual(mSession, TIndexProcessInfo.SessionOf(4711, IncMilliSecond(mStarted, 1)));
 end;
 
 initialization

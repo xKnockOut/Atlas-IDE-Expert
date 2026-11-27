@@ -29,6 +29,8 @@ type
     Text: string;
     /// <summary>clientInfo.name des MCP-Clients; '' unbekannt.</summary>
     Client: string;
+    /// <summary>Kennung des MCP-Prozesses (#2616); '' unbekannt.</summary>
+    Session: string;
     /// <summary>Eingang (Ortszeit).</summary>
     Received: TDateTime;
     /// <summary>Geänderter Zeilenblock (Zeilen im neuen Text).</summary>
@@ -42,7 +44,10 @@ type
     function KeyOf(const AItem: TAtlasHeldEdit): Integer; override;
   public
     /// <summary>Hält eine Änderung von AExpected nach AText an AFileName zurück; liefert ihre Kennung.</summary>
-    function Add(const AFileName, AExpected, AText, AClient: string; AReceived: TDateTime): Integer;
+    function Add(const AFileName, AExpected, AText, AClient: string; AReceived: TDateTime): Integer; overload;
+    /// <summary>Wie oben, mit Sitzung des MCP-Prozesses (#2616).</summary>
+    function Add(const AFileName, AExpected, AText, AClient, ASession: string; AReceived: TDateTime): Integer;
+      overload;
     /// <summary>Wartende Änderungen an AFileName (ohne Groß-/Kleinschreibung).</summary>
     function CountFor(const AFileName: string): Integer;
     /// <summary>Älteste wartende Änderung überhaupt; False ohne.</summary>
@@ -79,6 +84,12 @@ begin
 end;
 
 function TAtlasHeldEdits.Add(const AFileName, AExpected, AText, AClient: string; AReceived: TDateTime): Integer;
+begin
+  Result := Add(AFileName, AExpected, AText, AClient, '', AReceived);
+end;
+
+function TAtlasHeldEdits.Add(const AFileName, AExpected, AText, AClient, ASession: string;
+  AReceived: TDateTime): Integer;
 var
   mEdit: TAtlasHeldEdit;
 begin
@@ -89,6 +100,7 @@ begin
   mEdit.Expected := AExpected;
   mEdit.Text := AText;
   mEdit.Client := AClient;
+  mEdit.Session := ASession;
   mEdit.Received := AReceived;
   FItems.Add(mEdit);
   Result := mEdit.Id;

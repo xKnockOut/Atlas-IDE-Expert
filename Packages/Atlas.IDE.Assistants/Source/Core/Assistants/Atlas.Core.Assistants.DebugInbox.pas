@@ -32,6 +32,8 @@ type
     Command: TAtlasDebugCommand;
     /// <summary>clientInfo.name des MCP-Clients; '' unbekannt.</summary>
     Client: string;
+    /// <summary>Kennung des MCP-Prozesses (#2616); '' unbekannt.</summary>
+    Session: string;
     Launch: TAtlasDebugControlLaunch;
     FileName: string;
     Line: Integer;
@@ -91,7 +93,8 @@ implementation
 uses
   // Inline-Funktionen von TJSONObject (H2443).
   System.Generics.Collections,
-  System.IOUtils;
+  System.IOUtils,
+  Atlas.Text.AssistantOrigin;
 
 { TAtlasDebugInbox }
 
@@ -186,7 +189,8 @@ begin
       AReason := Format(ATexts.UnknownCommand, [mCommand]);
       Exit(False);
     end;
-    ARequest.Client := mRoot.GetValue<string>('client', '');
+    ARequest.Client := TAtlasAssistantOrigin.Read(mRoot).Client;
+    ARequest.Session := TAtlasAssistantOrigin.Read(mRoot).Session;
     ReadPlaces(mRoot, ARequest);
     if not ReadOptions(mRoot, ARequest) then
     begin

@@ -322,7 +322,8 @@ begin
   mTarget := TestTargetOf(TestProjectOf(AContext.Root, AArguments), AArguments, mInfo);
   mTests := TMcpTestTools.TestsOf(AArguments);
   mTimeout := TestTimeoutOf(AArguments);
-  if BuildBeforeTestsFailed(TMcpIde.Create(AContext.Adapters.Process), AContext.Root, mTarget, AArguments, Result) then
+  if BuildBeforeTestsFailed(TMcpIde.ForWorkspace(AContext.Adapters.Process, AContext.Workspace), AContext.Root,
+    mTarget, AArguments, Result) then
   begin
     Exit;
   end;

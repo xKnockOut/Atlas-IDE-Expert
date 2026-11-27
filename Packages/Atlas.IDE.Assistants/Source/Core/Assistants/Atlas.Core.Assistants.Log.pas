@@ -7,6 +7,8 @@
 // - Build: Build für einen KI-Assistenten (Art, Ergebnis),
 // - Question: Rückfrage (#2620) mit Antwort bzw. Ausgang,
 // - Reverted: im Fenster zurückgenommen (der Eintrag der Änderung ist danach als zurückgenommen markiert).
+// Jeder Eintrag nennt den Assistenten (Client und Sitzung, #2616); mit Sessions bekommt er dessen Nummer für die
+// Farbe, Assistants liefert die Assistenten der Einträge für den Filter.
 // Neueste Einträge kommen ans Ende; über Max hinaus fallen die ältesten weg. Ausgeschaltet (Enabled = False) nimmt
 // das Protokoll nichts an und hält nichts. Nichts davon geht auf die Platte. Version zählt jede Änderung, damit das
 // Fenster nur bei Bedarf neu füllt.
@@ -18,6 +20,8 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
+  Atlas.Text.AssistantOrigin,
+  Atlas.Core.Assistants.Sessions,
   Atlas.Core.Assistants.EditChange;
 
 type
@@ -33,6 +37,11 @@ type
     Kind: TAtlasAssistantsLogKind;
     /// <summary>clientInfo.name des MCP-Clients; '' unbekannt.</summary>
     Client: string;
+    /// <summary>Kennung des MCP-Prozesses (#2616); '' unbekannt.</summary>
+    Session: string;
+    /// <summary>Nummer des Assistenten in TAtlasAssistantSessions (Farbe); -1 unbekannt oder ohne Sessions.
+    /// </summary>
+    Assistant: Integer;
     /// <summary>Datei (Änderungen) bzw. Projekt (Build); '' bei Fragen.</summary>
     FileName: string;
     /// <summary>Methode an der Stelle aus der Gliederung; '' unbekannt.</summary>
@@ -44,6 +53,7 @@ type
     Detail: string;
     /// <summary>Edited: im Fenster zurückgenommen.</summary>
     Reverted: Boolean;
+    function Origin: TAtlasAssistantOrigin;
   end;
 
   /// <summary>Zahlen für die Kopfzeile.</summary>
@@ -71,6 +81,7 @@ type
     FNextId: Integer;
     FVersion: Integer;
     FSince: TDateTime;
+    FSessions: TAtlasAssistantSessions;
     procedure SetEnabled(AValue: Boolean);
     procedure SetMax(AValue: Integer);
     procedure DropOldest;
@@ -82,11 +93,19 @@ type
     /// </summary>
     function Add(const AEntry: TAtlasAssistantsLogEntry): Integer;
     /// <summary>Eintrag für eine Änderung von ABefore nach AAfter an AFileName.</summary>
-    class function EditEntry(AKind: TAtlasAssistantsLogKind; const AFileName, AClient, ABefore, AAfter: string):
-      TAtlasAssistantsLogEntry; static;
+    class function EditEntry(AKind: TAtlasAssistantsLogKind; const AFileName: string;
+      const AOrigin: TAtlasAssistantOrigin; const ABefore, AAfter: string): TAtlasAssistantsLogEntry; static;
     /// <summary>Eintrag ohne Änderung (Ablehnung, Build, Frage).</summary>
-    class function PlainEntry(AKind: TAtlasAssistantsLogKind; const AFileName, AClient, ADetail: string):
-      TAtlasAssistantsLogEntry; static;
+    class function PlainEntry(AKind: TAtlasAssistantsLogKind; const AFileName: string;
+      const AOrigin: TAtlasAssistantOrigin; const ADetail: string): TAtlasAssistantsLogEntry; static;
+    /// <summary>Assistenten der Einträge in der Reihenfolge ihres ersten Eintrags (Filter, #2616).</summary>
+    function Assistants: TArray<TAtlasAssistantOrigin>;
+    /// <summary>Assistenten von AEntries in der Reihenfolge ihres ersten Eintrags.</summary>
+    class function AssistantsIn(const AEntries: TArray<TAtlasAssistantsLogEntry>): TArray<TAtlasAssistantOrigin>;
+      static;
+    /// <summary>Einträge von AEntries, die von AOrigin stammen (unbekannte Herkunft: die ohne Angaben).</summary>
+    class function OfAssistant(const AEntries: TArray<TAtlasAssistantsLogEntry>;
+      const AOrigin: TAtlasAssistantOrigin): TArray<TAtlasAssistantsLogEntry>; static;
     function Count: Integer;
     function Entries: TArray<TAtlasAssistantsLogEntry>;
     function TryGet(AId: Integer; out AEntry: TAtlasAssistantsLogEntry): Boolean;
@@ -107,12 +126,21 @@ type
     property Version: Integer read FVersion;
     /// <summary>Zeit des ersten Eintrags seit dem letzten Leeren; 0 ohne.</summary>
     property Since: TDateTime read FSince;
+    /// <summary>Nummern der Assistenten für die Farbe (gehört dem Modul); nil = ohne.</summary>
+    property Sessions: TAtlasAssistantSessions read FSessions write FSessions;
   end;
 
 implementation
 
 uses
   System.Math;
+
+{ TAtlasAssistantsLogEntry }
+
+function TAtlasAssistantsLogEntry.Origin: TAtlasAssistantOrigin;
+begin
+  Result := TAtlasAssistantOrigin.Make(Client, Session);
+end;
 
 { TAtlasAssistantsLog }
 
@@ -189,6 +217,11 @@ begin
   begin
     mEntry.Time := Now;
   end;
+  mEntry.Assistant := -1;
+  if FSessions <> nil then
+  begin
+    mEntry.Assistant := FSessions.IndexOf(mEntry.Origin);
+  end;
   if FEntries.Count = 0 then
   begin
     FSince := mEntry.Time;
@@ -199,25 +232,81 @@ begin
   Result := mEntry.Id;
 end;
 
-class function TAtlasAssistantsLog.EditEntry(AKind: TAtlasAssistantsLogKind; const AFileName, AClient, ABefore,
-  AAfter: string): TAtlasAssistantsLogEntry;
+class function TAtlasAssistantsLog.EditEntry(AKind: TAtlasAssistantsLogKind; const AFileName: string;
+  const AOrigin: TAtlasAssistantOrigin; const ABefore, AAfter: string): TAtlasAssistantsLogEntry;
 begin
   Result := Default(TAtlasAssistantsLogEntry);
   Result.Kind := AKind;
   Result.FileName := AFileName;
-  Result.Client := AClient;
+  Result.Client := AOrigin.Client;
+  Result.Session := AOrigin.Session;
+  Result.Assistant := -1;
   Result.Change := TAtlasEditChange.Between(ABefore, AAfter);
   Result.HasChange := True;
 end;
 
-class function TAtlasAssistantsLog.PlainEntry(AKind: TAtlasAssistantsLogKind; const AFileName, AClient,
-  ADetail: string): TAtlasAssistantsLogEntry;
+class function TAtlasAssistantsLog.PlainEntry(AKind: TAtlasAssistantsLogKind; const AFileName: string;
+  const AOrigin: TAtlasAssistantOrigin; const ADetail: string): TAtlasAssistantsLogEntry;
 begin
   Result := Default(TAtlasAssistantsLogEntry);
   Result.Kind := AKind;
   Result.FileName := AFileName;
-  Result.Client := AClient;
+  Result.Client := AOrigin.Client;
+  Result.Session := AOrigin.Session;
+  Result.Assistant := -1;
   Result.Detail := ADetail;
+end;
+
+function TAtlasAssistantsLog.Assistants: TArray<TAtlasAssistantOrigin>;
+begin
+  Result := AssistantsIn(FEntries.ToArray);
+end;
+
+class function TAtlasAssistantsLog.OfAssistant(const AEntries: TArray<TAtlasAssistantsLogEntry>;
+  const AOrigin: TAtlasAssistantOrigin): TArray<TAtlasAssistantsLogEntry>;
+var
+  mEntry: TAtlasAssistantsLogEntry;
+  mCount: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(AEntries));
+  mCount := 0;
+  for mEntry in AEntries do
+  begin
+    if mEntry.Origin.SameAs(AOrigin) then
+    begin
+      Result[mCount] := mEntry;
+      Inc(mCount);
+    end;
+  end;
+  SetLength(Result, mCount);
+end;
+
+class function TAtlasAssistantsLog.AssistantsIn(
+  const AEntries: TArray<TAtlasAssistantsLogEntry>): TArray<TAtlasAssistantOrigin>;
+var
+  mEntry: TAtlasAssistantsLogEntry;
+  mOrigin, mSeen: TAtlasAssistantOrigin;
+  mFound: Boolean;
+begin
+  Result := nil;
+  for mEntry in AEntries do
+  begin
+    mOrigin := mEntry.Origin;
+    mFound := False;
+    for mSeen in Result do
+    begin
+      if mSeen.SameAs(mOrigin) then
+      begin
+        mFound := True;
+        Break;
+      end;
+    end;
+    if not mFound then
+    begin
+      Result := Result + [mOrigin];
+    end;
+  end;
 end;
 
 function TAtlasAssistantsLog.Count: Integer;
