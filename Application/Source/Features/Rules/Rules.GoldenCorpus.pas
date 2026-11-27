@@ -109,6 +109,8 @@ type
     /// <summary>AText mit eingebautem Fehler; False, wenn der Suchtext nicht genau einmal vorkommt.
     /// \n im Ersatz wird zum Zeilenumbruch von AText.</summary>
     class function Mutate(const AText: string; const AMutation: TRuleMutation; out AMutated: string): Boolean; static;
+    /// <summary>Anzahl der Treffer der Regel ARuleId in AFindings (ohne Groß-/Kleinschreibung).</summary>
+    class function CountOf(const AFindings: TArray<TRuleFinding>; const ARuleId: string): Integer; static;
     /// <summary>Meldet ARuleId nach der Mutation mehr Treffer als vorher?</summary>
     class function Detected(const ABefore, AAfter: TArray<TRuleFinding>; const ARuleId: string): Boolean; static;
     /// <summary>Trefferquote je Regel; AFound[i] gehört zu AMutations[i]. Nach Regel-ID sortiert.</summary>
@@ -571,24 +573,23 @@ begin
   end;
 end;
 
-class function TGoldenCorpus.Detected(const ABefore, AAfter: TArray<TRuleFinding>; const ARuleId: string): Boolean;
-
-  function CountOf(const AFindings: TArray<TRuleFinding>): Integer;
-  var
-    mFinding: TRuleFinding;
+class function TGoldenCorpus.CountOf(const AFindings: TArray<TRuleFinding>; const ARuleId: string): Integer;
+var
+  mFinding: TRuleFinding;
+begin
+  Result := 0;
+  for mFinding in AFindings do
   begin
-    Result := 0;
-    for mFinding in AFindings do
+    if SameText(mFinding.RuleId, ARuleId) then
     begin
-      if SameText(mFinding.RuleId, ARuleId) then
-      begin
-        Inc(Result);
-      end;
+      Inc(Result);
     end;
   end;
+end;
 
+class function TGoldenCorpus.Detected(const ABefore, AAfter: TArray<TRuleFinding>; const ARuleId: string): Boolean;
 begin
-  Result := CountOf(AAfter) > CountOf(ABefore);
+  Result := CountOf(AAfter, ARuleId) > CountOf(ABefore, ARuleId);
 end;
 
 class function TGoldenCorpus.HitRates(const AMutations: TArray<TRuleMutation>;

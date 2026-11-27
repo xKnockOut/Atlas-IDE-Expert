@@ -119,6 +119,7 @@ uses
   Rules.Trees,
   Rules.Registry,
   Rules.Engine,
+  Rules.GoldenCorpus,
   Atlas.Common.Findings.Suppressions,
   Rules.Derived,
   Atlas.Common.Pascal.SyntaxTree,
@@ -336,21 +337,6 @@ procedure TFailingDeferredRule.CheckFindings(const AContext: TRuleContext; const
   const ARanIds: TArray<string>; const AReport: IRuleReport);
 begin
   raise EArgumentException.Create('nachgelagert gescheitert');
-end;
-
-/// <summary>Anzahl der Treffer der Regel ARuleId in AFindings.</summary>
-function CountOf(const AFindings: TArray<TRuleFinding>; const ARuleId: string): Integer;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := 0;
-  for mFinding in AFindings do
-  begin
-    if SameText(mFinding.RuleId, ARuleId) then
-    begin
-      Inc(Result);
-    end;
-  end;
 end;
 
 function JoinNotes(const ANotes: TRequestNotes): string;
@@ -871,9 +857,9 @@ begin
   end;
   // Der halbe Treffer der gescheiterten Regel entfällt; dafür steht rule-failed da (#3090).
   Assert.AreEqual(2, Integer(Length(mFindings)), 'Treffer der heilen Regel und rule-failed');
-  Assert.AreEqual(1, CountOf(mFindings, 'marker'));
-  Assert.AreEqual(1, CountOf(mFindings, cRuleFailedRuleId));
-  Assert.AreEqual(0, CountOf(mFindings, 'kaputt'), 'kein halber Treffer');
+  Assert.AreEqual(1, TGoldenCorpus.CountOf(mFindings, 'marker'));
+  Assert.AreEqual(1, TGoldenCorpus.CountOf(mFindings, cRuleFailedRuleId));
+  Assert.AreEqual(0, TGoldenCorpus.CountOf(mFindings, 'kaputt'), 'kein halber Treffer');
   mJoined := JoinNotes(mNotes);
   Assert.Contains(mJoined, ' failedRules=1 ');
   Assert.Contains(mJoined, ' failRule=kaputt ');
@@ -903,10 +889,10 @@ var
 begin
   mFindings := TRuleAssert.Findings(TFailingRule.Create('kaputt', EArgumentException),
     '// lsp-ignore-file: *'#13#10 + SourceWith('  X := 1;'#13#10));
-  Assert.AreEqual(1, CountOf(mFindings, cRuleFailedRuleId), 'trotz lsp-ignore-file: *');
+  Assert.AreEqual(1, TGoldenCorpus.CountOf(mFindings, cRuleFailedRuleId), 'trotz lsp-ignore-file: *');
   mFindings := TRuleAssert.Findings(TFailingRule.Create('kaputt', EArgumentException),
     '// lsp-ignore-file: rule-failed'#13#10 + SourceWith('  X := 1;'#13#10));
-  Assert.AreEqual(1, CountOf(mFindings, cRuleFailedRuleId), 'trotz lsp-ignore-file: rule-failed');
+  Assert.AreEqual(1, TGoldenCorpus.CountOf(mFindings, cRuleFailedRuleId), 'trotz lsp-ignore-file: rule-failed');
   mFindings := nil;
 end;
 
@@ -921,8 +907,8 @@ var
   mFindings: TArray<TRuleFinding>;
 begin
   mFindings := TRuleAssert.Findings(TFailingDeferredRule.Create, SourceWith('  X := 1; // lsp-ignore: spaet'#13#10));
-  Assert.AreEqual(1, CountOf(mFindings, cRuleFailedRuleId));
-  Assert.AreEqual(0, CountOf(mFindings, cUnusedSuppressionRuleId), 'die Regel ist nicht zu Ende gelaufen');
+  Assert.AreEqual(1, TGoldenCorpus.CountOf(mFindings, cRuleFailedRuleId));
+  Assert.AreEqual(0, TGoldenCorpus.CountOf(mFindings, cUnusedSuppressionRuleId), 'die Regel ist nicht zu Ende gelaufen');
   Assert.AreEqual(1, Integer(Length(mFindings)));
   mFindings := nil;
 end;
@@ -988,8 +974,8 @@ begin
     TStackGuard.Restore := nil;
   end;
   Assert.AreEqual(1, mRestores);
-  Assert.AreEqual(1, CountOf(mFindings, 'marker'));
-  Assert.AreEqual(1, CountOf(mFindings, cRuleFailedRuleId), 'der Überlauf ist sichtbar (#3090)');
+  Assert.AreEqual(1, TGoldenCorpus.CountOf(mFindings, 'marker'));
+  Assert.AreEqual(1, TGoldenCorpus.CountOf(mFindings, cRuleFailedRuleId), 'der Überlauf ist sichtbar (#3090)');
   mFindings := nil;
 end;
 
