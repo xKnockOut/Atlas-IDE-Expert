@@ -181,7 +181,7 @@ const
     '  Zaehler := R.Summe(1, 2);'#10 +
     '  F := TDBGridFilterColumns.Create(nil);'#10 +
     '  D.Zeichne(1);'#10 +
-    '  Zaehler := Grenze + Ord(Blau) + 255;'#10 +
+    '  Zaehler := Grenze + Ord(Blau) + Ord(Gruen) + 255;'#10 +
     '  Alt;'#10 +
     '  Unbekannt;'#10 +
     'end;'#10 +
@@ -579,6 +579,10 @@ procedure TLspHoverTests.ShowsConstantAndEnumValues;
 begin
   Assert.AreEqual('16 · $10 · %10000', InfoAt('Grenze +').Value);
   Assert.AreEqual('Ord = 2', InfoAt('Blau)').Value);
+  // Nur der gehoverte Wert mit seinem Typ, nicht der Rest der Zeile mit den übrigen Werten und nicht die
+  // Deklarationen dahinter (Gruen steht mitten in der Liste, dahinter folgt eine Klammer in einer späteren Zeile).
+  Assert.AreEqual('TFarbe.Gruen', InfoAt('Gruen)').Declaration);
+  Assert.AreEqual('TFarbe.Blau', InfoAt('Blau)').Declaration);
 end;
 
 procedure TLspHoverTests.ShowsDeprecation;

@@ -756,6 +756,12 @@ begin
     mText.Append(mTokens[mIndex], mTokens[mIndex].Offset > mEnd);
     mEnd := mTokens[mIndex].Offset + Length(mTokens[mIndex].Text);
     mDepth := SpannedDepth(mTokens[mIndex], mDepth, mText);
+    if mDepth < 0 then
+    begin
+      // Die Stelle liegt mitten in einer Klammer (Aufzählungswert): Sonst läse die Schleife bis zur nächsten Klammer
+      // weiter unten und zöge fremde Deklarationen mit in den Hover.
+      Exit;
+    end;
     if (mDepth = 0) and (mClosedLine < 0) and (mTokens[mIndex].StartPos.Line > 0) then
     begin
       mClosedLine := mTokens[mIndex].StartPos.Line;
