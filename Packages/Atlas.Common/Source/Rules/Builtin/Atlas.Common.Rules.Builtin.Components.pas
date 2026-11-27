@@ -1087,14 +1087,31 @@ begin
   end;
 end;
 
+/// <summary>Meldet die festen Pixelwerte ALiterals einer Zuweisung AAssign mit Korrektur über ScaleValue.</summary>
+procedure ReportBounds(const AContext: TRuleContext; const AReport: IRuleReport; AAssign: TSyntaxNode;
+  ALiterals: TList<TSyntaxNode>);
+var
+  mLiteral: TSyntaxNode;
+  mEdits: TArray<TRuleEdit>;
+begin
+  mEdits := nil;
+  for mLiteral in ALiterals do
+  begin
+    mEdits := mEdits + [TRuleEdit.Create(TTextRange.Create(mLiteral.StartPos, mLiteral.EndPos),
+      ScaleCallFor(AContext, AAssign, mLiteral.Name))];
+  end;
+  AReport.Add(TTextRange.Create(ALiterals.First.StartPos, ALiterals.Last.EndPos),
+    cTexts[TComponentsText.FixedBounds].Fmt([AAssign.Name]), TRuleConfidence.Medium,
+    [TRuleFix.Create(cTexts[TComponentsText.ScaleWith].Text, mEdits)]);
+end;
+
 procedure TControlFixedBoundsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mModel: TComponentModel;
   mCache: IRuleDerivedCache;
   mAssigns, mLiterals: TList<TSyntaxNode>;
-  mAssign, mLiteral: TSyntaxNode;
+  mAssign: TSyntaxNode;
   mHelpers, mConstants: TArray<string>;
-  mEdits: TArray<TRuleEdit>;
   mScope: TTypedScope;
 begin
   if (AContext.Tree = nil) or not UsesVcl(AContext) then
@@ -1134,15 +1151,7 @@ begin
       begin
         Continue;
       end;
-      mEdits := nil;
-      for mLiteral in mLiterals do
-      begin
-        mEdits := mEdits + [TRuleEdit.Create(TTextRange.Create(mLiteral.StartPos, mLiteral.EndPos),
-          ScaleCallFor(AContext, mAssign, mLiteral.Name))];
-      end;
-      AReport.Add(TTextRange.Create(mLiterals.First.StartPos, mLiterals.Last.EndPos),
-        cTexts[TComponentsText.FixedBounds].Fmt([mAssign.Name]), TRuleConfidence.Medium,
-        [TRuleFix.Create(cTexts[TComponentsText.ScaleWith].Text, mEdits)]);
+      ReportBounds(AContext, AReport, mAssign, mLiterals);
     end;
   finally
     mScope.Free;
