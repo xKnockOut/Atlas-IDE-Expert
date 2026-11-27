@@ -16,6 +16,10 @@
       Pull Request sie nicht ändern. Steht sie noch auf der des Tags, darf er sie nur auf Tag + 1 setzen.
       Parallele Pull Requests ändern die Zeile so gleich oder gar nicht, und Git führt sie ohne Konflikt
       zusammen.
+    - Ausnahme: Hat ein Wartungszweig (origin/Release/*) eine höhere Vertragsversion als das Ziel, weil dort
+      Base für ein Patch-Release geändert wurde, darf der Pull Request das Ziel auf diese Version heben. Der
+      Hauptzweig fällt so nicht hinter den Wartungszweig zurück, und dieselbe Nummer bezeichnet nicht zwei
+      verschiedene Stände von Base.
 
     Braucht die Release-Tags (git fetch --tags) und den Stand des Tags.
 
@@ -68,9 +72,25 @@ if ($BaseChanged -and $Head -le $Tagged) {
     $Problems.Add("Base hat sich seit $Tag geändert, die Vertragsversion steht noch auf $Head; auf $($Tagged + 1) setzen")
 }
 
+function Get-MaintenanceVersion {
+    # Höchste Vertragsversion der Wartungszweige origin/Release/*; 0 ohne. Der Pfad der Unit war dort teils ein
+    # anderer, deshalb über den Namen der Konstante im Quelltext von Base.
+    $mResult = 0
+    $mRefs = @(& git -C $Root for-each-ref --format='%(refname)' 'refs/remotes/origin/Release/')
+    foreach ($mRef in $mRefs) {
+        $mLines = @(& git -C $Root grep -h -E 'cAtlasCoreContractVersion\s*=\s*[0-9]+\s*;' $mRef -- 'Packages/Atlas.IDE.Base/Source' 2>$null)
+        foreach ($mLine in $mLines) {
+            $mMatch = [regex]::Match($mLine, $Pattern)
+            if ($mMatch.Success -and [int]$mMatch.Groups[1].Value -gt $mResult) { $mResult = [int]$mMatch.Groups[1].Value }
+        }
+    }
+    return $mResult
+}
+
 if ($Base) {
     $Target = Get-VersionAt $Base
-    if ($Head -ne $Target) {
+    $Maintenance = Get-MaintenanceVersion
+    if ($Head -ne $Target -and -not ($Head -eq $Maintenance -and $Maintenance -gt $Target)) {
         if ($Target -gt $Tagged) {
             $Problems.Add("Vertragsversion ist seit $Tag schon erhöht ($Target in $Base); nicht ändern (hier $Head)")
         }
