@@ -81,6 +81,12 @@ begin
   Assert.IsFalse(TAtlasUnitRelationsPlan.CostDue(True, True, 9000, True), 'unterwegs');
   Assert.IsFalse(TAtlasUnitRelationsPlan.CostDue(True, False, 9000, False), 'Designer vorn');
   Assert.AreEqual(Int64(8500), Int64(TAtlasUnitRelationsPlan.AskedAfterChange(10000)));
+  // Server rechnet noch (#3075): nach einer Sekunde wieder fragen.
+  Assert.AreEqual(Int64(6000), Int64(TAtlasUnitRelationsPlan.CostAskedWhilePending(10000)));
+  Assert.IsTrue(TAtlasUnitRelationsPlan.CostDue(True, False,
+    11000 - TAtlasUnitRelationsPlan.CostAskedWhilePending(10000), True));
+  Assert.IsFalse(TAtlasUnitRelationsPlan.CostDue(True, False,
+    10999 - TAtlasUnitRelationsPlan.CostAskedWhilePending(10000), True));
 end;
 
 procedure TAtlasUnitRelationsPlanTests.DependentTargets;
