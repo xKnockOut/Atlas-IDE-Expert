@@ -712,7 +712,11 @@ procedure TSpannedText.Append(const AToken: TPascalToken; AGap: Boolean);
 var
   mLast: Char;
 begin
-  mLast := TTextChars.CharAt(Text, Length(Text));
+  mLast := #0;
+  if Text <> '' then
+  begin
+    mLast := Text[Length(Text)];
+  end;
   if AGap and (Text <> '') and (mLast <> '(') and (mLast <> '[') and
     not MatchText(AToken.Text, [')', ']', ',', ';', '.)']) then
   begin
