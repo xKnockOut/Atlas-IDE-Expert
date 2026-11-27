@@ -260,10 +260,12 @@ begin
   end;
   mRow := ARow;
   mContext := AContext;
-  TAtlasIdeLensPill.Guarded(AContext.Canvas,
-    procedure
+  // Die unit-Zeile trägt oft auch Fehlertext und die Testunit-Lens: dahinter, nicht darüber.
+  TAtlasIdeLensPill.PaintAtLineEnd(Self, AContext, ARow, mLine,
+    function(ALeft: Integer): Integer
     begin
-      PaintMark(mRow, mContext, TAtlasIdeLensPill.LeftOf(mContext, mLine));
+      PaintMark(mRow, mContext, ALeft);
+      Result := FRect.Right;
     end);
 end;
 

@@ -11,7 +11,7 @@
 //   zeichnet den Editor über TAtlasIdeEditorRefresh neu.
 // - Zeichnen: nur die Zeilen, die der Editor zeichnet (plsEndPaint), und nur,
 //   solange die Zeile noch so lautet wie beim Abruf. Den Platz hinter dem
-//   Zeilenende teilt die Marke über TAtlasLineTail mit Inlay-Hints und dem
+//   Zeilenende teilt die Marke über TAtlasLineEndSlot mit Inlay-Hints und dem
 //   Fehlertext am Zeilenende.
 // - Klick springt zur freigebenden Zeile; Überfahren zeigt nach der üblichen
 //   Verzögerung einen Tooltip mit dem Weg zur Einstufung (der Zeitgeber dafür
@@ -112,7 +112,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Editor.CloseRules,
   Atlas.Core.Editor.Elements,
-  Atlas.Core.Editor.LineTail,
   Atlas.Core.Rules.OwnershipPlan,
   Atlas.Core.Lsp.Session.Json,
   Atlas.Core.Settings.Plugin,
@@ -364,15 +363,13 @@ end;
 procedure TAtlasIdeOwnershipHints.PaintMarks(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   const ALine: string; const AMarks: TArray<TAtlasOwnershipMark>);
 var
-  mTailKey: string;
-  mCell: TRect;
+  mSlot: TAtlasLineEndSlot;
   mBack, mTone: TAtlasColor;
   mColors: TAtlasColors;
   mHit: THit;
 begin
-  mCell := TAtlasLensPill.CellAfter(AContext, ALine);
-  mTailKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
-  mBack := TAtlasLensPill.BackAt(AContext.Canvas, mCell.Left, ARect.Top + 1);
+  mSlot := TAtlasLineEndSlot.Take(Self, AContext, ARect, ALine);
+  mBack := TAtlasLensPill.BackAt(AContext.Canvas, mSlot.Left, ARect.Top + 1);
   mColors := TAtlasColors.ForBackground(mBack);
   case TAtlasOwnershipMarks.LineTone(AMarks) of
     TAtlasOwnershipTone.Safe:
@@ -383,10 +380,10 @@ begin
     mTone := mColors.Warn;
   end;
   mHit := Default(THit);
-  mHit.Rect := TAtlasLensPill.Paint(AContext.Canvas, ARect, TAtlasLineTail.Start(Self, mTailKey, mCell.Left),
+  mHit.Rect := TAtlasLensPill.Paint(AContext.Canvas, ARect, mSlot.Left,
     TAtlasOwnershipMarks.LineCaption(AMarks, FTexts),
     TAtlasLensPillStyle.Create(mTone, mBack, cPillBorder, cPillFill, []));
-  TAtlasLineTail.Finish(Self, mTailKey, mHit.Rect.Right);
+  mSlot.Done(mHit.Rect.Right);
   mHit.TopRow := AContext.EditView.TopRow;
   mHit.Line := AContext.LogicalLineNum - 1;
   mHit.Marks := AMarks;

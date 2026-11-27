@@ -74,6 +74,9 @@ type
     /// <summary>Knopf unter APoint in ARects (in der Reihenfolge der Knöpfe); False ohne.</summary>
     class function Hit(const ARects: TAtlasTestLensRects; const APoint: TPoint;
       out AButton: TAtlasTestLensButton): Boolean; static;
+    /// <summary>Rechte Kante der Marke mit ihren Knöpfen (weiter zeichnet der nächste Zeichner der Zeile);
+    /// ALeft, wenn kein Rechteck gesetzt ist.</summary>
+    class function RightOf(const ARects: TAtlasTestLensRects; ALeft: Integer): Integer; static;
     /// <summary>Schrift einer Marke: einen Punkt kleiner als ASize, nicht unter cMinFontSize.</summary>
     class function PillFontSize(ASize: Integer): Integer; static;
     /// <summary>Rechteck einer Marke ab ALeft in der Zeile ARow für Text der Breite AWidth und Höhe AHeight:
@@ -262,6 +265,20 @@ begin
     end;
   end;
   Result := False;
+end;
+
+class function TAtlasTestLens.RightOf(const ARects: TAtlasTestLensRects; ALeft: Integer): Integer;
+var
+  mButton: TAtlasTestLensButton;
+begin
+  Result := ALeft;
+  for mButton := Low(TAtlasTestLensButton) to High(TAtlasTestLensButton) do
+  begin
+    if not ARects[mButton].IsEmpty and (ARects[mButton].Right > Result) then
+    begin
+      Result := ARects[mButton].Right;
+    end;
+  end;
 end;
 
 class function TAtlasTestLens.PillFontSize(ASize: Integer): Integer;
