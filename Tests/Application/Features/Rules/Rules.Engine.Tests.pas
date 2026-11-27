@@ -80,9 +80,22 @@ type
     /// Diagnoselog nennt Regel, Unit und Ausnahmeklasse.</summary>
     [Test]
     procedure FailingRuleKeepsOtherFindings;
-    /// <summary>#1094: Ist die Anfrage abgebrochen, geht die Ausnahme einer Regel weiter wie bisher.</summary>
+    /// <summary>#3090: Die gescheiterte Regel hinterlässt den Fehler rule-failed an Zeile 1.</summary>
     [Test]
-    procedure FailingRuleAfterCancelStillRaises;
+    procedure FailingRuleReportsRuleFailed;
+    /// <summary>#3090: rule-failed lässt sich nicht per Kommentar unterdrücken, nur in atlas.json abschalten.</summary>
+    [Test]
+    procedure RuleFailedIgnoresSuppressions;
+    [Test]
+    procedure RuleFailedCanBeSwitchedOff;
+    /// <summary>#3090 (F-04): Scheitert der nachgelagerte Teil, gilt die Regel nicht als gelaufen; ihr lsp-ignore
+    /// ist keine unused-suppression.</summary>
+    [Test]
+    procedure FailedDeferredRuleKeepsSuppression;
+    /// <summary>#1094, #3090: Ist die Anfrage abgebrochen, endet der Lauf mit dem Abbruch, nicht mit der Ausnahme
+    /// der Regel.</summary>
+    [Test]
+    procedure FailingRuleAfterCancelRaisesCancelled;
     /// <summary>#1094: Ein abgefangener Stapelüberlauf stellt die Schutzseite wieder her.</summary>
     [Test]
     procedure OverflowInRuleRestoresStackGuard;
@@ -106,6 +119,7 @@ uses
   Rules.Trees,
   Rules.Registry,
   Rules.Engine,
+  Rules.GoldenCorpus,
   Atlas.Common.Findings.Suppressions,
   Rules.Derived,
   Atlas.Common.Pascal.SyntaxTree,
@@ -295,6 +309,34 @@ begin
   end;
   AReport.Add(TTextRange.Create(0, 0, 0, 4), 'halber Treffer');
   raise FError.Create('Regel gescheitert');
+end;
+
+type
+  /// <summary>Läuft im ersten Teil ohne Treffer und scheitert im nachgelagerten Teil (IRuleAfterFindings).</summary>
+  TFailingDeferredRule = class(TInterfacedObject, IRule, IRuleAfterFindings)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure CheckFindings(const AContext: TRuleContext; const AFindings: TArray<TRuleFinding>;
+      const ARanIds: TArray<string>; const AReport: IRuleReport);
+  end;
+
+{ TFailingDeferredRule }
+
+function TFailingDeferredRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('spaet', TRuleSeverity.Warning, 'Scheitert nachgelagert');
+end;
+
+procedure TFailingDeferredRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  // Der erste Teil läuft ohne Treffer durch.
+end;
+
+procedure TFailingDeferredRule.CheckFindings(const AContext: TRuleContext; const AFindings: TArray<TRuleFinding>;
+  const ARanIds: TArray<string>; const AReport: IRuleReport);
+begin
+  raise EArgumentException.Create('nachgelagert gescheitert');
 end;
 
 function JoinNotes(const ANotes: TRequestNotes): string;
@@ -813,8 +855,11 @@ begin
   finally
     mTree.Free;
   end;
-  Assert.AreEqual(1, Integer(Length(mFindings)), 'nur der Treffer der heilen Regel');
-  Assert.AreEqual('marker', mFindings[0].RuleId);
+  // Der halbe Treffer der gescheiterten Regel entfällt; dafür steht rule-failed da (#3090).
+  Assert.AreEqual(2, Integer(Length(mFindings)), 'Treffer der heilen Regel und rule-failed');
+  Assert.AreEqual(1, TGoldenCorpus.CountOf(mFindings, 'marker'));
+  Assert.AreEqual(1, TGoldenCorpus.CountOf(mFindings, cRuleFailedRuleId));
+  Assert.AreEqual(0, TGoldenCorpus.CountOf(mFindings, 'kaputt'), 'kein halber Treffer');
   mJoined := JoinNotes(mNotes);
   Assert.Contains(mJoined, ' failedRules=1 ');
   Assert.Contains(mJoined, ' failRule=kaputt ');
@@ -824,7 +869,51 @@ begin
   mFindings := nil;
 end;
 
-procedure TRuleEngineTests.FailingRuleAfterCancelStillRaises;
+procedure TRuleEngineTests.FailingRuleReportsRuleFailed;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := TRuleAssert.Findings(TFailingRule.Create('kaputt', EArgumentException), SourceWith('  X := 1;'#13#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cRuleFailedRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual(0, mFindings[0].Range.StartPos.Line);
+  Assert.IsTrue(mFindings[0].Message.Contains('kaputt'), mFindings[0].Message);
+  Assert.IsTrue(mFindings[0].Message.Contains('EArgumentException'), mFindings[0].Message);
+  mFindings := nil;
+end;
+
+procedure TRuleEngineTests.RuleFailedIgnoresSuppressions;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := TRuleAssert.Findings(TFailingRule.Create('kaputt', EArgumentException),
+    '// lsp-ignore-file: *'#13#10 + SourceWith('  X := 1;'#13#10));
+  Assert.AreEqual(1, TGoldenCorpus.CountOf(mFindings, cRuleFailedRuleId), 'trotz lsp-ignore-file: *');
+  mFindings := TRuleAssert.Findings(TFailingRule.Create('kaputt', EArgumentException),
+    '// lsp-ignore-file: rule-failed'#13#10 + SourceWith('  X := 1;'#13#10));
+  Assert.AreEqual(1, TGoldenCorpus.CountOf(mFindings, cRuleFailedRuleId), 'trotz lsp-ignore-file: rule-failed');
+  mFindings := nil;
+end;
+
+procedure TRuleEngineTests.RuleFailedCanBeSwitchedOff;
+begin
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFailingRule.Create('kaputt', EArgumentException),
+    SourceWith('  X := 1;'#13#10), '{"rules": {"rule-failed": "off"}}'))));
+end;
+
+procedure TRuleEngineTests.FailedDeferredRuleKeepsSuppression;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := TRuleAssert.Findings(TFailingDeferredRule.Create, SourceWith('  X := 1; // lsp-ignore: spaet'#13#10));
+  Assert.AreEqual(1, TGoldenCorpus.CountOf(mFindings, cRuleFailedRuleId));
+  Assert.AreEqual(0, TGoldenCorpus.CountOf(mFindings, cUnusedSuppressionRuleId), 'die Regel ist nicht zu Ende gelaufen');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  mFindings := nil;
+end;
+
+procedure TRuleEngineTests.FailingRuleAfterCancelRaisesCancelled;
 var
   mStop: Boolean;
   mContext: TRuleContext;
@@ -850,7 +939,7 @@ begin
             begin
               mStop := True;
             end)], TServerSettings.Default, mContext);
-      end, EArgumentException);
+      end, ERuleCheckCancelled);
   finally
     mContext.Cancelled := nil;
     mTree.Free;
@@ -885,8 +974,8 @@ begin
     TStackGuard.Restore := nil;
   end;
   Assert.AreEqual(1, mRestores);
-  Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual('marker', mFindings[0].RuleId);
+  Assert.AreEqual(1, TGoldenCorpus.CountOf(mFindings, 'marker'));
+  Assert.AreEqual(1, TGoldenCorpus.CountOf(mFindings, cRuleFailedRuleId), 'der Überlauf ist sichtbar (#3090)');
   mFindings := nil;
 end;
 

@@ -22,7 +22,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Architektur](#gruppe-architecture) | 6 |
 | [Stil und Metriken](#gruppe-style) | 57 |
 | [Packages und Tests](#gruppe-packages) | 15 |
-| [Atlas intern](#gruppe-internal) | 4 |
+| [Atlas intern](#gruppe-internal) | 5 |
 
 <a id="gruppe-find-bugs"></a>
 ### Fehler finden
@@ -481,6 +481,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`unused-suppression`](#unused-suppression) | Ungenutzte Unterdrückung | Code Smell | Hinweis |
 | [`unknown-rule-id`](#unknown-rule-id) | Unbekannte Regelkennung | Code Smell | Hinweis |
 | [`unit-too-deep`](#unit-too-deep) | Unit zu tief für die Prüfung | Code Smell | Hinweis |
+| [`rule-failed`](#rule-failed) | Prüfregel gescheitert | Bug | Fehler |
 | [`slash-command`](#slash-command) | Schnellbefehl nicht ausgeführt | Code Smell | Hinweis |
 
 ## Regeln
@@ -630,6 +631,25 @@ Richtig:
 ```pascal
 Part := A - B - C;
 X := Part - D - E;
+```
+
+<a id="rule-failed"></a>
+### rule-failed
+
+**Prüfregel gescheitert** · Bug · Fehler · Gruppe Atlas intern
+
+Eine Prüfregel ist an dieser Unit mit einer Ausnahme abgebrochen, ihre Befunde fehlen. Der Fehler steht an Zeile 1 und nennt Regel und Ausnahmeklasse; ohne ihn sähe die Unit sauber aus. Er lässt sich nicht per Kommentar unterdrücken. Das ist ein Fehler in Atlas: bitte mit der Unit oder einem kleinen Beispiel melden.
+
+Mit Treffer:
+
+```pascal
+// The rule throws on this unit: before, the check ended without findings.
+```
+
+Richtig:
+
+```pascal
+// The unit gets rule-failed until the rule is fixed.
 ```
 
 <a id="bidi-control"></a>

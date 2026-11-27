@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnInternal: array[0..43] of string = (
+  cCatalogLinesEnInternal: array[0..54] of string = (
     '{',
     '      "id": "unused-suppression",',
     '      "name": "Unused suppression",',
@@ -40,6 +40,18 @@ const
     'int marks the deepest point; splitting the chain into partial expressions makes the unit checkable again.",',
     '      "bad": "X := A - B - C - D - E; // … 100000 terms",',
     '      "good": "Part := A - B - C;\nX := Part - D - E;",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "rule-failed",',
+    '      "name": "Rule failed",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "internal",',
+    '      "description": "A rule stopped with an exception on this unit, so its findings are missing. The error is at line 1 and names the rule and the exception class; without it the unit would look clea' +
+    'n. It cannot be suppressed with a comment. This is a bug in Atlas: please report it with the unit or a small example.",',
+    '      "bad": "// The rule throws on this unit: before, the check ended without findings.",',
+    '      "good": "// The unit gets rule-failed until the rule is fixed.",',
     '      "safeFix": false',
     '    },',
     '{',
