@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools.Change;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), Werkzeuge rund um Änderungen: betroffene Tests (#1353),
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), Werkzeuge rund um Änderungen: betroffene Tests (#1353),
 // Hotspots aus Änderungshäufigkeit (#1354).
 
 interface

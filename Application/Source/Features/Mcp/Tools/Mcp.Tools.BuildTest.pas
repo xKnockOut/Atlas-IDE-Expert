@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools.BuildTest;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), meldet die Werkzeuge für Builds und Tests in der Reihenfolge von
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), meldet die Werkzeuge für Builds und Tests in der Reihenfolge von
 // tools/list an; die Werkzeuge selbst stehen in Mcp.Tools.Build, Mcp.Tools.TestRun und
 // Mcp.Tools.TestDesign.
 

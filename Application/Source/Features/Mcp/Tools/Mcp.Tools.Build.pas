@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools.Build;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), Werkzeuge für Builds in der IDE (get_last_build, build_project),
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), Werkzeuge für Builds in der IDE (get_last_build, build_project),
 // das Profil aus „Mit Profil ausführen“ (get_profile, #2057) und die Erklärung von Compilermeldungen an ihrer
 // Stelle (explain_compiler_message, #2621).
 

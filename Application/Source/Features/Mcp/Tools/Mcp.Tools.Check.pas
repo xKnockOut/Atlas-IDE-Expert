@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools.Check;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), Werkzeuge der Prüfregeln, Metriken und TODOs
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), Werkzeuge der Prüfregeln, Metriken und TODOs
 // (get_diagnostics, hook_check, get_metrics, get_todos, check_code, get_dfm_info, explain_finding,
 // search_atlas_docs).
 

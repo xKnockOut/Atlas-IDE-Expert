@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools.Issue;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), das begonnene Tracker-Issue für KI-Assistenten (#2051):
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), das begonnene Tracker-Issue für KI-Assistenten (#2051):
 // get_current_issue liest <gitdir>/atlas-current-issue.json, die das Plugin neben atlas-commit-prefix schreibt
 // (Atlas.Core.Tracker.CurrentIssue), und gibt sie als Text oder JSON aus. Nur lesend; der Server fragt den Tracker
 // nie selbst (keine Zugangsdaten im Server-Prozess). <gitdir> findet er wie prepare_commit: die Arbeitskopie über

@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools.Question;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), Rückfragen von KI-Assistenten an den Menschen in der laufenden IDE
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), Rückfragen von KI-Assistenten an den Menschen in der laufenden IDE
 // (ask_user, #2620). Argumente, Auftrag und Antworttexte regelt Mcp.IdeQuestions, den Austausch mit dem
 // Plugin Mcp.Tools.Ide. Dazu die Rückfragen schreibender Werkzeuge (Stufe 2): zuerst über den Client
 // (elicitation/create), sonst in der IDE, sonst ohne Rückfrage (Mcp.Confirm). Derselbe Weg fragt, ob

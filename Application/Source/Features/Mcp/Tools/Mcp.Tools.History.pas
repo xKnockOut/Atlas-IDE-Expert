@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools.History;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), Werkzeug get_symbol_history (#2641): Geschichte einer Routine oder
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), Werkzeug get_symbol_history (#2641): Geschichte einer Routine oder
 // eines Typs aus Git bzw. SVN (vcs.provider), über Umbenennen und Verschieben (nur Git). Zeitlimit
 // requestTimeoutMs und Abbruch über notifications/cancelled; ohne Versionsverwaltung ein Hinweis.
 

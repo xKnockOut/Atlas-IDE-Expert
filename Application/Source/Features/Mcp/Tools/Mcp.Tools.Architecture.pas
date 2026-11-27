@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools.Architecture;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), Architekturübersicht (get_architecture, #1118) und
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), Architekturübersicht (get_architecture, #1118) und
 // Pfadsuche zwischen Symbolen (find_path, #1117).
 
 interface

@@ -1,6 +1,6 @@
 ﻿unit Mcp.Tools.Context;
 
-// Host-Rolle Core: MCP-Modus (--mcp, #48), gemeinsamer Kontext der Werkzeuge (TMcpToolContext) und
+// Hosted-Feature Mcp: MCP-Modus (--mcp, #48), gemeinsamer Kontext der Werkzeuge (TMcpToolContext) und
 // Hilfen zum Lesen von Quelltext und Projekten.
 
 interface
