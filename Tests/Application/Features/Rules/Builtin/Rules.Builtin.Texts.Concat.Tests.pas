@@ -135,6 +135,12 @@ begin
   Assert.AreEqual(0, Count('  S := ''Fehler (%s).%s'' + ''Für diese Verbindung'';'), 'Format-Platzhalter');
   Assert.AreEqual(0, Count('  S := ''Wert %0:d'' + ''Teile da'';'), 'Platzhalter mit Index');
   Assert.AreEqual(0, Count('  S := ''1'' + ''2'';'), 'Zahlen');
+  Assert.AreEqual(0, Count('  S := ''M3 2.5h3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z'' + ''M10 9.5h3a1 1 0 0 1 1 1v2'';'),
+    'SVG-Pfad');
+  Assert.AreEqual(0, Count('  S := ''Zeichen, die ung'' + #$00FC''ltig sind'';'), 'Naht vor Zeichencode');
+  Assert.AreEqual(0, Count('  S := ''(ein Byte $FC f''#$00FC''r ''''''#$00FC''''''). Beispiel in '' + ''einer Datei'';'),
+    'verdoppeltes Hochkomma am Literalanfang');
+  Assert.AreEqual(1, Count('  S := ''Fehler in Win64'' + ''Bit Teil'';'), 'Wort mit Ziffern');
   Assert.AreEqual(0, Count('  N := 1 + 2;'), 'kein Text');
 end;
 

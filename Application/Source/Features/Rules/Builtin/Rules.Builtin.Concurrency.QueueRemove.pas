@@ -6,7 +6,11 @@
 // Was beim Anhalten noch wartet, läuft danach mit freigegebenen Objekten bzw. nach dem Entladen des Packages in
 // fremdem Speicher. Gegenstück zu queue-nil-in-package, das Queue(nil, …) meldet.
 //
-// Als Entfernen gilt RemoveQueuedEvents in einer Methode der Klasse oder eines Vorfahren der Unit, ein Aufruf mit
+// TThread.Destroy ruft selbst RemoveQueuedEvents(Self) (Delphi und FPC): Die Einträge am eigenen Thread verschwinden
+// mit dem Thread-Objekt. Gemeldet wird deshalb nur, wenn ein Destruktor der Klasse oder eines Vorfahren der Unit
+// inherited nicht aufruft und so TThread.Destroy umgeht.
+//
+// Als Entfernen gilt außerdem RemoveQueuedEvents in einer Methode der Klasse oder eines Vorfahren der Unit, ein Aufruf mit
 // einem anderen Argument als Self bzw. nil an anderer Stelle der Unit (der Besitzer räumt beim Anhalten auf) und
 // eine andere Unit des Projekts, die Klasse und RemoveQueuedEvents nennt (Index mit Verwendungen).
 
@@ -77,6 +81,7 @@ type
     function RemovedInUnit(const AChain: TArray<string>): Boolean;
     function RemovedInOtherUnits(const AClass: string): Boolean;
     function DeclaresQueue(const AClass: string): Boolean;
+    function ReachesThreadDestroy(const AChain: TArray<string>): Boolean;
     function DestructorFix(const AClass: string): TArray<TRuleFix>;
     procedure CheckClass(const AClass: string);
   public
@@ -228,6 +233,32 @@ begin
   end;
 end;
 
+// Erreicht die Freigabe TThread.Destroy, das RemoveQueuedEvents(Self) aufruft? Ja, solange jeder Destruktor der
+// Kette in der Unit inherited aufruft.
+function TQueueRemoveScan.ReachesThreadDestroy(const AChain: TArray<string>): Boolean;
+var
+  mRoutine, mNode: TSyntaxNode;
+  mInherited: Boolean;
+begin
+  for mRoutine in FRoutines do
+  begin
+    if not MatchText(ClassPart(mRoutine.Name), AChain) or not SameText(MethodPart(mRoutine.Name), 'Destroy') then
+    begin
+      Continue;
+    end;
+    mInherited := False;
+    for mNode in TSyntaxNode.PreOrder(mRoutine.FindChild(TSyntaxKind.Block)) do
+    begin
+      mInherited := mInherited or (mNode.Kind = TSyntaxKind.InheritedExpr);
+    end;
+    if not mInherited then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
 // Deklariert die Klasse selbst eine Methode Queue oder ForceQueue?
 function TQueueRemoveScan.DeclaresQueue(const AClass: string): Boolean;
 var
@@ -288,7 +319,7 @@ begin
     Exit;
   end;
   mChain := ClassChain(AClass, mForeign);
-  if RemovedInUnit(mChain) or RemovedInOtherUnits(ShortName(AClass)) then
+  if ReachesThreadDestroy(mChain) or RemovedInUnit(mChain) or RemovedInOtherUnits(ShortName(AClass)) then
   begin
     Exit;
   end;

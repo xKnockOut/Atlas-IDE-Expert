@@ -32,6 +32,8 @@ type
     [Test]
     procedure ValuesIndexReports;
     [Test]
+    procedure CaseLabelIsNoTarget;
+    [Test]
     procedure FormConnectionStringReports;
     [Test]
     procedure FormWithoutPasswordIsSilent;
@@ -171,6 +173,14 @@ begin
   TRuleAssert.Silent(Rule, Body('  if (mToken = ''external'') or (mToken = ''forward'') then'#10'    Run;'));
   TRuleAssert.Silent(Rule, Body('  mToken := ''atlas-partial-'' + IntToStr(FNext);'));
   TRuleAssert.Silent(Rule, Body('  Verbindung.Params.Values[''Password''] := ''Sommer'' + mJahr;'));
+end;
+
+procedure TCredentialRuleTests.CaseLabelIsNoTarget;
+begin
+  // Die Marke eines case-Zweigs ist nicht das Ziel der Zuweisung; die Inline-Variable mit Typ schon.
+  TRuleAssert.Silent(Rule, Body('  case K of'#10'    xbToken: AValue := ''collapse'';'#10'  end;'));
+  TRuleAssert.Reports(Rule, Body('  case K of'#10'    xbKey: FPassword := ''Sommer2026'';'#10'  end;'));
+  TRuleAssert.Reports(Rule, Body('  var mPassword: string := ''Sommer2026'';'));
 end;
 
 procedure TCredentialRuleTests.ValuesIndexReports;

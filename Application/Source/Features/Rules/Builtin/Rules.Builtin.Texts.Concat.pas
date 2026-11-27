@@ -6,7 +6,9 @@
 //                              Ziffer auf Buchstabe oder Ziffer trifft oder , ; : ! ? auf einen Großbuchstaben.
 //                              Still, wenn der zusammengesetzte Text nicht nach Text für Menschen aussieht
 //                              (Bezeichner, Klassennamen), wenn das Wort an der Naht ein Pfad, eine URL,
-//                              Markup oder ein Name mit Punkt (Unit.Klasse) ist, wenn links ein
+//                              Markup, ein Name mit Punkt (Unit.Klasse) oder Zahlendaten ('1-1z' + 'M10' aus einem
+//                              SVG-Pfad) ist, wenn die Naht an einem Zeichencode liegt ('ung' + #$00FC'ltig'), wenn
+//                              links ein
 //                              Format-Platzhalter endet (er kann selbst der Trenner sein) und bei maschinell
 //                              umbrochenen langen Texten (linkes Literal ab "wrapLength"
 //                              Zeichen). Mittlere Konfidenz. Option "expressions" (Standard aus, niedrige
@@ -145,12 +147,38 @@ begin
   Result := Copy(AText, 1, mIndex - 1);
 end;
 
+/// <summary>Zahlendaten statt eines Worts: Ziffern mit höchstens einzelnen Buchstaben dazwischen ('1-1z', 'M10',
+/// '2.5h3a1' aus einem SVG-Pfad, 'x64'). Ein Wort mit mindestens zwei Buchstaben in Folge (Win64) zählt nicht,
+/// eine reine Zahl ('Anzahl 3' + '4 Teile') auch nicht.</summary>
+function IsNumericData(const AWord: string): Boolean;
+var
+  mIndex: Integer;
+  mDigit, mLetter: Boolean;
+begin
+  mDigit := False;
+  mLetter := False;
+  for mIndex := 1 to Length(AWord) do
+  begin
+    mDigit := mDigit or AWord[mIndex].IsDigit;
+    mLetter := mLetter or AWord[mIndex].IsLetter;
+    if AWord[mIndex].IsLetter and (mIndex < Length(AWord)) and AWord[mIndex + 1].IsLetter then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := mDigit and mLetter;
+end;
+
 class function TTextConcatWithoutSpaceRule.SeamIsTechnical(const ALeft, ARight: string): Boolean;
 var
   mWord: string;
   mChar: Char;
   mIndex: Integer;
 begin
+  if IsNumericData(TrailingWord(ALeft)) or IsNumericData(LeadingWord(ARight)) then
+  begin
+    Exit(True);
+  end;
   mWord := TrailingWord(ALeft) + LeadingWord(ARight);
   for mIndex := 1 to Length(mWord) do
   begin
@@ -264,6 +292,12 @@ var
   var
     mLeftWord, mRightWord: string;
   begin
+    // Naht an einem Zeichencode ('ung' + #$00FC'ltige'): Der Umbruch folgt der Schreibweise, nicht den Wörtern.
+    if StartsStr('#', TSyntaxNodes.SourceOf(mText, ARight)) or
+      not EndsStr('''', TSyntaxNodes.SourceOf(mText, ALeft)) then
+    begin
+      Exit;
+    end;
     if (Length(ALeftText) >= mWrapLength) or not MissingSpace(ALeftText, ARightText) or
       not TLiteralTexts.LooksLikeText(ALeftText + ARightText) or SeamIsTechnical(ALeftText, ARightText) then
     begin

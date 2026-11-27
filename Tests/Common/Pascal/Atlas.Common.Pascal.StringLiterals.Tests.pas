@@ -112,6 +112,10 @@ begin
   Assert.AreEqual('a'#13#10'b', Plain('''a''#$0D#$0A''b'''));
   Assert.IsFalse(TStringLiterals.PlainText('''a'' + Name', mText));
   Assert.IsFalse(TStringLiterals.PlainText('sLineBreak', mText));
+  // Ein einzeiliges Literal, das mit einem verdoppelten Hochkomma beginnt, ist kein mehrzeiliger String.
+  Assert.AreEqual('f'#$00FC'r '''#$00FC'''). Beispiel in ', Plain('''f''#$00FC''r ''''''#$00FC''''''). Beispiel in '''));
+  Assert.IsFalse(TStringLiterals.IsMultilineToken('''''''). Text'''));
+  Assert.IsTrue(TStringLiterals.IsMultilineToken(''''''''#10'  a'#10'  '''''''));
 end;
 
 procedure TStringLiteralsTests.EachLineBreak;

@@ -120,6 +120,52 @@ begin
   Result := TryMethodCall(AStatement, mCall) and SameText(mCall.Method, 'NameThreadForDebugging');
 end;
 
+/// <summary>Ruft der Ausdruck ANode etwas auf (Aufruf mit Klammern)? Ein Konstruktor ganz oben (T.Create(…)) zählt
+/// mit AAllowCreate nicht.</summary>
+function HasCall(ANode: TSyntaxNode; AAllowCreate: Boolean): Boolean;
+var
+  mNode: TSyntaxNode;
+begin
+  for mNode in TSyntaxNode.PreOrder(ANode) do
+  begin
+    if (mNode.Kind = TSyntaxKind.Call) and not (AAllowCreate and (mNode = ANode) and (mNode.ChildCount > 0) and
+      (mNode[0].Kind = TSyntaxKind.MemberAccess) and SameText(mNode[0].Name, 'Create')) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Anweisung neben dem Schutz, die praktisch nichts auslöst: Zuweisung ohne Aufruf (L := 0,
+/// T.OnProgress := DoProgress), Erzeugen eines Objekts vor seinem try … finally (Inf := TFoo.Create(…)) und ein
+/// früher Ausstieg ohne Aufruf in der Bedingung (if FDiscard then Exit).</summary>
+function IsQuiet(AStatement: TSyntaxNode): Boolean;
+var
+  mThen: TSyntaxNode;
+begin
+  case AStatement.Kind of
+    TSyntaxKind.AssignStatement:
+      Result := (AStatement.ChildCount = 2) and not HasCall(AStatement[0], False) and
+        not HasCall(AStatement[1], True);
+    TSyntaxKind.IfStatement:
+      begin
+        Result := False;
+        if (AStatement.ChildCount = 2) and not HasCall(AStatement[0], False) then
+        begin
+          mThen := AStatement[1];
+          if (mThen.Kind = TSyntaxKind.CallStatement) and (mThen.ChildCount = 1) then
+          begin
+            mThen := mThen[0];
+          end;
+          Result := (mThen.Kind = TSyntaxKind.Identifier) and SameText(mThen.Name, 'Exit');
+        end;
+      end;
+  else
+    Result := False;
+  end;
+end;
+
 /// <summary>Name der Routine, die die Anweisung AStatement allein aufruft (M, M(…), Self.M(…), inherited bzw.
 /// inherited M), sonst ''. Bei inherited ist AInherited gesetzt.</summary>
 function CalledName(AStatement: TSyntaxNode; out AInherited: Boolean): string;
@@ -354,18 +400,27 @@ end;
 function TThreadExecuteScan.GuardOfList(const AStatements: TArray<TSyntaxNode>; const AClass: string;
   ARoutine: TSyntaxNode; ADepth: Integer): TExecuteGuard;
 var
-  mFirst: Integer;
+  mFirst, mIndex: Integer;
   mStatement, mCallee: TSyntaxNode;
   mName: string;
   mInherited: Boolean;
 begin
   Result := TExecuteGuard.Open;
-  mFirst := 0;
-  while (mFirst < Length(AStatements)) and IsHarmless(AStatements[mFirst]) do
+  // Genau eine Anweisung trägt die Arbeit; die übrigen lösen praktisch nichts aus.
+  mFirst := -1;
+  for mIndex := 0 to High(AStatements) do
   begin
-    Inc(mFirst);
+    if IsHarmless(AStatements[mIndex]) or IsQuiet(AStatements[mIndex]) then
+    begin
+      Continue;
+    end;
+    if mFirst >= 0 then
+    begin
+      Exit;
+    end;
+    mFirst := mIndex;
   end;
-  if mFirst <> High(AStatements) then
+  if mFirst < 0 then
   begin
     Exit;
   end;
