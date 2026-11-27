@@ -1,0 +1,120 @@
+# Action setup-atlas (#1431): lädt AtlasServer.exe aus dem GitHub Release von Atlas, prüft die Prüfsumme und legt
+# die Datei in den PATH. Danach läuft z. B. `AtlasServer --check . --format github` ohne weitere Schritte.
+#
+#   - uses: xKnockOut/Atlas-IDE-Expert/.github/actions/setup-atlas@v2.3.0
+#     with:
+#       version: latest        # oder ein Tag wie v2.3.0
+#   - run: AtlasServer.exe --check App.dproj --format github --index-cache "${{ steps.atlas.outputs.index-cache }}"
+#
+# Nur Windows: AtlasServer.exe ist ein Win64-Programm (eine offizielle Linux-Ausgabe gibt es nicht).
+# Mit cache: true liegen die EXE je Version und der Ordner der Index-Caches in actions/cache.
+name: setup-atlas
+description: AtlasServer.exe (Atlas IDE Expert) aus dem Release laden, Prüfsumme prüfen und in den PATH legen
+inputs:
+  version:
+    description: Tag des Releases (z. B. v2.3.0) oder latest für die neueste stabile Version
+    required: false
+    default: latest
+  cache:
+    description: EXE und Index-Caches über actions/cache zwischen Läufen behalten
+    required: false
+    default: 'true'
+  repository:
+    description: Repository mit den Releases von Atlas
+    required: false
+    default: xKnockOut/Atlas-IDE-Expert
+  token:
+    description: Token für gh release download
+    required: false
+    default: ${{ github.token }}
+outputs:
+  path:
+    description: Vollständiger Pfad von AtlasServer.exe
+    value: ${{ steps.place.outputs.path }}
+  index-cache:
+    description: Ordner für --index-cache
+    value: ${{ steps.place.outputs.index-cache }}
+  version:
+    description: Tag der geladenen Version
+    value: ${{ steps.tag.outputs.tag }}
+runs:
+  using: composite
+  steps:
+    - name: Nur Windows
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        echo "::error title=setup-atlas::AtlasServer.exe gibt es nur für Windows-Runner (runs-on: windows-latest)."
+        exit 1
+    - name: Version bestimmen
+      id: tag
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        ATLAS_VERSION: ${{ inputs.version }}
+        ATLAS_REPOSITORY: ${{ inputs.repository }}
+      run: |
+        $tag = $env:ATLAS_VERSION
+        if ($tag -eq '' -or $tag -eq 'latest') {
+          # „latest“ ist bei GitHub die neueste Version, die keine Vorabversion ist.
+          $tag = gh release view --repo $env:ATLAS_REPOSITORY --json tagName --jq .tagName
+          if ($LASTEXITCODE -ne 0 -or -not $tag) { throw "Kein Release in $env:ATLAS_REPOSITORY gefunden" }
+        }
+        elseif (-not $tag.StartsWith('v')) {
+          $tag = "v$tag"
+        }
+        "tag=$tag" >> $env:GITHUB_OUTPUT
+        "dir=$env:RUNNER_TOOL_CACHE\atlas\$tag" >> $env:GITHUB_OUTPUT
+        "index=$env:RUNNER_TEMP\atlas-index" >> $env:GITHUB_OUTPUT
+    - name: EXE aus dem Cache
+      id: exe-cache
+      if: inputs.cache == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.tag.outputs.dir }}
+        key: atlas-server-${{ steps.tag.outputs.tag }}
+    - name: Index-Caches
+      if: inputs.cache == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.tag.outputs.index }}
+        key: atlas-index-${{ steps.tag.outputs.tag }}-${{ github.ref_name }}-${{ github.sha }}
+        restore-keys: |
+          atlas-index-${{ steps.tag.outputs.tag }}-${{ github.ref_name }}-
+          atlas-index-${{ steps.tag.outputs.tag }}-
+    - name: Laden und prüfen
+      if: steps.exe-cache.outputs.cache-hit != 'true'
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        ATLAS_REPOSITORY: ${{ inputs.repository }}
+        ATLAS_TAG: ${{ steps.tag.outputs.tag }}
+        ATLAS_DIR: ${{ steps.tag.outputs.dir }}
+      run: |
+        New-Item -ItemType Directory -Force $env:ATLAS_DIR | Out-Null
+        gh release download $env:ATLAS_TAG --repo $env:ATLAS_REPOSITORY --pattern AtlasServer.exe --dir $env:ATLAS_DIR --clobber
+        if ($LASTEXITCODE -ne 0) { throw "AtlasServer.exe fehlt im Release $env:ATLAS_TAG" }
+        gh release download $env:ATLAS_TAG --repo $env:ATLAS_REPOSITORY --pattern AtlasServer.exe.sha256 --dir $env:ATLAS_DIR --clobber
+        $sumFile = Join-Path $env:ATLAS_DIR 'AtlasServer.exe.sha256'
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path $sumFile)) {
+          # Releases vor 2.3.0 haben keine Prüfsumme.
+          Write-Host "::warning title=setup-atlas::$env:ATLAS_TAG hat keine AtlasServer.exe.sha256; Prüfsumme nicht geprüft"
+          exit 0
+        }
+        $expected = ((Get-Content $sumFile -Raw).Trim() -split '\s+')[0].ToLowerInvariant()
+        $actual = (Get-FileHash (Join-Path $env:ATLAS_DIR 'AtlasServer.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($expected -ne $actual) {
+          Remove-Item (Join-Path $env:ATLAS_DIR 'AtlasServer.exe') -Force
+          throw "Prüfsumme von AtlasServer.exe passt nicht (erwartet $expected, erhalten $actual)"
+        }
+    - name: In den PATH
+      id: place
+      shell: pwsh
+      env:
+        ATLAS_DIR: ${{ steps.tag.outputs.dir }}
+        ATLAS_INDEX: ${{ steps.tag.outputs.index }}
+      run: |
+        New-Item -ItemType Directory -Force $env:ATLAS_INDEX | Out-Null
+        $env:ATLAS_DIR >> $env:GITHUB_PATH
+        "path=$(Join-Path $env:ATLAS_DIR 'AtlasServer.exe')" >> $env:GITHUB_OUTPUT
+        "index-cache=$env:ATLAS_INDEX" >> $env:GITHUB_OUTPUT

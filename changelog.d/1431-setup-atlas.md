@@ -1,0 +1,2 @@
+### Neu
+- GitHub Action `setup-atlas` (#1431): `uses: xKnockOut/Atlas-IDE-Expert/.github/actions/setup-atlas@<Tag>` lädt `AtlasServer.exe` aus dem Release (`version`: Tag oder `latest`), prüft die Prüfsumme `AtlasServer.exe.sha256`, die jedes Release ab jetzt mitbringt, legt die Datei in den `PATH` und behält EXE und Index-Caches mit `cache: true` zwischen Läufen. Nur Windows-Runner; Selbsttest in `.github/workflows/setup-atlas-test.yml`.

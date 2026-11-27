@@ -227,6 +227,12 @@ jobs:
         run: |
           $unsigned = '${{ needs.server.result }}' -eq 'success' -and '${{ needs.server.outputs.signed }}' -ne 'true'
           ./Tools/Get-ReleaseNotes.ps1 -Version $env:VERSION -UnsignedBinaries:$unsigned | Set-Content -Encoding utf8 release-notes.md
+      - name: Prüfsumme von AtlasServer.exe (#1431)
+        # Für die Action setup-atlas; ohne Delphi-Runner legt Publish-ReleasePackage.ps1 sie mit der EXE an.
+        run: |
+          if [ -f server/AtlasServer.exe ]; then
+            (cd server && sha256sum AtlasServer.exe > AtlasServer.exe.sha256)
+          fi
       - name: Release anlegen
         uses: softprops/action-gh-release@v2
         with:
@@ -236,6 +242,7 @@ jobs:
           files: |
             atlas-claude-plugin-${{ env.VERSION }}.zip
             server/AtlasServer.exe
+            server/AtlasServer.exe.sha256
             server/AtlasServer.map
             server/atlas-ide-expert-${{ env.VERSION }}.zip
             atlas-ide-expert-source-${{ env.VERSION }}.zip

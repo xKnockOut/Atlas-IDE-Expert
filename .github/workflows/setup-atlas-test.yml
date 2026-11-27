@@ -1,0 +1,33 @@
+# Selbsttest der Action setup-atlas (#1431): lädt die neueste stabile Version und eine feste, legt sie in den PATH
+# und prüft eine Unit des Referenzprojekts. Läuft bei Änderungen an der Action und auf Knopfdruck.
+name: setup-atlas Selbsttest
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/actions/setup-atlas/**'
+      - '.github/workflows/setup-atlas-test.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  selbsttest:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        version: [latest, v2.2.5]
+    steps:
+      - uses: actions/checkout@v4
+      - id: atlas
+        uses: ./.github/actions/setup-atlas
+        with:
+          version: ${{ matrix.version }}
+      - name: Aufruf aus dem PATH
+        shell: pwsh
+        run: |
+          Write-Host "Geladen: ${{ steps.atlas.outputs.version }} in ${{ steps.atlas.outputs.path }}"
+          AtlasServer.exe --check Tests/Referenzprojekt/Source/Ref.Daten.Suche.pas --no-index --fail-on never `
+            --index-cache "${{ steps.atlas.outputs.index-cache }}"
+          if ($LASTEXITCODE -ne 0) { throw "AtlasServer endete mit $LASTEXITCODE" }
