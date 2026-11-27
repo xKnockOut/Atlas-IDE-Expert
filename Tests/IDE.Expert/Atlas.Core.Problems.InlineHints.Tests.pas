@@ -31,6 +31,8 @@ type
     procedure PauseWaitsOneSecond;
     [Test]
     procedure LineTailPlacesPaintersSideBySide;
+    [Test]
+    procedure LineTailKeepsLensesBehindErrorText;
   end;
 
 implementation
@@ -210,6 +212,37 @@ begin
     TAtlasLineTail.Reset;
     mHints.Free;
     mErrors.Free;
+  end;
+end;
+
+procedure TAtlasInlineDiagnosticsTests.LineTailKeepsLensesBehindErrorText;
+var
+  mErrors, mTestUnit, mUntested: TObject;
+  mKey: string;
+begin
+  // Zeile „unit X;“: Fehlertext ab zwei Zeichen hinter dem Ende (Rand 100), Testunit-Lens und Marke
+  // „n von m Methoden getestet“ ab drei Zeichen (Rand 108). Jede beginnt hinter der vorigen, keine darüber.
+  mErrors := TObject.Create;
+  mTestUnit := TObject.Create;
+  mUntested := TObject.Create;
+  try
+    TAtlasLineTail.Reset;
+    mKey := TAtlasLineTail.KeyOf('Shell.MainForm.pas', 1, 1, 0);
+    Assert.AreEqual(100, TAtlasLineTail.Start(mErrors, mKey, 100));
+    TAtlasLineTail.Finish(mErrors, mKey, 700);
+    Assert.AreEqual(700 + TAtlasLineTail.cGap, TAtlasLineTail.Start(mTestUnit, mKey, 108), 'Lens hinter dem Text');
+    TAtlasLineTail.Finish(mTestUnit, mKey, 900);
+    Assert.AreEqual(900 + TAtlasLineTail.cGap, TAtlasLineTail.Start(mUntested, mKey, 108), 'Marke hinter der Lens');
+    TAtlasLineTail.Finish(mUntested, mKey, 1000);
+    // Neues Zeichnen, die Lens zuerst: Der Fehlertext rückt hinter sie, obwohl sein eigener Rand weiter links liegt.
+    Assert.AreEqual(108, TAtlasLineTail.Start(mTestUnit, mKey, 108));
+    TAtlasLineTail.Finish(mTestUnit, mKey, 300);
+    Assert.AreEqual(300 + TAtlasLineTail.cGap, TAtlasLineTail.Start(mErrors, mKey, 100), 'Text hinter der Lens');
+  finally
+    TAtlasLineTail.Reset;
+    mErrors.Free;
+    mTestUnit.Free;
+    mUntested.Free;
   end;
 end;
 

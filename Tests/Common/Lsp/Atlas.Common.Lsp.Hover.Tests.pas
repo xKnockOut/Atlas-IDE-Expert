@@ -57,6 +57,8 @@ type
     procedure ShowsConstantAndEnumValues;
     [Test]
     procedure ShowsDeprecation;
+    [Test]
+    procedure KeepsMemberDeprecationAtMember;
     /// <summary>#38: Elemente von Mengenkonstanten, Basistyp und Anzahl bei Mengentypen, Text von
     /// Resourcestrings auch an der Verwendungsstelle.</summary>
     [Test]
@@ -77,6 +79,9 @@ type
     /// Typ: Variablen, Felder, Parameter, lokale Variablen, an der Deklaration und an der Verwendung.</summary>
     [Test]
     procedure ShowsOnlyHoveredNameOfGroup;
+    /// <summary>Aufzählung über mehrere Zeilen mit Kommentar je Wert: der Hover zeigt alle Werte.</summary>
+    [Test]
+    procedure ShowsAllValuesOfMultilineEnumeration;
   end;
 
 implementation
@@ -230,26 +235,71 @@ const
     'end;'#10 +
     'end.';
 
-function GroupInfoAt(const AMarker: string; AOccurrence: Integer): THoverInfo;
+  /// <summary>System.pas (Delphi 13): deprecated gehört zu DisposeOf, nicht zu TObject (#2991).</summary>
+  cUnitObjekt =
+    'unit Objekt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TObjekt = class'#10 +
+    '  public'#10 +
+    '    procedure Free;'#10 +
+    '    procedure DisposeOf; {$IFNDEF AUTOREFCOUNT} inline; deprecated ''Use Free instead''; {$ENDIF}'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure Lauf(O: TObjekt);'#10 +
+    'begin'#10 +
+    '  O.DisposeOf;'#10 +
+    'end;'#10 +
+    'end.';
+
+  cUnitXmlTypes =
+    'unit XmlTypes;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  { Token-Arten der XML-Syntaxhervorhebung }'#10 +
+    '  TXmlTokenKind = ('#10 +
+    '    tkText,       // Text zwischen Tags'#10 +
+    '    tkTagName,    // Tag-Namen und Attributnamen'#10 +
+    '    tkEquals,     // = zwischen Attributname und -wert'#10 +
+    '    tkAttrValue,  // Attributwert inkl. Anfuehrungszeichen'#10 +
+    '    tkEntity,     // &name; &#123; &#x1F;'#10 +
+    '    tkComment,    // <!-- ... --> (inkl. Begrenzer)'#10 +
+    '    tkCData,      // <![CDATA[ ... ]]> (inkl. Begrenzer)'#10 +
+    '    tkPI,         // <?ziel daten?> inkl. XML-Deklaration'#10 +
+    '    tkDocType,    // <!DOCTYPE ...> inkl. interner DTD'#10 +
+    '    tkInvalid     // Zeichen, die an dieser Stelle nicht erlaubt sind'#10 +
+    '  );'#10 +
+    'implementation'#10 +
+    'var'#10 +
+    '  mKind: TXmlTokenKind;'#10 +
+    'end.';
+
+/// <summary>Hover in AText (Datei AFileName, allein im Index).</summary>
+function TextInfoAt(const AText, AFileName, AMarker: string; AOccurrence: Integer): THoverInfo;
 var
   mIndex: ISymbolIndex;
   mResolver: TNameResolver;
   mTree: TSyntaxTree;
 begin
   mIndex := TSymbolIndex.Create;
-  mIndex.AddUnit(TIndexExtractor.ExtractText(cUnitGruppen, 'C:\P\Gruppen.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(AText, AFileName, nil));
   mResolver := TNameResolver.Create(mIndex);
   try
-    mTree := TPascalParser.Parse(cUnitGruppen);
+    mTree := TPascalParser.Parse(AText);
     try
-      Result := TLspHover.InfoAt(THoverSource.Create(mResolver, mIndex, nil), mTree, cUnitGruppen,
-        'C:\P\Gruppen.pas', PositionOf(cUnitGruppen, AMarker, AOccurrence));
+      Result := TLspHover.InfoAt(THoverSource.Create(mResolver, mIndex, nil), mTree, AText, AFileName,
+        PositionOf(AText, AMarker, AOccurrence));
     finally
       mTree.Free;
     end;
   finally
     mResolver.Free;
   end;
+end;
+
+function GroupInfoAt(const AMarker: string; AOccurrence: Integer): THoverInfo;
+begin
+  Result := TextInfoAt(cUnitGruppen, 'C:\P\Gruppen.pas', AMarker, AOccurrence);
 end;
 
 function TLspHoverTests.InfoAt(const AMarker: string): THoverInfo;
@@ -570,6 +620,13 @@ begin
   Assert.Contains(mInfo.ToMarkdown, '**Veraltet**: Neu verwenden');
 end;
 
+procedure TLspHoverTests.KeepsMemberDeprecationAtMember;
+begin
+  Assert.AreEqual('', TextInfoAt(cUnitObjekt, 'C:\P\Objekt.pas', 'TObjekt)', 1).Deprecation);
+  Assert.AreEqual('**Veraltet**: Use Free instead',
+    TextInfoAt(cUnitObjekt, 'C:\P\Objekt.pas', 'DisposeOf;', 2).Deprecation);
+end;
+
 procedure TLspHoverTests.ShowsSetsAndResourceStrings;
 const
   cStilFile = 'C:\P\Stile.pas';
@@ -782,6 +839,16 @@ begin
   Assert.AreEqual('const D: string', GroupInfoAt('D;', 1).Declaration);
   // Lokale Variablen.
   Assert.AreEqual('mZweiter: TPunkt;', GroupInfoAt('mZweiter.', 1).Declaration);
+end;
+
+procedure TLspHoverTests.ShowsAllValuesOfMultilineEnumeration;
+const
+  cExpected = 'TXmlTokenKind = (tkText, tkTagName, tkEquals, tkAttrValue, tkEntity, tkComment, tkCData, tkPI, ' +
+    'tkDocType, tkInvalid);';
+begin
+  // An der Deklaration und an der Verwendung.
+  Assert.AreEqual(cExpected, TextInfoAt(cUnitXmlTypes, 'C:\P\XmlTypes.pas', 'TXmlTokenKind', 1).Declaration);
+  Assert.AreEqual(cExpected, TextInfoAt(cUnitXmlTypes, 'C:\P\XmlTypes.pas', 'TXmlTokenKind;', 1).Declaration);
 end;
 
 initialization

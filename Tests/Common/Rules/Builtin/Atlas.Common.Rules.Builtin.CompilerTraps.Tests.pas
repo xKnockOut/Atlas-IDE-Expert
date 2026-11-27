@@ -24,6 +24,10 @@ type
     procedure CaptionThroughRedeclaredProperties;
     [Test]
     procedure UsesOrderHidesBitmap;
+    /// <summary>Graphics im Zweig {$IFDEF FPC}, Winapi.Windows und Vcl.Graphics im {$ELSE}-Zweig: dcc sieht nur
+    /// den zweiten Zweig, die Reihenfolge stimmt dort.</summary>
+    [Test]
+    procedure UsesOrderIgnoresInactiveBranch;
     [Test]
     procedure InterfaceNeedsImplementationUses;
     [Test]
@@ -40,6 +44,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.CompilerTraps,
+  Atlas.Common.Rules.Checker,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
@@ -173,6 +179,20 @@ begin
   TRuleAssert.Silent(TUsesOrderHidesTypeRule.Create, 'unit U;'#10'interface'#10'uses'#10 +
     '  Vcl.Graphics, Winapi.Windows;'#10'implementation'#10'procedure Lauf(B: Vcl.Graphics.TBitmap; C: TCanvas);' +
     #10'begin'#10'end;'#10'end.');
+end;
+
+procedure TCompilerTrapsTests.UsesOrderIgnoresInactiveBranch;
+const
+  cSource = 'unit U;'#10'interface'#10'uses'#10'{$IFDEF FPC}'#10'  LCLType, SysUtils, Graphics,'#10'{$ELSE}'#10 +
+    '  Winapi.Windows, System.SysUtils, Vcl.Graphics,'#10'{$ENDIF}'#10'  Classes;'#10'implementation'#10 +
+    'procedure Lauf;'#10'begin'#10'  TBitmap.Create.Free;'#10'end;'#10'end.';
+begin
+  Assert.AreEqual(0, Integer(Length(TFileChecker.CheckText([TUsesOrderHidesTypeRule.Create],
+    TServerSettings.Default, 'U.pas', cSource))));
+  // Im aktiven Zweig falsch herum: weiter gemeldet.
+  Assert.AreEqual(1, Integer(Length(TFileChecker.CheckText([TUsesOrderHidesTypeRule.Create],
+    TServerSettings.Default, 'U.pas', StringReplace(cSource, 'Winapi.Windows, System.SysUtils, Vcl.Graphics',
+    'Vcl.Graphics, System.SysUtils, Winapi.Windows', [])))));
 end;
 
 procedure TCompilerTrapsTests.InterfaceNeedsImplementationUses;

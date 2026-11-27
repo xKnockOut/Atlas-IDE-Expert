@@ -31,6 +31,10 @@ type
     [Test]
     procedure OutdentsClosers;
     [Test]
+    procedure OutdentsBeginAfterHeader;
+    [Test]
+    procedure KeepsIndentedBeginStyle;
+    [Test]
     procedure SplitsStringIndented;
     [Test]
     procedure SplitsStringAligned;
@@ -146,6 +150,42 @@ begin
   // Steht das Schlusswort schon richtig, ändert sich nur die neue Zeile.
   Assert.AreEqual('begin/  repeat/    B;/  until A;/  |',
     Entered(['begin', '  repeat', '    B;', '  until A;', ''], 4));
+end;
+
+procedure TSmartIndentTests.OutdentsBeginAfterHeader;
+var
+  mOptions: TSmartIndentOptions;
+begin
+  // Nach "if A then", Enter, steht begin eine Ebene tiefer; das nächste Enter zieht es auf die Spalte von if.
+  Assert.AreEqual('procedure P;/begin/  if A then/  begin/    |',
+    Entered(['procedure P;', 'begin', '  if A then', '    begin', ''], 4));
+  // Das end des Blockabschlusses der IDE folgt dem begin.
+  Assert.AreEqual('begin/  if A then/  begin/    |/  end;', Entered(['begin', '  if A then', '    begin', '', '    end;'], 3));
+  Assert.AreEqual('begin/  if A then/    B/  else/  begin/    |',
+    Entered(['begin', '  if A then', '    B', '  else', '    begin', ''], 5));
+  Assert.AreEqual('begin/  for I := 0 to 9 do/  begin/    |', Entered(['begin', '  for I := 0 to 9 do', '    begin', ''], 3));
+  Assert.AreEqual('begin/  while A do/  begin/    |', Entered(['begin', '  while A do', '    begin', ''], 3));
+  Assert.AreEqual('begin/  with A do/  begin/    |', Entered(['begin', '  with A do', '    begin', ''], 3));
+  // Mehrzeilige Bedingung: auf die Spalte der Anweisung, nicht der Zeile mit then.
+  Assert.AreEqual('begin/  if A and/    B then/  begin/    |', Entered(['begin', '  if A and', '    B then', '    begin', ''], 4));
+  // Eine Einzelanweisung bleibt eingerückt, ein begin in derselben Zeile wie then auch.
+  Assert.AreEqual('begin/  if A then/    B;/  |', Entered(['begin', '  if A then', '    B;', ''], 3));
+  Assert.AreEqual('begin/  if A then begin/    |', Entered(['begin', '  if A then begin', ''], 2));
+  // Ein end weiter unten, das nicht zum begin gehört (andere Spalte), bleibt.
+  Assert.AreEqual('begin/  if A then/  begin/    |/end;', Entered(['begin', '  if A then', '    begin', '', 'end;'], 3));
+  mOptions := TSmartIndentOptions.Default;
+  mOptions.OutdentClosers := False;
+  Assert.AreEqual('begin/  if A then/    begin/      |', Entered(['begin', '  if A then', '    begin', ''], 3, mOptions));
+end;
+
+procedure TSmartIndentTests.KeepsIndentedBeginStyle;
+begin
+  // Rückt die Datei begin hinter then sonst ein, bleibt es eingerückt.
+  Assert.AreEqual('begin/  if B then/    begin/      C;/    end;/  if A then/    begin/      |',
+    Entered(['begin', '  if B then', '    begin', '      C;', '    end;', '  if A then', '    begin', ''], 7));
+  // Mehrheitlich nicht eingerückt: Atlas zieht begin zurück.
+  Assert.AreEqual('begin/  if B then/  begin/    C;/  end;/  if A then/  begin/    |',
+    Entered(['begin', '  if B then', '  begin', '    C;', '  end;', '  if A then', '    begin', ''], 7));
 end;
 
 procedure TSmartIndentTests.SplitsStringIndented;

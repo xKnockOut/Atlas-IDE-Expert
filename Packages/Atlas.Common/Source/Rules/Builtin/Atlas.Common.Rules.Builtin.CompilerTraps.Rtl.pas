@@ -10,7 +10,8 @@
 //   winapi-uses-missing        Eine Routine, die Delphi nur in Winapi.Windows deklariert, FPC aber auch in SysUtils
 //                              (GetTickCount64, GetTickCount, MulDiv), steht ohne Winapi.Windows in uses (wie
 //                              E2003). TThread.GetTickCount64 und Namen hinter einem Punkt zählen nicht. Eine
-//                              Meldung je Datei. Korrektur: Winapi.Windows in uses aufnehmen.
+//                              Meldung je Datei. Korrektur: Winapi.Windows in uses aufnehmen. Still bei Units, die
+//                              aktiv BaseUnix, Unix usw. einbinden: Die übersetzt nur Free Pascal.
 //   stream-write-nativeint     Eine Klasse überschreibt Write(const Buffer; Count: Longint): Longint von TStream,
 //                              aber nicht die Überladung Write(const Buffer; Count: NativeInt): NativeInt, die es ab
 //                              Delphi 13 gibt. WriteBuffer und CopyFrom rufen unter Win64 diese Überladung auf und
@@ -114,6 +115,8 @@ const
   // Units von Free Pascal, deren Deklarationen in Delphi nicht gelten: Findet die Namensauflösung einen Namen nur
   // dort (FPC-Quellen im Index), bleibt der Befund.
   cFpcHomes: array[0..4] of string = ('Windows', 'SysUtils', 'ObjPas', 'Types', 'Math');
+  // Units, die es nur in Free Pascal gibt: Eine Unit, die sie in einem aktiven Zweig einbindet, übersetzt Delphi nie.
+  cFpcOnlyUnits: array[0..5] of string = ('BaseUnix', 'Unix', 'UnixType', 'cthreads', 'cwstring', 'ctypes');
   cDelphi13 = '37.0';
 
 /// <summary>Letzter Namensteil: TKlasse.Methode ergibt Methode.</summary>
@@ -312,6 +315,28 @@ begin
   Result := TRuleDescriptor.Create(cWinapiUsesMissingRuleId, TRuleSeverity.Error, cTexts[TRtlTrapText.UsesTitle].Text);
 end;
 
+/// <summary>Bindet die Unit in einem aktiven Zweig eine Unit ein, die es nur in Free Pascal gibt (BaseUnix, Unix)?
+/// Dann übersetzt nur FPC sie (Lazarus-Package), und dort steht GetTickCount64 in SysUtils.</summary>
+function FpcOnly(const AContext: TRuleContext): Boolean;
+var
+  mTokens: TArray<TPascalToken>;
+  mClauses: TArray<TUsesClauseInfo>;
+  mIndex: Integer;
+begin
+  Result := False;
+  mTokens := AContext.Tree.Tokens;
+  mClauses := TUsesClauses.Clauses(mTokens);
+  for mIndex := 0 to High(mTokens) do
+  begin
+    if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and MatchText(mTokens[mIndex].Text, cFpcOnlyUnits) and
+      not AfterDot(mTokens, mIndex) and TUsesClauses.InClause(mTokens, mClauses, mTokens[mIndex].Offset) and
+      not InInactive(mTokens[mIndex].StartPos, AContext.InactiveRanges) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
 /// <summary>Korrektur: Winapi.Windows ins uses des Abschnitts am Token AIndex; ohne, wenn es dort keine Liste gibt.
 /// </summary>
 function AddWindowsFixes(const AContext: TRuleContext; AIndex: Integer): TArray<TRuleFix>;
@@ -332,7 +357,7 @@ var
   mMentions: TArray<Integer>;
   mIndex: Integer;
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or UsesWindows(AContext) then
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or UsesWindows(AContext) or FpcOnly(AContext) then
   begin
     Exit;
   end;

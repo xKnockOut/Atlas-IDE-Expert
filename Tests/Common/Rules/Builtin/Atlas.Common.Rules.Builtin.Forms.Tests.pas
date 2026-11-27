@@ -31,6 +31,8 @@ type
     [Test]
     procedure FolderFilesIgnoreCase;
     [Test]
+    procedure FolderFilesWindowsSeparators;
+    [Test]
     procedure AutoCreateIssueExample;
     [Test]
     procedure AutoCreateFixRemovesCreateForm;
@@ -405,6 +407,27 @@ begin
     Assert.AreEqual(TPath.Combine(mFolder, 'Fehlt.dfm'), TRuleFolderFiles.OnDisk(TPath.Combine(mFolder, 'Fehlt.dfm')));
     Assert.IsFalse(TRuleFolderFiles.Reader(mFolder)('Fehlt.dfm', mData));
     Assert.IsFalse(TRuleFolderFiles.Exists(mFolder)('Fehlt.dfm'));
+  finally
+    TDirectory.Delete(mFolder, True);
+  end;
+end;
+
+procedure TFormRulesTests.FolderFilesWindowsSeparators;
+var
+  mFolder: string;
+  mData: TBytes;
+begin
+  // "in '..\Src\Kunde.pas'" aus einer .dpr ohne Projekt: Unter Linux galt "\" als Teil des Dateinamens, jede
+  // Unit mit in-Pfad hieß "nicht gefunden".
+  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasFolderSep' + IntToStr(Random(MaxInt)));
+  TDirectory.CreateDirectory(TPath.Combine(TPath.Combine(mFolder, 'Src'), 'Teil'));
+  TDirectory.CreateDirectory(TPath.Combine(mFolder, 'Tests'));
+  try
+    TFile.WriteAllText(TPath.Combine(TPath.Combine(TPath.Combine(mFolder, 'Src'), 'Teil'), 'Kunde.pas'), 'unit Kunde;');
+    Assert.IsTrue(TRuleFolderFiles.Exists(TPath.Combine(mFolder, 'Tests'))('..\Src\Teil\Kunde.pas'));
+    Assert.IsTrue(TRuleFolderFiles.Exists(TPath.Combine(mFolder, 'Tests'))('../Src/Teil/Kunde.pas'));
+    Assert.IsTrue(TRuleFolderFiles.Reader(TPath.Combine(mFolder, 'Tests'))('..\Src\Teil\Kunde.pas', mData));
+    Assert.IsFalse(TRuleFolderFiles.Exists(TPath.Combine(mFolder, 'Tests'))('..\Src\Fehlt.pas'));
   finally
     TDirectory.Delete(mFolder, True);
   end;

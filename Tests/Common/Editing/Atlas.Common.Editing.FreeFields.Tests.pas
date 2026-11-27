@@ -54,6 +54,8 @@ type
     [Test]
     procedure ComponentFieldAsOwner;
     [Test]
+    procedure ComponentParameterAsOwner;
+    [Test]
     procedure HandOverAndCastToInterface;
     [Test]
     procedure ObjectCreationOutsideClasses;
@@ -895,6 +897,46 @@ begin
   mFields := Analyze(cText);
   Assert.AreEqual(1, Integer(Length(mFields)));
   Assert.AreEqual('FHelper', mFields[0].Name);
+end;
+
+procedure TFreeFieldsTests.ComponentParameterAsOwner;
+const
+  cText =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  THelper = class'#10 +
+    '  end;'#10 +
+    '  TFoo = class'#10 +
+    '  private'#10 +
+    '    FBar: TTaskbar;'#10 +
+    '    FOther: TTaskbar;'#10 +
+    '    FHelper: THelper;'#10 +
+    '  public'#10 +
+    '    constructor Create(AForm: TCustomForm; ACount: Integer);'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create(AForm: TCustomForm; ACount: Integer);'#10 +
+    'begin'#10 +
+    '  FBar := TTaskbar.Create(AForm);'#10 +
+    '  FOther := TTaskbar.Create(ACount);'#10 +
+    '  FHelper := THelper.Create(AForm);'#10 +
+    'end;'#10 +
+    'end.';
+var
+  mFields: TArray<TOwnedField>;
+  mNames: string;
+  mField: TOwnedField;
+begin
+  // Vorfahr unbekannt, Owner ist ein Parameter vom Komponententyp: gibt das Formular frei. Ein Parameter
+  // anderen Typs ist kein Owner, eine Klasse ohne Vorfahren bleibt gemeldet.
+  mFields := Analyze(cText);
+  mNames := '';
+  for mField in mFields do
+  begin
+    mNames := mNames + mField.Name + ' ';
+  end;
+  Assert.AreEqual('FOther FHelper ', mNames);
 end;
 
 procedure TFreeFieldsTests.HandOverAndCastToInterface;

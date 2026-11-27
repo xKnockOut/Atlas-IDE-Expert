@@ -274,6 +274,14 @@ begin
   TRuleAssert.Silent(TDuplicateConditionRule.Create, Stufen('  if Take(Stufe, ''.'') and Take(Stufe, ''.'') then'#10 +
     '    Exit;'#10'  if (Betrag = 0) and not Pruefen(Betrag) and (Betrag = 0) then'#10'    Exit;'#10 +
     '  if TKatalog.Shared = TKatalog.Shared then'#10'    Exit;'));
+  // Funktion ohne Klammern: zwei Aufrufe, zwei Werte (NewRandomToken &lt;&gt; NewRandomToken, XML-Inspector).
+  TRuleAssert.Silent(TDuplicateConditionRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'function NeuesZeichen: string;'#10'begin'#10'  Result := '''';'#10'end;'#10'procedure Lauf;'#10'begin'#10 +
+    '  if NeuesZeichen <> NeuesZeichen then'#10'    Exit;'#10'end;'#10'end.');
+  // Eine lokale Variable gleichen Namens wie eine Routine bleibt ein Wert.
+  TRuleAssert.Reports(TDuplicateConditionRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'function Wert: Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10'procedure Lauf;'#10'var'#10'  Wert: Integer;'#10 +
+    'begin'#10'  Wert := 1;'#10'  if Wert = Wert then'#10'    Exit;'#10'end;'#10'end.');
   // Reine Funktionen zählen weiter.
   TRuleAssert.Reports(TDuplicateConditionRule.Create, Stufen('  if SameText(S, ''a'') or SameText(S, ''a'') then'#10 +
     '    Exit;'));

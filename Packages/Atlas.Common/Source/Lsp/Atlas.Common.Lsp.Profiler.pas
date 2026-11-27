@@ -243,7 +243,7 @@ begin
   FreeAndNil(FMap);
   if (AFileName <> '') and TFile.Exists(AFileName) then
   begin
-    FMap := TMapFile.Create(TFile.ReadAllText(AFileName, TEncoding.UTF8));
+    FMap := TMapFile.CreateFromFile(AFileName);
   end;
 end;
 

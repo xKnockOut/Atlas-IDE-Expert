@@ -13,7 +13,7 @@
 //   (plsEndPaint) eine Marke mit den Werten; ein Wert über dem Grenzwert ist
 //   markiert und die Marke in der Warnfarbe. Die IDE kann keine eigene Zeile
 //   über der Methode einfügen, darum steht die Lens hinter dem Kopf. Den Platz
-//   hinter dem Zeilenende teilt sie über TAtlasLineTail mit Inlay-Hints und
+//   hinter dem Zeilenende teilt sie über TAtlasLineEndSlot mit Inlay-Hints und
 //   dem Fehlertext am Zeilenende (#509).
 // - Kein Klickziel: Die Werte sind Information; die Regeln metric-* melden
 //   Überschreitungen als Problem.
@@ -77,7 +77,6 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Editor.LineTail,
   Atlas.Core.Editor.Elements,
   Atlas.UI.Analysis.Strings,
   Atlas.IDE.Editor.Lens,
@@ -179,21 +178,20 @@ end;
 procedure TAtlasAnalysisMetricsLens.PaintPill(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   const ALine, AName, AText: string; AOver: Boolean);
 var
-  mTailKey: string;
-  mCell, mPill: TRect;
+  mSlot: TAtlasLineEndSlot;
+  mPill: TRect;
   mBack, mTone: TAtlasColor;
 begin
-  mCell := TAtlasLensPill.CellAfter(AContext, ALine);
-  mTailKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
-  mBack := TAtlasLensPill.BackAt(AContext.Canvas, mCell.Left, ARect.Top + 1);
+  mSlot := TAtlasLineEndSlot.Take(Self, AContext, ARect, ALine);
+  mBack := TAtlasLensPill.BackAt(AContext.Canvas, mSlot.Left, ARect.Top + 1);
   mTone := TAtlasColors.ForBackground(mBack).Muted;
   if AOver then
   begin
     mTone := TAtlasColors.ForBackground(mBack).Warn;
   end;
-  mPill := TAtlasLensPill.Paint(AContext.Canvas, ARect, TAtlasLineTail.Start(Self, mTailKey, mCell.Left), AText,
+  mPill := TAtlasLensPill.Paint(AContext.Canvas, ARect, mSlot.Left, AText,
     TAtlasLensPillStyle.Create(mTone, mBack, 0.3, 0.1, []));
-  TAtlasLineTail.Finish(Self, mTailKey, mPill.Right);
+  mSlot.Done(mPill.Right);
   TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.CodeLensMetrics, AContext.FileName,
     AContext.LogicalLineNum - 1, AName), mPill, AContext.EditView.TopRow, ARect.Height);
 end;

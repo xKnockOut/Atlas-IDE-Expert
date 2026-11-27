@@ -993,8 +993,8 @@ const
     '      "description": "An item of a TObjectList/TObjectList<T> (OwnsObjects, default True) or of a TObjectDictionary with doOwnsValues is freed with Free, FreeAndNil, Destroy or DisposeOf, directly (Li' +
     'st[I].Free, List.Items[I].Free) or through a variable taken from List[I], List.First/Last or a for-in loop over the list or Dictionary.Values. The list frees the item itself on Delete, Remove, Clear, ' +
     'an assignment to List[I], or at the latest when it is freed: a double free. A list is owning when the unit creates it that way (TObjectList without False, TObjectDictionary with doOwnsValues) or decla' +
-    'res it as TObjectList without creating it, and no OwnsObjects := False follows. Extract in the same routine keeps the rule silent. High confidence. Quick fixes: remove the Free (the whole loop when it' +
-    ' only frees), Delete or Remove instead of Free, Extract instead of Remove.",',
+    'res it as TObjectList without creating it (not as a parameter, whose OwnsObjects is unknown), and no OwnsObjects := False follows. Extract in the same routine keeps the rule silent. High confidence. Q' +
+    'uick fixes: remove the Free (the whole loop when it only frees), Delete or Remove instead of Free, Extract instead of Remove.",',
     '      "bad": "Auftraege := TObjectList<TAuftrag>.Create;\n…\nAuftraege[I].Free;\nAuftraege.Delete(I);",',
     '      "good": "Auftraege := TObjectList<TAuftrag>.Create;\n…\nAuftraege.Delete(I);",',
     '      "safeFix": false',

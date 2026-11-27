@@ -260,6 +260,17 @@ begin
     '  Auftraege[I].Free;'#10'  Auftraege.Delete(I);'#10), 'TObjectList<TAuftrag>;', 'TList<TAuftrag>;', []));
   // Element eines anderen Objekts.
   TRuleAssert.Silent(TOwnedItemFreedRule.Create, Body('  Kunde.Auftraege[I].Free;'#10));
+  // Liste als Parameter: Der Aufrufer erzeugt sie, OwnsObjects ist unbekannt.
+  TRuleAssert.Silent(TOwnedItemFreedRule.Create,
+    'unit Puffer;'#10'interface'#10'implementation'#10'uses System.Generics.Collections;'#10 +
+    'procedure Leeren(AListe: TObjectList<TSchritt>);'#10'var'#10'  I: Integer;'#10'begin'#10 +
+    '  for I := 0 to AListe.Count - 1 do'#10'    AListe[I].Free;'#10'  AListe.Clear;'#10'end;'#10'end.');
+  // Dieselbe Liste als Variable bleibt besitzend.
+  TRuleAssert.Reports(TOwnedItemFreedRule.Create,
+    'unit Puffer;'#10'interface'#10'implementation'#10'uses System.Generics.Collections;'#10 +
+    'var'#10'  Liste: TObjectList<TSchritt>;'#10 +
+    'procedure Leeren;'#10'var'#10'  I: Integer;'#10'begin'#10 +
+    '  for I := 0 to Liste.Count - 1 do'#10'    Liste[I].Free;'#10'  Liste.Clear;'#10'end;'#10'end.');
 end;
 
 procedure TOwnershipRulesTests.ElementVariablesAndLoops;

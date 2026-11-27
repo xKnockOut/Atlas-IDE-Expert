@@ -34,8 +34,7 @@ uses
   Winapi.Windows,
   System.SysUtils,
   System.IOUtils,
-  Atlas.Text.MapFile,
-  Atlas.Common.Documents.FileEncoding;
+  Atlas.Text.MapFile;
 
 const
   cMaxFrames = 48;
@@ -81,7 +80,7 @@ begin
       try
         if TFile.Exists(mMapName) then
         begin
-          Map := TMapFile.Create(TFileEncoding.LoadText(mMapName));
+          Map := TMapFile.CreateFromFile(mMapName);
         end;
       except
         // Eine unlesbare Map darf das Absturzprotokoll nicht verhindern.

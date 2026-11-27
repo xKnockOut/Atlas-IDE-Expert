@@ -97,6 +97,8 @@ type
     [Test]
     procedure BlockingCallOptions;
     [Test]
+    procedure BlockingCallAfterFinished;
+    [Test]
     procedure ThreadLoopIssueExample;
     [Test]
     procedure ThreadLoopVariants;
@@ -104,6 +106,8 @@ type
     procedure ThreadLoopSilentCases;
     [Test]
     procedure ThreadLoopOffAndExclude;
+    [Test]
+    procedure ThreadLoopWithOwnExit;
     [Test]
     procedure AnonymousThreadIssueExample;
     [Test]
@@ -295,6 +299,15 @@ begin
   TRuleAssert.Silent(TLockWithoutFinallyRule.Create, Routine('  TMonitor.Enter(FLock);',
     'class procedure TSharedWrites.Enter;'));
   TRuleAssert.Reports(TLockWithoutFinallyRule.Create, Routine('  TSharedWrites.Enter;'#10'  DoWork;'));
+  // Sperrmethode mit anderem Namen als die Sperre (LockCatalog/UnlockCatalog, XML-Inspector).
+  TRuleAssert.Silent(TLockWithoutFinallyRule.Create, Routine('  FLock.Acquire;', 'procedure TA.LockCatalog;'));
+  // Abschnitt ohne Sperre: im finally wieder sperren.
+  TRuleAssert.Silent(TLockWithoutFinallyRule.Create, Routine('  FLock.Enter;'#10'  try'#10'    FLock.Leave;'#10 +
+    '    try'#10'      DoWork;'#10'    finally'#10'      FLock.Enter;'#10'    end;'#10'  finally'#10'    FLock.Leave;'#10 +
+    '  end;'));
+  // Im finally ohne vorherige Freigabe bleibt es ein Befund.
+  TRuleAssert.Reports(TLockWithoutFinallyRule.Create, Routine('  try'#10'    DoWork;'#10'  finally'#10 +
+    '    FLock.Enter;'#10'    DoWork;'#10'  end;'));
   // Monitor vorab anlegen: Freigabe direkt danach.
   TRuleAssert.Silent(TLockWithoutFinallyRule.Create, Routine('  TMonitor.Enter(FLock);'#10'  TMonitor.Exit(FLock);'));
   // Freigabe mit eigenen Parametern in einem Ausdruck im finally.
@@ -776,6 +789,20 @@ begin
     'procedure Warten;'#10'begin'#10'  Sleep(1000);'#10'end;'#10'end.');
 end;
 
+procedure TConcurrencyPatternRulesTests.BlockingCallAfterFinished;
+begin
+  // Timer fragt Finished ab: WaitFor danach wartet nicht mehr, sondern holt nur den Ausgang ab.
+  TRuleAssert.Silent(TBlockingCallInMainThreadRule.Create, FormMethod('procedure TfrmHaupt.TimerTick(Sender: TObject);',
+    '  if (FThread <> nil) and not FThread.Finished then'#10'  begin'#10'    Zeigen;'#10'    Exit;'#10'  end;'#10 +
+    '  if FThread <> nil then'#10'    FThread.WaitFor;'#10'  if not FJob.Finished then'#10'    Exit;'#10 +
+    '  FJob.WaitFor;'#10'  if FLauf.Finished then'#10'    FLauf.WaitFor;'#10));
+  // Ohne Exit, für einen anderen Thread oder vor der Abfrage wartet WaitFor weiter.
+  Assert.AreEqual(3, Integer(Length(TRuleAssert.Findings(TBlockingCallInMainThreadRule.Create, FormMethod(
+    'procedure TfrmHaupt.TimerTick(Sender: TObject);', '  if not FThread.Finished then'#10'    Zeigen;'#10 +
+    '  FThread.WaitFor;'#10'  if not FJob.Finished then'#10'    Exit;'#10'  FLauf.WaitFor;'#10 +
+    '  FAlt.WaitFor;'#10'  if FAlt.Finished then'#10'    Exit;'#10)))));
+end;
+
 procedure TConcurrencyPatternRulesTests.BlockingCallOptions;
 var
   mSource: string;
@@ -875,6 +902,18 @@ begin
     '  while True do FEreignis.WaitFor;'#10'end;'#10));
   TRuleAssert.Silent(TThreadLoopWithoutTerminatedRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
     'procedure TDienst.Execute;'#10'begin'#10'  while True do Sleep(1);'#10'end;'#10'end.');
+end;
+
+procedure TConcurrencyPatternRulesTests.ThreadLoopWithOwnExit;
+begin
+  // Eigenes Ende über Break oder Exit: der Thread hört auf sein eigenes Signal.
+  TRuleAssert.Silent(TThreadLoopWithoutTerminatedRule.Create, PollerExecute('  while True do'#10'  begin'#10 +
+    '    FStart.WaitFor(INFINITE);'#10'    if FQuit then'#10'      Break;'#10'    Arbeiten;'#10'  end;'#10 +
+    '  repeat'#10'    I := Naechster;'#10'    if I < 0 then'#10'      Exit;'#10'  until False;'#10));
+  // Break einer inneren Schleife und Exit in einer anonymen Methode beenden die äußere nicht.
+  TRuleAssert.Reports(TThreadLoopWithoutTerminatedRule.Create, PollerExecute('  while True do'#10'  begin'#10 +
+    '    for I := 0 to 9 do'#10'      if I = 5 then'#10'        Break;'#10 +
+    '    Melden(procedure begin Exit; end);'#10'  end;'#10), 1);
 end;
 
 procedure TConcurrencyPatternRulesTests.ThreadLoopOffAndExclude;
