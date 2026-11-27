@@ -981,6 +981,11 @@ begin
     '  Writeln(S);'#10'  if not IsConsole then'#10'    Exit;'#10'end;'#10, '  Aus(''x'');'));
   TRuleAssert.Reports(TWritelnInGuiAppRule.Create, GuiProgram('procedure Aus(const S: string);'#10'begin'#10 +
     '  if S = '''' then'#10'    Exit;'#10'  Writeln(S);'#10'end;'#10, '  Aus(''x'');'));
+  // Mit "or" steigt sie ohne Konsole immer aus; mit "and" nur, wenn auch der zweite Teil gilt.
+  TRuleAssert.Silent(TWritelnInGuiAppRule.Create, GuiProgram('procedure Aus(const S: string);'#10'begin'#10 +
+    '  if (S = '''') or (not IsConsole) then'#10'    Exit;'#10'  Writeln(S);'#10'end;'#10, '  Aus(''x'');'));
+  TRuleAssert.Reports(TWritelnInGuiAppRule.Create, GuiProgram('procedure Aus(const S: string);'#10'begin'#10 +
+    '  if not IsConsole and not Dump then'#10'    Exit;'#10'  Writeln(S);'#10'end;'#10, '  Aus(''x'');'));
 end;
 
 procedure TRtlTypePatternRulesTests.WritelnInGuiAppOptions;
