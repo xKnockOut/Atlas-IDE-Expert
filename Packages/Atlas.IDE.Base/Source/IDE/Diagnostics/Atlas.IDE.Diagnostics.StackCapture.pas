@@ -53,8 +53,7 @@ uses
   System.Generics.Collections,
   Atlas.Text.MapFile,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.StackRing,
-  Atlas.Core.Files.TextFile;
+  Atlas.Core.Diagnostics.StackRing;
 
 type
   // Eigene Fassungen von EXCEPTION_RECORD/EXCEPTION_POINTERS: SysUtils und Winapi.Windows deklarieren
@@ -225,7 +224,7 @@ begin
     if TFile.Exists(mName) then
     begin
       try
-        Result := TMapFile.Create(TAtlasTextFile.LoadText(mName));
+        Result := TMapFile.CreateFromFile(mName);
         TAtlasGuard.Log('Stacktraces: Map-Datei ' + ExtractFileName(mName) + ' geladen');
       except
         on E: Exception do
