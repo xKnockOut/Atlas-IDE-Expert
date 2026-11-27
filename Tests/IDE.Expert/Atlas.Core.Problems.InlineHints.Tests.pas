@@ -215,9 +215,6 @@ begin
   end;
 end;
 
-initialization
-  TDUnitX.RegisterTestFixture(TAtlasInlineDiagnosticsTests);
-
 procedure TAtlasInlineDiagnosticsTests.LineTailKeepsLensesBehindErrorText;
 var
   mErrors, mTestUnit, mUntested: TObject;
@@ -248,5 +245,8 @@ begin
     mUntested.Free;
   end;
 end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TAtlasInlineDiagnosticsTests);
 
 end.
