@@ -56,8 +56,13 @@
 // tiefsten Stelle und steht als deepUnit im Diagnoselog, statt still alle
 // Befunde zu verlieren.
 // Wirft eine Regel eine Ausnahme, laufen die übrigen weiter; die
-// Regel steht mit Unit und Ausnahmeklasse als failRule im Diagnoselog. Nur der
-// Abbruch (ERuleCheckCancelled) beendet den Lauf.
+// Regel steht mit Unit und Ausnahmeklasse als failRule im Diagnoselog, und die
+// Datei bekommt den Fehler rule-failed an Zeile 1 (#3090): Sonst sähe eine
+// abgestürzte Regel im Prüflauf (--check, Baseline, CI) aus wie eine saubere
+// Unit. rule-failed lässt sich nicht per Kommentar unterdrücken; eine
+// gescheiterte Regel gilt nicht als gelaufen, ihr lsp-ignore also nicht als
+// unnötig. Nur der Abbruch beendet den Lauf, auch wenn er während des Fehlers
+// einer Regel eintritt: dann als ERuleCheckCancelled, nicht als deren Ausnahme.
 
 interface
 
@@ -73,6 +78,8 @@ const
   cUnknownRuleIdRuleId = 'unknown-rule-id';
   /// <summary>Hinweis, dass die Regeln eine Unit wegen MaxTreeDepth übersprungen haben.</summary>
   cUnitTooDeepRuleId = 'unit-too-deep';
+  /// <summary>Fehler, dass eine Regel für die Unit mit einer Ausnahme gescheitert ist (#3090).</summary>
+  cRuleFailedRuleId = 'rule-failed';
 
 type
   TRuleEngine = class
@@ -147,7 +154,7 @@ uses
 type
   /// <summary>Texte der Engine in beiden Sprachen (#1458).</summary>
   TEngineText = (UnitTooDeep, Cancelled, UnusedSuppression, RemoveSuppression, UnknownRuleId, UnknownRuleIdGuess,
-    ReplaceWith);
+    ReplaceWith, RuleFailed);
 
 const
   cTexts: array[TEngineText] of TAtlasText = (
@@ -163,7 +170,10 @@ const
      En: 'Unknown rule id "%s"; the suppression has no effect'),
     (De: 'Unbekannte Regelkennung "%s"; gemeint ist vermutlich "%s"';
      En: 'Unknown rule id "%s"; probably "%s" is meant'),
-    (De: 'Durch "%s" ersetzen'; En: 'Replace with "%s"'));
+    (De: 'Durch "%s" ersetzen'; En: 'Replace with "%s"'),
+    (De: 'Die Prüfregel %s ist an dieser Unit gescheitert (%s); ihre Befunde fehlen. Das ist ein Fehler in Atlas, ' +
+      'bitte melden';
+     En: 'The rule %s failed on this unit (%s); its findings are missing. This is a bug in Atlas, please report it'));
 
 {$SCOPEDENUMS OFF}
 
@@ -216,6 +226,8 @@ type
     FOwnUnits: ITreeUnits;
     FFindings: TList<TRuleFinding>;
     FKept: TList<TRuleFinding>;
+    /// <summary>rule-failed je gescheiterter Regel; geht an den Unterdrückungen vorbei in das Ergebnis.</summary>
+    FFailed: TList<TRuleFinding>;
     FRanIds: TList<string>;
     FDeferred: TList<TDeferredRule>;
     FUncertain: TList<TUncertainRule>;
@@ -695,6 +707,7 @@ begin
   end;
   FFindings := TList<TRuleFinding>.Create;
   FKept := TList<TRuleFinding>.Create;
+  FFailed := TList<TRuleFinding>.Create;
   FRanIds := TList<string>.Create;
   FDeferred := TList<TDeferredRule>.Create;
   FUncertain := TList<TUncertainRule>.Create;
@@ -734,6 +747,7 @@ begin
   FDeferred.Free;
   FRanIds.Free;
   FSuppressions.Free;
+  FFailed.Free;
   FKept.Free;
   FFindings.Free;
   inherited;
@@ -782,11 +796,30 @@ begin
   Result := (AError is ERuleCheckCancelled) or (Assigned(FContext.Cancelled) and FContext.Cancelled());
 end;
 
+/// <summary>Fehler rule-failed an Zeile 1 für die gescheiterte Regel ARuleId.</summary>
+function RuleFailedFinding(const ARuleId, AErrorClass: string; ASeverity: TRuleSeverity): TRuleFinding;
+begin
+  Result := Default(TRuleFinding);
+  Result.RuleId := cRuleFailedRuleId;
+  Result.Range := TTextRange.Create(0, 0, 0, 0);
+  Result.Message := cTexts[TEngineText.RuleFailed].Fmt([ARuleId, AErrorClass]);
+  Result.Severity := ASeverity;
+  Result.Confidence := TRuleConfidence.High;
+end;
+
 procedure TRuleRun.Discard(AError: Exception; const ARuleId: string; ABefore: Integer);
+var
+  mSeverity: TRuleSeverity;
 begin
   FFindings.Count := ABefore;
   TStackGuard.AfterError(AError);
   TRequestDiagnostics.RuleFailed(ARuleId, AError.ClassName);
+  // Sichtbar statt nur im Diagnoselog (#3090): Ohne Befund endete --check grün, als wäre die Regel sauber gelaufen.
+  mSeverity := FSettings.RuleSeverity(cRuleFailedRuleId, TRuleSeverity.Error);
+  if mSeverity <> TRuleSeverity.Off then
+  begin
+    FFailed.Add(RuleFailedFinding(ARuleId, AError.ClassName, mSeverity));
+  end;
 end;
 
 procedure TRuleRun.CheckCancelled;
@@ -812,11 +845,16 @@ begin
   try
     ARule.Check(AContext, mReport);
   except
+    on ERuleCheckCancelled do
+    begin
+      raise;
+    end;
     on E: Exception do
     begin
       if MustRaise(E) then
       begin
-        raise;
+        // Abbruch während des Fehlers: Der Aufrufer erwartet den Abbruch, nicht die Ausnahme der Regel.
+        raise ERuleCheckCancelled.Create(cTexts[TEngineText.Cancelled].Text);
       end;
       Discard(E, ARuleId, mBefore);
       Result := False;
@@ -899,13 +937,20 @@ begin
     TCheckProfiler.RuleTimed(ADeferred.Id, TCheckProfiler.TicksToMicroseconds(mWatch.ElapsedTicks,
       TStopwatch.Frequency));
   except
+    on ERuleCheckCancelled do
+    begin
+      raise;
+    end;
     on E: Exception do
     begin
       if MustRaise(E) then
       begin
-        raise;
+        raise ERuleCheckCancelled.Create(cTexts[TEngineText.Cancelled].Text);
       end;
       Discard(E, ADeferred.Id, mBefore);
+      // Der erste Teil der Regel lief, der nachgelagerte nicht: Sie gilt nicht als gelaufen, ihr lsp-ignore also
+      // nicht als unnötig (F-04 im Review vom 27.11.2026).
+      FRanIds.Remove(LowerCase(ADeferred.Id));
     end;
   end;
   TRequestDiagnostics.CurrentRule('');
@@ -1007,6 +1052,8 @@ begin
     FSuppressions := TSuppressions.Create(FContext.Tree.Tokens);
   end;
   KeepUnsuppressed;
+  // Nicht unterdrückbar: Ein lsp-ignore verbirgt sonst, dass Befunde fehlen.
+  FKept.AddRange(FFailed);
   if FSuppressions <> nil then
   begin
     KeepUnusedSuppressions;
