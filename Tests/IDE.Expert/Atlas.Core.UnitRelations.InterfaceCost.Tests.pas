@@ -3,7 +3,8 @@
 // Tests des Kerns der Statusleisten-Anzeige „interface-Änderung: N Units
 // werden neu kompiliert“ (#554): Antwort von atlas.interfaceCost lesen,
 // interface-Teil an der Einfügemarke erkennen (implementation zeigt nichts),
-// Sichtbarkeit und Namensliste.
+// Sichtbarkeit und Namensliste; „wird berechnet“, solange der Server den
+// Uses-Graphen aufbaut (#3075).
 
 interface
 
@@ -29,6 +30,8 @@ type
     procedure VisibleOnlyInInterfaceWithCost;
     [Test]
     procedure UnitListCountsTheRest;
+    [Test]
+    procedure PendingAnswerIsShown;
   end;
 
 implementation
@@ -145,6 +148,21 @@ begin
   mValue.Units := TArray<string>.Create('Mitte', 'Oben');
   Assert.AreEqual('Mitte, Oben', TAtlasInterfaceCostModel.UnitList(mValue, mMore));
   Assert.AreEqual(0, mMore);
+end;
+
+procedure TAtlasInterfaceCostTests.PendingAnswerIsShown;
+var
+  mValue: TAtlasInterfaceCost;
+begin
+  Assert.IsTrue(TAtlasInterfaceCostModel.Parse('{"found":false,"pending":true,"graph":"pending","generation":-1}',
+    mValue));
+  Assert.IsTrue(mValue.Pending);
+  Assert.IsFalse(mValue.Found);
+  Assert.IsTrue(TAtlasInterfaceCostModel.Visible(True, True, mValue), 'wird berechnet');
+  Assert.IsFalse(TAtlasInterfaceCostModel.Visible(True, False, mValue), 'implementation');
+  Assert.IsFalse(TAtlasInterfaceCostModel.Visible(False, True, mValue), 'abgeschaltet');
+  Assert.IsTrue(TAtlasInterfaceCostModel.Parse('{"found":true,"pending":false,"recompileCount":1}', mValue));
+  Assert.IsFalse(mValue.Pending);
 end;
 
 initialization

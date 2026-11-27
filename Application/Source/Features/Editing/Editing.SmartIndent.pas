@@ -11,6 +11,11 @@
 //   als deren erste Zeile.
 // - Schlusswort davor (#1829): Beginnt die Zeile darüber mit end, until,
 //   finally, except oder else, kommt sie auf die Spalte ihres Gegenstücks.
+// - begin hinter then, else oder do: Nach "if A then", Enter, rückt die neue
+//   Zeile für eine Einzelanweisung ein. Steht dort dann begin, kommt es nach
+//   dem nächsten Enter auf die Spalte von if, else bzw. for/while/with, der
+//   Rumpf eine Ebene tiefer, ein end direkt darunter (Blockabschluss der IDE)
+//   mit. Rückt die Datei begin sonst hinter then/else/do ein, bleibt es.
 // - String getrennt (#1831): Endet die Zeile darüber in einem offenen String,
 //   wird er dort mit "' +" geschlossen und die neue Zeile beginnt mit "'",
 //   eine Ebene tiefer als die Anweisung (Indent) bzw. ausgerichtet wie in
@@ -119,6 +124,14 @@ type
     function ValueColumn(ALine: Integer; out AColumn: Integer): Boolean;
     /// <summary>Erstes Codewort der Zeile ist ein Schlusswort.</summary>
     function StartsWithCloser(ALine: Integer): Boolean;
+    /// <summary>Die Zeile beginnt mit begin, und das Codetoken davor (in einer früheren Zeile) ist then, else oder
+    /// do; AHeader ist die Anfangszeile der Anweisung dieses Tokens.</summary>
+    function BeginAfterHeader(ALine: Integer; out AHeader: Integer): Boolean;
+    /// <summary>begin in ALine gehört auf die Spalte seines Kopfs: BeginAfterHeader, und die übrigen begin
+    /// dieser Art stehen nicht mehrheitlich eingerückt (Stil der Datei).</summary>
+    function OutdentsBegin(ALine: Integer): Boolean;
+    /// <summary>Erstes Codewort der Zeile ist end.</summary>
+    function StartsWithEnd(ALine: Integer): Boolean;
     /// <summary>Letztes Token der Zeile ist ein offener einzeiliger String mit Inhalt.</summary>
     function EndsInOpenString(ALine: Integer): Boolean;
     property Lines: TArray<string> read FLines;
@@ -126,6 +139,7 @@ type
     property Columns: TArray<Integer> read FColumns;
     property Info: TArray<TIndentLineInfo> read FInfo;
     property Step: Integer read FStep;
+    property FirstToken: TArray<Integer> read FFirst;
     property LastToken: TArray<Integer> read FLast;
   end;
 
@@ -399,6 +413,64 @@ begin
   end;
 end;
 
+function TIndentScan.BeginAfterHeader(ALine: Integer; out AHeader: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  AHeader := -1;
+  Result := (ALine >= 0) and (ALine <= High(FLines)) and (FFirst[ALine] >= 0) and
+    FTokens[FFirst[ALine]].IsKeyword('begin');
+  if not Result then
+  begin
+    Exit;
+  end;
+  mIndex := FFirst[ALine] - 1;
+  while (mIndex >= 0) and not IsCode(FTokens[mIndex]) do
+  begin
+    Dec(mIndex);
+  end;
+  Result := (mIndex >= 0) and (FTokens[mIndex].EndPos.Line < ALine) and
+    (FTokens[mIndex].IsKeyword('then') or FTokens[mIndex].IsKeyword('else') or FTokens[mIndex].IsKeyword('do'));
+  if Result then
+  begin
+    AHeader := FInfo[FTokens[mIndex].StartPos.Line].StatementLine;
+  end;
+end;
+
+function TIndentScan.OutdentsBegin(ALine: Integer): Boolean;
+var
+  mLine, mHeader, mIndented, mAligned: Integer;
+begin
+  Result := BeginAfterHeader(ALine, mHeader);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mIndented := 0;
+  mAligned := 0;
+  for mLine := 0 to High(FLines) do
+  begin
+    if (mLine <> ALine) and BeginAfterHeader(mLine, mHeader) then
+    begin
+      if FColumns[mLine] > FColumns[mHeader] then
+      begin
+        Inc(mIndented);
+      end
+      else
+      begin
+        Inc(mAligned);
+      end;
+    end;
+  end;
+  Result := mIndented <= mAligned;
+end;
+
+function TIndentScan.StartsWithEnd(ALine: Integer): Boolean;
+begin
+  Result := (ALine >= 0) and (ALine <= High(FLines)) and (FFirst[ALine] >= 0) and
+    FTokens[FFirst[ALine]].IsKeyword('end');
+end;
+
 function TIndentScan.EndsInOpenString(ALine: Integer): Boolean;
 var
   mToken: TPascalToken;
@@ -477,7 +549,7 @@ end;
 
 function TEnterRun.CloserColumn(out AColumn: Integer): Boolean;
 begin
-  Result := FOptions.OutdentClosers and FScan.StartsWithCloser(FLine - 1) and
+  Result := FOptions.OutdentClosers and (FScan.StartsWithCloser(FLine - 1) or FScan.OutdentsBegin(FLine - 1)) and
     FScan.TargetColumn(FLine - 1, AColumn);
 end;
 
@@ -512,6 +584,13 @@ begin
   if Result then
   begin
     SetIndent(FLine, mColumn, '');
+  end;
+  // Blockabschluss der IDE: Das end unter dem begin folgt ihm.
+  if mCloser and FScan.Tokens[FScan.FirstToken[FLine - 1]].IsKeyword('begin') and FScan.StartsWithEnd(FLine + 1) and
+    (FScan.Columns[FLine + 1] = FScan.Columns[FLine - 1]) then
+  begin
+    SetIndent(FLine + 1, mCloserColumn, '');
+    Result := True;
   end;
 end;
 

@@ -32,9 +32,24 @@ type
     /// <summary>Routinen, Typen, Konstanten, Properties und fremde Namen bleiben unberührt.</summary>
     [Test]
     procedure KeepsOtherDeclarations;
+    /// <summary>Aufzählung über mehrere Zeilen mit Kommentar je Wert: alle Werte in einer Zeile.</summary>
+    [Test]
+    procedure JoinsEnumerationOverSeveralLines;
+    /// <summary>Parameterliste und Vorfahren über mehrere Zeilen, Direktiven hinter der Klammer.</summary>
+    [Test]
+    procedure JoinsParameterListsAndAncestors;
+    /// <summary>Sehr lange Listen enden mit "…" vor der schließenden Klammer.</summary>
+    [Test]
+    procedure ShortensLongLists;
+    /// <summary>Einzeilige, offene und Klassen-Deklarationen bleiben beim Text der ersten Zeile.</summary>
+    [Test]
+    procedure KeepsSingleLineDeclarations;
   end;
 
 implementation
+
+uses
+  System.SysUtils;
 
 { TLspHoverValuesTests }
 
@@ -168,6 +183,98 @@ begin
   Assert.IsFalse(THoverValues.NameDeclaration('A, B: Integer;', 'C', mResult));
   Assert.IsFalse(THoverValues.NameDeclaration('A, B', 'A', mResult));
   Assert.IsFalse(THoverValues.NameDeclaration('', 'A', mResult));
+end;
+
+procedure TLspHoverValuesTests.JoinsEnumerationOverSeveralLines;
+var
+  mLines: TArray<string>;
+  mResult: string;
+begin
+  mLines := TArray<string>.Create(
+    '  { Token-Arten der XML-Syntaxhervorhebung }',
+    '  TXmlTokenKind = (',
+    '    tkText,       // Text zwischen Tags',
+    '    tkTagName,    // Tag-Namen und Attributnamen',
+    '    tkEquals,     // = zwischen Attributname und -wert',
+    '    tkAttrValue,  // Attributwert inkl. Anfuehrungszeichen',
+    '    tkEntity,     // &name; &#123; &#x1F;',
+    '    tkComment,    // <!-- ... --> (inkl. Begrenzer)',
+    '    tkCData,      // <![CDATA[ ... ]]> (inkl. Begrenzer)',
+    '    tkPI,         // <?ziel daten?> inkl. XML-Deklaration',
+    '    tkDocType,    // <!DOCTYPE ...> inkl. interner DTD',
+    '    tkInvalid     // Zeichen, die an dieser Stelle nicht erlaubt sind',
+    '  );',
+    '  TNext = class');
+  Assert.IsTrue(THoverValues.SpannedDeclaration(mLines, 1, 2, mResult));
+  Assert.AreEqual('TXmlTokenKind = (tkText, tkTagName, tkEquals, tkAttrValue, tkEntity, tkComment, tkCData, tkPI, ' +
+    'tkDocType, tkInvalid);', mResult);
+  // Werte mit Blockkommentaren und Zuweisungen, Klammer in der Zeile des letzten Werts.
+  mLines := TArray<string>.Create(
+    'TStufe = (sAus = 0, { nichts }',
+    '  sEin = 1 (* alles *));');
+  Assert.IsTrue(THoverValues.SpannedDeclaration(mLines, 0, 0, mResult));
+  Assert.AreEqual('TStufe = (sAus = 0, sEin = 1);', mResult);
+end;
+
+procedure TLspHoverValuesTests.JoinsParameterListsAndAncestors;
+var
+  mLines: TArray<string>;
+  mResult: string;
+begin
+  mLines := TArray<string>.Create(
+    '    function Suche(const AText: string;',
+    '      AFrom: Integer; // ab 1',
+    '      out AFound: Integer): Boolean; overload; deprecated;',
+    '    procedure Weiter;');
+  Assert.IsTrue(THoverValues.SpannedDeclaration(mLines, 0, 4, mResult));
+  Assert.AreEqual('function Suche(const AText: string; AFrom: Integer; out AFound: Integer): Boolean; overload; ' +
+    'deprecated;', mResult);
+  mLines := TArray<string>.Create(
+    '  TDienst = class(TInterfacedObject,',
+    '    IDienst)',
+    '    FWert: Integer;');
+  Assert.IsTrue(THoverValues.SpannedDeclaration(mLines, 0, 2, mResult));
+  Assert.AreEqual('TDienst = class(TInterfacedObject, IDienst)', mResult);
+end;
+
+procedure TLspHoverValuesTests.ShortensLongLists;
+var
+  mLines: TArray<string>;
+  mResult: string;
+  mIndex: Integer;
+begin
+  SetLength(mLines, 102);
+  mLines[0] := 'TViele = (';
+  for mIndex := 1 to 100 do
+  begin
+    mLines[mIndex] := Format('  vWert%.3d,', [mIndex]);
+  end;
+  mLines[100] := '  vWert100';
+  mLines[101] := ');';
+  Assert.IsTrue(THoverValues.SpannedDeclaration(mLines, 0, 0, mResult));
+  Assert.IsTrue(mResult.StartsWith('TViele = (vWert001, vWert002, '), mResult);
+  Assert.IsTrue(mResult.EndsWith(', …);'), mResult);
+  Assert.IsTrue(Length(mResult) <= 400, mResult);
+  Assert.IsFalse(mResult.Contains('vWert100'), mResult);
+end;
+
+procedure TLspHoverValuesTests.KeepsSingleLineDeclarations;
+var
+  mLines: TArray<string>;
+  mResult: string;
+begin
+  mLines := TArray<string>.Create('  TFarbe = (Rot, Gruen); // Farben', '  TNext = (A, B);');
+  Assert.IsFalse(THoverValues.SpannedDeclaration(mLines, 0, 2, mResult));
+  Assert.AreEqual('', mResult);
+  mLines := TArray<string>.Create('  TFoo = class(TBar)', '    FWert: Integer;', '  end;');
+  Assert.IsFalse(THoverValues.SpannedDeclaration(mLines, 0, 2, mResult));
+  mLines := TArray<string>.Create('  TFoo =', '    (A, B);');
+  Assert.IsFalse(THoverValues.SpannedDeclaration(mLines, 0, 2, mResult));
+  // Unvollständiger Code: Klammer bleibt offen.
+  mLines := TArray<string>.Create('  TOffen = (A,', '    B,');
+  Assert.IsFalse(THoverValues.SpannedDeclaration(mLines, 0, 2, mResult));
+  Assert.IsFalse(THoverValues.SpannedDeclaration(mLines, 5, 0, mResult));
+  Assert.IsFalse(THoverValues.SpannedDeclaration(nil, 0, 0, mResult));
 end;
 
 initialization
