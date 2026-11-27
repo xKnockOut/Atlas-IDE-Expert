@@ -1,4 +1,4 @@
-{
+﻿{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Atlas-Konfiguration",
   "description": "Einstellungen für Atlas. Jeder Schlüssel hat genau einen Ort (x-scope): \"project\" in atlas.json im Projektordner (Atlas › Projekt-Einstellungen), \"global\" in %APPDATA%\\Atlas\\settings.json für alle Projekte (Tools › Optionen › Atlas). \"both\" an beiden Orten: Die globale Datei gilt für alle Projekte, atlas.json übersteuert je Glied (rules: je Regel). Ein Schlüssel am falschen Ort wird ignoriert und gemeldet.",
@@ -3135,8 +3135,8 @@
         "outdentClosers": {
           "type": "boolean",
           "default": true,
-          "description": "Beginnt die Zeile vor Enter mit end, until, finally, except oder else, rückt Atlas sie auf die Spalte ihres Gegenstücks (begin, repeat, try, if).",
-          "x-description-en": "If the line before Enter starts with end, until, finally, except or else, Atlas moves it to the column of its counterpart (begin, repeat, try, if).",
+          "description": "Beginnt die Zeile vor Enter mit end, until, finally, except oder else, rückt Atlas sie auf die Spalte ihres Gegenstücks (begin, repeat, try, if). Ein begin in eigener Zeile hinter then, else oder do kommt auf die Spalte von if, else bzw. for/while/with, ein end direkt darunter mit; außer die Datei rückt solche begin sonst ein.",
+          "x-description-en": "If the line before Enter starts with end, until, finally, except or else, Atlas moves it to the column of its counterpart (begin, repeat, try, if). A begin on its own line after then, else or do moves to the column of if, else or for/while/with, together with an end right below it, unless the file otherwise indents such a begin.",
           "x-issue": "#1829"
         },
         "splitStrings": {

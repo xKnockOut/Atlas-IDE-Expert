@@ -336,7 +336,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 |---|---|---|---|---|---|
 | `smartIndent.enabled` | global (settings.json) | boolean | `true` |  | Main switch: false = none of the parts is active, the IDE indents as usual. |
 | `smartIndent.afterEnter` | global (settings.json) | boolean | `true` |  | Indent the new line by the block structure: one level deeper after then, else, do, begin, try, repeat, case labels, var/type/const and visibilities, back after the single statement behind then/do, inside an open parenthesis under the first argument. |
-| `smartIndent.outdentClosers` | global (settings.json) | boolean | `true` |  | If the line before Enter starts with end, until, finally, except or else, Atlas moves it to the column of its counterpart (begin, repeat, try, if). |
+| `smartIndent.outdentClosers` | global (settings.json) | boolean | `true` |  | If the line before Enter starts with end, until, finally, except or else, Atlas moves it to the column of its counterpart (begin, repeat, try, if). A begin on its own line after then, else or do moves to the column of if, else or for/while/with, together with an end right below it, unless the file otherwise indents such a begin. |
 | `smartIndent.splitStrings` | global (settings.json) | boolean | `true` |  | Enter inside a string closes it with ' + and reopens it on the new line instead of leaving an unterminated string (E2052). Not in multiline strings ('''). |
 | `smartIndent.splitStringsIndent` | global (settings.json) | string | `"indent"` | `"indent"`, `"align"` | Continuation line of a split string: indent = one level deeper than the statement; align = under the first argument of the open parenthesis, without parenthesis under the first value after :=. |
 
