@@ -532,6 +532,12 @@ begin
     FDocContainer := ASymbol.Name;
   end;
   FInfo.Kind := TLspHoverTypes.KindOf(ASymbol.Kind, FInfo.Declaration);
+  // Aufzählungswert: Die Zeile ab dem Namen enthält auch die folgenden Werte („B, C, D);“); gezeigt wird nur
+  // dieser Wert mit seinem Typ, die Ordnungszahl steht als Wert darunter.
+  if (ASymbol.Kind = TIndexSymbolKind.EnumMember) and (ASymbol.Container <> '') then
+  begin
+    FInfo.Declaration := ASymbol.Container + '.' + ASymbol.Name;
+  end;
   FInfo.Rationale := TLspRationale.OfSymbol(FOwner, ASymbol);
   FTypeSymbol := (ASymbol.Container = '') and (ASymbol.Kind in [TIndexSymbolKind.ClassType,
     TIndexSymbolKind.ObjectType, TIndexSymbolKind.InterfaceType]);
