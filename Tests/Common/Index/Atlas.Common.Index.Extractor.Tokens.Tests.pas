@@ -14,6 +14,8 @@ type
     [Test]
     procedure HintsAfterDeclarationCount;
     [Test]
+    procedure ClassKeepsMemberDeprecated;
+    [Test]
     procedure UnitHintsSkipDottedName;
     [Test]
     procedure ProcedureKindOfObjectAcrossLines;
@@ -91,6 +93,28 @@ begin
     // Ein Feld namens platform ist kein Hinweis.
     Assert.AreEqual('', String.Join(',', mReader.DirectivesOf(NodeOf(mTree.Root, TSyntaxKind.VarDecl,
       'platform'), TIndexSymbolKind.Variable, mReason)));
+  finally
+    mReader.Free;
+    mTree.Free;
+  end;
+end;
+
+procedure TIndexTokenReaderTests.ClassKeepsMemberDeprecated;
+var
+  mTree: TSyntaxTree;
+  mReader: TIndexTokenReader;
+  mReason: string;
+begin
+  // System.pas: deprecated gehört zu DisposeOf, nicht zu TObject (#2991).
+  mTree := TPascalParser.Parse(Join(['unit U;', 'interface', 'type', '  TObject = class', '  public',
+    '    constructor Create;', '    procedure Free;',
+    '    procedure DisposeOf; {$IFNDEF AUTOREFCOUNT} inline; deprecated ''Use Free instead''; {$ENDIF}', '  end;',
+    'implementation', 'end.']));
+  mReader := TIndexTokenReader.Create(mTree.Tokens);
+  try
+    Assert.AreEqual('', String.Join(',', mReader.DirectivesOf(NodeOf(mTree.Root, TSyntaxKind.TypeDecl, 'TObject'),
+      TIndexSymbolKind.ClassType, mReason)));
+    Assert.AreEqual('', mReason);
   finally
     mReader.Free;
     mTree.Free;

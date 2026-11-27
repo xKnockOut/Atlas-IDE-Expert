@@ -57,6 +57,8 @@ type
     procedure ShowsConstantAndEnumValues;
     [Test]
     procedure ShowsDeprecation;
+    [Test]
+    procedure KeepsMemberDeprecationAtMember;
     /// <summary>#38: Elemente von Mengenkonstanten, Basistyp und Anzahl bei Mengentypen, Text von
     /// Resourcestrings auch an der Verwendungsstelle.</summary>
     [Test]
@@ -230,26 +232,49 @@ const
     'end;'#10 +
     'end.';
 
-function GroupInfoAt(const AMarker: string; AOccurrence: Integer): THoverInfo;
+  /// <summary>System.pas (Delphi 13): deprecated gehört zu DisposeOf, nicht zu TObject (#2991).</summary>
+  cUnitObjekt =
+    'unit Objekt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TObjekt = class'#10 +
+    '  public'#10 +
+    '    procedure Free;'#10 +
+    '    procedure DisposeOf; {$IFNDEF AUTOREFCOUNT} inline; deprecated ''Use Free instead''; {$ENDIF}'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure Lauf(O: TObjekt);'#10 +
+    'begin'#10 +
+    '  O.DisposeOf;'#10 +
+    'end;'#10 +
+    'end.';
+
+/// <summary>Hover in AText (Datei AFileName, allein im Index).</summary>
+function TextInfoAt(const AText, AFileName, AMarker: string; AOccurrence: Integer): THoverInfo;
 var
   mIndex: ISymbolIndex;
   mResolver: TNameResolver;
   mTree: TSyntaxTree;
 begin
   mIndex := TSymbolIndex.Create;
-  mIndex.AddUnit(TIndexExtractor.ExtractText(cUnitGruppen, 'C:\P\Gruppen.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(AText, AFileName, nil));
   mResolver := TNameResolver.Create(mIndex);
   try
-    mTree := TPascalParser.Parse(cUnitGruppen);
+    mTree := TPascalParser.Parse(AText);
     try
-      Result := TLspHover.InfoAt(THoverSource.Create(mResolver, mIndex, nil), mTree, cUnitGruppen,
-        'C:\P\Gruppen.pas', PositionOf(cUnitGruppen, AMarker, AOccurrence));
+      Result := TLspHover.InfoAt(THoverSource.Create(mResolver, mIndex, nil), mTree, AText, AFileName,
+        PositionOf(AText, AMarker, AOccurrence));
     finally
       mTree.Free;
     end;
   finally
     mResolver.Free;
   end;
+end;
+
+function GroupInfoAt(const AMarker: string; AOccurrence: Integer): THoverInfo;
+begin
+  Result := TextInfoAt(cUnitGruppen, 'C:\P\Gruppen.pas', AMarker, AOccurrence);
 end;
 
 function TLspHoverTests.InfoAt(const AMarker: string): THoverInfo;
@@ -568,6 +593,13 @@ begin
   mInfo := InfoAt('Alt;');
   Assert.AreEqual('**Veraltet**: Neu verwenden', mInfo.Deprecation);
   Assert.Contains(mInfo.ToMarkdown, '**Veraltet**: Neu verwenden');
+end;
+
+procedure TLspHoverTests.KeepsMemberDeprecationAtMember;
+begin
+  Assert.AreEqual('', TextInfoAt(cUnitObjekt, 'C:\P\Objekt.pas', 'TObjekt)', 1).Deprecation);
+  Assert.AreEqual('**Veraltet**: Use Free instead',
+    TextInfoAt(cUnitObjekt, 'C:\P\Objekt.pas', 'DisposeOf;', 2).Deprecation);
 end;
 
 procedure TLspHoverTests.ShowsSetsAndResourceStrings;

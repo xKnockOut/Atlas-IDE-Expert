@@ -121,13 +121,16 @@ end;
 
 procedure TLspHoverValuesTests.FindsDeprecationDirectives;
 begin
-  Assert.AreEqual('**Veraltet**', THoverValues.Deprecation('procedure Foo; deprecated;'));
+  Assert.AreEqual('**Veraltet**', THoverValues.Deprecation(TArray<string>.Create('overload', 'deprecated'), ''));
   Assert.AreEqual('**Veraltet**: Bar verwenden',
-    THoverValues.Deprecation('procedure Foo; deprecated ''Bar verwenden'';'));
-  Assert.AreEqual('**Plattformspezifisch**', THoverValues.Deprecation('procedure Foo; platform;'));
-  Assert.AreEqual('**Experimentell**', THoverValues.Deprecation('TFoo = class end experimental;'));
-  Assert.AreEqual('', THoverValues.Deprecation('procedure Foo(Platform: string);'));
-  Assert.AreEqual('', THoverValues.Deprecation('Text = ''deprecated'';'));
+    THoverValues.Deprecation(TArray<string>.Create('deprecated'), 'Bar verwenden'));
+  Assert.AreEqual('**Plattformspezifisch**', THoverValues.Deprecation(TArray<string>.Create('platform'), ''));
+  Assert.AreEqual('**Experimentell**', THoverValues.Deprecation(TArray<string>.Create('experimental'), ''));
+  // Der erste Hinweis zählt; library und andere Direktiven zeigt der Hover nicht.
+  Assert.AreEqual('**Plattformspezifisch**',
+    THoverValues.Deprecation(TArray<string>.Create('platform', 'deprecated'), 'Alt'));
+  Assert.AreEqual('', THoverValues.Deprecation(TArray<string>.Create('inline', 'library'), ''));
+  Assert.AreEqual('', THoverValues.Deprecation(nil, ''));
 end;
 
 procedure TLspHoverValuesTests.ReducesNameListToOneName;

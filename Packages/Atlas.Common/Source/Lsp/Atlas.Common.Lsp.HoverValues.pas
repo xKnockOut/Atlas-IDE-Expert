@@ -32,8 +32,9 @@ type
     /// <summary>Anzahl möglicher Elemente für den Basistyp, soweit ohne Index bekannt: Aufzählung in
     /// Klammern, Teilbereich aus Zahlen oder Zeichen, Byte, Boolean, AnsiChar …; -1 sonst.</summary>
     class function BaseTypeCount(const ABaseType: string): Integer; static;
-    /// <summary>Hinweis zu deprecated/platform/experimental in der Deklaration; '' ohne Direktive.</summary>
-    class function Deprecation(const ADeclaration: string): string; static;
+    /// <summary>Hinweis zum ersten deprecated/platform/experimental in ADirectives (Direktiven des Symbols aus
+    /// dem Index), bei deprecated mit AReason; '' ohne solche Direktive.</summary>
+    class function Deprecation(const ADirectives: TArray<string>; const AReason: string): string; static;
     /// <summary>Deklaration nur für AName aus einer Namensliste mit Typ: "A, B: Integer;" ergibt für B
     /// "B: Integer;", "const C, D: string" für D "const D: string". ADeclaration ist genau der Text der
     /// Deklaration (Variablen, Felder, Parameter). False bei anderen Deklarationen (Routinen, Typen,
@@ -538,91 +539,34 @@ begin
   end;
 end;
 
-/// <summary>Beginnt bei AIndex ein Wort (nicht mitten in einem Namen oder nach ".")?</summary>
-function IsWordStart(const AText: string; AIndex: Integer): Boolean;
-begin
-  Result := CharInSet(AText[AIndex], ['a'..'z', 'A'..'Z', '_']);
-  if Result and (AIndex > 1) then
-  begin
-    Result := not CharInSet(AText[AIndex - 1], ['a'..'z', 'A'..'Z', '0'..'9', '_', '.']);
-  end;
-end;
-
-/// <summary>Erste Stelle ab AIndex, die kein Leerzeichen ist.</summary>
-function SkipSpaces(const AText: string; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= Length(AText)) and (AText[Result] = ' ') do
-  begin
-    Inc(Result);
-  end;
-end;
-
-/// <summary>"**Veraltet**: Grund" für deprecated 'Grund'; AIndex steht hinter dem Wort.</summary>
-function DeprecatedText(const ADeclaration: string; AIndex: Integer): string;
+class function THoverValues.Deprecation(const ADirectives: TArray<string>; const AReason: string): string;
 var
-  mStart, mClose: Integer;
+  mDirective: string;
 begin
-  Result := cTexts[THoverValuesText.Deprecated].Text;
-  mStart := SkipSpaces(ADeclaration, AIndex);
-  if (mStart > Length(ADeclaration)) or (ADeclaration[mStart] <> '''') then
-  begin
-    Exit;
-  end;
-  mClose := PosEx('''', ADeclaration, mStart + 1);
-  if mClose > mStart + 1 then
-  begin
-    Result := Result + ': ' + Copy(ADeclaration, mStart + 1, mClose - mStart - 1);
-  end;
-end;
-
-/// <summary>Hinweis zum Direktivenwort AWord (klein), das vor AIndex endet; '' bei anderen Wörtern.</summary>
-function DirectiveHint(const ADeclaration, AWord: string; AIndex: Integer): string;
-begin
+  // Aus dem Index, nicht aus dem Text der Deklaration: Der Bereich einer Klasse umfasst ihre Mitglieder, und
+  // deprecated eines Mitglieds gehört nicht zur Klasse (#2991).
   Result := '';
-  if AWord = 'deprecated' then
+  for mDirective in ADirectives do
   begin
-    Result := DeprecatedText(ADeclaration, AIndex);
-  end
-  else if AWord = 'platform' then
-  begin
-    Result := cTexts[THoverValuesText.PlatformSpecific].Text;
-  end
-  else if AWord = 'experimental' then
-  begin
-    Result := cTexts[THoverValuesText.Experimental].Text;
-  end;
-end;
-
-class function THoverValues.Deprecation(const ADeclaration: string): string;
-var
-  mIndex, mStart, mClose: Integer;
-  mInString: Boolean;
-begin
-  Result := '';
-  mInString := False;
-  mIndex := 1;
-  while (Result = '') and (mIndex <= Length(ADeclaration)) do
-  begin
-    if ADeclaration[mIndex] = '''' then
+    if SameText(mDirective, 'deprecated') then
     begin
-      mInString := not mInString;
+      Result := cTexts[THoverValuesText.Deprecated].Text;
+      if AReason <> '' then
+      begin
+        Result := Result + ': ' + AReason;
+      end;
+    end
+    else if SameText(mDirective, 'platform') then
+    begin
+      Result := cTexts[THoverValuesText.PlatformSpecific].Text;
+    end
+    else if SameText(mDirective, 'experimental') then
+    begin
+      Result := cTexts[THoverValuesText.Experimental].Text;
     end;
-    if mInString or not IsWordStart(ADeclaration, mIndex) then
+    if Result <> '' then
     begin
-      Inc(mIndex);
-      Continue;
-    end;
-    mStart := mIndex;
-    while (mIndex <= Length(ADeclaration)) and CharInSet(ADeclaration[mIndex], ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
-    begin
-      Inc(mIndex);
-    end;
-    // Direktiven stehen vor ";", einem String oder am Ende; Namen wie "Platform: string" nicht.
-    mClose := SkipSpaces(ADeclaration, mIndex);
-    if (mClose > Length(ADeclaration)) or CharInSet(ADeclaration[mClose], [';', '''']) then
-    begin
-      Result := DirectiveHint(ADeclaration, LowerCase(Copy(ADeclaration, mStart, mIndex - mStart)), mIndex);
+      Exit;
     end;
   end;
 end;
