@@ -439,7 +439,7 @@ end;
 function THoverLookupRun.ReadDeclaration: Boolean;
 var
   mStart: TTextPosition;
-  mOwn: string;
+  mOwn, mSpanned: string;
 begin
   if SameText(FTarget.FileName, FFileName) then
   begin
@@ -459,6 +459,11 @@ begin
     Exit;
   end;
   FInfo.Declaration := TrimRight(Copy(FLines[mStart.Line], mStart.Character + 1, MaxInt));
+  // Klammern über mehrere Zeilen (Aufzählung mit Kommentaren je Wert, lange Parameterliste): ganz zeigen.
+  if THoverValues.SpannedDeclaration(FLines, mStart.Line, mStart.Character, mSpanned) then
+  begin
+    FInfo.Declaration := mSpanned;
+  end;
   // Mehrere Namen in einer Deklaration (A, B: Integer): Der Bereich gilt für die ganze Liste, gezeigt wird nur
   // der gehoverte Name mit seinem Typ, bei Parametern ohne die folgenden.
   if (FTarget.Range.EndPos.Line <= High(FLines)) and THoverValues.NameDeclaration(FTarget.Range.TextIn(FLines),
