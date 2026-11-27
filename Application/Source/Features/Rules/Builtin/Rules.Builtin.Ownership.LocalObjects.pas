@@ -736,13 +736,14 @@ begin
   FDerived := TRuleDerived.Open(FContext);
   FAncestry := TAncestry.Create(FContext.Index, TRuleDerived.UnitIndex(FDerived, FContext));
   FObjects := TOwnerlessObjects.Create(FContext.Tree.Root, FAncestry);
+  // Vor CollectFactories: IsFactoryRoutine fragt über UseInCall FCalls (sonst Zugriffsverletzung auf nil).
+  FCalls := TRuleCallOwnership.Create(FContext);
   if FMode = TLocalScanMode.Factories then
   begin
     FOptionFactories := TRuleOptions.Strings(FContext.Options, 'factories', nil);
     CollectFactories;
   end;
   FLines := TTextLines.SplitLines(FContext.Text, FLineBreak);
-  FCalls := TRuleCallOwnership.Create(FContext);
   for mRoutine in TRuleDerived.Routines(FDerived, FContext) do
   begin
     CheckRoutine(mRoutine);

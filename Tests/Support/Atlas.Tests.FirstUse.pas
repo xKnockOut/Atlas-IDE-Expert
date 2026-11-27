@@ -504,6 +504,17 @@ begin
     mData.MoveBy(1);
     mMark := mData.Bookmark;
     mData.Bookmark := mMark;
+    // Umwandlungsfehler eines Integer-Felds: TNumericField.InvalidIntegerError lädt den Ressourcentext
+    // (LoadResString), den die RTL bis Programmende zwischenspeichert (SetValueReportsProblems).
+    mData.Edit;
+    try
+      mData.Fields[0].AsString := 'keine Zahl';
+    except
+      on EDatabaseError do
+        mData.Cancel;
+      on EConvertError do
+        mData.Cancel;
+    end;
   finally
     mData.Free;
   end;

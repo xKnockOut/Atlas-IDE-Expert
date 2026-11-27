@@ -81,7 +81,8 @@ uses
   Atlas.Common.Projects.Facts,
   Atlas.Common.Projects.Contract.Group,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Pascal.Contract;
+  Atlas.Common.Pascal.Contract,
+  Shell.Composition.CheckRefactorings;
 
 function Finding(const ARuleId: string; ALine: Integer): TRuleFinding;
 begin
@@ -594,6 +595,8 @@ begin
   end;
   // Formulardatei neben der Unit wie im Linter (#1054).
   Result.FileName := AFileName;
+  // Regeln mit Teilen aus Editing (method-order, signature-mismatch …) arbeiten nur mit den Refactorings des Hosts.
+  Result.Services.Refactorings := TShellCheckRefactorings.Create;
 end;
 
 /// <summary>Wendet AMutation an und prüft, ob ihre Regel sie findet; liefert den Fehler oder ''.</summary>
