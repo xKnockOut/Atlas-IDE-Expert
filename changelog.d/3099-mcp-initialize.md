@@ -1,0 +1,2 @@
+### Behoben
+- MCP-Modus: Der Server beantwortet `initialize` sofort und lädt Konfiguration und Projekte der Gruppe danach im Hintergrund (#3099). Bisher kam die Antwort erst nach dem Laden aller Projekte; bei großen Gruppen dauerte das länger als die 30 s, die Claude Code wartet, und der Server `atlas` war nicht verbunden. Werkzeugaufrufe während des Ladens warten bis zu 20 s und melden danach „Atlas lädt das Projekt noch“, damit der Assistent es gleich erneut versucht.

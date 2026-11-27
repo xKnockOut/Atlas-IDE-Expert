@@ -785,6 +785,7 @@ uses
   Mcp.Tools.Ide in 'Source\Features\Mcp\Tools\Mcp.Tools.Ide.pas',
   Shell.Mcp.Services in 'Source\Shell\Shell.Mcp.Services.pas',
   Shell.Mcp.Startup in 'Source\Shell\Shell.Mcp.Startup.pas',
+  Shell.Mcp.Loading in 'Source\Shell\Shell.Mcp.Loading.pas',
   Mcp.Tools.Issue in 'Source\Features\Mcp\Tools\Mcp.Tools.Issue.pas',
   Mcp.Tools.IssueText in 'Source\Features\Mcp\Tools\Mcp.Tools.IssueText.pas',
   Shell.Mcp.ServerSetup in 'Source\Shell\Shell.Mcp.ServerSetup.pas',

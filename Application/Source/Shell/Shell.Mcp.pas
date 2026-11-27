@@ -18,6 +18,8 @@
 // Ordner (aus dessen Statusdatei), sonst den dieses Prozesses.
 // Prompts und Ressourcenvorlagen (#1357) kommen aus TMcpPrompts; hier nur die
 // Auflösung von Units und Pfaden (#99) und die Änderungen für prepare_commit.
+// Start (#3099): initialize und die Listen kommen sofort; die Projektgruppe lädt
+// Shell.Mcp.Loading im Hintergrund, Werkzeugaufrufe warten darauf.
 // Aufrufstatistik (#2611, mcp.statistics): zählt je Sitzung, steht in der
 // Statusdatei (Abschnitt mcp), in delphi://stats und get_server_status; beim
 // Beenden eine Zeile je Werkzeug in Status\mcp-stats.jsonl.
@@ -68,6 +70,7 @@ uses
   Mcp.Tools,
   Shell.Mcp.Startup,
   Shell.Mcp.ServerSetup,
+  Shell.Mcp.Loading,
   Atlas.Text.LogMarks,
   Atlas.Common.Localization.Texts;
 
@@ -131,15 +134,48 @@ begin
     end;
 end;
 
-/// <summary>Name aus clientInfo für „Prozesse am Projekt“, Absturzfälle (#1883) und die Aufrufstatistik (#2611,
-/// AStatistics nil = aus).</summary>
-function ClientInfoOf(AGroup: TCoreWorkspaceGroup; ACrashCases: TCoreCrashCases; AStatistics: TMcpStatistics):
-  TProc<string>;
+/// <summary>Lädt die Projektgruppe mit den globalen Einstellungen (im Thread von TMcpLoading).</summary>
+function GroupLoadOf(AGroup: TCoreWorkspaceGroup; const AGlobalSettings: string): TProc;
+var
+  mGlobalSettings: string;
+begin
+  mGlobalSettings := AGlobalSettings;
+  Result :=
+    procedure
+    begin
+      AGroup.Load(mGlobalSettings);
+    end;
+end;
+
+function GroupClientOf(AGroup: TCoreWorkspaceGroup): TProc<string>;
 begin
   Result :=
     procedure(AClient: string)
     begin
       AGroup.SetClient(AClient);
+    end;
+end;
+
+/// <summary>Vor jedem Werkzeugaufruf: warten, bis die Gruppe geladen ist, sonst „wird noch geladen“ (#3099).
+/// </summary>
+function EnsureLoadedOf(ALoading: TMcpLoading): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      ALoading.Ensure;
+    end;
+end;
+
+/// <summary>Name aus clientInfo für „Prozesse am Projekt“, Absturzfälle (#1883) und die Aufrufstatistik (#2611,
+/// AStatistics nil = aus). Die Gruppe bekommt ihn über ALoading erst nach dem Laden (#3099).</summary>
+function ClientInfoOf(ALoading: TMcpLoading; ACrashCases: TCoreCrashCases; AStatistics: TMcpStatistics):
+  TProc<string>;
+begin
+  Result :=
+    procedure(AClient: string)
+    begin
+      ALoading.SetClient(AClient);
       ACrashCases.Client := AClient;
       if AStatistics <> nil then
       begin
@@ -225,6 +261,45 @@ begin
   AServer.Outgoing := mOutgoing;
 end;
 
+/// <summary>Letzte Nachrichten und Absturzfälle (#1355) am Dispatcher; der Aufrufer gibt die Absturzfälle frei.
+/// </summary>
+function AttachCrashCases(ADispatcher: TJsonRpcDispatcher; const AServices: TMcpServices; const ALogger: ILogger):
+  TCoreCrashCases;
+var
+  mRecent: IJsonRpcRecentMessages;
+begin
+  mRecent := TJsonRpcRecentMessages.Create;
+  ADispatcher.Recent := mRecent;
+  Result := NewCrashCases(ALogger, mRecent, AServices.Root);
+  ADispatcher.OnRequestFailed := RequestFailedOf(Result, AServices.Workspace);
+end;
+
+/// <summary>Statusdatei (#1901): Ordner des Servers, laufende Werkzeuge, server.statusFile aus den Einstellungen.
+/// </summary>
+procedure DescribeActivity(ADispatcher: TJsonRpcDispatcher; const AServices: TMcpServices);
+begin
+  TServerActivity.Shared.Describe(TServerStatusEntry.cKindMcp, '', AServices.Root);
+  TServerActivity.Shared.Enabled := AServices.Workspace.Configuration.Settings.ServerStatusFile;
+  ADispatcher.Observer := TServerActivityObserver.Create(TServerActivity.Shared, nil);
+end;
+
+/// <summary>Hinweis an den Client und Aufrufstatistik; die Statistik vor den Werkzeugen, damit AddTool jedes bekannt
+/// macht.</summary>
+procedure PrepareServer(AServer: TMcpServer; const AServices: TMcpServices; AStatistics: TMcpStatistics);
+begin
+  AServer.Instructions := cTexts[TMcpHostText.Instructions].Fmt([AServices.Root]);
+  AServer.Statistics := AStatistics;
+end;
+
+/// <summary>Laden der Gruppe, mit index.projectGroup auch der übrigen Projekte; im Hintergrund (#3099), damit
+/// initialize nicht auf die Projekte wartet.</summary>
+function NewLoading(const AServices: TMcpServices; const AGlobalSettings: string; const ALogger: ILogger):
+  TMcpLoading;
+begin
+  Result := TMcpLoading.Create(GroupLoadOf(AServices.Group, AGlobalSettings), GroupClientOf(AServices.Group),
+    ALogger);
+end;
+
 class function TMcpShell.Run(const AOptions: TCommandLineOptions): Integer;
 var
   mLogger: ILogger;
@@ -235,9 +310,9 @@ var
   mPrompts: TMcpPrompts;
   mDispatcher: TJsonRpcDispatcher;
   mConnection: TJsonRpcConnection;
-  mRecent: IJsonRpcRecentMessages;
   mCrashCases: TCoreCrashCases;
   mStatistics: TMcpStatistics;
+  mLoading: TMcpLoading;
 begin
   mLogger := NewLogger(AOptions);
   // Ab hier erreichen versehentliche Ausgaben nur noch stderr.
@@ -250,35 +325,32 @@ begin
   mCrashCases := nil;
   mPrompts := nil;
   mStatistics := nil;
+  mLoading := nil;
   try
     mServer := TMcpServer.Create(TProductVersion.cName, TProductVersion.cVersion);
     mDispatcher := TJsonRpcDispatcher.Create;
     mConnection := TJsonRpcConnection.Create(mTransport, mDispatcher);
     ConnectOutgoing(mTransport, mConnection, mServer);
-    mRecent := TJsonRpcRecentMessages.Create;
-    mDispatcher.Recent := mRecent;
-    mCrashCases := NewCrashCases(mLogger, mRecent, mServices.Root);
-    mDispatcher.OnRequestFailed := RequestFailedOf(mCrashCases, mServices.Workspace);
-    // Statusdatei (#1901): Ordner des Servers, laufende Werkzeuge, server.statusFile aus den Einstellungen.
-    TServerActivity.Shared.Describe(TServerStatusEntry.cKindMcp, '', mServices.Root);
-    TServerActivity.Shared.Enabled := mServices.Workspace.Configuration.Settings.ServerStatusFile;
-    mDispatcher.Observer := TServerActivityObserver.Create(TServerActivity.Shared, nil);
+    mCrashCases := AttachCrashCases(mDispatcher, mServices, mLogger);
+    DescribeActivity(mDispatcher, mServices);
     mStatistics := StartStatistics(mServices);
-    mServer.Instructions := cTexts[TMcpHostText.Instructions].Fmt([mServices.Root]);
-    // Vor den Werkzeugen, damit AddTool jedes bekannt macht.
-    mServer.Statistics := mStatistics;
-    ConfigureServer(mServer, mServices, AOptions.Restricted, mLogger);
-    mServer.OnClientInfo := ClientInfoOf(mServices.Group, mCrashCases, mStatistics);
+    PrepareServer(mServer, mServices, mStatistics);
+    mLoading := NewLoading(mServices, mGlobalSettings, mLogger);
+    ConfigureServer(mServer, mServices, AOptions.Restricted, mLogger, EnsureLoadedOf(mLoading));
+    mServer.OnClientInfo := ClientInfoOf(mLoading, mCrashCases, mStatistics);
     mPrompts := NewPrompts(mServer, mServices);
     mServer.Attach(mDispatcher);
     mConnection.OnError := ConnectionErrorOf(mLogger);
     mLogger.Info(Format('%s %s im MCP-Modus für %s', [TProductVersion.cName, TProductVersion.cVersion,
       TLogMarks.Path(mServices.Root)]));
-    // Mit index.projectGroup auch die übrigen Projekte der Gruppe.
-    mServices.Group.Load(mGlobalSettings);
+    mLoading.Start;
     Result := Serve(mConnection, mLogger);
+    // Erst nach dem Laden anhalten: Load legt die Arbeitsbereiche an, die Stop beendet.
+    mLoading.Finish;
     mServices.Group.Stop;
   finally
+    // Vor der Gruppe: Der Thread des Ladens greift auf sie zu.
+    mLoading.Free;
     mConnection.Free;
     mDispatcher.Free;
     mCrashCases.Free;
