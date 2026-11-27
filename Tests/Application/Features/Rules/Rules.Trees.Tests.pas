@@ -43,7 +43,7 @@ begin
     mContext := Default(TRuleContext);
     mContext.Tree := mTree;
     Assert.AreSame(mTree, mContext.Tree);
-    Assert.IsTrue(mContext.TreeHandle = TSyntaxTree.HandleOf(mTree));
+    Assert.AreSame(TSyntaxTree.HandleOf(mTree), mContext.TreeHandle);
     mContext := Default(TRuleContext);
   finally
     mTree.Free;

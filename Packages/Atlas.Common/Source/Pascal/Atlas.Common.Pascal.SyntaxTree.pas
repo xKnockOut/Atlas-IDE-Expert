@@ -242,22 +242,12 @@ uses
   Atlas.Common.Pascal.TokenCursor;
 
 type
-  /// <summary>Zugriff auf den Baum hinter einem Handle, nur innerhalb dieser Unit.</summary>
-  ISyntaxTreeAccess = interface
-    ['{07CFAA6A-5DAD-43B4-B8DD-FDD4294C914C}']
-    function Tree: TSyntaxTree;
-    /// <summary>Löst den Handle vom Baum, der gerade freigegeben wird.</summary>
-    procedure Detach;
-  end;
-
-  /// <summary>Handle eines Baums. Besitzt den Baum nicht; nach dessen Freigabe liefert Tree nil.</summary>
-  TSyntaxTreeHandle = class(TInterfacedObject, IPascalSyntaxTree, ISyntaxTreeAccess)
+  /// <summary>Handle eines Baums. Besitzt den Baum nicht; der Baum setzt FTree bei seiner Freigabe auf nil.</summary>
+  TSyntaxTreeHandle = class(TInterfacedObject, IPascalSyntaxTree)
   private
     FTree: TSyntaxTree;
   public
     constructor Create(ATree: TSyntaxTree);
-    function Tree: TSyntaxTree;
-    procedure Detach;
   end;
 
 { TSyntaxTreeHandle }
@@ -266,16 +256,6 @@ constructor TSyntaxTreeHandle.Create(ATree: TSyntaxTree);
 begin
   inherited Create;
   FTree := ATree;
-end;
-
-function TSyntaxTreeHandle.Tree: TSyntaxTree;
-begin
-  Result := FTree;
-end;
-
-procedure TSyntaxTreeHandle.Detach;
-begin
-  FTree := nil;
 end;
 
 function SyntaxKindName(AKind: TSyntaxKind): string;
@@ -652,14 +632,12 @@ begin
 end;
 
 destructor TSyntaxTree.Destroy;
-var
-  mAccess: ISyntaxTreeAccess;
 begin
-  if Supports(FHandle, ISyntaxTreeAccess, mAccess) then
+  // Wer den Handle länger hält als den Baum, bekommt über FromHandle nil statt eines freigegebenen Baums.
+  if FHandle <> nil then
   begin
-    mAccess.Detach;
+    TSyntaxTreeHandle(FHandle as TObject).FTree := nil;
   end;
-  mAccess := nil;
   FHandle := nil;
   FDerived := nil;
   FRoot.Free;
@@ -842,12 +820,19 @@ end;
 
 class function TSyntaxTree.FromHandle(const AHandle: IPascalSyntaxTree): TSyntaxTree;
 var
-  mAccess: ISyntaxTreeAccess;
+  mObject: TObject;
 begin
+  // Prüfregeln fragen den Baum sehr oft (TRuleContext.Tree): Der Weg über das Objekt hinter dem Handle zählt keine
+  // Referenzen, anders als Supports.
   Result := nil;
-  if Supports(AHandle, ISyntaxTreeAccess, mAccess) then
+  if AHandle = nil then
   begin
-    Result := mAccess.Tree;
+    Exit;
+  end;
+  mObject := AHandle as TObject;
+  if mObject is TSyntaxTreeHandle then
+  begin
+    Result := TSyntaxTreeHandle(mObject).FTree;
   end;
 end;
 

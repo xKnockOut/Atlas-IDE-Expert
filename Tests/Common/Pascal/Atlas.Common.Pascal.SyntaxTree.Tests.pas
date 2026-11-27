@@ -787,8 +787,8 @@ begin
   mTree := TSyntaxTreeCache.Parse(cHandleSource);
   mOther := TSyntaxTreeCache.Parse(cHandleSource);
   try
-    Assert.IsTrue(TSyntaxTree.HandleOf(mTree) = TSyntaxTree.HandleOf(mTree), 'derselbe Baum');
-    Assert.IsFalse(TSyntaxTree.HandleOf(mTree) = TSyntaxTree.HandleOf(mOther), 'anderer Baum');
+    Assert.AreSame(TSyntaxTree.HandleOf(mTree), TSyntaxTree.HandleOf(mTree), 'derselbe Baum');
+    Assert.AreNotSame(TSyntaxTree.HandleOf(mTree), TSyntaxTree.HandleOf(mOther), 'anderer Baum');
   finally
     mOther.Free;
     mTree.Free;
