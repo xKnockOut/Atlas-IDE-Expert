@@ -78,7 +78,8 @@ uses
   Atlas.Common.Localization.Texts,
   Atlas.Text.Names,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Projects.Contract.Group;
+  Atlas.Common.Projects.Contract.Group,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

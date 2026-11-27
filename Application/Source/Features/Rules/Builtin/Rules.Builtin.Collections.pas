@@ -143,7 +143,8 @@ uses
   Atlas.Common.Semantics.GenericLists,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes,
-  Atlas.Common.Projects.Contract.Group;
+  Atlas.Common.Projects.Contract.Group,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

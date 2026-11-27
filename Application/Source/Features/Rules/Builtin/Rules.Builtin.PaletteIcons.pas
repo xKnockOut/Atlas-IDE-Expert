@@ -40,7 +40,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Rules.ResourceNames,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

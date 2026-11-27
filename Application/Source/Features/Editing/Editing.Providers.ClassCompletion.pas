@@ -24,7 +24,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Semantics.ClassBodies,
   Atlas.Common.Semantics.ClassCompletion,
   Atlas.Common.Semantics.Contract;
@@ -114,7 +113,7 @@ var
   mTree: TSyntaxTree;
 begin
   Result := nil;
-  mTree := TSyntaxTreeHandles.TreeOf(ATree);
+  mTree := TSyntaxTree.FromHandle(ATree);
   if mTree <> nil then
   begin
     Result := TEditingClassCompletionScan.Create(mTree, AText, AUnit, TClassBodyOptions.FromSettings(ASettings,

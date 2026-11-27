@@ -43,6 +43,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Rules.Contract,
+  Rules.Trees,
   Rules.Engine,
   Rules.Builtin,
   Rules.Builtin.Packages,

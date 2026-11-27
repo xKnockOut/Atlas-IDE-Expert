@@ -35,7 +35,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

@@ -103,6 +103,7 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Pascal.Contract,
   Rules.Contract,
+  Rules.Trees,
   Rules.Registry,
   Rules.Engine,
   Atlas.Common.Findings.Suppressions,

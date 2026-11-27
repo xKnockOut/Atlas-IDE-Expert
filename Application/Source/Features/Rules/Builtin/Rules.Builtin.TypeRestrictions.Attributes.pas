@@ -46,7 +46,8 @@ uses
   Rules.Builtin.TypeRestrictions.Symbols,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes,
-  Atlas.Common.Semantics.Attributes;
+  Atlas.Common.Semantics.Attributes,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

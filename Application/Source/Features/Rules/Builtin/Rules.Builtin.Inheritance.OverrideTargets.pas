@@ -34,7 +34,8 @@ uses
   Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.RoutineSignatures,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

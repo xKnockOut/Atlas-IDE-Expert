@@ -172,7 +172,8 @@ uses
   Atlas.Common.Index.Contract,
   Rules.Derived,
   Rules.Builtin.Flow.Shared,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

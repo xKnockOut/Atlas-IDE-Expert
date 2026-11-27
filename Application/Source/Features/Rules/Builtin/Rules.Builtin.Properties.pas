@@ -113,7 +113,8 @@ uses
   Atlas.Text.Fuzzy,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Semantics.Attributes,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

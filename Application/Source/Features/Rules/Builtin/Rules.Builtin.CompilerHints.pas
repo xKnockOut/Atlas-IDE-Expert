@@ -63,7 +63,8 @@ uses
   Atlas.Common.Semantics.Ancestry,
   Rules.Builtin.Units,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.SyntaxNodes;
+  Atlas.Common.Pascal.SyntaxNodes,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

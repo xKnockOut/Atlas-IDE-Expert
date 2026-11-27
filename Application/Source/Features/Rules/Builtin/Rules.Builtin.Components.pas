@@ -116,7 +116,8 @@ uses
   Rules.Builtin.Components.Members,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

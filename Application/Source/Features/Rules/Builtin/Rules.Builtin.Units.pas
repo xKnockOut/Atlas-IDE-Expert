@@ -165,7 +165,8 @@ uses
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Projects.Contract.UnitLookup;
+  Atlas.Common.Projects.Contract.UnitLookup,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

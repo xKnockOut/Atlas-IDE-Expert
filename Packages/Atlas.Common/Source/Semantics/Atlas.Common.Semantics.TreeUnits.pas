@@ -14,6 +14,7 @@ interface
 uses
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.Contract;
 
@@ -64,7 +65,7 @@ type
     /// oder ohne die Datei: nur AExtracted mit Namenstabelle.</summary>
     class function Merge(const AIndex: ISymbolIndex; const AExtracted: TUnitIndex;
       const AFileName: string): TUnitIndex; static;
-    function Holds(ATree: TSyntaxTree): Boolean;
+    function Holds(const ATree: IPascalSyntaxTree): Boolean;
     function Extracted(const AFileName: string): TUnitIndex;
     function Merged(const AIndex: ISymbolIndex; const AFileName: string): TUnitIndex;
     procedure Clear;
@@ -187,9 +188,9 @@ begin
   Result.PrepareNames;
 end;
 
-function TTreeUnits.Holds(ATree: TSyntaxTree): Boolean;
+function TTreeUnits.Holds(const ATree: IPascalSyntaxTree): Boolean;
 begin
-  Result := (FTree <> nil) and (ATree = FTree);
+  Result := (FTree <> nil) and (ATree <> nil) and (ATree = TSyntaxTree.HandleOf(FTree));
 end;
 
 function TTreeUnits.Extracted(const AFileName: string): TUnitIndex;

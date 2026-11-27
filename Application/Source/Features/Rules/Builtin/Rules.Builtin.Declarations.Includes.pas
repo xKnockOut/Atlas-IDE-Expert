@@ -39,7 +39,8 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Documents.FileEncoding;
+  Atlas.Common.Documents.FileEncoding,
+  Rules.Trees;
 
 /// <summary>Hängt die Rümpfe "Typ.Methode" der Tokens ATokens an ABodies an; Include-Dateien darin
 /// (bis cMaxDepth Ebenen) liest CollectInclude.</summary>

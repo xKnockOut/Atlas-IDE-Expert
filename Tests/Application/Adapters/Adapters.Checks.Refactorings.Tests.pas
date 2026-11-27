@@ -40,7 +40,6 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.CodeActions.Contract,
@@ -164,7 +163,7 @@ var
 begin
   mTree := TSyntaxTreeCache.Parse(cCall);
   try
-    mExtraction := Refactorings.Extract.ConstantExtraction(cCall, TSyntaxTreeHandles.Wrap(mTree),
+    mExtraction := Refactorings.Extract.ConstantExtraction(cCall, TSyntaxTree.HandleOf(mTree),
       Default(TPascalNamePrefixes));
     Assert.IsTrue(mExtraction.Run(TTextRange.Create(4, 10, 4, 12), mAction));
     mExtraction := nil;
@@ -188,7 +187,7 @@ begin
   mScan.Style := TFormatStyle.Default;
   mTree := TSyntaxTreeCache.Parse(cHelper);
   try
-    mScan.Tree := TSyntaxTreeHandles.Wrap(mTree);
+    mScan.Tree := TSyntaxTree.HandleOf(mTree);
     mFound := Refactorings.Methods.WithoutSelf(mScan);
     mScan.Tree := nil;
   finally
@@ -215,7 +214,7 @@ begin
   mRequest.TypeComment := 'brace';
   mTree := TSyntaxTreeCache.Parse(cOrder);
   try
-    mReview := Refactorings.Order.Review(cOrder, TSyntaxTreeHandles.Wrap(mTree), mRequest);
+    mReview := Refactorings.Order.Review(cOrder, TSyntaxTree.HandleOf(mTree), mRequest);
   finally
     mTree.Free;
   end;
@@ -257,7 +256,7 @@ begin
   Assert.IsNull(TCheckRefactoringsAdapters.Create(Default(TCheckRefactoringSources)).Completion);
   mTree := TSyntaxTreeCache.Parse(cPair);
   try
-    mScan := Refactorings.Completion.Scan(cPair, TSyntaxTreeHandles.Wrap(mTree), TIndexExtractor.Extract(mTree, ''),
+    mScan := Refactorings.Completion.Scan(cPair, TSyntaxTree.HandleOf(mTree), TIndexExtractor.Extract(mTree, ''),
       TClassCompletionSettings.Default, TFormatStyle.Default);
     mPairs := mScan.Pairs;
     Assert.AreEqual(1, Integer(Length(mPairs)));

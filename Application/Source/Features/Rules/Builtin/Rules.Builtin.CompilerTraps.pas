@@ -86,7 +86,8 @@ uses
   Atlas.Common.Semantics.ExpressionTypes.Contract,
   Rules.TypedScope,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

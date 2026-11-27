@@ -49,6 +49,7 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Rules.Contract,
+  Rules.Trees,
   Rules.Engine,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,

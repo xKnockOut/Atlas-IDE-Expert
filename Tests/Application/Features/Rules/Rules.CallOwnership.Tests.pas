@@ -30,6 +30,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.CallOwnership,
   Rules.Contract,
+  Rules.Trees,
   Rules.CallOwnership,
   Atlas.Tests.SymbolIndex;
 

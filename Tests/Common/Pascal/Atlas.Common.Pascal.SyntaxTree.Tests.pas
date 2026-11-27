@@ -3,7 +3,8 @@
 // Tests für den Besucher TSyntaxNode.Walk, die Suche
 // TSyntaxNode.Search, die Baumtiefe TSyntaxTree.Depth/Deepest (#1094)
 // und die Token-Suche FirstTokenFrom/IdentifierAt (#1323), PreOrder und die Suche
-// nach Bezeichnern (IdentifierUses, UsedInNestedRoutine).
+// nach Bezeichnern (IdentifierUses, UsedInNestedRoutine); der Handle für Verträge
+// (TSyntaxTree.HandleOf/Of).
 
 interface
 
@@ -59,6 +60,23 @@ type
     procedure InnermostAtFindsTypeReference;
   end;
 
+  [TestFixture]
+  TSyntaxTreeHandleTests = class
+  public
+    [Test]
+    procedure TreeComesBack;
+    /// <summary>Jeder Baum hat genau einen Handle: Verträge erkennen den Baum am Handle wieder.</summary>
+    [Test]
+    procedure SameTreeSameHandle;
+    [Test]
+    procedure NoTreeNoHandle;
+    [Test]
+    procedure ForeignHandleHasNoTree;
+    /// <summary>Ein Handle, der den Baum überlebt, liefert nil statt eines freigegebenen Baums.</summary>
+    [Test]
+    procedure FreedTreeLeavesNoTree;
+  end;
+
 implementation
 
 uses
@@ -68,6 +86,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
+  Atlas.Common.Pascal.TreeCache,
   Atlas.Tests.SmallStack;
 
 const
@@ -737,7 +756,73 @@ begin
   end;
 end;
 
+type
+  /// <summary>Handle, den nicht Pascal angelegt hat.</summary>
+  TForeignHandle = class(TInterfacedObject, IPascalSyntaxTree);
+
+const
+  cHandleSource = 'unit U;'#10'interface'#10'implementation'#10'end.';
+
+{ TSyntaxTreeHandleTests }
+
+procedure TSyntaxTreeHandleTests.TreeComesBack;
+var
+  mTree: TSyntaxTree;
+  mHandle: IPascalSyntaxTree;
+begin
+  mTree := TSyntaxTreeCache.Parse(cHandleSource);
+  try
+    mHandle := TSyntaxTree.HandleOf(mTree);
+    Assert.AreSame(mTree, TSyntaxTree.FromHandle(mHandle));
+    mHandle := nil;
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TSyntaxTreeHandleTests.SameTreeSameHandle;
+var
+  mTree, mOther: TSyntaxTree;
+begin
+  mTree := TSyntaxTreeCache.Parse(cHandleSource);
+  mOther := TSyntaxTreeCache.Parse(cHandleSource);
+  try
+    Assert.AreSame(TSyntaxTree.HandleOf(mTree), TSyntaxTree.HandleOf(mTree), 'derselbe Baum');
+    Assert.AreNotSame(TSyntaxTree.HandleOf(mTree), TSyntaxTree.HandleOf(mOther), 'anderer Baum');
+  finally
+    mOther.Free;
+    mTree.Free;
+  end;
+end;
+
+procedure TSyntaxTreeHandleTests.NoTreeNoHandle;
+begin
+  Assert.IsNull(TSyntaxTree.HandleOf(nil));
+  Assert.IsNull(TSyntaxTree.FromHandle(nil));
+end;
+
+procedure TSyntaxTreeHandleTests.ForeignHandleHasNoTree;
+var
+  mHandle: IPascalSyntaxTree;
+begin
+  mHandle := TForeignHandle.Create;
+  Assert.IsNull(TSyntaxTree.FromHandle(mHandle));
+end;
+
+procedure TSyntaxTreeHandleTests.FreedTreeLeavesNoTree;
+var
+  mTree: TSyntaxTree;
+  mHandle: IPascalSyntaxTree;
+begin
+  mTree := TSyntaxTreeCache.Parse(cHandleSource);
+  mHandle := TSyntaxTree.HandleOf(mTree);
+  mTree.Free;
+  Assert.IsNull(TSyntaxTree.FromHandle(mHandle));
+  mHandle := nil;
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TSyntaxTreeTests);
+  TDUnitX.RegisterTestFixture(TSyntaxTreeHandleTests);
 
 end.

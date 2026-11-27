@@ -35,7 +35,8 @@ uses
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Testing.Classes,
   Atlas.Common.Testing.TestCases,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

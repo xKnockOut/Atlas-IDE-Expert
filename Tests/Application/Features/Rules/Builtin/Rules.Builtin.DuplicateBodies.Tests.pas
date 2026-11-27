@@ -45,6 +45,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Rules.Contract,
+  Rules.Trees,
   Rules.Engine,
   Atlas.Common.Metrics.DuplicateBodies,
   Atlas.Common.Metrics.DuplicateCatalog,

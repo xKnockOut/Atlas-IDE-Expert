@@ -45,7 +45,8 @@ uses
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Projects.Contract.Group;
+  Atlas.Common.Projects.Contract.Group,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

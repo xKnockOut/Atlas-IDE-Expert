@@ -129,7 +129,8 @@ uses
   Rules.Engine,
   Rules.Builtin,
   Atlas.Common.Pascal.Contract,
-  Shell.Composition.CheckRefactorings;
+  Shell.Composition.CheckRefactorings,
+  Rules.Trees;
 
 /// <summary>Leerer Regelkontext mit den Refactorings des Hosts, damit Korrekturen wie im Betrieb entstehen.</summary>
 function NewContext: TRuleContext;

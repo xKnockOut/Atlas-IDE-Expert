@@ -75,6 +75,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Rules.Contract,
+  Rules.Trees,
   Rules.Catalog,
   Rules.Prompt,
   Rules.Conventions,

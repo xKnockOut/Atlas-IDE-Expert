@@ -79,7 +79,8 @@ uses
   Atlas.Common.Semantics.InlineCallees,
   Atlas.Common.Semantics.UnresolvedNames,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

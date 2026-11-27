@@ -88,6 +88,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Rules.Contract,
+  Rules.Trees,
   Rules.Engine,
   Atlas.Common.Findings.Scopes,
   Atlas.Common.Findings.Baseline,

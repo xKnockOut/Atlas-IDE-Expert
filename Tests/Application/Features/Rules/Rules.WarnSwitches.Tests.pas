@@ -32,6 +32,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Rules.Contract,
+  Rules.Trees,
   Rules.WarnSwitches;
 
 /// <summary>Stand der Warnung AName am ersten Bezeichner "Hier" in ASource, als Text.</summary>

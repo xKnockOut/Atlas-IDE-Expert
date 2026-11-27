@@ -29,7 +29,6 @@ implementation
 uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Pascal.TreeHandles,
   Editing.Extract.Shared,
   Editing.Extract;
 
@@ -112,7 +111,7 @@ var
   mTree: TSyntaxTree;
   mOptions: TExtractOptions;
 begin
-  mTree := TSyntaxTreeHandles.TreeOf(ATree);
+  mTree := TSyntaxTree.FromHandle(ATree);
   if mTree = nil then
   begin
     Exit(False);
@@ -128,7 +127,7 @@ var
   mTree: TSyntaxTree;
 begin
   Result := nil;
-  mTree := TSyntaxTreeHandles.TreeOf(ATree);
+  mTree := TSyntaxTree.FromHandle(ATree);
   if mTree <> nil then
   begin
     Result := TEditingConstantExtraction.Create(AText, mTree, ANames);

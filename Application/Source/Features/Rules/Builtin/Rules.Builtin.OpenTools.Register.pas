@@ -40,7 +40,8 @@ uses
   Atlas.Common.Semantics.Ancestry,
   Rules.Builtin.Concurrency.Syntax,
   Rules.Builtin.Unused.Shared,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

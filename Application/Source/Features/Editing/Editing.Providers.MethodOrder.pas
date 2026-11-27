@@ -20,7 +20,6 @@ implementation
 
 uses
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Pascal.TypeComments,
   Editing.MethodOrder;
 
@@ -47,7 +46,7 @@ begin
   Result := Default(TEditingMethodOrderReview);
   mOptions := OptionsOf(ARequest);
   Result.Placement := TMethodOrder.PlacementName(mOptions.Placement);
-  mTree := TSyntaxTreeHandles.TreeOf(ATree);
+  mTree := TSyntaxTree.FromHandle(ATree);
   if mTree = nil then
   begin
     Exit;

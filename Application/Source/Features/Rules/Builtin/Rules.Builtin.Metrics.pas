@@ -81,7 +81,6 @@ implementation
 
 uses
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Metrics.Limits,
   System.SysUtils,
   System.Generics.Collections,
@@ -91,7 +90,8 @@ uses
   Rules.Derived,
   Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 
@@ -386,7 +386,7 @@ begin
     begin
       mFixes := nil;
       if (AContext.Refactorings.Extract <> nil) and
-        AContext.Refactorings.Extract.ExtractCondition(AContext.Text, TSyntaxTreeHandles.Wrap(AContext.Tree),
+        AContext.Refactorings.Extract.ExtractCondition(AContext.Text, TSyntaxTree.HandleOf(AContext.Tree),
         mCondition.Range, AContext.Formatting, mAction) then
       begin
         mFixes := [TRuleFix.Create(mAction.Title, mAction.Edits)];

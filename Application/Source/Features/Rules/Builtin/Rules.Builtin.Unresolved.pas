@@ -139,7 +139,8 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Checks.Contract,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Projects.Contract.UnitLookup;
+  Atlas.Common.Projects.Contract.UnitLookup,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

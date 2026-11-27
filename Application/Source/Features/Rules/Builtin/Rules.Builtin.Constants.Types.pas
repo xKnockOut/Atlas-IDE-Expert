@@ -83,7 +83,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Semantics.OrdinalConstants;
+  Atlas.Common.Semantics.OrdinalConstants,
+  Rules.Trees;
 
 const
   // Einheitliche Namen eingebauter Zahltypen (klein geschrieben): Alias, Name.

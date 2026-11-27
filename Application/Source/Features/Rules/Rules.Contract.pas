@@ -15,9 +15,6 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Projects.Contract.Group,
   Atlas.Common.Projects.Contract.UnitLookup,
-  // Genehmigte Ausnahme der Rollenmatrix (Architektur.md, "Genehmigte Ausnahmen"): der Syntaxbaum ist
-  // Datengrundlage jeder Regel und hängt selbst nur an Contracts.
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Query.Contract,
   Atlas.Common.Semantics.Contract,
@@ -65,8 +62,9 @@ type
     RelativePath: string;
     UnitName: string;
     Text: string;
-    /// <summary>Syntaxbaum des Textes; gehört dem Aufrufer.</summary>
-    Tree: TSyntaxTree;
+    /// <summary>Syntaxbaum des Textes als Handle (TSyntaxTree.HandleOf); der Baum gehört dem Aufrufer. Regeln lesen
+    /// und setzen ihn als TSyntaxTree über den Helfer in Rules.Trees (AContext.Tree).</summary>
+    TreeHandle: IPascalSyntaxTree;
     /// <summary>Optionen der Regel aus atlas.json als JSON-Text, sonst ''.</summary>
     Options: string;
     /// <summary>Symbolindex für Vorfahren aus anderen Units (#125); nil ohne Index (--no-index).

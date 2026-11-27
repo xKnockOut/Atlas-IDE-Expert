@@ -130,7 +130,8 @@ uses
   Atlas.Text.Lines,
   Rules.Builtin.TypeDeclarations.Scan,
   Rules.Builtin.TypeDeclarations.Texts,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 const
   // Knoten, unter denen Klassendeklarationen stehen können (Anweisungen bleiben außen vor).

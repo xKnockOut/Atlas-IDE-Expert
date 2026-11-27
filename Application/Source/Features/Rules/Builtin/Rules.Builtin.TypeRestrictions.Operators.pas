@@ -58,7 +58,8 @@ uses
   Atlas.Text.Fuzzy,
   Rules.Builtin.TypeRestrictions.Heads,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

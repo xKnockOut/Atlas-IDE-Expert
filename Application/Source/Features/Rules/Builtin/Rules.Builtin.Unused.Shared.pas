@@ -64,7 +64,8 @@ uses
   System.StrUtils,
   System.JSON,
   Atlas.Text.Json,
-  Atlas.Common.Pascal.SyntaxNodes;
+  Atlas.Common.Pascal.SyntaxNodes,
+  Rules.Trees;
 
 function MatchesWildcard(const AName, APattern: string): Boolean;
 var

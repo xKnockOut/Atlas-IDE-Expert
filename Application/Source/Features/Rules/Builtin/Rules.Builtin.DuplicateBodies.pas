@@ -39,7 +39,8 @@ uses
   Atlas.Common.Metrics.DuplicateCatalog,
   Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Projects.Contract.Group;
+  Atlas.Common.Projects.Contract.Group,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

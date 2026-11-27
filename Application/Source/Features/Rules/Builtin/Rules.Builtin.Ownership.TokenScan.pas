@@ -46,7 +46,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Rules.Trees;
 
 { TOwnershipTokenScan }
 

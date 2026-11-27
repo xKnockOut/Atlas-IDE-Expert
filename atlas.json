@@ -57,8 +57,6 @@
       "frameworks": ["Vcl", "ToolsAPI", "DesignIntf", "DesignEditors", "DesignMenus", "DesignWindows", "PropInspAPI",
         "DockForm", "PaletteAPI"],
       "allow": [
-        "Rules.Contract -> Atlas.Common.Pascal.SyntaxTree",
-        "Atlas.Common.Semantics.Contract -> Atlas.Common.Pascal.SyntaxTree",
         "Atlas.Common.Documents.Contract -> Atlas.Text.Lines",
         "Atlas.Plugin.Lsp.Contract -> Atlas.Text.Json",
         "Atlas.Plugin.Projects.Contract -> Atlas.Text.Json",

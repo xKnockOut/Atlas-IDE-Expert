@@ -27,10 +27,11 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Checks.Contract.Refactorings,
-  Atlas.Common.Pascal.TreeHandles,
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 
@@ -104,7 +105,7 @@ begin
   begin
     Exit;
   end;
-  mResult := AContext.Refactorings.Order.Review(AContext.Text, TSyntaxTreeHandles.Wrap(AContext.Tree),
+  mResult := AContext.Refactorings.Order.Review(AContext.Text, TSyntaxTree.HandleOf(AContext.Tree),
     RequestOf(AContext));
   for mReview in mResult.Types do
   begin

@@ -100,7 +100,8 @@ uses
   Rules.Builtin.Conversions,
   Rules.Builtin.TypeMismatch.ProcShapes,
   Atlas.Common.Pascal.SyntaxNodes,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

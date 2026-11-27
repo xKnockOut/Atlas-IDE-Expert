@@ -79,7 +79,8 @@ uses
   Atlas.Common.Pascal.SyntaxNodes,
   Atlas.Common.Projects.Facts,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Projects.Contract.Group;
+  Atlas.Common.Projects.Contract.Group,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

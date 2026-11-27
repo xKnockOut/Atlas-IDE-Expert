@@ -27,7 +27,6 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Pascal.TreeHandles,
   Editing.Contract.MethodWithoutSelf,
   Editing.Composition,
   Atlas.Tests.TextEdits;
@@ -60,7 +59,7 @@ begin
   Result := Default(TEditingMethodScan);
   Result.FileName := 'Rechner.pas';
   Result.Text := AText;
-  Result.Tree := TSyntaxTreeHandles.Wrap(ATree);
+  Result.Tree := TSyntaxTree.HandleOf(ATree);
   Result.FormText := AFormText;
   Result.WithStatic := True;
   Result.Style := TFormatStyle.Default;

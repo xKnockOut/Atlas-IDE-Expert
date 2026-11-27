@@ -65,7 +65,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

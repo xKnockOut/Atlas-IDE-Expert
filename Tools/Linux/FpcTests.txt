@@ -398,7 +398,6 @@ Atlas.Common.Pascal.SyntaxTree.Tests
 Atlas.Common.Pascal.ParamOwnership.Tests
 Atlas.Common.Pascal.ObjectUses.Tests
 Atlas.Common.Pascal.TokenCursor.Tests
-Atlas.Common.Pascal.TreeHandles.Tests
 Atlas.Common.Pascal.WarningCodes.Tests
 Atlas.Common.Pascal.XmlDoc.Tests
 Atlas.Common.Product.Version.Tests
@@ -525,6 +524,7 @@ Atlas.Common.Rules.Confidence.Tests
 Atlas.Common.Findings.Contract.Tests
 Rules.Contract.Tests
 Rules.Derived.Tests
+Rules.Trees.Tests
 Rules.Engine.Tests
 Rules.Providers.InheritanceDepths.Tests
 Rules.Providers.BulkFix.Tests

@@ -22,7 +22,6 @@ uses
   System.StrUtils,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.EventAssignments,
   Atlas.Common.Semantics.NameResolver,
@@ -112,7 +111,7 @@ var
   mItem: TEditingMethodWithoutSelf;
 begin
   Result := nil;
-  mTree := TSyntaxTreeHandles.TreeOf(AScan.Tree);
+  mTree := TSyntaxTree.FromHandle(AScan.Tree);
   if (mTree = nil) or (mTree.Root = nil) then
   begin
     Exit;

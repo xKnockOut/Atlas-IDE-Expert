@@ -32,7 +32,6 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Pascal.InactiveRegions,
   Atlas.Common.Pascal.Destructors,
   Atlas.Common.Pascal.DocComments,
@@ -86,7 +85,7 @@ var
   mTree: TSyntaxTree;
 begin
   Result := nil;
-  mTree := TSyntaxTreeHandles.TreeOf(ASite.Tree);
+  mTree := TSyntaxTree.FromHandle(ASite.Tree);
   // Klassen-Aktionen (#42): Getter/Setter/Feld, Interface-Methoden, Überschreiben.
   if ASite.Refactoring.ClassActions then
   begin
@@ -104,7 +103,7 @@ end;
 function TEditingCodeActionsProvider.MissingBodies(const ASite: TCodeActionSite; out AAction: TCodeAction): Boolean;
 begin
   // Fehlende Rümpfe mit classCompletion.* (#1834) über den Host der Klassen-Aktionen.
-  Result := TClassActions.MissingBodies(ASite.Text, TSyntaxTreeHandles.TreeOf(ASite.Tree), ASite.Range.StartPos,
+  Result := TClassActions.MissingBodies(ASite.Text, TSyntaxTree.FromHandle(ASite.Tree), ASite.Range.StartPos,
     ClassContext(FSettings, ASite), AAction);
 end;
 
@@ -129,7 +128,7 @@ begin
   begin
     mSettings := TStringLiteralSettings.Default;
   end;
-  Result := Result + TCodeActions.StringLiteralActions(ASite.Text, TSyntaxTreeHandles.TreeOf(ASite.Tree).Tokens,
+  Result := Result + TCodeActions.StringLiteralActions(ASite.Text, TSyntaxTree.FromHandle(ASite.Tree).Tokens,
     ASite.Range, mSettings, mMultiline);
 end;
 
@@ -149,7 +148,7 @@ begin
   begin
     mUsesContext.Inactive := TInactiveRegions.Ranges(ASite.Text, mDefines);
   end;
-  Result := TCodeActions.UsesActions(ASite.Text, TSyntaxTreeHandles.TreeOf(ASite.Tree), ASite.Range, mUsesContext,
+  Result := TCodeActions.UsesActions(ASite.Text, TSyntaxTree.FromHandle(ASite.Tree), ASite.Range, mUsesContext,
     ASite.WantsEditing, ASite.WantsRemoveUnused);
 end;
 
@@ -161,7 +160,7 @@ var
   mAction: TCodeAction;
 begin
   Result := nil;
-  mTree := TSyntaxTreeHandles.TreeOf(ASite.Tree);
+  mTree := TSyntaxTree.FromHandle(ASite.Tree);
   // Dokumentationskommentar erzeugen bzw. an die Signatur anpassen (#88); abschaltbar.
   if not Assigned(FSettings.DocCommentsFor) or FSettings.DocCommentsFor(ASite.Uri) then
   begin

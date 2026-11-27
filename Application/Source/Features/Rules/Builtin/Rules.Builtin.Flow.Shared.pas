@@ -105,7 +105,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Rules.Trees;
 
 { TFlowFileCheck }
 

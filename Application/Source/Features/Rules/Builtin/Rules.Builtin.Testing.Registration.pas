@@ -47,7 +47,8 @@ uses
   Atlas.Common.Testing.Classes,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Projects.Contract.Group;
+  Atlas.Common.Projects.Contract.Group,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

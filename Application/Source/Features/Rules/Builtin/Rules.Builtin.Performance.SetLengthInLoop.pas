@@ -38,7 +38,8 @@ uses
   Rules.Builtin.Performance.DynamicArrays,
   Rules.Builtin.Performance.ManagedParams,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

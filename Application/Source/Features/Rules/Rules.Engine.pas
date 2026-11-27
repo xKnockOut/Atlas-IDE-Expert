@@ -139,7 +139,8 @@ uses
   Rules.Profiles,
   Atlas.Common.Findings.Suppressions,
   Atlas.Common.Semantics.Contract,
-  Atlas.Common.Semantics.TreeUnits;
+  Atlas.Common.Semantics.TreeUnits,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

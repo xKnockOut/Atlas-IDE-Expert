@@ -183,6 +183,8 @@ type
     FDeepest: TSyntaxNode;
     /// <summary>Abgeleitete Daten anderer Schichten (Derived); unter System.TMonitor(Self).</summary>
     FDerived: IInterface;
+    /// <summary>Handle des Baums für Verträge (Handle); im Konstruktor angelegt, im Destruktor gelöst.</summary>
+    FHandle: IPascalSyntaxTree;
     procedure Measure;
   public
     constructor Create(ARoot: TSyntaxNode; const ATokens: TArray<TPascalToken>;
@@ -213,6 +215,13 @@ type
     /// Aufruf legt sie mit AFactory an, alle weiteren teilen sie; sie leben so lange wie der Baum. Threadsicher.
     /// Vorher extrahierte jeder Anbieter einer Code-Aktion die ganze Unit neu.</summary>
     function Derived(const AFactory: TFunc<IInterface>): IInterface;
+    /// <summary>Handle für ATree, über das der Baum durch Verträge geht (IPascalSyntaxTree im Pascal-Contract);
+    /// nil ohne Baum. Jeder Baum hat genau einen Handle: Zwei Handles sind gleich, wenn ihre Bäume gleich sind.
+    /// </summary>
+    class function HandleOf(ATree: TSyntaxTree): IPascalSyntaxTree; static;
+    /// <summary>Baum hinter AHandle; nil ohne Handle, bei einem fremden Handle oder wenn der Baum schon
+    /// freigegeben ist.</summary>
+    class function FromHandle(const AHandle: IPascalSyntaxTree): TSyntaxTree; static;
     property Root: TSyntaxNode read FRoot;
     /// <summary>Alle Token einschließlich Kommentaren und Direktiven.</summary>
     property Tokens: TArray<TPascalToken> read FTokens;
@@ -231,6 +240,23 @@ implementation
 uses
   System.TypInfo,
   Atlas.Common.Pascal.TokenCursor;
+
+type
+  /// <summary>Handle eines Baums. Besitzt den Baum nicht; der Baum setzt FTree bei seiner Freigabe auf nil.</summary>
+  TSyntaxTreeHandle = class(TInterfacedObject, IPascalSyntaxTree)
+  private
+    FTree: TSyntaxTree;
+  public
+    constructor Create(ATree: TSyntaxTree);
+  end;
+
+{ TSyntaxTreeHandle }
+
+constructor TSyntaxTreeHandle.Create(ATree: TSyntaxTree);
+begin
+  inherited Create;
+  FTree := ATree;
+end;
 
 function SyntaxKindName(AKind: TSyntaxKind): string;
 begin
@@ -602,10 +628,17 @@ begin
   FRoot := ARoot;
   FTokens := ATokens;
   FDiagnostics := ADiagnostics;
+  FHandle := TSyntaxTreeHandle.Create(Self);
 end;
 
 destructor TSyntaxTree.Destroy;
 begin
+  // Wer den Handle länger hält als den Baum, bekommt über FromHandle nil statt eines freigegebenen Baums.
+  if FHandle <> nil then
+  begin
+    TSyntaxTreeHandle(FHandle as TObject).FTree := nil;
+  end;
+  FHandle := nil;
   FDerived := nil;
   FRoot.Free;
   inherited;
@@ -774,6 +807,33 @@ begin
       end;
     end;
   until not mDeeper;
+end;
+
+class function TSyntaxTree.HandleOf(ATree: TSyntaxTree): IPascalSyntaxTree;
+begin
+  Result := nil;
+  if ATree <> nil then
+  begin
+    Result := ATree.FHandle;
+  end;
+end;
+
+class function TSyntaxTree.FromHandle(const AHandle: IPascalSyntaxTree): TSyntaxTree;
+var
+  mObject: TObject;
+begin
+  // Prüfregeln fragen den Baum sehr oft (TRuleContext.Tree): Der Weg über das Objekt hinter dem Handle zählt keine
+  // Referenzen, anders als Supports.
+  Result := nil;
+  if AHandle = nil then
+  begin
+    Exit;
+  end;
+  mObject := AHandle as TObject;
+  if mObject is TSyntaxTreeHandle then
+  begin
+    Result := TSyntaxTreeHandle(mObject).FTree;
+  end;
 end;
 
 function TSyntaxTree.Derived(const AFactory: TFunc<IInterface>): IInterface;

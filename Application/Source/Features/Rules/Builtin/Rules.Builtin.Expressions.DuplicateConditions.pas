@@ -39,7 +39,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Rules.TypedScope,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

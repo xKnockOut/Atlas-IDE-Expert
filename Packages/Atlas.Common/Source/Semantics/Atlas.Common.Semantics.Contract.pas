@@ -21,10 +21,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Configuration.Contract,
-  // Genehmigte Ausnahme der Rollenmatrix (Architektur.md, "Genehmigte Ausnahmen"): wie in Rules.Contract ist
-  // der Syntaxbaum die Datengrundlage und hängt selbst nur an Contracts.
-  Atlas.Common.Pascal.SyntaxTree;
+  Atlas.Common.Configuration.Contract;
 
 type
   /// <summary>Was der Index über eine Unit weiß.</summary>
@@ -75,17 +72,18 @@ type
   TUsesResolveFunc = reference to function(const AText: string; const AInactive: TArray<TTextRange>): TUsesResolution;
 
   /// <summary>Wie TUsesResolveFunc für einen schon übersetzten Baum (ohne zweites Parsen, etwa für /sortuses in
-  /// großen Units); der Baum bleibt beim Aufrufer.</summary>
-  TUsesTreeResolveFunc = reference to function(ATree: TSyntaxTree;
+  /// großen Units); der Baum bleibt beim Aufrufer und kommt als Handle (TSyntaxTree.HandleOf).</summary>
+  TUsesTreeResolveFunc = reference to function(const ATree: IPascalSyntaxTree;
     const AInactive: TArray<TTextRange>): TUsesResolution;
 
   /// <summary>Unit-Index genau eines Syntaxbaums, einmal ausgewertet und von allen Resolvern eines Laufs
   /// geteilt (#1322). Gilt nur in einem Thread und nur, solange der Baum lebt: Der Besitzer ruft Clear,
-  /// bevor er den Baum freigibt.</summary>
+  /// bevor er den Baum freigibt. Den Baum erkennt sie an seinem Handle (TSyntaxTree.HandleOf): Jeder Baum hat
+  /// genau einen.</summary>
   ITreeUnits = interface
     ['{64C9DAD4-B538-4A12-93ED-55334C477C28}']
     /// <summary>Gehört die Auswertung zu ATree? Nur dann liefern Extracted und Merged dessen Stand.</summary>
-    function Holds(ATree: TSyntaxTree): Boolean;
+    function Holds(const ATree: IPascalSyntaxTree): Boolean;
     /// <summary>Wie TIndexExtractor.Extract(Baum, AFileName), je Dateiname einmal ausgewertet.</summary>
     function Extracted(const AFileName: string): TUnitIndex;
     /// <summary>Extracted samt der Symbole der Include-Dateien aus AIndex und mit Namenstabelle, wie

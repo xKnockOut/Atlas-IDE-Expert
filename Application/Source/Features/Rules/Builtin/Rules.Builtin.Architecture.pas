@@ -19,7 +19,7 @@
 //     "prefixes": ["Atlas.Common", "Atlas.Windows"],
 //     "hostRoles": ["Foundation", "Core", "Shell", "Adapters", "Platform"],
 //     "hostedFeatures": ["Replay"],
-//     "allow": ["Rules.Contract -> Atlas.Common.Pascal.SyntaxTree"] } }
+//     "allow": ["Atlas.Common.Documents.Contract -> Atlas.Text.Lines"] } }
 // Units heißen Ausgabeartefakt.Feature.Rolle.Sache; "prefixes"
 // nennt die Ausgabeartefakte, ohne sie melden die Regeln nichts. Die Rolle ist
 // der erste Rollenbezeichner an beliebiger Stelle nach dem Feature
@@ -256,7 +256,8 @@ uses
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Localization.Texts,
   Rules.Builtin.FeatureCycles,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 

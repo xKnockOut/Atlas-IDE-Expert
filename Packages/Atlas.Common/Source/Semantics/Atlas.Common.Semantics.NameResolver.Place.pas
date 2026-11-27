@@ -140,7 +140,7 @@ end;
 
 function TResolverPlace.TreeUnit(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
 begin
-  if (FTreeUnits <> nil) and FTreeUnits.Holds(ATree) then
+  if (FTreeUnits <> nil) and FTreeUnits.Holds(TSyntaxTree.HandleOf(ATree)) then
   begin
     Result := FTreeUnits.Merged(FIndex, AFileName);
   end
@@ -227,7 +227,7 @@ begin
   mPin := Default(TPin);
   mPin.Tree := ATree;
   mPin.FileName := AFileName;
-  if (FTreeUnits <> nil) and FTreeUnits.Holds(ATree) then
+  if (FTreeUnits <> nil) and FTreeUnits.Holds(TSyntaxTree.HandleOf(ATree)) then
   begin
     mPin.Extracted := FTreeUnits.Extracted(AFileName);
     mPin.Merged := FTreeUnits.Merged(FIndex, AFileName);
@@ -288,7 +288,7 @@ begin
   begin
     Result := FPins[mPinIndex].Extracted;
   end
-  else if (FTreeUnits <> nil) and FTreeUnits.Holds(ATree) then
+  else if (FTreeUnits <> nil) and FTreeUnits.Holds(TSyntaxTree.HandleOf(ATree)) then
   begin
     Result := FTreeUnits.Extracted(AFileName);
   end

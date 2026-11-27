@@ -71,7 +71,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.ConditionalBranches,
-  Rules.Builtin.General;
+  Rules.Builtin.General,
+  Rules.Trees;
 
 const
   // Spezifizierer einer Property nach Name und Typ.

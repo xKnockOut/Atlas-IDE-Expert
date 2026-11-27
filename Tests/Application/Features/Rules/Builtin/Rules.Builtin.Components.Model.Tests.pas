@@ -29,6 +29,7 @@ uses
   System.SysUtils,
   Atlas.Common.Index.Contract,
   Rules.Contract,
+  Rules.Trees,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Rules.Builtin.Components.Model,

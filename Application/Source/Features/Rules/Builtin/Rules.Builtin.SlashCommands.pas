@@ -38,7 +38,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Rules.Trees;
 
 {$SCOPEDENUMS ON}
 
