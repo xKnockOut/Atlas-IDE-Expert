@@ -3,8 +3,9 @@
 // Tests für das eigene Desktop-Layout im Designer (#2079): Entprellen,
 // Wechsel in den Designer und zurück (vorheriges bzw. Standard-Layout),
 // schon aktives und fehlendes Layout, im Designer selbst gewähltes Layout,
-// Debug-Sitzung, ladendes Projekt und Ausschalten; Layoutnamen des
-// Auswahlfelds und der Registry.
+// Debug-Sitzung, ladendes Projekt, laufender Build und Ausschalten; Due und
+// Decide (Layouts nur beim Umschalten nötig); Layoutnamen des Auswahlfelds
+// und der Registry.
 
 interface
 
@@ -45,6 +46,12 @@ type
     procedure DebuggingAllowed;
     [Test]
     procedure ProjectLoadingWaits;
+    [Test]
+    procedure BuildingHoldsState;
+    [Test]
+    procedure BuildingKeepsApplied;
+    [Test]
+    procedure DueOnlyOncePerChange;
     [Test]
     procedure DisabledForgets;
     [Test]
@@ -246,6 +253,62 @@ begin
   mState.Ticks := 1000;
   Assert.AreEqual('-', ActionText(FSwitch.Step(Options, mState)));
   Assert.AreEqual('laden Designer (Designer)', Step(Options, TAtlasDesktopView.Designer, 1100, cDefault));
+end;
+
+procedure TAtlasDesktopSwitchTests.BuildingHoldsState;
+var
+  mBuilding: TAtlasDesktopState;
+begin
+  Step(Options, TAtlasDesktopView.Designer, 0, cClassic);
+  // Mitten im Build: keine Ansicht, keine Zeit, keine Layouts; der Schalter wartet nur.
+  mBuilding := Default(TAtlasDesktopState);
+  mBuilding.Building := True;
+  Assert.IsFalse(FSwitch.Due(Options, mBuilding), 'im Build nichts entscheiden');
+  Assert.AreEqual('-', ActionText(FSwitch.Step(Options, mBuilding)));
+  // Danach zählt die Ansicht von vor dem Build weiter, sie wurde nicht vergessen.
+  Assert.AreEqual('laden Designer (Designer)', Step(Options, TAtlasDesktopView.Designer, 5000, cClassic));
+  Assert.AreEqual(cClassic, FSwitch.Remembered);
+end;
+
+procedure TAtlasDesktopSwitchTests.BuildingKeepsApplied;
+var
+  mBuilding: TAtlasDesktopState;
+begin
+  Step(Options, TAtlasDesktopView.Designer, 0, cClassic);
+  Assert.AreEqual('laden Designer (Designer)', Step(Options, TAtlasDesktopView.Designer, 300, cClassic));
+  mBuilding := Default(TAtlasDesktopState);
+  mBuilding.Building := True;
+  FSwitch.Step(Options, mBuilding);
+  // Nach dem Build ist das Designer-Layout schon aktiv: nichts neu laden, gemerktes Layout bleibt für den Rückweg.
+  Assert.IsFalse(FSwitch.Due(Options, State(TAtlasDesktopView.Designer, 6000, cDesigner)));
+  Assert.AreEqual(cClassic, FSwitch.Remembered);
+  Step(Options, TAtlasDesktopView.Code, 7000, cDesigner);
+  Assert.AreEqual('laden Classic Undocked', Step(Options, TAtlasDesktopView.Code, 7300, cDesigner));
+end;
+
+procedure TAtlasDesktopSwitchTests.DueOnlyOncePerChange;
+var
+  mCheap: TAtlasDesktopState;
+  mTicks: UInt64;
+  mDue: Integer;
+begin
+  // Wie der Takt der IDE: Due ohne Layouts; Decide (mit Layouts) nur, wenn Due es verlangt.
+  mDue := 0;
+  mTicks := 0;
+  while mTicks <= 2000 do
+  begin
+    mCheap := Default(TAtlasDesktopState);
+    mCheap.View := TAtlasDesktopView.Designer;
+    mCheap.Ticks := mTicks;
+    if FSwitch.Due(Options, mCheap) then
+    begin
+      Inc(mDue);
+      Assert.AreEqual('laden Designer (Designer)',
+        ActionText(FSwitch.Decide(Options, State(TAtlasDesktopView.Designer, mTicks, cClassic))));
+    end;
+    Inc(mTicks, 100);
+  end;
+  Assert.AreEqual(1, mDue, 'Layouts nur einmal je Wechsel lesen');
 end;
 
 procedure TAtlasDesktopSwitchTests.DisabledForgets;
