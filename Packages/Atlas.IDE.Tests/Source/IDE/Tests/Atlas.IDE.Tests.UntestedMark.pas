@@ -76,7 +76,6 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Editor.Lens,
   Atlas.IDE.Tests.Lens,
   Atlas.ToolsApi.Theme.Style;
 
@@ -262,15 +261,12 @@ begin
   end;
   mRow := ARow;
   mContext := AContext;
-  TAtlasIdeLensPill.Guarded(AContext.Canvas,
-    procedure
-    var
-      mSlot: TAtlasLineEndSlot;
+  // Die unit-Zeile trägt oft auch Fehlertext und die Testunit-Lens: dahinter, nicht darüber.
+  TAtlasIdeLensPill.PaintAtLineEnd(Self, AContext, ARow, mLine,
+    function(ALeft: Integer): Integer
     begin
-      // Die unit-Zeile trägt oft auch Fehlertext und die Testunit-Lens: dahinter, nicht darüber.
-      mSlot := TAtlasLineEndSlot.Take(Self, mContext, mRow, mLine);
-      PaintMark(mRow, mContext, mSlot.Left);
-      mSlot.Done(FRect.Right);
+      PaintMark(mRow, mContext, ALeft);
+      Result := FRect.Right;
     end);
 end;
 
