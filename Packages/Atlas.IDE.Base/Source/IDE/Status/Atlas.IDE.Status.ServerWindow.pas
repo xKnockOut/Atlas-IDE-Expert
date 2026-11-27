@@ -9,7 +9,9 @@
 // QueryNow) und zeigt danach. Neustarts der Sitzung kommen vom Code
 // Insight-Manager. Doppelklick auf eine Unit öffnet sie, auf eine Regel die
 // Regelseite der Prüfung (#909); „Index neu aufbauen“ und
-// „Diagnosepaket erstellen …“ gehen an die Composition. Mit
+// „Diagnosepaket erstellen …“ gehen an die Composition. Den Reiter
+// „KI-Assistenten“ (#2611) füllt es im selben Takt aus den Statusdateien der
+// MCP-Prozesse (TMcpAssistantSessions, nur lesen). Mit
 // server.statusWindow aus öffnet Show nichts und ein offenes Fenster
 // schließt (ApplySettings). Nur im Hauptthread.
 
@@ -66,6 +68,7 @@ uses
   DesignIntf,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Text.McpStatistics,
   Atlas.UI.Status.Strings,
   Atlas.Vcl.Images.Symbol,
   Atlas.UI.Status.ServerFrame,
@@ -102,6 +105,7 @@ type
     FShownJson: string;
     FShownRunning: Boolean;
     FShownRestarts: Integer;
+    FShownAssistants: string;
     procedure TimerTick(Sender: TObject);
   public
     constructor Create;
@@ -325,11 +329,21 @@ var
   mJson: string;
   mRunning: Boolean;
   mRestarts: Integer;
+  mAssistants: TArray<TMcpAssistantSession>;
+  mSignature: string;
 begin
   mFrame := Frame;
   if mFrame = nil then
   begin
     Exit;
+  end;
+  // KI-Assistenten unabhängig vom IDE-Server: Ihre MCP-Prozesse schreiben eigene Statusdateien.
+  mAssistants := TMcpAssistantSessions.ReadFolder(TMcpAssistantSessions.DefaultFolder, Now);
+  mSignature := TMcpAssistantSessions.Signature(mAssistants);
+  if AForce or (mSignature <> FShownAssistants) then
+  begin
+    FShownAssistants := mSignature;
+    mFrame.SetAssistants(mAssistants);
   end;
   mJson := '';
   if Assigned(TAtlasIdeServerWindow.FHooks.StatusJson) then

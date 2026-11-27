@@ -3908,6 +3908,7 @@ uses
   Atlas.Windows.Updates.Adapters.Trust.Tests in 'Windows\Updates\Atlas.Windows.Updates.Adapters.Trust.Tests.pas',
   Atlas.Common.Updates.Apply.Tests in 'Common\Updates\Atlas.Common.Updates.Apply.Tests.pas',
   Atlas.Common.Monitor.Servers.Tests in 'Common\Monitor\Atlas.Common.Monitor.Servers.Tests.pas',
+  Atlas.Common.Monitor.Assistants.Tests in 'Common\Monitor\Atlas.Common.Monitor.Assistants.Tests.pas',
   Atlas.Common.Monitor.Settings.Tests in 'Common\Monitor\Atlas.Common.Monitor.Settings.Tests.pas',
   Atlas.Common.Monitor.Texts.Tests in 'Common\Monitor\Atlas.Common.Monitor.Texts.Tests.pas',
   Atlas.Common.Monitor.Commands.Tests in 'Common\Monitor\Atlas.Common.Monitor.Commands.Tests.pas',

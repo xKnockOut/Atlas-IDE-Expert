@@ -111,8 +111,7 @@ type
 implementation
 
 uses
-  System.Classes,
-  System.IOUtils;
+  System.Classes;
 
 const
   // Der PE-Kopf samt Abschnittstabelle steht in den ersten Kilobytes der Datei.
@@ -217,7 +216,7 @@ begin
   begin
     Exit;
   end;
-  ASymbols.Map := TMapFile.Create(TFile.ReadAllText(ASymbols.MapName, TEncoding.UTF8));
+  ASymbols.Map := TMapFile.CreateFromFile(ASymbols.MapName);
   mImage := TPeImage.Read(ReadHead(AExeName));
   ASymbols.Match := TMapImageCheck.Compare(ASymbols.Map, mImage);
   if mImage.Valid then

@@ -14,6 +14,13 @@
 // - Während einer Debug-Sitzung (SkipWhileDebugging) und solange ein Projekt
 //   lädt, wird nicht umgeschaltet; danach wird die Ansicht neu geprüft, denn
 //   die IDE hat ihr Debug-Layout geladen und wieder verlassen.
+// - Während eines Builds (auch „Alle erzeugen“ mit seinem Fortschrittsdialog)
+//   ruht der Schalter ganz: Er erhebt nichts und vergisst nichts; danach geht
+//   es mit dem Stand von vorher weiter.
+// - Due sagt, ob ein Takt entscheiden muss; nur dann braucht Decide die
+//   Layouts (CurrentLayout, Layouts, DefaultLayout). Die Anbindung an die IDE
+//   liest das Desktop-Auswahlfeld also nicht in jedem Takt, sondern nur im
+//   Augenblick des Umschaltens.
 // - Ausgeschaltet vergisst der Schalter alles; beim Einschalten zählt die
 //   aktuelle Ansicht wie ein frischer Wechsel.
 
@@ -45,6 +52,9 @@ type
     Ticks: UInt64;
     Debugging: Boolean;
     ProjectLoading: Boolean;
+    /// <summary>Die IDE übersetzt gerade (oder ihre Ruhezeit danach läuft noch); die Felder dahinter bleiben dann
+    /// leer.</summary>
+    Building: Boolean;
     /// <summary>Aktives Layout der IDE; leer, wenn unbekannt.</summary>
     CurrentLayout: string;
     /// <summary>Standard-Layout der IDE (Desktop und Layout › Standard); leer, wenn unbekannt.</summary>
@@ -78,6 +88,12 @@ type
     procedure Reset;
     /// <summary>Ein Takt: was jetzt zu tun ist. Load heißt, die IDE soll Layout laden.</summary>
     function Step(const AOptions: TAtlasDesktopSwitchOptions; const AState: TAtlasDesktopState): TAtlasDesktopAction;
+    /// <summary>Erster Teil eines Takts (Entprellen, Ruhe beim Build, Debuggen und Projektladen): Muss jetzt
+    /// entschieden werden? Braucht von AState nur View, Ticks, Debugging, ProjectLoading und Building.</summary>
+    function Due(const AOptions: TAtlasDesktopSwitchOptions; const AState: TAtlasDesktopState): Boolean;
+    /// <summary>Zweiter Teil eines Takts, nur nach Due = True: Laden, Meldung oder nichts. Braucht zusätzlich
+    /// CurrentLayout, Layouts und (bei IdeDefault) DefaultLayout.</summary>
+    function Decide(const AOptions: TAtlasDesktopSwitchOptions; const AState: TAtlasDesktopState): TAtlasDesktopAction;
     /// <summary>Layout, das beim Wechsel in den Designer aktiv war; leer ohne.</summary>
     property Remembered: string read FRemembered;
   end;
@@ -326,6 +342,15 @@ function TAtlasDesktopSwitch.Step(const AOptions: TAtlasDesktopSwitchOptions;
   const AState: TAtlasDesktopState): TAtlasDesktopAction;
 begin
   Result := TAtlasDesktopAction.Nothing;
+  if Due(AOptions, AState) then
+  begin
+    Result := Decide(AOptions, AState);
+  end;
+end;
+
+function TAtlasDesktopSwitch.Due(const AOptions: TAtlasDesktopSwitchOptions; const AState: TAtlasDesktopState): Boolean;
+begin
+  Result := False;
   if not AOptions.Enabled or (AOptions.DesignerLayout = '') then
   begin
     if FWasEnabled then
@@ -336,6 +361,12 @@ begin
     Exit;
   end;
   FWasEnabled := True;
+  if AState.Building then
+  begin
+    // Mitten im Build nichts erheben und nichts vergessen: Die IDE lädt Packages neu und lässt Nachrichten nur
+    // über ihren Fortschrittsdialog laufen.
+    Exit;
+  end;
   if AState.View <> FView then
   begin
     FView := AState.View;
@@ -351,8 +382,16 @@ begin
   begin
     // Die IDE wechselt beim Debuggen selbst; danach die Ansicht neu prüfen.
     FApplied := TAtlasDesktopView.Unknown;
-    Exit;
+  end
+  else
+  begin
+    Result := True;
   end;
+end;
+
+function TAtlasDesktopSwitch.Decide(const AOptions: TAtlasDesktopSwitchOptions;
+  const AState: TAtlasDesktopState): TAtlasDesktopAction;
+begin
   if FView = TAtlasDesktopView.Designer then
   begin
     Result := ToDesigner(AOptions, AState);

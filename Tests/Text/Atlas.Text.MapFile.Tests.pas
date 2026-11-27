@@ -29,12 +29,16 @@ type
     procedure ReadsPackageBase;
     [Test]
     procedure RoutineWithoutLinesHasNoLine;
+    [Test]
+    procedure ReadsFileLineByLine;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Classes,
+  System.IOUtils,
   Atlas.Text.MapFile;
 
 const
@@ -227,6 +231,36 @@ begin
   finally
     mMap.Free;
   end;
+end;
+
+procedure TMapFileTests.ReadsFileLineByLine;
+var
+  mName: string;
+  mBytes: TBytes;
+  mMap: TMapFile;
+  mLocation: TMapLocation;
+begin
+  // Datei mit LF statt CRLF und einem Pfad mit Umlaut in der ANSI-Codepage, wie ihn der Linker schreibt.
+  mName := TPath.Combine(TPath.GetTempPath, 'atlas-mapfile-' + IntToStr(Random(MaxInt)) + '.map');
+  mBytes := TEncoding.ANSI.GetBytes(StringReplace(StringReplace(cSampleMap, 'Shell.Composition(Shell.Composition.pas)',
+    'Shell.Composition(Shell.Composition' + Char($E4) + '.pas)', []), #13#10, #10, [rfReplaceAll]));
+  TFile.WriteAllBytes(mName, mBytes);
+  try
+    mMap := TMapFile.CreateFromFile(mName);
+    try
+      Assert.AreEqual(5, mMap.SymbolCount);
+      Assert.AreEqual<UInt64>($1180, mMap.EntryPoint);
+      mLocation := mMap.Resolve($1124);
+      Assert.AreEqual('Shell.Composition.TComposition.Run', mLocation.Routine);
+      Assert.AreEqual('Shell.Composition' + Char($E4) + '.pas', mLocation.FileName);
+      Assert.AreEqual(503, mLocation.Line);
+    finally
+      mMap.Free;
+    end;
+  finally
+    TFile.Delete(mName);
+  end;
+  mBytes := nil;
 end;
 
 initialization

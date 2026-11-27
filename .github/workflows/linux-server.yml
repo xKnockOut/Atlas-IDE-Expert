@@ -66,6 +66,9 @@ jobs:
       - name: Startcompiler FPC 3.2.2
         # Pflichtprüfung: ein Aussetzer der Paketquellen (DNS) darf den Lauf nicht rot färben.
         run: |
+          # Fremde Paketquellen des Runners (packages.microsoft.com antwortet zeitweise mit 403) brechen
+          # apt-get update ab; gebraucht werden nur die Ubuntu-Quellen.
+          sudo find /etc/apt/sources.list.d -name '*microsoft*' -delete
           for mVersuch in 1 2 3 4; do
             sudo apt-get update && sudo apt-get install -y fp-compiler fp-units-rtl libpcre2-16-0 && exit 0
             sleep $((mVersuch * 15))
@@ -115,6 +118,9 @@ jobs:
 
       - name: Laufzeitbibliothek
         run: |
+          # Fremde Paketquellen des Runners (packages.microsoft.com antwortet zeitweise mit 403) brechen
+          # apt-get update ab; gebraucht werden nur die Ubuntu-Quellen.
+          sudo find /etc/apt/sources.list.d -name '*microsoft*' -delete
           for mVersuch in 1 2 3 4; do
             sudo apt-get update && sudo apt-get install -y libpcre2-16-0 && exit 0
             sleep $((mVersuch * 15))
@@ -253,6 +259,9 @@ jobs:
 
       - name: Startcompiler FPC 3.2.2
         run: |
+          # Fremde Paketquellen des Runners (packages.microsoft.com antwortet zeitweise mit 403) brechen
+          # apt-get update ab; gebraucht werden nur die Ubuntu-Quellen.
+          sudo find /etc/apt/sources.list.d -name '*microsoft*' -delete
           for mVersuch in 1 2 3 4; do
             sudo apt-get update && sudo apt-get install -y fp-compiler fp-units-rtl libpcre2-16-0 && exit 0
             sleep $((mVersuch * 15))

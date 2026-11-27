@@ -36,7 +36,6 @@ uses
   System.IOUtils,
   Atlas.Text.Locked,
   Atlas.Text.MapFile,
-  Atlas.Common.Documents.FileEncoding,
   Atlas.Text.Files;
 
 const
@@ -83,13 +82,13 @@ begin
       try
         if TFile.Exists(mMapName) then
         begin
-          Map := TMapFile.Create(TFileEncoding.LoadText(mMapName));
+          Map := TMapFile.CreateFromFile(mMapName);
         end;
       except
         // Eine unlesbare Map darf das Absturzprotokoll nicht verhindern.
         on E: Exception do
         begin
-          if not (TTextFiles.IsFileError(E) or (E is EFileEncodingError)) then
+          if not TTextFiles.IsFileError(E) then
           begin
             raise;
           end;

@@ -363,6 +363,7 @@ Atlas.Common.Metrics.DuplicateBodies.Tests
 Atlas.Common.Metrics.DuplicateBaseline.Tests
 Rules.Builtin.DuplicateBodies.Tests
 Atlas.Common.Monitor.Servers.Tests
+Atlas.Common.Monitor.Assistants.Tests
 Atlas.Text.Profile.Tests
 Atlas.Text.ProfileReport.Tests
 Atlas.Common.Profiling.Sampling.Tests

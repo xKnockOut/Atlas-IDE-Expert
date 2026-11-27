@@ -7,6 +7,10 @@
 // Fenster „Atlas-Server“ der IDE lesen die Statusdateien und zeigen die Zahlen mit denselben Zellen.
 // Argumente und Meldung fehlgeschlagener Aufrufe stehen gekennzeichnet (Atlas.Text.LogMarks); Anzeigen nehmen
 // TLogMarks.Plain.
+// Für den Reiter „KI-Assistenten“ (AI assistants) liest TMcpAssistantSessions die Sitzungen aller laufenden
+// MCP-Prozesse aus ihren Statusdateien (server-<pid>.json, Art mcp) und legt ihre Zahlen als Zeilen einer
+// gemeinsamen Tabelle aus; das Plugin liest damit ohne Atlas.Common, AtlasMonitor nimmt die schon gelesenen
+// Einträge (FromStatus).
 
 interface
 
@@ -81,6 +85,57 @@ type
     class function FromText(const AJson: string): TMcpSessionStatistics; static;
   end;
 
+  /// <summary>Sitzung eines laufenden MCP-Prozesses aus seiner Statusdatei. HasStatistics False: Der Prozess
+  /// zählt nicht (mcp.statistics aus) oder ist zu alt für die Statistik.</summary>
+  TMcpAssistantSession = record
+    Pid: Cardinal;
+    /// <summary>Zeitpunkt des Schreibens der Statusdatei (Ortszeit).</summary>
+    Written: TDateTime;
+    HasStatistics: Boolean;
+    Statistics: TMcpSessionStatistics;
+    /// <summary>Client-Name oder AUnknown, solange er fehlt.</summary>
+    function ClientOr(const AUnknown: string): string;
+  end;
+
+  /// <summary>Zeile der Tabelle aller Sitzungen: Sitzung (Index in den Sitzungen) und ein Werkzeug, eine
+  /// Ressource oder ein Prompt.</summary>
+  TMcpAssistantRow = record
+    Session: Integer;
+    Call: TMcpCallSummary;
+  end;
+
+  TMcpAssistantSessions = record
+  public const
+    /// <summary>Wie TServerStatusFile.cFolderName: Unterordner der Statusdateien unter %LOCALAPPDATA%\Atlas.
+    /// </summary>
+    cFolderName = 'Status';
+    /// <summary>Ältere Statusdateien gelten als verwaist (Takt 5 s; wie TServerStatusFile.cMaxAgeSeconds).
+    /// </summary>
+    cMaxAgeSeconds = 60;
+  public
+    /// <summary>Ordner der Statusdateien: %LOCALAPPDATA%\Atlas\Status.</summary>
+    class function DefaultFolder: string; static;
+    /// <summary>Sitzung aus dem Inhalt einer Statusdatei; False ohne pid oder written oder bei anderer Art als
+    /// mcp.</summary>
+    class function FromStatus(const AJson: string; out ASession: TMcpAssistantSession): Boolean; overload; static;
+    /// <summary>Sitzung aus schon gelesenen Feldern einer Statusdatei (AtlasMonitor); AMcp ist der Abschnitt mcp
+    /// als JSON-Text, '' ohne.</summary>
+    class function FromStatus(APid: Cardinal; AWritten: TDateTime; const AMcp: string): TMcpAssistantSession;
+      overload; static;
+    /// <summary>Alle MCP-Sitzungen der Statusdateien in AFolder, die höchstens cMaxAgeSeconds vor ANow
+    /// geschrieben wurden; nach Beginn, dann pid. Liest nur, löscht nichts.</summary>
+    class function ReadFolder(const AFolder: string; ANow: TDateTime): TArray<TMcpAssistantSession>; static;
+    /// <summary>Ordnet ASessions nach Beginn der Sitzung, dann pid.</summary>
+    class procedure Sort(var ASessions: TArray<TMcpAssistantSession>); static;
+    /// <summary>Zeilen aller Sitzungen mit Statistik, je Sitzung in der Reihenfolge ihrer Zahlen.</summary>
+    class function Rows(const ASessions: TArray<TMcpAssistantSession>): TArray<TMcpAssistantRow>; static;
+    /// <summary>Kennung des Stands: je Sitzung pid und Zeitpunkt des Schreibens. Gleiche Kennung, gleiche
+    /// Zahlen; Anzeigen zeichnen nur bei neuer Kennung neu.</summary>
+    class function Signature(const ASessions: TArray<TMcpAssistantSession>): string; static;
+    /// <summary>Zahl der auffälligen Zeilen (TMcpCallSummary.Conspicuous).</summary>
+    class function ConspicuousCount(const ARows: TArray<TMcpAssistantRow>): Integer; static;
+  end;
+
   TMcpStatisticsFormat = record
   public
     /// <summary>Kennwort der Art in JSON und Verlauf (tool, resource, prompt).</summary>
@@ -97,6 +152,11 @@ implementation
 
 uses
   System.Math,
+  System.IOUtils,
+  System.DateUtils,
+  System.Generics.Collections,
+  System.Generics.Defaults,
+  Atlas.Text.Files,
   Atlas.Text.Json,
   Atlas.Text.LogMarks,
   Atlas.Text.TestResults,
@@ -311,6 +371,152 @@ begin
     Result := FromJson(mObject);
   finally
     mObject.Free;
+  end;
+end;
+
+{ TMcpAssistantSession }
+
+function TMcpAssistantSession.ClientOr(const AUnknown: string): string;
+begin
+  Result := Statistics.Client;
+  if Result = '' then
+  begin
+    Result := AUnknown;
+  end;
+end;
+
+{ TMcpAssistantSessions }
+
+class function TMcpAssistantSessions.DefaultFolder: string;
+begin
+  // Wie TIndexCacheDirectory.DefaultRoot (Atlas.Common): GetCachePath ist unter Windows %LOCALAPPDATA%.
+  Result := TPath.Combine(TPath.Combine(TPath.GetCachePath, 'Atlas'), cFolderName);
+end;
+
+class function TMcpAssistantSessions.FromStatus(APid: Cardinal; AWritten: TDateTime; const AMcp: string):
+  TMcpAssistantSession;
+begin
+  Result := Default(TMcpAssistantSession);
+  Result.Pid := APid;
+  Result.Written := AWritten;
+  Result.HasStatistics := Trim(AMcp) <> '';
+  if Result.HasStatistics then
+  begin
+    Result.Statistics := TMcpSessionStatistics.FromText(AMcp);
+  end;
+end;
+
+class function TMcpAssistantSessions.FromStatus(const AJson: string; out ASession: TMcpAssistantSession): Boolean;
+var
+  mObject, mMcp: TJSONObject;
+  mWritten: TDateTime;
+  mPid: Int64;
+begin
+  ASession := Default(TMcpAssistantSession);
+  mObject := TJsonRead.ParseObject(AJson);
+  try
+    mPid := TJsonRead.Int64Or(mObject, 'pid', 0);
+    mWritten := TJsonRead.IsoTime(mObject, 'written', False);
+    Result := (mObject <> nil) and (mPid > 0) and (mWritten <> 0) and SameText(TJsonRead.Text(mObject, 'kind'),
+      'mcp');
+    if not Result then
+    begin
+      Exit;
+    end;
+    ASession.Pid := Cardinal(mPid);
+    ASession.Written := mWritten;
+    mMcp := TJsonRead.Obj(mObject, 'mcp');
+    ASession.HasStatistics := mMcp <> nil;
+    if ASession.HasStatistics then
+    begin
+      ASession.Statistics := TMcpSessionStatistics.FromJson(mMcp);
+    end;
+  finally
+    mObject.Free;
+  end;
+end;
+
+/// <summary>Ordnung der Sitzungen: früher begonnen zuerst, bei Gleichstand die kleinere pid (eindeutig, Sort ist
+/// nicht stabil).</summary>
+function CompareSessions(const ALeft, ARight: TMcpAssistantSession): Integer;
+begin
+  Result := CompareValue(ALeft.Statistics.Started, ARight.Statistics.Started);
+  if Result = 0 then
+  begin
+    Result := CompareValue(Int64(ALeft.Pid), Int64(ARight.Pid));
+  end;
+end;
+
+class procedure TMcpAssistantSessions.Sort(var ASessions: TArray<TMcpAssistantSession>);
+begin
+  TArray.Sort<TMcpAssistantSession>(ASessions, TComparer<TMcpAssistantSession>.Construct(CompareSessions));
+end;
+
+class function TMcpAssistantSessions.ReadFolder(const AFolder: string; ANow: TDateTime):
+  TArray<TMcpAssistantSession>;
+var
+  mFile: string;
+  mSession: TMcpAssistantSession;
+begin
+  Result := nil;
+  if (AFolder = '') or not TDirectory.Exists(AFolder) then
+  begin
+    Exit;
+  end;
+  for mFile in TDirectory.GetFiles(AFolder, 'server-*.json') do
+  begin
+    // Gerade ersetzte oder unlesbare Dateien liefern '' und fallen weg; aufgeräumt wird beim Schreiben.
+    if FromStatus(TTextFiles.ReadQuietly(mFile), mSession) and
+      (SecondsBetween(ANow, mSession.Written) <= cMaxAgeSeconds) then
+    begin
+      Result := Result + [mSession];
+    end;
+  end;
+  Sort(Result);
+end;
+
+class function TMcpAssistantSessions.Rows(const ASessions: TArray<TMcpAssistantSession>):
+  TArray<TMcpAssistantRow>;
+var
+  mIndex: Integer;
+  mCall: TMcpCallSummary;
+  mRow: TMcpAssistantRow;
+begin
+  Result := nil;
+  for mIndex := 0 to High(ASessions) do
+  begin
+    for mCall in ASessions[mIndex].Statistics.Calls do
+    begin
+      mRow := Default(TMcpAssistantRow);
+      mRow.Session := mIndex;
+      mRow.Call := mCall;
+      Result := Result + [mRow];
+    end;
+  end;
+end;
+
+class function TMcpAssistantSessions.Signature(const ASessions: TArray<TMcpAssistantSession>): string;
+var
+  mSession: TMcpAssistantSession;
+begin
+  Result := '';
+  for mSession in ASessions do
+  begin
+    Result := Result + IntToStr(mSession.Pid) + '@' + TTextTimestamp.IsoOrEmpty(mSession.Written) + ';';
+  end;
+end;
+
+class function TMcpAssistantSessions.ConspicuousCount(const ARows: TArray<TMcpAssistantRow>): Integer;
+var
+  mRow: TMcpAssistantRow;
+begin
+  Result := 0;
+  for mRow in ARows do
+  begin
+    if mRow.Call.Conspicuous then
+    begin
+      Inc(Result);
+    end;
   end;
 end;
 

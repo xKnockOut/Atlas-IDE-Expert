@@ -2,7 +2,8 @@
 
 // Fenster „Atlas-Server“ (#1356): Kopf je nach Stand (kein Server, wartet,
 // älterer Server, Diagnose), Hinweis bei überschrittenem Budget, Zeilen der
-// Tabellen, Doppelklick auf Unit und Regel, Knöpfe.
+// Tabellen, Doppelklick auf Unit und Regel, Knöpfe; Reiter „KI-Assistenten“ (#2611) mit Zeilen je Sitzung,
+// auffälliger Fehlerquote und Hinweis ohne Assistenten.
 
 interface
 
@@ -26,6 +27,8 @@ type
     procedure TablesAndOverBudget;
     [Test]
     procedure DoubleClicksAndButtonsAreReported;
+    [Test]
+    procedure AssistantsTabShowsSessions;
   end;
 
 implementation
@@ -35,6 +38,8 @@ uses
   System.SysUtils,
   Vcl.Forms,
   Atlas.Plugin.Status.Server,
+  Atlas.Text.McpStatistics,
+  Atlas.Text.McpStatistics.TestSupport,
   Atlas.UI.Status.ServerFrame;
 
 function Sample: TAtlasServerSnapshot;
@@ -207,6 +212,50 @@ begin
   end;
   mOpenedUnit := '';
   mOpenedRule := '';
+end;
+
+/// <summary>Sitzung des Clients „Assistent A“ (pid 4711) mit check_code (6 Aufrufe, 2 Fehler) und find_symbol.
+/// </summary>
+function AssistantSession: TMcpAssistantSession;
+begin
+  Result := Default(TMcpAssistantSession);
+  Result.Pid := 4711;
+  Result.HasStatistics := True;
+  Result.Statistics.Client := 'Assistent A';
+  Result.Statistics.Calls := TArray<TMcpCallSummary>.Create(TMcpStatisticsTestSupport.Called('check_code', 6, 2),
+    TMcpStatisticsTestSupport.Called('find_symbol', 10, 0));
+end;
+
+procedure TAtlasServerFrameTests.AssistantsTabShowsSessions;
+var
+  mHost: TForm;
+  mFrame: TAtlasServerFrame;
+  mCells: TArray<string>;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := TAtlasServerFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.SetAssistants(nil);
+    Assert.IsTrue(string(mFrame.Assistants.Summary.Caption).StartsWith('Kein KI-Assistent'),
+      mFrame.Assistants.Summary.Caption);
+    Assert.AreEqual(0, mFrame.Assistants.List.Items.Count);
+    mFrame.SetAssistants(TArray<TMcpAssistantSession>.Create(AssistantSession));
+    Assert.AreEqual(2, mFrame.Assistants.List.Items.Count);
+    mCells := mFrame.Assistants.Cells(0);
+    Assert.AreEqual('Assistent A (4711)', mCells[0]);
+    Assert.AreEqual('check_code', mCells[1]);
+    Assert.AreEqual('2 (33 %)', mCells[1 + Ord(TMcpCallColumn.Errors)]);
+    Assert.IsTrue(mFrame.Assistants.Conspicuous(0), '33 % bei 6 Aufrufen');
+    Assert.IsFalse(mFrame.Assistants.Conspicuous(1));
+    Assert.IsTrue(string(mFrame.Assistants.Summary.Caption).Contains('(Prozess 4711)'),
+      mFrame.Assistants.Summary.Caption);
+    Assert.IsTrue(string(mFrame.Assistants.Summary.Caption).Contains('rot): 1'), mFrame.Assistants.Summary.Caption);
+    Assert.AreEqual(2, mFrame.Pages.PageCount, 'Reiter Server und KI-Assistenten');
+  finally
+    mHost.Free;
+  end;
+  mCells := nil;
 end;
 
 initialization

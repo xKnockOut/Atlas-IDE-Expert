@@ -1,0 +1,2 @@
+### Behoben
+- Interne Compilerfehler (F2084, etwa „S8016“ oder „GPFC0000029“, danach E_UNEXPECTED) beim Bauen in der 32-Bit-IDE: Für Stacktraces im Hängerprotokoll las Atlas die Map-Dateien seiner Packages als ganzen Text in den Speicher der IDE, bereinigte und zerlegte sie, kurzzeitig ein Vielfaches ihrer Größe (bei 60 MB mehrere hundert MB). Der zerstückelte Adressraum fehlte danach dem Compiler. Atlas liest Map-Dateien jetzt zeilenweise und behält nur Routinen und Zeilen.

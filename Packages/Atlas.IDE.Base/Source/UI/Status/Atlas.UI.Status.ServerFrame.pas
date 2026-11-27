@@ -12,6 +12,11 @@
 //   Mittel, Maximum, Fehler). Doppelklick auf eine Unit meldet OnOpenUnit,
 //   auf eine Regel OnOpenRule.
 //   [Aktualisieren] [Index neu aufbauen] [Diagnosepaket erstellen …]  Stand …
+// Zwei Reiter: „Server“ (alles oben) und „KI-Assistenten“ (#2611, TAtlasServerAssistants): je laufendem
+// MCP-Prozess eine Zeile mit Client, Beginn und Summen, darunter Werkzeuge, Ressourcen und Prompts aller
+// Sitzungen mit Aufrufen, Fehlern, Dauer, Antwortgröße und letztem fehlgeschlagenem Aufruf; auffällige
+// Fehlerquoten in Fehlerfarbe. Die Sitzungen liest die IDE-Schicht aus den Statusdateien (TMcpAssistantSessions);
+// die Knopfleiste gilt für beide Reiter.
 // Die Zahlen kommen als TAtlasServerSnapshot (Core); abgefragt wird nicht
 // hier, sondern in der IDE-Schicht. Speicherbalken (TAtlasServerMemoryChart),
 // Tabellen (TAtlasServerTables) und Knopfleiste (TAtlasServerButtons) sind
@@ -33,6 +38,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Atlas.Plugin.Style.Palette,
+  Atlas.Text.McpStatistics,
   Atlas.Plugin.Status.Server;
 
 type
@@ -94,6 +100,37 @@ type
     property OnOpenRule: TProc<string> read FOnOpenRule write FOnOpenRule;
   end;
 
+  /// <summary>Reiter „KI-Assistenten“ (#2611): oben je Sitzung eine Zeile, darunter die Tabelle aller Sitzungen,
+  /// unten der letzte fehlgeschlagene Aufruf der gewählten Zeile ganz. Auffällige Zeilen in Fehlerfarbe.</summary>
+  TAtlasServerAssistants = class(TPanel)
+  private
+    FSummary: TLabel;
+    FList: TListView;
+    FDetail: TLabel;
+    FSessions: TArray<TMcpAssistantSession>;
+    FRows: TArray<TMcpAssistantRow>;
+    FColors: TAtlasColors;
+    procedure ListData(Sender: TObject; Item: TListItem);
+    procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
+      var DefaultDraw: Boolean);
+    procedure ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+    procedure UpdateDetail;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    /// <summary>Sitzungen zeigen; AWithWindow False: Die Anzahl der virtuellen Liste setzt der nächste Aufruf mit
+    /// Fenster.</summary>
+    procedure Display(const ASessions: TArray<TMcpAssistantSession>; AWithWindow: Boolean);
+    procedure SetColors(const AColors: TAtlasColors);
+    /// <summary>Zellen der Zeile AIndex (für Tests); nil bei ungültigem Index.</summary>
+    function Cells(AIndex: Integer): TArray<string>;
+    /// <summary>Zeile AIndex ist auffällig (Fehlerfarbe).</summary>
+    function Conspicuous(AIndex: Integer): Boolean;
+    property Summary: TLabel read FSummary;
+    property List: TListView read FList;
+    property Detail: TLabel read FDetail;
+  end;
+
   /// <summary>[Aktualisieren] [Index neu aufbauen] [Diagnosepaket erstellen …]  Hinweis</summary>
   TAtlasServerButtons = class(TFlowPanel)
   private
@@ -120,6 +157,11 @@ type
 
   TAtlasServerFrame = class(TFrame)
   private
+    FPages: TPageControl;
+    FServerTab: TTabSheet;
+    FAssistantsTab: TTabSheet;
+    FAssistants: TAtlasServerAssistants;
+    FAssistantSessions: TArray<TMcpAssistantSession>;
     FHeader: TLabel;
     FQueue: TLabel;
     FCheckRun: TLabel;
@@ -137,10 +179,15 @@ type
     function PlaceLine(ALabel: TLabel; APrevious: TControl): TLabel;
     procedure UpdateTexts;
     procedure UpdateServerTexts;
+    /// <summary>Reiter in FPages, zunächst verborgen (ohne Fenster scheitert ein sichtbarer Reiter).</summary>
+    function NewTab(const ACaption: string): TTabSheet;
   protected
     procedure CreateWnd; override;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    /// <summary>Sitzungen der laufenden KI-Assistenten für den Reiter „KI-Assistenten“ zeigen.</summary>
+    procedure SetAssistants(const ASessions: TArray<TMcpAssistantSession>);
     /// <summary>Stand zeigen. ARunning False: Server läuft nicht (Snapshot leer); ARestarts aus der IDE-Schicht.
     /// </summary>
     procedure SetSnapshot(const ASnapshot: TAtlasServerSnapshot; ARunning: Boolean; ARestarts: Integer);
@@ -154,6 +201,9 @@ type
     property OverBudget: TLabel read FOverBudget;
     property Tables: TAtlasServerTables read FTables;
     property Buttons: TAtlasServerButtons read FButtons;
+    property Pages: TPageControl read FPages;
+    property AssistantsTab: TTabSheet read FAssistantsTab;
+    property Assistants: TAtlasServerAssistants read FAssistants;
   end;
 
 implementation
@@ -162,6 +212,7 @@ uses
   Atlas.Plugin.Style.Color,
   Winapi.Windows,
   System.Math,
+  Atlas.Text.LogMarks,
   Atlas.UI.Status.Strings,
   Atlas.Vcl.Controls.WrapLabel,
   Atlas.Vcl.Theme.Scaling,
@@ -189,6 +240,13 @@ const
   cTableCount = 3;
   cTableMinHeight = 60;
   cTableGap = 6;
+  /// <summary>Reiter „KI-Assistenten“ bei 96 dpi: Breite der Spalten KI-Assistent und Name, der Zahlen und des
+  /// letzten fehlgeschlagenen Aufrufs.</summary>
+  cAssistantWidth = 180;
+  cAssistantNumberWidth = 80;
+  cAssistantFailedWidth = 300;
+  /// <summary>Spalten vor den Zellen aus TMcpCallSummary.Cells: KI-Assistent.</summary>
+  cAssistantColumns = 1;
 
 {$R *.dfm}
 
@@ -535,6 +593,234 @@ begin
   FOnOpenRule(FSnapshot.SlowRules[AIndex].Id);
 end;
 
+{ TAtlasServerAssistants }
+
+/// <summary>Trennzeichen für Nachkommastellen in der Sprache der IDE.</summary>
+function AssistantDecimal: Char;
+begin
+  Result := TAtlasStatusStrings.Text(TAtlasStatusTextId.AssistantsDecimal)[1];
+end;
+
+/// <summary>Client der Sitzung AIndex mit pid, z. B. „Assistent A (4711)“.</summary>
+function AssistantCell(const ASessions: TArray<TMcpAssistantSession>; AIndex: Integer): string;
+var
+  mSession: TMcpAssistantSession;
+begin
+  mSession := Default(TMcpAssistantSession);
+  if (AIndex >= 0) and (AIndex <= High(ASessions)) then
+  begin
+    mSession := ASessions[AIndex];
+  end;
+  Result := TAtlasStatusStrings.Fmt(TAtlasStatusTextId.AssistantsCell, [
+    mSession.ClientOr(TAtlasStatusStrings.Text(TAtlasStatusTextId.AssistantsUnknown)), mSession.Pid]);
+end;
+
+/// <summary>Zeile einer Sitzung über der Tabelle.</summary>
+function SessionLine(const ASession: TMcpAssistantSession): string;
+begin
+  if not ASession.HasStatistics then
+  begin
+    Exit(TAtlasStatusStrings.Fmt(TAtlasStatusTextId.AssistantsNotCounting, [ASession.Pid]));
+  end;
+  Result := TAtlasStatusStrings.Fmt(TAtlasStatusTextId.AssistantsSession, [
+    ASession.ClientOr(TAtlasStatusStrings.Text(TAtlasStatusTextId.AssistantsUnknown)), ASession.Pid,
+    FormatDateTime('hh":"nn', ASession.Statistics.Started), ASession.Statistics.TotalCalls,
+    ASession.Statistics.TotalErrors]);
+  if ASession.Statistics.Project <> '' then
+  begin
+    Result := Result + TAtlasStatusStrings.Fmt(TAtlasStatusTextId.AssistantsProject, [
+      TLogMarks.Plain(ASession.Statistics.Project)]);
+  end;
+end;
+
+/// <summary>Zeilen über der Tabelle: je Sitzung eine, dazu die Zahl auffälliger Einträge; ohne Sitzung ein
+/// Hinweis.</summary>
+function SummaryText(const ASessions: TArray<TMcpAssistantSession>; const ARows: TArray<TMcpAssistantRow>): string;
+var
+  mSession: TMcpAssistantSession;
+  mLines: TArray<string>;
+  mConspicuous: Integer;
+begin
+  if ASessions = nil then
+  begin
+    Exit(TAtlasStatusStrings.Text(TAtlasStatusTextId.AssistantsNone));
+  end;
+  mLines := nil;
+  for mSession in ASessions do
+  begin
+    mLines := mLines + [SessionLine(mSession)];
+  end;
+  mConspicuous := TMcpAssistantSessions.ConspicuousCount(ARows);
+  if mConspicuous > 0 then
+  begin
+    mLines := mLines + [TAtlasStatusStrings.Fmt(TAtlasStatusTextId.AssistantsConspicuous, [
+      TMcpCallSummary.cConspicuousPercent, mConspicuous])];
+  end;
+  Result := string.Join(sLineBreak, mLines);
+end;
+
+constructor TAtlasServerAssistants.Create(AOwner: TComponent);
+var
+  mColumn: TListColumn;
+  mIndex: Integer;
+  mTitles: TArray<string>;
+begin
+  inherited Create(AOwner);
+  BevelOuter := bvNone;
+  ShowCaption := False;
+  ParentBackground := True;
+  FColors := TAtlasColors.Light;
+  FSummary := TAtlasWrapLabel.Create(Self);
+  FSummary.Parent := Self;
+  FSummary.Align := alTop;
+  FSummary.AlignWithMargins := True;
+  FSummary.ShowAccelChar := False;
+  FDetail := TAtlasWrapLabel.Create(Self);
+  FDetail.Parent := Self;
+  FDetail.Align := alBottom;
+  FDetail.AlignWithMargins := True;
+  FDetail.ShowAccelChar := False;
+  FList := TListView.Create(Self);
+  FList.Parent := Self;
+  FList.Align := alClient;
+  FList.AlignWithMargins := True;
+  FList.ViewStyle := vsReport;
+  FList.OwnerData := True;
+  FList.RowSelect := True;
+  FList.HideSelection := False;
+  FList.ReadOnly := True;
+  FList.OnData := ListData;
+  FList.OnCustomDrawItem := ListCustomDrawItem;
+  FList.OnSelectItem := ListSelectItem;
+  mTitles := TArray<string>.Create(TAtlasStatusStrings.Text(TAtlasStatusTextId.AssistantsColumnAssistant),
+    TAtlasStatusStrings.Text(TAtlasStatusTextId.AssistantsColumnName),
+    TAtlasStatusStrings.Text(TAtlasStatusTextId.AssistantsColumnCalls),
+    TAtlasStatusStrings.Text(TAtlasStatusTextId.AssistantsColumnErrors),
+    TAtlasStatusStrings.Text(TAtlasStatusTextId.AssistantsColumnMedian),
+    TAtlasStatusStrings.Text(TAtlasStatusTextId.AssistantsColumnLongest),
+    TAtlasStatusStrings.Text(TAtlasStatusTextId.AssistantsColumnResponse),
+    TAtlasStatusStrings.Text(TAtlasStatusTextId.AssistantsColumnLargest),
+    TAtlasStatusStrings.Text(TAtlasStatusTextId.AssistantsColumnLastFailed));
+  for mIndex := 0 to High(mTitles) do
+  begin
+    mColumn := FList.Columns.Add;
+    mColumn.Caption := mTitles[mIndex];
+    mColumn.Width := FList.ScaleValue(cAssistantNumberWidth);
+    // Zahlen rechtsbündig: Aufrufe bis Größte.
+    if (mIndex > Ord(TMcpCallColumn.Name) + cAssistantColumns) and
+      (mIndex <= Ord(TMcpCallColumn.MaxBytes) + cAssistantColumns) then
+    begin
+      mColumn.Alignment := taRightJustify;
+    end;
+  end;
+  FList.Columns[0].Width := FList.ScaleValue(cAssistantWidth);
+  FList.Columns[Ord(TMcpCallColumn.Name) + cAssistantColumns].Width := FList.ScaleValue(cAssistantWidth);
+  FList.Columns[High(mTitles)].Width := FList.ScaleValue(cAssistantFailedWidth);
+  FSummary.Caption := TAtlasStatusStrings.Text(TAtlasStatusTextId.AssistantsNone);
+  FDetail.Caption := TAtlasStatusStrings.Text(TAtlasStatusTextId.AssistantsSelect);
+end;
+
+destructor TAtlasServerAssistants.Destroy;
+begin
+  FSessions := nil;
+  FRows := nil;
+  inherited;
+end;
+
+function TAtlasServerAssistants.Cells(AIndex: Integer): TArray<string>;
+begin
+  Result := nil;
+  if (AIndex < 0) or (AIndex > High(FRows)) then
+  begin
+    Exit;
+  end;
+  Result := TArray<string>.Create(AssistantCell(FSessions, FRows[AIndex].Session)) +
+    FRows[AIndex].Call.Cells(AssistantDecimal, TAtlasStatusStrings.Text(TAtlasStatusTextId.AssistantsNoValue));
+end;
+
+function TAtlasServerAssistants.Conspicuous(AIndex: Integer): Boolean;
+begin
+  Result := (AIndex >= 0) and (AIndex <= High(FRows)) and FRows[AIndex].Call.Conspicuous;
+end;
+
+procedure TAtlasServerAssistants.ListData(Sender: TObject; Item: TListItem);
+var
+  mCells: TArray<string>;
+  mIndex: Integer;
+begin
+  mCells := Cells(Item.Index);
+  if mCells = nil then
+  begin
+    Exit;
+  end;
+  Item.Caption := mCells[0];
+  for mIndex := 1 to High(mCells) do
+  begin
+    Item.SubItems.Add(mCells[mIndex]);
+  end;
+end;
+
+procedure TAtlasServerAssistants.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
+  State: TCustomDrawState; var DefaultDraw: Boolean);
+begin
+  DefaultDraw := True;
+  if Conspicuous(Item.Index) then
+  begin
+    Sender.Canvas.Font.Color := ToColor(FColors.Error);
+  end;
+end;
+
+procedure TAtlasServerAssistants.ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+begin
+  UpdateDetail;
+end;
+
+procedure TAtlasServerAssistants.UpdateDetail;
+var
+  mIndex: Integer;
+  mCall: TMcpCallSummary;
+begin
+  mIndex := -1;
+  if FList.HandleAllocated and (FList.Selected <> nil) then
+  begin
+    mIndex := FList.Selected.Index;
+  end;
+  if (mIndex < 0) or (mIndex > High(FRows)) then
+  begin
+    FDetail.Caption := TAtlasStatusStrings.Text(TAtlasStatusTextId.AssistantsSelect);
+    Exit;
+  end;
+  mCall := FRows[mIndex].Call;
+  if mCall.LastFailed.At = 0 then
+  begin
+    FDetail.Caption := TAtlasStatusStrings.Fmt(TAtlasStatusTextId.AssistantsNoFailure, [mCall.Name]);
+  end
+  else
+  begin
+    FDetail.Caption := TAtlasStatusStrings.Fmt(TAtlasStatusTextId.AssistantsLastFailed, [mCall.Name,
+      mCall.LastFailedText]);
+  end;
+end;
+
+procedure TAtlasServerAssistants.Display(const ASessions: TArray<TMcpAssistantSession>; AWithWindow: Boolean);
+begin
+  FSessions := Copy(ASessions);
+  FRows := TMcpAssistantSessions.Rows(FSessions);
+  FSummary.Caption := SummaryText(FSessions, FRows);
+  if AWithWindow then
+  begin
+    FList.Items.Count := Length(FRows);
+  end;
+  FList.Invalidate;
+  UpdateDetail;
+end;
+
+procedure TAtlasServerAssistants.SetColors(const AColors: TAtlasColors);
+begin
+  FColors := AColors;
+  FList.Invalidate;
+end;
+
 { TAtlasServerButtons }
 
 constructor TAtlasServerButtons.Create(AOwner: TComponent);
@@ -602,13 +888,24 @@ begin
   Name := '';
   FColors := TAtlasColors.Light;
   FSnapshot := Default(TAtlasServerSnapshot);
+  FButtons := TAtlasServerButtons.Create(Self);
+  FButtons.Parent := Self;
+  FButtons.Align := alBottom;
+  FPages := TPageControl.Create(Self);
+  FPages.Parent := Self;
+  FPages.Align := alClient;
+  FServerTab := NewTab(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerTabServer));
+  FAssistantsTab := NewTab(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerTabAssistants));
+  FAssistants := TAtlasServerAssistants.Create(Self);
+  FAssistants.Parent := FAssistantsTab;
+  FAssistants.Align := alClient;
   FHeader := NewLine(nil);
   FHeader.EllipsisPosition := epEndEllipsis;
   FHeader.Font.Style := [fsBold];
   FQueue := PlaceLine(TAtlasWrapLabel.Create(Self), FHeader);
   FCheckRun := NewLine(FQueue);
   FMemory := TAtlasServerMemoryChart.Create(Self);
-  FMemory.Parent := Self;
+  FMemory.Parent := FServerTab;
   FMemory.Align := alTop;
   FMemory.AlignWithMargins := True;
   FMemory.Top := FCheckRun.Top + FCheckRun.Height + 1;
@@ -616,19 +913,44 @@ begin
   FOverBudget.Font.Style := [fsBold];
   FOverBudget.Caption := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowOverBudget);
   FOverBudget.Visible := False;
-  FButtons := TAtlasServerButtons.Create(Self);
-  FButtons.Parent := Self;
-  FButtons.Align := alBottom;
   FTables := TAtlasServerTables.Create(Self);
-  FTables.Parent := Self;
+  FTables.Parent := FServerTab;
   FTables.Align := alClient;
   UpdateTexts;
+end;
+
+destructor TAtlasServerFrame.Destroy;
+begin
+  FAssistantSessions := nil;
+  inherited;
+end;
+
+function TAtlasServerFrame.NewTab(const ACaption: string): TTabSheet;
+begin
+  Result := TTabSheet.Create(Self);
+  Result.Caption := ACaption;
+  // Ohne Fenster scheitert ein sichtbarer Reiter; CreateWnd zeigt ihn.
+  Result.TabVisible := False;
+  Result.PageControl := FPages;
 end;
 
 procedure TAtlasServerFrame.CreateWnd;
 begin
   inherited;
+  if (FServerTab <> nil) and not FServerTab.TabVisible then
+  begin
+    FServerTab.TabVisible := True;
+    FAssistantsTab.TabVisible := True;
+    FPages.ActivePage := FServerTab;
+  end;
   UpdateTexts;
+end;
+
+procedure TAtlasServerFrame.SetAssistants(const ASessions: TArray<TMcpAssistantSession>);
+begin
+  FAssistantSessions := Copy(ASessions);
+  // Die Anzahl der virtuellen Liste braucht ein Fenster; ohne Eltern setzt UpdateTexts (CreateWnd) sie nach.
+  FAssistants.Display(FAssistantSessions, HandleAllocated or (Parent <> nil));
 end;
 
 function TAtlasServerFrame.NewLine(APrevious: TControl): TLabel;
@@ -639,7 +961,7 @@ end;
 function TAtlasServerFrame.PlaceLine(ALabel: TLabel; APrevious: TControl): TLabel;
 begin
   Result := ALabel;
-  Result.Parent := Self;
+  Result.Parent := FServerTab;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
   Result.ShowAccelChar := False;
@@ -674,6 +996,7 @@ begin
   FOverBudget.Font.Color := ToColor(FColors.Warn);
   // Die Anzahl der virtuellen Listen braucht ein Fenster; ohne Eltern setzt CreateWnd sie nach.
   FTables.Display(FSnapshot, HandleAllocated or (Parent <> nil));
+  FAssistants.Display(FAssistantSessions, HandleAllocated or (Parent <> nil));
   FMemory.Display(FSnapshot, FRunning);
 end;
 
@@ -724,6 +1047,7 @@ begin
   FColors := AColors;
   FOverBudget.Font.Color := ToColor(FColors.Warn);
   FMemory.SetColors(AColors);
+  FAssistants.SetColors(AColors);
 end;
 
 procedure TAtlasServerFrame.ShowNote(const AText: string);
