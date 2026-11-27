@@ -44,7 +44,7 @@ type
     /// nach dem Laden.</summary>
     constructor Create(const ALoad: TProc; const ASetClient: TProc<string>; const ALogger: ILogger);
     destructor Destroy; override;
-    /// <summary>Startet das Laden; ein zweiter Aufruf tut nichts.</summary>
+    /// <summary>Startet das Laden; ein zweiter Aufruf tut nichts, auch nach Finish.</summary>
     procedure Start;
     /// <summary>Ist das Laden fertig (auch mit Fehler)? Wartet höchstens ATimeoutMs.</summary>
     function WaitLoaded(ATimeoutMs: Cardinal): Boolean;
@@ -55,7 +55,7 @@ type
     /// <summary>Name des Clients aus initialize: sofort an die Gruppe, wenn sie geladen ist, sonst nach dem
     /// Laden.</summary>
     procedure SetClient(const AClient: string);
-    /// <summary>Wartet, bis der Thread fertig ist (vor Stop und Free der Gruppe).</summary>
+    /// <summary>Wartet, bis der Thread fertig ist, und gibt ihn frei (vor Stop und Free der Gruppe).</summary>
     procedure Finish;
     /// <summary>Dauer des Ladens in Millisekunden; 0, solange es läuft.</summary>
     property Milliseconds: Int64 read FMilliseconds;
@@ -123,7 +123,6 @@ end;
 destructor TMcpLoading.Destroy;
 begin
   Finish;
-  FThread.Free;
   FLock.Free;
   FLoaded.Free;
   inherited;
@@ -133,7 +132,8 @@ procedure TMcpLoading.Start;
 var
   mSelf: TMcpLoading;
 begin
-  if FThread <> nil then
+  // Einmal: auch nach Finish (Thread schon freigegeben) nicht noch einmal laden.
+  if (FThread <> nil) or (FLoaded.WaitFor(0) = wrSignaled) then
   begin
     Exit;
   end;
@@ -226,9 +226,11 @@ end;
 
 procedure TMcpLoading.Finish;
 begin
+  // Warten und gleich freigeben: Danach hält nichts mehr die Gruppe, und Destroy hat nichts mehr zu tun.
   if FThread <> nil then
   begin
     FThread.WaitFor;
+    FreeAndNil(FThread);
   end;
 end;
 
