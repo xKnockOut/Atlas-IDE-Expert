@@ -1,9 +1,9 @@
-﻿unit Monitor.MainForm;
+﻿unit Monitor.Hosting.MainForm;
 
 // Hosted-Feature Monitor: Fenster mit dem Reiter „Prüfen“ (Läufe ohne IDE über mehrere
-// Ziele, Monitor.CheckPage), dem Reiter „Server“ (alle laufenden Atlas-Server aus ihren Statusdateien,
+// Ziele, Monitor.Hosting.CheckPage), dem Reiter „Server“ (alle laufenden Atlas-Server aus ihren Statusdateien,
 // Einzelheiten, Beenden mit Warnung bei laufendem Profil-Lauf, Protokoll öffnen), dem Reiter „KI-Assistenten“
-// (Aufrufstatistik der MCP-Prozesse, Monitor.AssistantsPage, #2611) und Symbol im Infobereich mit
+// (Aufrufstatistik der MCP-Prozesse, Monitor.Hosting.AssistantsPage, #2611) und Symbol im Infobereich mit
 // Zustandspunkt (ruht, arbeitet, hängt) und Kontextmenü. Die Liste kommt alle 2 s neu aus TServerStatusFile.List;
 // Regeln und Texte stehen in Atlas.Common.Monitor.*, Systemzugriffe in TMonitorSystem. Mit Symbol im Infobereich
 // schließt das Kreuz nur das Fenster (Knopf in der Taskleiste nur bei offenem oder minimiertem Fenster); „Beenden“
@@ -26,8 +26,8 @@ uses
   Atlas.Common.Diagnostics.StatusFile,
   Atlas.Common.Monitor.Servers,
   Atlas.Common.Monitor.Settings,
-  Monitor.AssistantsPage,
-  Monitor.CheckPage;
+  Monitor.Hosting.AssistantsPage,
+  Monitor.Hosting.CheckPage;
 
 type
   /// <summary>Was der Reiter „Server“ vom Fenster braucht: dessen Befehle Protokollordner und Cache leeren, Neulesen

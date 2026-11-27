@@ -1,4 +1,4 @@
-﻿unit Monitor.ReportPage;
+﻿unit Monitor.Hosting.ReportPage;
 
 // Hosted-Feature Monitor: Reiter „Bericht“ mit eingebettetem Browser (TEdgeBrowser, WebView2) für
 // die interaktiven HTML-Seiten von Architektur und Hotspots. Der Reiter erscheint erst mit der ersten Seite. Fehlt

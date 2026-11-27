@@ -1,4 +1,4 @@
-﻿unit Monitor.AssistantsPage;
+﻿unit Monitor.Hosting.AssistantsPage;
 
 // Reiter „KI-Assistenten“ (AI assistants) von AtlasMonitor (#2611): oben je laufendem MCP-Prozess eine Zeile mit
 // Client, Beginn und Summen, darunter die Tabelle der Werkzeuge, Ressourcen und Prompts aller Sitzungen (Aufrufe,
