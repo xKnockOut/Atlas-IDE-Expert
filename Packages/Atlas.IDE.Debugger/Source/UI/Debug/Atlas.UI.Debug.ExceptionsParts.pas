@@ -58,7 +58,12 @@ type
     FFilter: TEdit;
     /// <summary>Klassen in der Auswahl, ohne „Alle Klassen“.</summary>
     FClasses: TArray<string>;
+  protected
+    /// <summary>Schmal: Die Klassenauswahl nimmt höchstens zwei Fünftel, der Filter den Rest.</summary>
+    procedure Resize; override;
   public
+    /// <summary>Auch ohne Fenster anpassen (Resize kommt erst mit WM_SIZE).</summary>
+    procedure SetBounds(ALeft, ATop, AWidth, AHeight: Integer); override;
     /// <summary>AFrame ist Besitzer und Elternfenster; seine Auflösung bestimmt die Größen. AChange meldet jede
     /// Änderung von Klasse oder Filter, AKeyDown die Tasten im Filter.</summary>
     constructor CreateIn(AFrame: TWinControl; AChange: TNotifyEvent; AKeyDown: TKeyEvent);
@@ -111,6 +116,36 @@ begin
   FFilter.TextHint := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsFilterHint);
   FFilter.OnChange := AChange;
   FFilter.OnKeyDown := AKeyDown;
+end;
+
+procedure TAtlasDebugExceptionsFilterBar.SetBounds(ALeft, ATop, AWidth, AHeight: Integer);
+begin
+  inherited SetBounds(ALeft, ATop, AWidth, AHeight);
+  // Ohne Parent kein ClientWidth (braucht ein Fenster).
+  if Parent <> nil then
+  begin
+    Resize;
+  end;
+end;
+
+procedure TAtlasDebugExceptionsFilterBar.Resize;
+var
+  mWidth: Integer;
+begin
+  inherited;
+  if FClassBox = nil then
+  begin
+    Exit;
+  end;
+  mWidth := MulDiv(cClassBoxWidth, CurrentPPI, 96);
+  if mWidth > ClientWidth * 2 div 5 then
+  begin
+    mWidth := ClientWidth * 2 div 5;
+  end;
+  if FClassBox.Width <> mWidth then
+  begin
+    FClassBox.Width := mWidth;
+  end;
 end;
 
 procedure TAtlasDebugExceptionsFilterBar.FillClasses(const AClasses: TArray<string>);

@@ -35,6 +35,7 @@ type
     procedure SetJustMyCode(AValue: Boolean);
     function RowFaded(AItem: TListItem): Boolean;
     procedure ListDblClick(Sender: TObject);
+    procedure ListResize(Sender: TObject);
     procedure ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
       var DefaultDraw: Boolean);
@@ -99,12 +100,32 @@ begin
   FList.OnKeyDown := ListKeyDown;
   FList.OnCustomDrawItem := ListCustomDrawItem;
   FList.OnCustomDrawSubItem := ListCustomDrawSubItem;
+  FList.OnResize := ListResize;
 
   FSplitter := TSplitter.Create(Self);
   FSplitter.Parent := AParent;
   FSplitter.Align := alBottom;
   FSplitter.Top := FList.Top - 1;
   FSplitter.MinSize := MulDiv(cSplitterMinSize, AParent.CurrentPPI, 96);
+end;
+
+procedure TAtlasDebugExceptionStack.ListResize(Sender: TObject);
+const
+  cMinFrame = 120;
+var
+  mFree: Integer;
+begin
+  // Routinen-Spalte füllt die Breite: schmal keine waagrechte Leiste.
+  if not FList.HandleAllocated or (FList.Columns.Count < 2) then
+  begin
+    Exit;
+  end;
+  mFree := FList.ClientWidth - FList.Columns[1].Width;
+  if mFree < MulDiv(cMinFrame, FList.CurrentPPI, 96) then
+  begin
+    mFree := MulDiv(cMinFrame, FList.CurrentPPI, 96);
+  end;
+  FList.Columns[0].Width := mFree;
 end;
 
 procedure TAtlasDebugExceptionStack.SetJustMyCode(AValue: Boolean);

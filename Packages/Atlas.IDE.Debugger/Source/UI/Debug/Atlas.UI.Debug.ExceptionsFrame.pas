@@ -95,6 +95,7 @@ type
     procedure FilterChange(Sender: TObject);
     procedure FilterKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure ListDblClick(Sender: TObject);
+    procedure ListResize(Sender: TObject);
     procedure ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
     procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
@@ -128,6 +129,7 @@ type
 implementation
 
 uses
+  System.Math,
   Winapi.Windows,
   Atlas.UI.Debug.Exceptions.Strings,
   Atlas.Vcl.Controls.Helpers,
@@ -303,6 +305,8 @@ begin
   FFilterBar := TAtlasDebugExceptionsFilterBar.CreateIn(Self, FilterChange, FilterKeyDown);
   FSummary := GrayLabel(Self, alBottom);
   FSummary.Caption := '';
+  // Schmales Fenster: mit „…“ kürzen statt abschneiden.
+  FSummary.EllipsisPosition := epEndEllipsis;
   // Aufrufstapel des gewählten Eintrags (#578) über der Summe.
   FStack := TAtlasDebugExceptionStack.CreateIn(Self);
   FMenu := TListMenu.CreateFor(Self);
@@ -361,6 +365,49 @@ begin
   mList.OnKeyDown := ListKeyDown;
   mList.OnCustomDrawItem := ListCustomDrawItem;
   mList.OnCustomDrawSubItem := ListCustomDrawSubItem;
+  mList.OnResize := ListResize;
+end;
+
+procedure TAtlasDebugExceptionsFrame.ListResize(Sender: TObject);
+const
+  // Breiten bei 96 dpi wie in BuildList; schmal zählen nur Klasse und Meldung.
+  cWide: array[0..5] of Integer = (70, 130, 260, 60, 170, 110);
+  cNarrowLimit = 520;
+  cMinMessage = 80;
+var
+  mIndex, mOthers, mMin: Integer;
+  mNarrow: Boolean;
+begin
+  // Schmales Dockfenster: Zeit, Anzahl, Stelle und Thread ausblenden (stehen im Stapel bzw. Tooltip), die Meldung
+  // füllt den Rest; breit die festen Breiten und die Meldung nimmt, was übrig ist.
+  if not FList.HandleAllocated or (FList.Columns.Count <> Length(cWide)) then
+  begin
+    Exit;
+  end;
+  mNarrow := FList.ClientWidth < MulDiv(cNarrowLimit, CurrentPPI, 96);
+  mOthers := 0;
+  for mIndex := 0 to High(cWide) do
+  begin
+    if mIndex = 2 then
+    begin
+      Continue;
+    end;
+    if mNarrow and (mIndex <> 1) then
+    begin
+      FList.Columns[mIndex].Width := 0;
+    end
+    else
+    begin
+      FList.Columns[mIndex].Width := MulDiv(cWide[mIndex], CurrentPPI, 96);
+    end;
+    Inc(mOthers, FList.Columns[mIndex].Width);
+  end;
+  mMin := MulDiv(cMinMessage, CurrentPPI, 96);
+  if not mNarrow then
+  begin
+    mMin := MulDiv(cWide[2], CurrentPPI, 96);
+  end;
+  FList.Columns[2].Width := Max(mMin, FList.ClientWidth - mOthers);
 end;
 
 procedure TAtlasDebugExceptionsFrame.CreateWnd;

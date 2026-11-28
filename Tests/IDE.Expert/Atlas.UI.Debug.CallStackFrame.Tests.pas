@@ -33,6 +33,8 @@ type
     procedure CompareMarksChangedFrame;
     [Test]
     procedure StatusClearsList;
+    [Test]
+    procedure NarrowWindowWrapsBar;
   end;
 
 implementation
@@ -41,6 +43,7 @@ uses
   System.SysUtils,
   Winapi.Windows,
   Vcl.Forms,
+  Vcl.Controls,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.CallStackView,
   Atlas.UI.Debug.CallStackFrame;
@@ -78,6 +81,30 @@ end;
 procedure TAtlasDebugCallStackFrameTests.TearDown;
 begin
   TAtlasStrings.Language := FLanguage;
+end;
+
+procedure TAtlasDebugCallStackFrameTests.NarrowWindowWrapsBar;
+var
+  mHost: TForm;
+  mFrame: TAtlasDebugCallStackFrame;
+begin
+  // Schmales Dockfenster: Leiste bricht um, nichts ragt über den Rand, Routinen-Spalte füllt die Breite.
+  mHost := TForm.CreateNew(nil);
+  try
+    mHost.ClientWidth := 900;
+    mFrame := NewFrame(mHost);
+    mFrame.Align := alClient;
+    Assert.AreEqual(1, mFrame.Bar.HeightFor(900) div mFrame.Bar.HeightFor(10000), 'breit: eine Zeile');
+    mHost.ClientWidth := 300;
+    Assert.IsTrue(mFrame.Bar.Height > mFrame.Bar.HeightFor(10000), 'schmal: mehrere Zeilen');
+    Assert.IsTrue(mFrame.Bar.CompareCheck.Left + mFrame.Bar.CompareCheck.Width <= mFrame.Bar.ClientWidth,
+      'Vergleich im Fenster');
+    Assert.IsTrue(mFrame.Bar.SearchEdit.Width <= mFrame.Bar.ClientWidth, 'Suche im Fenster');
+    Assert.IsTrue(mFrame.List.Columns[0].Width + mFrame.List.Columns[1].Width <= mFrame.List.ClientWidth + 1,
+      'keine waagrechte Leiste');
+  finally
+    mHost.Free;
+  end;
 end;
 
 procedure TAtlasDebugCallStackFrameTests.FillsRowsWithFoldedGroup;
