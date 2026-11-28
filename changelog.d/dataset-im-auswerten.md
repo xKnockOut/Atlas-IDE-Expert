@@ -5,3 +5,4 @@
 ### Behoben
 
 - „Ändern fehlgeschlagen“ in der Datenmengen-Tabelle nennt jetzt den Schritt und die Antwort des Debuggers statt eines leeren Grunds.
+- Wert ändern in der Datenmengen-Tabelle scheiterte, weil Delphi `AsString` (Eigenschaft mit Setter) nicht ändert; Atlas ruft dann den Setter auf.

@@ -83,6 +83,7 @@ type
     HelperPrefix: string;
     RowExpressionFails: Boolean;
     ModifyFails: Boolean;
+    ModifyRefusesProperty: Boolean;
     Pending: string;
     PendingField: Integer;
     Moves: Integer;
@@ -287,6 +288,18 @@ begin
     end;
     Exit;
   end;
+  // Setter als Aufruf (wie im Debugger, wenn Ändern eine Eigenschaft ablehnt): Argument roh merken.
+  if StartsText(cDs + '.Fields[1].SetAsString(', AExpression) then
+  begin
+    Result := (State = 'dsEdit') and not ModifyFails;
+    if Result then
+    begin
+      Pending := Copy(AExpression, Length(cDs + '.Fields[1].SetAsString(') + 1,
+        Length(AExpression) - Length(cDs + '.Fields[1].SetAsString(') - 1);
+      PendingField := 1;
+    end;
+    Exit;
+  end;
   Result := AnswerProperty(AExpression, AText) or AnswerMoveBy(AExpression, AEvaluation, AText) or
     AnswerCall(AExpression) or AnswerHelper(AExpression, AText) or AnswerField(AExpression, AText);
   if not Result then
@@ -301,6 +314,12 @@ var
 begin
   AResult := 'Feld nicht gefunden';
   Result := False;
+  if ModifyRefusesProperty then
+  begin
+    // Delphi: Eigenschaft mit Setter lässt sich nicht ändern, ohne Antwort.
+    AResult := '';
+    Exit;
+  end;
   if ModifyFails or (State <> 'dsEdit') then
   begin
     AResult := 'Wert nicht zulässig';
@@ -736,6 +755,11 @@ begin
     Assert.IsFalse(TAtlasDataSetTable.EditCell(cDs, mInfo, TAtlasDataSetCell.Create(mFake.RecNo - 1, 1, 'x'),
       ContextOf(mFake), ModifyOf(mFake), mMessage), 'anderer Datensatz');
     Assert.IsTrue(Pos('dsEdit', mMessage) > 0, mMessage);
+    // Delphi lehnt Ändern von AsString ab: Setter als Aufruf.
+    mFake.ModifyRefusesProperty := True;
+    Assert.IsTrue(TAtlasDataSetTable.EditCell(cDs, mInfo, TAtlasDataSetCell.Create(mFake.RecNo, 1, 'Zweit'),
+      ContextOf(mFake), ModifyOf(mFake), mMessage), mMessage);
+    Assert.AreEqual(TAtlasDataSetTable.Literal('Zweit'), mFake.Pending);
   finally
     mFake.Free;
   end;

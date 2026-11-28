@@ -672,6 +672,30 @@ begin
   end;
 end;
 
+/// <summary>Feldwert setzen: zuerst über Ändern des Debuggers; Delphi ändert aber keine Eigenschaft mit Setter
+/// (`AsString`) und meldet dann nichts. Darum danach den Setter als Aufruf (`SetAsString('…')`, der Debugger
+/// beachtet keine Sichtbarkeit).</summary>
+function SetField(const AInner: string; ACell: TAtlasDataSetCell; const AContext: TAtlasVisualizerContext;
+  const AModify: TAtlasDataSetModify; out AStep, AText: string): Boolean;
+var
+  mModifyText: string;
+begin
+  AStep := Format('%s.Fields[%d].AsString', [AInner, ACell.Field]);
+  Result := AModify(AStep, ACell.Value, mModifyText);
+  if Result or (Trim(mModifyText) <> '') then
+  begin
+    // Erfolg oder ein echter Grund (Wert abgelehnt): kein zweiter Versuch.
+    AText := mModifyText;
+    Exit;
+  end;
+  AStep := Format('%s.Fields[%d].SetAsString(%s)', [AInner, ACell.Field, TAtlasDataSetTable.Literal(ACell.Value)]);
+  Result := EvalText(AContext, AStep, TAtlasVisualizerEvaluation.Calls, AText);
+  if not Result and (Trim(AText) = '') then
+  begin
+    AText := mModifyText;
+  end;
+end;
+
 /// <summary>Ändern ohne Hilfs-Unit: Cursor hin, Edit, Modify, Post, zurück. AMessage nennt den gescheiterten Schritt
 /// (bisher blieb er bei einem Schritt ohne Antwort des Debuggers leer).</summary>
 function EditByCursor(const AExpression: string; const AInfo: TAtlasDataSetInfo; const ACell: TAtlasDataSetCell;
@@ -711,8 +735,7 @@ begin
   end;
   if Result then
   begin
-    mStep := Format('%s.Fields[%d].AsString', [mInner, ACell.Field]);
-    Result := AModify(mStep, ACell.Value, mText);
+    Result := SetField(mInner, ACell, AContext, AModify, mStep, mText);
   end;
   if Result then
   begin
@@ -742,8 +765,7 @@ begin
     Assigned(AModify) then
   begin
     // Programm bearbeitet schon diesen Datensatz: nur den Puffer setzen, Post/Cancel entscheidet das Programm.
-    mStep := Format('%s.Fields[%d].AsString', [Inner(AExpression), ACell.Field]);
-    Result := AModify(mStep, ACell.Value, mText);
+    Result := SetField(Inner(AExpression), ACell, AContext, AModify, mStep, mText);
     if not Result then
     begin
       AMessage := StepFailed(mStep, mText);
