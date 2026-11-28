@@ -31,7 +31,7 @@ uses
 
 const
   cTexts: array[TAtlasLanguage, TAtlasDataSetTableTextId] of string = (
-    ('Tabelle',
+    ('Tabelle …',
      'Datenmenge: %s',
      '%s · %s · Datensatz %d von %s',
      '%s · %s',
@@ -74,7 +74,7 @@ const
      'nie',
      'nachfragen',
      'immer'),
-    ('Table',
+    ('Table …',
      'Data set: %s',
      '%s · %s · record %d of %s',
      '%s · %s',

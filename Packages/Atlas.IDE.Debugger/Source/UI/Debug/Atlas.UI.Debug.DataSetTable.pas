@@ -77,7 +77,6 @@ type
     FReading: Boolean;
     FCanLoadMore: Boolean;
     FCanMove: Boolean;
-    FEmbedded: Boolean;
     procedure BuildTop;
     procedure BuildBottom;
     procedure ListData(Sender: TObject; AItem: TListItem);
@@ -94,11 +93,6 @@ type
     function RowText(AIndex: Integer): string;
   public
     constructor CreateTable(AOwner: TComponent);
-    /// <summary>Meldet OnClosed auch, wenn die Fläche, in der die Tabelle steckt, sie freigibt.</summary>
-    destructor Destroy; override;
-    /// <summary>Ohne Rahmen in AHost einsetzen (Ansicht „Tabelle“ im Fenster „Auswerten“); Esc schließt dann nicht.
-    /// </summary>
-    procedure EmbedIn(AHost: TWinControl);
     /// <summary>Ereignisse der Knöpfe setzen; Default(TAtlasDataSetFormEvents) löst alle.</summary>
     procedure Connect(const AEvents: TAtlasDataSetFormEvents);
     /// <summary>Titel und Kopfzeile.</summary>
@@ -326,7 +320,7 @@ begin
     AKey := 0;
     CopyText(SelectedText);
   end
-  else if (AKey = VK_ESCAPE) and (AShift = []) and not FEmbedded then
+  else if (AKey = VK_ESCAPE) and (AShift = []) then
   begin
     AKey := 0;
     Close;
@@ -397,28 +391,6 @@ procedure TAtlasDebugDataSetForm.FormClosed(Sender: TObject; var AAction: TClose
 begin
   AAction := caFree;
   TAtlasCalls.Call(FEvents.OnClosed);
-  // Einmal melden: Destroy folgt gleich und darf es nicht wiederholen.
-  FEvents.OnClosed := nil;
-end;
-
-destructor TAtlasDebugDataSetForm.Destroy;
-var
-  mClosed: TProc;
-begin
-  // Eingebettet gibt die Fläche (das Fenster „Auswerten“) die Tabelle frei, ohne sie zu schließen.
-  mClosed := FEvents.OnClosed;
-  FEvents := Default(TAtlasDataSetFormEvents);
-  TAtlasCalls.Call(mClosed);
-  inherited Destroy;
-end;
-
-procedure TAtlasDebugDataSetForm.EmbedIn(AHost: TWinControl);
-begin
-  FEmbedded := True;
-  BorderStyle := bsNone;
-  Parent := AHost;
-  Align := alClient;
-  Visible := True;
 end;
 
 procedure TAtlasDebugDataSetForm.Connect(const AEvents: TAtlasDataSetFormEvents);

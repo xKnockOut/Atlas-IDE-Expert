@@ -23,8 +23,6 @@ type
     procedure ReadingLeavesOnlyCancel;
     [Test]
     procedure UnavailableGraysOut;
-    [Test]
-    procedure EmbedsInHost;
   end;
 
 implementation
@@ -32,9 +30,6 @@ implementation
 uses
   System.SysUtils,
   System.Classes, // Inline TCollection.GetCount (H2443)
-  Vcl.Controls,
-  Vcl.Forms,
-  Vcl.ExtCtrls,
   Atlas.Core.Debug.DataSetTable,
   Atlas.UI.Debug.DataSetTable,
   Atlas.Tests.DialogSmoke;
@@ -61,24 +56,6 @@ begin
 end;
 
 { TAtlasDebugDataSetFormTests }
-
-procedure TAtlasDebugDataSetFormTests.EmbedsInHost;
-var
-  mHost: TPanel;
-  mForm: TAtlasDebugDataSetForm;
-begin
-  // Ansicht „Tabelle“ im Fenster „Auswerten“: rahmenlos, füllt die Fläche und gehört ihr (frei mit ihr).
-  mHost := TPanel.Create(nil);
-  try
-    mForm := TAtlasDebugDataSetForm.CreateTable(mHost);
-    mForm.EmbedIn(mHost);
-    Assert.IsTrue(mForm.Parent = mHost, 'Parent');
-    Assert.IsTrue(mForm.Align = alClient, 'Align');
-    Assert.IsTrue(mForm.BorderStyle = bsNone, 'BorderStyle');
-  finally
-    mHost.Free;
-  end;
-end;
 
 procedure TAtlasDebugDataSetFormTests.ShowsColumnsAndRows;
 var

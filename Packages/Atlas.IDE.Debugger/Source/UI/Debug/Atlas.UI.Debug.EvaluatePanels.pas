@@ -102,9 +102,6 @@ type
     FPinButton: TButton;
     FIdeDialogButton: TButton;
     FMemo: TMemo;
-    /// <summary>Fläche der Ansicht „Tabelle“ (#3024): Darin setzt die IDE-Schicht die Tabelle der Datenmenge ein.
-    /// </summary>
-    FTableHost: TPanel;
     FView: TAtlasEvalView;
     // Was die Ansicht zuletzt zeigt: Refresh kommt nach jeder Zeitscheibe der Auswertung.
     FShown: TAtlasEvalDetailInput;
@@ -132,8 +129,6 @@ type
     /// <summary>Knöpfe für den gewählten Knoten freigeben, „Festheften“ bzw. „Lösen“.</summary>
     procedure UpdateButtons;
     procedure SetView(AView: TAtlasEvalView);
-    /// <summary>Ansicht „Tabelle“ statt des Textes zeigen bzw. zurück zum Text.</summary>
-    procedure ShowTable(AVisible: Boolean);
     /// <summary>Wert von „Ausdruck.Text“ für die Zeilen-Ansicht des Knotens mit AKey.</summary>
     procedure SetLines(const AKey: string; AOk: Boolean; const AText: string);
     /// <summary>Neuer Halt oder neue Liste: „.Text“ für die Zeilen-Ansicht neu fragen.</summary>
@@ -152,7 +147,6 @@ type
     property PinButton: TButton read FPinButton;
     property IdeDialogButton: TButton read FIdeDialogButton;
     property Memo: TMemo read FMemo;
-    property TableHost: TPanel read FTableHost;
   end;
 
 implementation
@@ -405,20 +399,6 @@ begin
   FMemo.ScrollBars := ssBoth;
   FMemo.WordWrap := False;
   FMemo.Font.Name := 'Consolas';
-
-  FTableHost := TPanel.Create(Self);
-  FTableHost.Parent := Self;
-  FTableHost.Align := alClient;
-  FTableHost.BevelOuter := bvNone;
-  FTableHost.ShowCaption := False;
-  FTableHost.ParentBackground := True;
-  FTableHost.Visible := False;
-end;
-
-procedure TAtlasEvalDetailPanel.ShowTable(AVisible: Boolean);
-begin
-  FTableHost.Visible := AVisible;
-  FMemo.Visible := not AVisible;
 end;
 
 /// <summary>Leiste über der Ansicht: erst die Ansichten, dann Tabelle, Ändern, Festheften, IDE-Dialog. Fließend: Bei
@@ -474,8 +454,6 @@ begin
   mNode := FSource();
   if (mNode <> nil) and FTableButton.Enabled and Assigned(FHooks.Table) then
   begin
-    // Ansicht unten statt eigenem Fenster: Die IDE-Schicht setzt die Tabelle in TableHost ein.
-    ShowTable(True);
     FHooks.Table(mNode);
   end;
 end;
@@ -573,7 +551,6 @@ procedure TAtlasEvalDetailPanel.SetView(AView: TAtlasEvalView);
 begin
   FView := AView;
   FViewButtons[AView].Down := True;
-  ShowTable(False);
   // Neu fragen: „.Text“ kann sich seit dem letzten Mal geändert haben.
   FLinesKey := '';
   ShowSelected;

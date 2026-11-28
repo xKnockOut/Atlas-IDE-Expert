@@ -317,7 +317,7 @@ begin
       if (TAtlasIdeDebugEvaluate.FInstance <> nil) and (ANode <> nil) and (ANode.Expression <> '') then
       begin
         TAtlasIdeDebugDataSetTable.ShowFor(ANode.Expression, TAtlasIdeDebugEvaluate.FInstance.FPlace.FileName,
-          TAtlasIdeDebugEvaluate.FInstance.FPlace.Line + 1, TableChanged, AFrame.Detail.TableHost);
+          TAtlasIdeDebugEvaluate.FInstance.FPlace.Line + 1, TableChanged);
       end;
     end;
 end;
