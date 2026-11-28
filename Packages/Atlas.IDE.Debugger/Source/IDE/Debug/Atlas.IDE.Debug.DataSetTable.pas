@@ -1,7 +1,8 @@
 ﻿unit Atlas.IDE.Debug.DataSetTable;
 
-// Datenmenge als Tabelle (#3024) in der IDE: Knopf „Tabelle …“ im Fenster
-// „Auswerten“ öffnet TAtlasDebugDataSetForm für den gewählten Ausdruck.
+// Datenmenge als Tabelle (#3024) in der IDE: Knopf „Tabelle“ im Fenster
+// „Auswerten“ zeigt TAtlasDebugDataSetForm für den gewählten Ausdruck als Ansicht
+// im unteren Bereich (ohne Rahmen eingesetzt in TAtlasEvalDetailPanel.TableHost).
 // - Lesen: Probe und Seiten über den Kern (Atlas.Core.Debug.DataSetTable) mit
 //   den Auswertungen von TAtlasIdeDebugEvaluator; je Takt ein Schritt
 //   (eine Zeile bzw. ein Block der Hilfs-Unit), die IDE bleibt bedienbar.
@@ -22,6 +23,7 @@ interface
 
 uses
   System.SysUtils,
+  Vcl.Controls,
   Atlas.Core.Debug.DataSetTable,
   Atlas.IDE.Debug.StopView,
   Atlas.UI.Debug.DataSetTable;
@@ -69,13 +71,15 @@ type
     destructor Destroy; override;
     /// <summary>Tabelle für AExpression am Ausführungspunkt AFileName, ALine (1-basiert) öffnen bzw. neu zeigen.
     /// </summary>
-    procedure Show(const AExpression, AFileName: string; ALine: Integer);
+    procedure Show(const AExpression, AFileName: string; ALine: Integer; AHost: TWinControl);
     /// <summary>Fenster schließen (Einstellung aus, Entladen).</summary>
     procedure CloseForm;
     property Form: TAtlasDebugDataSetForm read FForm;
-    /// <summary>Die Tabelle für AExpression zeigen (legt sie beim ersten Mal an); AOnChanged wie bei Create.
-    /// </summary>
-    class procedure ShowFor(const AExpression, AFileName: string; ALine: Integer; const AOnChanged: TProc); static;
+    /// <summary>Die Tabelle für AExpression zeigen (legt sie beim ersten Mal an); AOnChanged wie bei Create. AHost:
+    /// Fläche der Ansicht „Tabelle“ im Fenster „Auswerten“, darin steckt die Tabelle ohne Rahmen; nil: eigenes
+    /// Fenster.</summary>
+    class procedure ShowFor(const AExpression, AFileName: string; ALine: Integer; const AOnChanged: TProc;
+      AHost: TWinControl); static;
     /// <summary>Fenster schließen und die Tabelle freigeben.</summary>
     class procedure Release; static;
   end;
@@ -215,14 +219,14 @@ begin
 end;
 
 class procedure TAtlasIdeDebugDataSetTable.ShowFor(const AExpression, AFileName: string; ALine: Integer;
-  const AOnChanged: TProc);
+  const AOnChanged: TProc; AHost: TWinControl);
 begin
   if FCurrent = nil then
   begin
     FCurrent := TAtlasIdeDebugDataSetTable.Create(AOnChanged);
   end;
   FCurrent.FOnChanged := AOnChanged;
-  FCurrent.Show(AExpression, AFileName, ALine);
+  FCurrent.Show(AExpression, AFileName, ALine, AHost);
 end;
 
 class procedure TAtlasIdeDebugDataSetTable.Release;
@@ -230,7 +234,7 @@ begin
   FreeAndNil(FCurrent);
 end;
 
-procedure TAtlasIdeDebugDataSetTable.Show(const AExpression, AFileName: string; ALine: Integer);
+procedure TAtlasIdeDebugDataSetTable.Show(const AExpression, AFileName: string; ALine: Integer; AHost: TWinControl);
 begin
   if Trim(AExpression) = '' then
   begin
@@ -241,9 +245,23 @@ begin
   FFileName := AFileName;
   FLine := ALine;
   FConsented := False;
+  // Neues Fenster „Auswerten“ (andere Fläche): die alte Tabelle lösen.
+  if (FForm <> nil) and (AHost <> nil) and (FForm.Parent <> AHost) then
+  begin
+    CloseForm;
+  end;
   if FForm = nil then
   begin
-    FForm := TAtlasDebugDataSetForm.CreateTable(Application);
+    if AHost <> nil then
+    begin
+      // Die Fläche besitzt die Tabelle: Schließt das Fenster „Auswerten“, gibt sie sie frei und meldet OnClosed.
+      FForm := TAtlasDebugDataSetForm.CreateTable(AHost);
+      FForm.EmbedIn(AHost);
+    end
+    else
+    begin
+      FForm := TAtlasDebugDataSetForm.CreateTable(Application);
+    end;
     WireForm;
   end;
   FForm.SetPageSize(PageSize);

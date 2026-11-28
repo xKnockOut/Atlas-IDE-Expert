@@ -699,7 +699,9 @@ begin
     mFake.ModifyFails := True;
     Assert.IsFalse(TAtlasDataSetTable.EditCell(cDs, Probe(mFake), TAtlasDataSetCell.Create(2, 0, 'x'),
       ContextOf(mFake), ModifyOf(mFake), mMessage));
-    Assert.AreEqual('Wert nicht zulässig', mMessage);
+    // Grund mit Schritt (StepFailed), nie leer.
+    Assert.IsTrue(EndsText('Wert nicht zulässig', mMessage), mMessage);
+    Assert.IsTrue(Length(mMessage) > Length('Wert nicht zulässig'), mMessage);
     Assert.AreEqual(1, mFake.Cancelled);
     Assert.AreEqual(0, mFake.Posted);
     Assert.AreEqual('dsBrowse', mFake.State);

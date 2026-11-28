@@ -653,33 +653,69 @@ begin
   end;
 end;
 
-/// <summary>Ändern ohne Hilfs-Unit: Cursor hin, Edit, Modify, Post, zurück.</summary>
+/// <summary>Grund für einen gescheiterten Schritt: der Ausdruck und, falls vorhanden, die Antwort des Debuggers. Der
+/// Kern hat keine Texte; die Oberfläche stellt „Ändern fehlgeschlagen:“ davor.</summary>
+function StepFailed(const AStep, AText: string): string;
+begin
+  Result := AStep;
+  if Trim(AText) <> '' then
+  begin
+    Result := AStep + ': ' + Trim(AText);
+  end;
+end;
+
+/// <summary>Ändern ohne Hilfs-Unit: Cursor hin, Edit, Modify, Post, zurück. AMessage nennt den gescheiterten Schritt
+/// (bisher blieb er bei einem Schritt ohne Antwort des Debuggers leer).</summary>
 function EditByCursor(const AExpression: string; const AInfo: TAtlasDataSetInfo; const ACell: TAtlasDataSetCell;
   const AContext: TAtlasVisualizerContext; const AModify: TAtlasDataSetModify; out AMessage: string): Boolean;
 var
   mMoved, mBack: Int64;
-  mText, mInner: string;
+  mText, mInner, mStep: string;
 begin
   AMessage := '';
   mInner := Inner(AExpression);
-  if not (AInfo.CanMoveCursor and Assigned(AModify)) then
+  if not Assigned(AModify) then
   begin
+    AMessage := 'Modify';
     Exit(False);
   end;
-  if not EvalInt(AContext, TAtlasDataSetTable.MoveByExpression(mInner, ACell.RecNo - AInfo.RecNo),
-    TAtlasVisualizerEvaluation.Calls, mMoved) then
+  if not AInfo.CanMoveCursor then
   begin
+    AMessage := StepFailed('CanMoveCursor = False', AInfo.State);
     Exit(False);
   end;
-  Result := (mMoved = ACell.RecNo - AInfo.RecNo) and
-    EvalText(AContext, mInner + '.Edit', TAtlasVisualizerEvaluation.Calls, mText) and
-    AModify(Format('%s.Fields[%d].AsString', [mInner, ACell.Field]), ACell.Value, AMessage) and
-    EvalText(AContext, mInner + '.Post', TAtlasVisualizerEvaluation.Calls, mText);
+  mStep := TAtlasDataSetTable.MoveByExpression(mInner, ACell.RecNo - AInfo.RecNo);
+  if not EvalText(AContext, mStep, TAtlasVisualizerEvaluation.Calls, mText) or
+    not TAtlasVisualizerFormat.ParseInteger(mText, mMoved) then
+  begin
+    AMessage := StepFailed(mStep, mText);
+    Exit(False);
+  end;
+  Result := mMoved = ACell.RecNo - AInfo.RecNo;
+  if not Result then
+  begin
+    AMessage := Format('%s = %d', [mStep, mMoved]);
+  end;
+  if Result then
+  begin
+    mStep := mInner + '.Edit';
+    Result := EvalText(AContext, mStep, TAtlasVisualizerEvaluation.Calls, mText);
+  end;
+  if Result then
+  begin
+    mStep := Format('%s.Fields[%d].AsString', [mInner, ACell.Field]);
+    Result := AModify(mStep, ACell.Value, mText);
+  end;
+  if Result then
+  begin
+    mStep := mInner + '.Post';
+    Result := EvalText(AContext, mStep, TAtlasVisualizerEvaluation.Calls, mText);
+  end;
   if not Result then
   begin
     if AMessage = '' then
     begin
-      AMessage := mText;
+      AMessage := StepFailed(mStep, mText);
     end;
     // Nichts halb Geändertes stehen lassen.
     EvalText(AContext, mInner + '.Cancel', TAtlasVisualizerEvaluation.Calls, mText);
@@ -691,20 +727,27 @@ class function TAtlasDataSetTable.EditCell(const AExpression: string; const AInf
   const ACell: TAtlasDataSetCell; const AContext: TAtlasVisualizerContext; const AModify: TAtlasDataSetModify;
   out AMessage: string): Boolean;
 var
-  mText: string;
+  mText, mStep: string;
 begin
   AMessage := '';
   if not AInfo.Valid or AInfo.Editing or (ACell.Field < 0) or (ACell.Field >= AInfo.FieldCount) then
   begin
+    // Nie ohne Grund: Die Oberfläche zeigt sonst nur „Ändern fehlgeschlagen:“.
+    AMessage := StepFailed(Format('%s.Fields[%d]', [AExpression, ACell.Field]), AInfo.State);
     Exit(False);
   end;
   if AInfo.HasHelper then
   begin
-    Result := EvalText(AContext, HelperSetValueExpression(AInfo.HelperPrefix, AExpression, ACell.RecNo, ACell.Field,
-      ACell.Value), TAtlasVisualizerEvaluation.Calls, mText);
+    mStep := HelperSetValueExpression(AInfo.HelperPrefix, AExpression, ACell.RecNo, ACell.Field, ACell.Value);
+    Result := EvalText(AContext, mStep, TAtlasVisualizerEvaluation.Calls, mText);
+    if not Result then
+    begin
+      AMessage := StepFailed(mStep, mText);
+      Exit;
+    end;
     // Die Hilfs-Unit meldet '' bei Erfolg, sonst den Grund.
     AMessage := Decode(mText);
-    Result := Result and (AMessage = '');
+    Result := AMessage = '';
     Exit;
   end;
   Result := EditByCursor(AExpression, AInfo, ACell, AContext, AModify, AMessage);
