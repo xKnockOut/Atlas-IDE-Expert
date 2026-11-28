@@ -84,6 +84,7 @@ type
     RowExpressionFails: Boolean;
     ModifyFails: Boolean;
     ModifyRefusesProperty: Boolean;
+    SetterGivesNoValue: Boolean;
     Pending: string;
     PendingField: Integer;
     Moves: Integer;
@@ -297,8 +298,15 @@ begin
       Pending := Copy(AExpression, Length(cDs + '.Fields[1].SetAsString(') + 1,
         Length(AExpression) - Length(cDs + '.Fields[1].SetAsString(') - 1);
       PendingField := 1;
+      // Wie der Debugger bei einer Prozedur: gelaufen, aber ohne Wert.
+      Result := not SetterGivesNoValue;
     end;
     Exit;
+  end;
+  if (AExpression = cDs + '.Fields[1].AsString') and (PendingField = 1) then
+  begin
+    AText := Pending;
+    Exit(True);
   end;
   Result := AnswerProperty(AExpression, AText) or AnswerMoveBy(AExpression, AEvaluation, AText) or
     AnswerCall(AExpression) or AnswerHelper(AExpression, AText) or AnswerField(AExpression, AText);
@@ -760,6 +768,10 @@ begin
     Assert.IsTrue(TAtlasDataSetTable.EditCell(cDs, mInfo, TAtlasDataSetCell.Create(mFake.RecNo, 1, 'Zweit'),
       ContextOf(mFake), ModifyOf(mFake), mMessage), mMessage);
     Assert.AreEqual(TAtlasDataSetTable.Literal('Zweit'), mFake.Pending);
+    // Setter ohne Wert: Erfolg, weil das Feld danach den neuen Wert hat.
+    mFake.SetterGivesNoValue := True;
+    Assert.IsTrue(TAtlasDataSetTable.EditCell(cDs, mInfo, TAtlasDataSetCell.Create(mFake.RecNo, 1, 'Dritt'),
+      ContextOf(mFake), ModifyOf(mFake), mMessage), mMessage);
   finally
     mFake.Free;
   end;

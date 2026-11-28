@@ -690,9 +690,16 @@ begin
   end;
   AStep := Format('%s.Fields[%d].SetAsString(%s)', [AInner, ACell.Field, TAtlasDataSetTable.Literal(ACell.Value)]);
   Result := EvalText(AContext, AStep, TAtlasVisualizerEvaluation.Calls, AText);
-  if not Result and (Trim(AText) = '') then
+  if not Result then
   begin
-    AText := mModifyText;
+    // Prozeduraufruf: Der Debugger liefert oft keinen Wert, obwohl der Setter lief. Maßgeblich ist der Feldwert.
+    Result := EvalText(AContext, Format('%s.Fields[%d].AsString', [AInner, ACell.Field]),
+      TAtlasVisualizerEvaluation.Calls, mModifyText) and (TAtlasDataSetTable.Decode(mModifyText) = ACell.Value);
+    if not Result and (Trim(AText) = '') then
+    begin
+      // Danach noch der alte Wert: so nennen, damit klar ist, dass der Aufruf nichts bewirkt hat.
+      AText := 'AsString = ' + TAtlasDataSetTable.Literal(TAtlasDataSetTable.Decode(mModifyText));
+    end;
   end;
 end;
 
