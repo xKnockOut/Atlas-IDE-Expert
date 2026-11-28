@@ -48,8 +48,16 @@ type
     procedure CopyTextClick(Sender: TObject);
     procedure CopyMarkdownClick(Sender: TObject);
     function MenuItem(ACaption: TAtlasCallStackTextId; AClick: TNotifyEvent): TMenuItem;
+  protected
+    /// <summary>Fließend anordnen: Was nicht mehr in die Zeile passt, rückt in die nächste; die Leiste wächst mit
+    /// (schmales Dockfenster).</summary>
+    procedure Resize; override;
   public
     constructor Create(AOwner: TComponent); override;
+    /// <summary>Auch ohne Fenster neu anordnen (Resize kommt erst mit WM_SIZE).</summary>
+    procedure SetBounds(ALeft, ATop, AWidth, AHeight: Integer); override;
+    /// <summary>Höhe für AWidth: Zahl der Zeilen der fließenden Anordnung mal Zeilenhöhe.</summary>
+    function HeightFor(AWidth: Integer): Integer;
     /// <summary>Suchtext ohne Leerzeichen am Rand.</summary>
     function Query: string;
     function Comparing: Boolean;
@@ -81,6 +89,7 @@ type
     function RowIndex(AItem: TListItem): Integer;
     procedure BarChange(Sender: TObject);
     procedure ListDblClick(Sender: TObject);
+    procedure ListResize(Sender: TObject);
     procedure ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
       var DefaultDraw: Boolean);
@@ -134,6 +143,7 @@ implementation
 
 uses
   System.Types,
+  System.Math,
   Winapi.Windows,
   Vcl.Clipbrd,
   Atlas.Vcl.Theme.Service;
@@ -152,6 +162,8 @@ const
   cPreviousWidth = 300;
   cPreviousColumn = 280;
   cBasePpi = 96;
+  cFooterHeight = 17;
+  cMinFrameColumn = 120;
   cChangedColor = TColor($0050A0E0);
   cHitColor = TColor($00D08020);
 
@@ -307,6 +319,77 @@ begin
   Result.OnClick := AClick;
 end;
 
+/// <summary>Fließende Anordnung von AControls in AWidth: setzt Left/Top (wenn APlace) und liefert die Zeilen.
+/// Die Suche wird nie breiter als die Zeile.</summary>
+function FlowControls(const AControls: array of TControl; AWidth, AGap, ARowHeight, ATop: Integer;
+  APlace: Boolean): Integer;
+var
+  mControl: TControl;
+  mLeft, mWidth: Integer;
+begin
+  Result := 1;
+  mLeft := AGap;
+  for mControl in AControls do
+  begin
+    mWidth := mControl.Width;
+    if (mLeft > AGap) and (mLeft + mWidth + AGap > AWidth) then
+    begin
+      Inc(Result);
+      mLeft := AGap;
+    end;
+    if APlace then
+    begin
+      mControl.SetBounds(mLeft, ATop + (Result - 1) * ARowHeight, mWidth, mControl.Height);
+    end;
+    Inc(mLeft, mWidth + AGap);
+  end;
+end;
+
+function TAtlasCallStackBar.HeightFor(AWidth: Integer): Integer;
+begin
+  Result := FlowControls([FSearch, FCompare, FCopy], AWidth, MulDiv(cGap, CurrentPPI, cBasePpi),
+    MulDiv(cBarHeight, CurrentPPI, cBasePpi), 0, False) * MulDiv(cBarHeight, CurrentPPI, cBasePpi);
+end;
+
+procedure TAtlasCallStackBar.SetBounds(ALeft, ATop, AWidth, AHeight: Integer);
+begin
+  if (FSearch <> nil) and (AWidth > 0) and (Parent <> nil) then
+  begin
+    // Höhe gleich aus der Breite: Die Ausrichtung übernimmt sie in einem Zug, ohne zweiten Durchlauf.
+    AHeight := HeightFor(AWidth);
+  end;
+  inherited SetBounds(ALeft, ATop, AWidth, AHeight);
+  // Ohne Parent kein ClientWidth (braucht ein Fenster).
+  if Parent <> nil then
+  begin
+    Resize;
+  end;
+end;
+
+procedure TAtlasCallStackBar.Resize;
+var
+  mGap, mRowHeight, mRows: Integer;
+begin
+  inherited;
+  if FSearch = nil then
+  begin
+    Exit;
+  end;
+  mGap := MulDiv(cGap, CurrentPPI, cBasePpi);
+  mRowHeight := MulDiv(cBarHeight, CurrentPPI, cBasePpi);
+  FSearch.Width := Max(MulDiv(80, CurrentPPI, cBasePpi), Min(MulDiv(cSearchWidth, CurrentPPI, cBasePpi),
+    ClientWidth - 2 * mGap));
+  mRows := FlowControls([FSearch, FCompare, FCopy], ClientWidth, mGap, mRowHeight,
+    MulDiv(cEditTop, CurrentPPI, cBasePpi), True);
+  // Statuszeile hinter „Kopieren“, sonst nicht sichtbar: Sie steht auch im Fenster unten nicht.
+  FStatus.Left := FCopy.Left + FCopy.Width + mGap;
+  FStatus.Top := FCopy.Top + mGap div 2;
+  if Height <> mRows * mRowHeight then
+  begin
+    Height := mRows * mRowHeight;
+  end;
+end;
+
 function TAtlasCallStackBar.Query: string;
 begin
   Result := Trim(FSearch.Text);
@@ -365,6 +448,12 @@ var
 begin
   mFooter := TLabel.Create(Self);
   mFooter.Caption := TAtlasCallStackStrings.Text(TAtlasCallStackTextId.CallStackFooter);
+  // Schmales Fenster: mit „…“ kürzen, ganzer Text als Tooltip.
+  mFooter.Hint := mFooter.Caption;
+  mFooter.ShowHint := True;
+  mFooter.AutoSize := False;
+  mFooter.EllipsisPosition := epEndEllipsis;
+  mFooter.Height := MulDiv(cFooterHeight, CurrentPPI, cBasePpi);
   mFooter.Align := alBottom;
   mFooter.Parent := Self;
   FPrevious := NewList(Self, Self);
@@ -385,6 +474,20 @@ begin
   FList.OnKeyDown := ListKeyDown;
   FList.OnCustomDrawItem := ListCustomDrawItem;
   FList.OnCustomDrawSubItem := ListCustomDrawSubItem;
+  FList.OnResize := ListResize;
+end;
+
+procedure TAtlasDebugCallStackFrame.ListResize(Sender: TObject);
+var
+  mFree: Integer;
+begin
+  // Routinen-Spalte füllt die Breite (schmal: keine waagrechte Leiste); breit bleibt die feste Breite.
+  if not FList.HandleAllocated or (FList.Columns.Count < 2) then
+  begin
+    Exit;
+  end;
+  mFree := FList.ClientWidth - FList.Columns[1].Width;
+  FList.Columns[0].Width := Max(MulDiv(cMinFrameColumn, CurrentPPI, cBasePpi), mFree);
 end;
 
 procedure TAtlasDebugCallStackFrame.FillControls;

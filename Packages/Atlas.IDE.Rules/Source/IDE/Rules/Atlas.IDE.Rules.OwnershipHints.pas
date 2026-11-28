@@ -125,6 +125,7 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Problems.Controller,
+  Atlas.Core.Problems.Switches,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.ToolsApi.Theme.Style;
 
@@ -567,8 +568,11 @@ var
   mSettings: TAtlasPluginSettings;
 begin
   mSettings := TAtlasIdeSettings.Current;
+  // Beim Debuggen wie die Befunde ausblenden (#2962): Der Text am Zeilenende verdeckt sonst die Debug-Werte. Die
+  // Befundanzeige zeichnet beim Wechsel den Editor neu, das deckt auch diese Marken ab.
   Result := TAtlasOwnershipPlan.Wanted(mSettings.Enabled, mSettings.OwnershipHints,
-    TAtlasGuard.Disabled(TAtlasFeature.Problems));
+    TAtlasGuard.Disabled(TAtlasFeature.Problems)) and
+    not TAtlasProblemSwitches.HiddenWhileDebugging(mSettings, TAtlasProblemsController.Paused);
 end;
 
 class function TAtlasIdeOwnershipHints.Texts: TAtlasOwnershipTexts;

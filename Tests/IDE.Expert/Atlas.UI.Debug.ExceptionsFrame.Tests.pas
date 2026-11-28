@@ -31,6 +31,8 @@ type
     [Test]
     procedure EmptyHistoryShowsHint;
     [Test]
+    procedure NarrowWindowKeepsClassAndMessage;
+    [Test]
     procedure EnterOpensOnlyWithSource;
     [Test]
     procedure StackGroupsLibraryFrames;
@@ -43,6 +45,7 @@ uses
   System.Classes,
   Winapi.Windows,
   Vcl.Forms,
+  Vcl.Controls,
   Atlas.Core.Debug.Exceptions,
   Atlas.Core.Debug.IgnoreList,
   Atlas.Core.Debug.CallStack,
@@ -150,6 +153,36 @@ begin
     // Neuer Verlauf: die gewählte Klasse bleibt.
     mFrame.SetHistory(mHistory, TAtlasDebugIgnoreList.Empty);
     Assert.AreEqual(1, mFrame.FilterBar.ClassBox.ItemIndex);
+  finally
+    mHost.Free;
+    mHistory.Free;
+  end;
+end;
+
+procedure TAtlasDebugExceptionsFrameTests.NarrowWindowKeepsClassAndMessage;
+var
+  mHost: TForm;
+  mFrame: TAtlasDebugExceptionsFrame;
+  mHistory: TAtlasDebugExceptionHistory;
+begin
+  // Schmales Dockfenster: nur Klasse und Meldung, keine waagrechte Leiste; Klassenauswahl lässt dem Filter Platz.
+  // Verlauf über eine Variable (Funktionsergebnis als Argument hält Delphi bis zum Ende fest).
+  mHistory := SampleHistory;
+  mHost := TForm.CreateNew(nil);
+  try
+    mHost.ClientWidth := 300;
+    mFrame := TAtlasDebugExceptionsFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Align := alClient;
+    mFrame.HandleNeeded;
+    mFrame.SetHistory(mHistory, TAtlasDebugIgnoreList.Empty);
+    Assert.AreEqual(0, Integer(mFrame.List.Columns[0].Width), 'Zeit aus');
+    Assert.IsTrue(mFrame.List.Columns[1].Width > 0, 'Klasse');
+    Assert.IsTrue(mFrame.List.Columns[1].Width + mFrame.List.Columns[2].Width <= mFrame.List.ClientWidth + 1,
+      'keine waagrechte Leiste');
+    Assert.IsTrue(mFrame.FilterBar.ClassBox.Width <= mFrame.FilterBar.ClientWidth div 2, 'Platz für den Filter');
+    mHost.ClientWidth := 1200;
+    Assert.IsTrue(mFrame.List.Columns[0].Width > 0, 'breit: Zeit wieder da');
   finally
     mHost.Free;
     mHistory.Free;
