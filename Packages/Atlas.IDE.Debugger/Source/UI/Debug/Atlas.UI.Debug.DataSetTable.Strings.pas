@@ -14,7 +14,7 @@ type
     StatusAtEnd, ConsentNote, ConsentRead, ConsentCurrentOnly, NoMoveNote, UnknownPosition, HelperHint, NotADataSet,
     Running, GoToConfirm, EditConfirm, EditTitle, EditPrompt, EditFailed, GoToFailed, ReadFailed, NullValue,
     CursorRestored, SettingsDataSetTable, SettingsPageSize, SettingsMoveCursor, MoveCursorNever, MoveCursorAsk,
-    MoveCursorAlways);
+    MoveCursorAlways, EditConfirmBuffer, EditBlockedEditing);
 
   TAtlasDataSetTableStrings = class
   public
@@ -73,7 +73,11 @@ const
      'Cursor zum Lesen bewegen',
      'nie',
      'nachfragen',
-     'immer'),
+     'immer',
+     '%s wird gerade bearbeitet (%s). %s in Datensatz %d nur im Bearbeitungspuffer auf „%s“ setzen? Gespeichert ' +
+       'wird erst, wenn Ihr Programm Post aufruft; Cancel verwirft den Wert.',
+     '%s wird gerade bearbeitet (%s). Ändern geht nur im aktuellen Datensatz %d; andere Datensätze erst, wenn Ihr ' +
+       'Programm Post oder Cancel aufgerufen hat.'),
     ('Table …',
      'Data set: %s',
      '%s · %s · record %d of %s',
@@ -116,7 +120,11 @@ const
      'Move the cursor to read',
      'never',
      'ask',
-     'always'));
+     'always',
+     '%s is being edited (%s). Set %s in record %d to “%s” in the edit buffer only? It is saved when your program ' +
+       'calls Post; Cancel discards it.',
+     '%s is being edited (%s). Only the current record %d can be changed; other records once your program has ' +
+       'called Post or Cancel.'));
 
 { TAtlasDataSetTableStrings }
 

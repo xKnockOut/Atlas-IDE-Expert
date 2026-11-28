@@ -53,6 +53,8 @@ type
     [Test]
     procedure EditCellUsesHelper;
     [Test]
+    procedure EditCellInEditBuffer;
+    [Test]
     procedure CopiesAsCsvAndJson;
     [Test]
     procedure MoveCursorOfReadsSetting;
@@ -708,6 +710,32 @@ begin
     Assert.AreEqual(3, mFake.RecNo);
     Assert.IsFalse(TAtlasDataSetTable.EditCell(cDs, Probe(mFake), TAtlasDataSetCell.Create(2, 7, 'x'),
       ContextOf(mFake), ModifyOf(mFake), mMessage), 'kein solches Feld');
+  finally
+    mFake.Free;
+  end;
+end;
+
+procedure TAtlasDataSetTableTests.EditCellInEditBuffer;
+var
+  mFake: TFakeDataSet;
+  mInfo: TAtlasDataSetInfo;
+  mMessage: string;
+begin
+  // Programm steht im Bearbeiten (dsEdit): nur der aktuelle Datensatz, nur der Puffer, kein Edit/Post/Bewegen.
+  mFake := TFakeDataSet.Create;
+  try
+    mFake.State := 'dsEdit';
+    mInfo := Probe(mFake);
+    Assert.IsTrue(mInfo.EditsInBuffer(mFake.RecNo));
+    Assert.IsTrue(TAtlasDataSetTable.EditCell(cDs, mInfo, TAtlasDataSetCell.Create(mFake.RecNo, 1, 'Neu'),
+      ContextOf(mFake), ModifyOf(mFake), mMessage), mMessage);
+    Assert.AreEqual('Neu', mFake.Pending);
+    Assert.AreEqual(0, mFake.Posted);
+    Assert.AreEqual(0, mFake.Moves);
+    Assert.AreEqual('dsEdit', mFake.State);
+    Assert.IsFalse(TAtlasDataSetTable.EditCell(cDs, mInfo, TAtlasDataSetCell.Create(mFake.RecNo - 1, 1, 'x'),
+      ContextOf(mFake), ModifyOf(mFake), mMessage), 'anderer Datensatz');
+    Assert.IsTrue(Pos('dsEdit', mMessage) > 0, mMessage);
   finally
     mFake.Free;
   end;

@@ -58,6 +58,9 @@ type
     Problem: string;
     /// <summary>dsEdit, dsInsert und andere Bearbeitungszustände: Bewegen würde speichern.</summary>
     function Editing: Boolean;
+    /// <summary>dsEdit/dsInsert auf ARecNo: Ändern schreibt nur in den Bearbeitungspuffer (ohne Edit, Post, Bewegen);
+    /// speichern bleibt Sache des Programms.</summary>
+    function EditsInBuffer(ARecNo: Int64): Boolean;
     /// <summary>Cursor darf zum Lesen bewegt werden (bekannte Position, nicht unidirektional, nicht im Bearbeiten).
     /// </summary>
     function CanMoveCursor: Boolean;
@@ -259,6 +262,11 @@ function TAtlasDataSetInfo.Editing: Boolean;
 begin
   Result := MatchText(State, ['dsEdit', 'dsInsert', 'dsSetKey', 'dsCalcFields', 'dsFilter', 'dsNewValue',
     'dsOldValue', 'dsCurValue', 'dsBlockRead', 'dsInternalCalc', 'dsOpening']);
+end;
+
+function TAtlasDataSetInfo.EditsInBuffer(ARecNo: Int64): Boolean;
+begin
+  Result := Valid and MatchText(State, ['dsEdit', 'dsInsert']) and (ARecNo = RecNo);
 end;
 
 function TAtlasDataSetInfo.CanMoveCursor: Boolean;
@@ -730,6 +738,18 @@ var
   mText, mStep: string;
 begin
   AMessage := '';
+  if AInfo.EditsInBuffer(ACell.RecNo) and (ACell.Field >= 0) and (ACell.Field < AInfo.FieldCount) and
+    Assigned(AModify) then
+  begin
+    // Programm bearbeitet schon diesen Datensatz: nur den Puffer setzen, Post/Cancel entscheidet das Programm.
+    mStep := Format('%s.Fields[%d].AsString', [Inner(AExpression), ACell.Field]);
+    Result := AModify(mStep, ACell.Value, mText);
+    if not Result then
+    begin
+      AMessage := StepFailed(mStep, mText);
+    end;
+    Exit;
+  end;
   if not AInfo.Valid or AInfo.Editing or (ACell.Field < 0) or (ACell.Field >= AInfo.FieldCount) then
   begin
     // Nie ohne Grund: Die Oberfläche zeigt sonst nur „Ändern fehlgeschlagen:“.
