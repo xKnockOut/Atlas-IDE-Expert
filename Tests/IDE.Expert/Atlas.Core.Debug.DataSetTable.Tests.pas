@@ -53,6 +53,8 @@ type
     [Test]
     procedure EditCellUsesHelper;
     [Test]
+    procedure EditCellInEditBuffer;
+    [Test]
     procedure CopiesAsCsvAndJson;
     [Test]
     procedure MoveCursorOfReadsSetting;
@@ -81,6 +83,8 @@ type
     HelperPrefix: string;
     RowExpressionFails: Boolean;
     ModifyFails: Boolean;
+    ModifyRefusesProperty: Boolean;
+    SetterGivesNoValue: Boolean;
     Pending: string;
     PendingField: Integer;
     Moves: Integer;
@@ -285,6 +289,25 @@ begin
     end;
     Exit;
   end;
+  // Setter als Aufruf (wie im Debugger, wenn Ändern eine Eigenschaft ablehnt): Argument roh merken.
+  if StartsText(cDs + '.Fields[1].SetAsString(', AExpression) then
+  begin
+    Result := (State = 'dsEdit') and not ModifyFails;
+    if Result then
+    begin
+      Pending := Copy(AExpression, Length(cDs + '.Fields[1].SetAsString(') + 1,
+        Length(AExpression) - Length(cDs + '.Fields[1].SetAsString(') - 1);
+      PendingField := 1;
+      // Wie der Debugger bei einer Prozedur: gelaufen, aber ohne Wert.
+      Result := not SetterGivesNoValue;
+    end;
+    Exit;
+  end;
+  if (AExpression = cDs + '.Fields[1].AsString') and (PendingField = 1) then
+  begin
+    AText := Pending;
+    Exit(True);
+  end;
   Result := AnswerProperty(AExpression, AText) or AnswerMoveBy(AExpression, AEvaluation, AText) or
     AnswerCall(AExpression) or AnswerHelper(AExpression, AText) or AnswerField(AExpression, AText);
   if not Result then
@@ -299,6 +322,12 @@ var
 begin
   AResult := 'Feld nicht gefunden';
   Result := False;
+  if ModifyRefusesProperty then
+  begin
+    // Delphi: Eigenschaft mit Setter lässt sich nicht ändern, ohne Antwort.
+    AResult := '';
+    Exit;
+  end;
   if ModifyFails or (State <> 'dsEdit') then
   begin
     AResult := 'Wert nicht zulässig';
@@ -699,13 +728,50 @@ begin
     mFake.ModifyFails := True;
     Assert.IsFalse(TAtlasDataSetTable.EditCell(cDs, Probe(mFake), TAtlasDataSetCell.Create(2, 0, 'x'),
       ContextOf(mFake), ModifyOf(mFake), mMessage));
-    Assert.AreEqual('Wert nicht zulässig', mMessage);
+    // Grund mit Schritt (StepFailed), nie leer.
+    Assert.IsTrue(EndsText('Wert nicht zulässig', mMessage), mMessage);
+    Assert.IsTrue(Length(mMessage) > Length('Wert nicht zulässig'), mMessage);
     Assert.AreEqual(1, mFake.Cancelled);
     Assert.AreEqual(0, mFake.Posted);
     Assert.AreEqual('dsBrowse', mFake.State);
     Assert.AreEqual(3, mFake.RecNo);
     Assert.IsFalse(TAtlasDataSetTable.EditCell(cDs, Probe(mFake), TAtlasDataSetCell.Create(2, 7, 'x'),
       ContextOf(mFake), ModifyOf(mFake), mMessage), 'kein solches Feld');
+  finally
+    mFake.Free;
+  end;
+end;
+
+procedure TAtlasDataSetTableTests.EditCellInEditBuffer;
+var
+  mFake: TFakeDataSet;
+  mInfo: TAtlasDataSetInfo;
+  mMessage: string;
+begin
+  // Programm steht im Bearbeiten (dsEdit): nur der aktuelle Datensatz, nur der Puffer, kein Edit/Post/Bewegen.
+  mFake := TFakeDataSet.Create;
+  try
+    mFake.State := 'dsEdit';
+    mInfo := Probe(mFake);
+    Assert.IsTrue(mInfo.EditsInBuffer(mFake.RecNo));
+    Assert.IsTrue(TAtlasDataSetTable.EditCell(cDs, mInfo, TAtlasDataSetCell.Create(mFake.RecNo, 1, 'Neu'),
+      ContextOf(mFake), ModifyOf(mFake), mMessage), mMessage);
+    Assert.AreEqual('Neu', mFake.Pending);
+    Assert.AreEqual(0, mFake.Posted);
+    Assert.AreEqual(0, mFake.Moves);
+    Assert.AreEqual('dsEdit', mFake.State);
+    Assert.IsFalse(TAtlasDataSetTable.EditCell(cDs, mInfo, TAtlasDataSetCell.Create(mFake.RecNo - 1, 1, 'x'),
+      ContextOf(mFake), ModifyOf(mFake), mMessage), 'anderer Datensatz');
+    Assert.IsTrue(Pos('dsEdit', mMessage) > 0, mMessage);
+    // Delphi lehnt Ändern von AsString ab: Setter als Aufruf.
+    mFake.ModifyRefusesProperty := True;
+    Assert.IsTrue(TAtlasDataSetTable.EditCell(cDs, mInfo, TAtlasDataSetCell.Create(mFake.RecNo, 1, 'Zweit'),
+      ContextOf(mFake), ModifyOf(mFake), mMessage), mMessage);
+    Assert.AreEqual(TAtlasDataSetTable.Literal('Zweit'), mFake.Pending);
+    // Setter ohne Wert: Erfolg, weil das Feld danach den neuen Wert hat.
+    mFake.SetterGivesNoValue := True;
+    Assert.IsTrue(TAtlasDataSetTable.EditCell(cDs, mInfo, TAtlasDataSetCell.Create(mFake.RecNo, 1, 'Dritt'),
+      ContextOf(mFake), ModifyOf(mFake), mMessage), mMessage);
   finally
     mFake.Free;
   end;

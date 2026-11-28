@@ -58,6 +58,8 @@ type
     function StatusText(AWay: TAtlasDataSetWay; AAtEnd: Boolean): string;
     procedure GoToRecord(ARecNo: Int64);
     procedure EditValue(ARecNo: Int64; AField: Integer);
+    /// <summary>Rückfrage vor dem Ändern; im Bearbeiten (dsEdit) mit Hinweis auf den Puffer.</summary>
+    function EditQuestion(ARecNo: Int64; AField: Integer; const AValue: string): string;
   protected
     procedure SessionStopped; override;
     procedure SessionResumed; override;
@@ -500,6 +502,20 @@ begin
   Reload;
 end;
 
+function TAtlasIdeDebugDataSetTable.EditQuestion(ARecNo: Int64; AField: Integer; const AValue: string): string;
+begin
+  if FInfo.EditsInBuffer(ARecNo) then
+  begin
+    Result := TAtlasDataSetTableStrings.Fmt(TAtlasDataSetTableTextId.EditConfirmBuffer, [FExpression, FInfo.State,
+      FInfo.Names[AField], ARecNo, AValue]);
+  end
+  else
+  begin
+    Result := TAtlasDataSetTableStrings.Fmt(TAtlasDataSetTableTextId.EditConfirm, [FExpression, FInfo.Names[AField],
+      ARecNo, AValue]);
+  end;
+end;
+
 procedure TAtlasIdeDebugDataSetTable.EditValue(ARecNo: Int64; AField: Integer);
 var
   mValue, mMessage: string;
@@ -508,6 +524,12 @@ var
 begin
   if (FForm = nil) or not StillStopped or (FReader <> nil) or (AField < 0) or (AField >= FInfo.FieldCount) then
   begin
+    Exit;
+  end;
+  if FInfo.Editing and not FInfo.EditsInBuffer(ARecNo) then
+  begin
+    MessageDlg(TAtlasDataSetTableStrings.Fmt(TAtlasDataSetTableTextId.EditBlockedEditing, [FExpression, FInfo.State,
+      FInfo.RecNo]), mtInformation, [mbOK], 0);
     Exit;
   end;
   mValue := '';
@@ -520,8 +542,7 @@ begin
   end;
   if not InputQuery(TAtlasDataSetTableStrings.Text(TAtlasDataSetTableTextId.EditTitle),
     TAtlasDataSetTableStrings.Fmt(TAtlasDataSetTableTextId.EditPrompt, [FInfo.Names[AField], ARecNo]), mValue) or
-    not Confirmed(TAtlasDataSetTableStrings.Fmt(TAtlasDataSetTableTextId.EditConfirm, [FExpression,
-    FInfo.Names[AField], ARecNo, mValue])) or not StillStopped then
+    not Confirmed(EditQuestion(ARecNo, AField, mValue)) or not StillStopped then
   begin
     Exit;
   end;

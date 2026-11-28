@@ -58,6 +58,9 @@ type
     Problem: string;
     /// <summary>dsEdit, dsInsert und andere Bearbeitungszustände: Bewegen würde speichern.</summary>
     function Editing: Boolean;
+    /// <summary>dsEdit/dsInsert auf ARecNo: Ändern schreibt nur in den Bearbeitungspuffer (ohne Edit, Post, Bewegen);
+    /// speichern bleibt Sache des Programms.</summary>
+    function EditsInBuffer(ARecNo: Int64): Boolean;
     /// <summary>Cursor darf zum Lesen bewegt werden (bekannte Position, nicht unidirektional, nicht im Bearbeiten).
     /// </summary>
     function CanMoveCursor: Boolean;
@@ -259,6 +262,11 @@ function TAtlasDataSetInfo.Editing: Boolean;
 begin
   Result := MatchText(State, ['dsEdit', 'dsInsert', 'dsSetKey', 'dsCalcFields', 'dsFilter', 'dsNewValue',
     'dsOldValue', 'dsCurValue', 'dsBlockRead', 'dsInternalCalc', 'dsOpening']);
+end;
+
+function TAtlasDataSetInfo.EditsInBuffer(ARecNo: Int64): Boolean;
+begin
+  Result := Valid and MatchText(State, ['dsEdit', 'dsInsert']) and (ARecNo = RecNo);
 end;
 
 function TAtlasDataSetInfo.CanMoveCursor: Boolean;
@@ -653,33 +661,99 @@ begin
   end;
 end;
 
-/// <summary>Ändern ohne Hilfs-Unit: Cursor hin, Edit, Modify, Post, zurück.</summary>
+/// <summary>Grund für einen gescheiterten Schritt: der Ausdruck und, falls vorhanden, die Antwort des Debuggers. Der
+/// Kern hat keine Texte; die Oberfläche stellt „Ändern fehlgeschlagen:“ davor.</summary>
+function StepFailed(const AStep, AText: string): string;
+begin
+  Result := AStep;
+  if Trim(AText) <> '' then
+  begin
+    Result := AStep + ': ' + Trim(AText);
+  end;
+end;
+
+/// <summary>Feldwert setzen: zuerst über Ändern des Debuggers; Delphi ändert aber keine Eigenschaft mit Setter
+/// (`AsString`) und meldet dann nichts. Darum danach den Setter als Aufruf (`SetAsString('…')`, der Debugger
+/// beachtet keine Sichtbarkeit).</summary>
+function SetField(const AInner: string; ACell: TAtlasDataSetCell; const AContext: TAtlasVisualizerContext;
+  const AModify: TAtlasDataSetModify; out AStep, AText: string): Boolean;
+var
+  mModifyText: string;
+begin
+  AStep := Format('%s.Fields[%d].AsString', [AInner, ACell.Field]);
+  Result := AModify(AStep, ACell.Value, mModifyText);
+  if Result or (Trim(mModifyText) <> '') then
+  begin
+    // Erfolg oder ein echter Grund (Wert abgelehnt): kein zweiter Versuch.
+    AText := mModifyText;
+    Exit;
+  end;
+  AStep := Format('%s.Fields[%d].SetAsString(%s)', [AInner, ACell.Field, TAtlasDataSetTable.Literal(ACell.Value)]);
+  Result := EvalText(AContext, AStep, TAtlasVisualizerEvaluation.Calls, AText);
+  if not Result then
+  begin
+    // Prozeduraufruf: Der Debugger liefert oft keinen Wert, obwohl der Setter lief. Maßgeblich ist der Feldwert.
+    Result := EvalText(AContext, Format('%s.Fields[%d].AsString', [AInner, ACell.Field]),
+      TAtlasVisualizerEvaluation.Calls, mModifyText) and (TAtlasDataSetTable.Decode(mModifyText) = ACell.Value);
+    if not Result and (Trim(AText) = '') then
+    begin
+      // Danach noch der alte Wert: so nennen, damit klar ist, dass der Aufruf nichts bewirkt hat.
+      AText := 'AsString = ' + TAtlasDataSetTable.Literal(TAtlasDataSetTable.Decode(mModifyText));
+    end;
+  end;
+end;
+
+/// <summary>Ändern ohne Hilfs-Unit: Cursor hin, Edit, Modify, Post, zurück. AMessage nennt den gescheiterten Schritt
+/// (bisher blieb er bei einem Schritt ohne Antwort des Debuggers leer).</summary>
 function EditByCursor(const AExpression: string; const AInfo: TAtlasDataSetInfo; const ACell: TAtlasDataSetCell;
   const AContext: TAtlasVisualizerContext; const AModify: TAtlasDataSetModify; out AMessage: string): Boolean;
 var
   mMoved, mBack: Int64;
-  mText, mInner: string;
+  mText, mInner, mStep: string;
 begin
   AMessage := '';
   mInner := Inner(AExpression);
-  if not (AInfo.CanMoveCursor and Assigned(AModify)) then
+  if not Assigned(AModify) then
   begin
+    AMessage := 'Modify';
     Exit(False);
   end;
-  if not EvalInt(AContext, TAtlasDataSetTable.MoveByExpression(mInner, ACell.RecNo - AInfo.RecNo),
-    TAtlasVisualizerEvaluation.Calls, mMoved) then
+  if not AInfo.CanMoveCursor then
   begin
+    AMessage := StepFailed('CanMoveCursor = False', AInfo.State);
     Exit(False);
   end;
-  Result := (mMoved = ACell.RecNo - AInfo.RecNo) and
-    EvalText(AContext, mInner + '.Edit', TAtlasVisualizerEvaluation.Calls, mText) and
-    AModify(Format('%s.Fields[%d].AsString', [mInner, ACell.Field]), ACell.Value, AMessage) and
-    EvalText(AContext, mInner + '.Post', TAtlasVisualizerEvaluation.Calls, mText);
+  mStep := TAtlasDataSetTable.MoveByExpression(mInner, ACell.RecNo - AInfo.RecNo);
+  if not EvalText(AContext, mStep, TAtlasVisualizerEvaluation.Calls, mText) or
+    not TAtlasVisualizerFormat.ParseInteger(mText, mMoved) then
+  begin
+    AMessage := StepFailed(mStep, mText);
+    Exit(False);
+  end;
+  Result := mMoved = ACell.RecNo - AInfo.RecNo;
+  if not Result then
+  begin
+    AMessage := Format('%s = %d', [mStep, mMoved]);
+  end;
+  if Result then
+  begin
+    mStep := mInner + '.Edit';
+    Result := EvalText(AContext, mStep, TAtlasVisualizerEvaluation.Calls, mText);
+  end;
+  if Result then
+  begin
+    Result := SetField(mInner, ACell, AContext, AModify, mStep, mText);
+  end;
+  if Result then
+  begin
+    mStep := mInner + '.Post';
+    Result := EvalText(AContext, mStep, TAtlasVisualizerEvaluation.Calls, mText);
+  end;
   if not Result then
   begin
     if AMessage = '' then
     begin
-      AMessage := mText;
+      AMessage := StepFailed(mStep, mText);
     end;
     // Nichts halb Geändertes stehen lassen.
     EvalText(AContext, mInner + '.Cancel', TAtlasVisualizerEvaluation.Calls, mText);
@@ -691,20 +765,38 @@ class function TAtlasDataSetTable.EditCell(const AExpression: string; const AInf
   const ACell: TAtlasDataSetCell; const AContext: TAtlasVisualizerContext; const AModify: TAtlasDataSetModify;
   out AMessage: string): Boolean;
 var
-  mText: string;
+  mText, mStep: string;
 begin
   AMessage := '';
+  if AInfo.EditsInBuffer(ACell.RecNo) and (ACell.Field >= 0) and (ACell.Field < AInfo.FieldCount) and
+    Assigned(AModify) then
+  begin
+    // Programm bearbeitet schon diesen Datensatz: nur den Puffer setzen, Post/Cancel entscheidet das Programm.
+    Result := SetField(Inner(AExpression), ACell, AContext, AModify, mStep, mText);
+    if not Result then
+    begin
+      AMessage := StepFailed(mStep, mText);
+    end;
+    Exit;
+  end;
   if not AInfo.Valid or AInfo.Editing or (ACell.Field < 0) or (ACell.Field >= AInfo.FieldCount) then
   begin
+    // Nie ohne Grund: Die Oberfläche zeigt sonst nur „Ändern fehlgeschlagen:“.
+    AMessage := StepFailed(Format('%s.Fields[%d]', [AExpression, ACell.Field]), AInfo.State);
     Exit(False);
   end;
   if AInfo.HasHelper then
   begin
-    Result := EvalText(AContext, HelperSetValueExpression(AInfo.HelperPrefix, AExpression, ACell.RecNo, ACell.Field,
-      ACell.Value), TAtlasVisualizerEvaluation.Calls, mText);
+    mStep := HelperSetValueExpression(AInfo.HelperPrefix, AExpression, ACell.RecNo, ACell.Field, ACell.Value);
+    Result := EvalText(AContext, mStep, TAtlasVisualizerEvaluation.Calls, mText);
+    if not Result then
+    begin
+      AMessage := StepFailed(mStep, mText);
+      Exit;
+    end;
     // Die Hilfs-Unit meldet '' bei Erfolg, sonst den Grund.
     AMessage := Decode(mText);
-    Result := Result and (AMessage = '');
+    Result := AMessage = '';
     Exit;
   end;
   Result := EditByCursor(AExpression, AInfo, ACell, AContext, AModify, AMessage);
